@@ -15,16 +15,16 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Merriweather:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css?v=20261116c" />
   <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.3/dist/mqtt.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
-  <script src="data.js" defer></script>
-  <script src="tearoom3d.js" defer></script>
-  <script src="xiangqi.js" defer></script>
-  <script src="realtime.js" defer></script>
-  <script src="app.js" defer></script>
+  <script src="data.js?v=20261116c" defer></script>
+  <script src="tearoom3d.js?v=20261116c" defer></script>
+  <script src="xiangqi.js?v=20261116c" defer></script>
+  <script src="realtime.js?v=20261116c" defer></script>
+  <script src="app.js?v=20261116c" defer></script>
 </head>
 <body>
   <!-- Unified SVG Icon Sprite -->
@@ -160,6 +160,11 @@
       <path d="M20 11a8 8 0 0 0-14.5-4.5L4 8M4 4v4h4" />
       <path d="M4 13a8 8 0 0 0 14.5 4.5L20 16M20 20v-4h-4" />
     </symbol>
+    <symbol id="ico-xiangqi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="9.5" />
+      <circle cx="12" cy="12" r="6.8" />
+      <path d="M9 9.5h6M12 8v8M8.8 14.5h6.4" />
+    </symbol>
   </svg>
 
   <!-- Desktop / Testing Helper Bar (hidden on narrow mobile viewports) -->
@@ -169,6 +174,7 @@
       <span>Khung điện thoại 480px (Mobile-First PWA + Realtime)</span>
     </div>
     <div class="sim-bar-controls">
+      <button type="button" class="sim-chip" id="sim-open-xiangqi">Cờ tướng 9×10 &amp; Cờ thế</button>
       <button type="button" class="sim-chip" id="sim-toggle-render">Đồ họa: Không gian 3D</button>
       <button type="button" class="sim-chip" id="sim-toggle-font">Cỡ chữ: 20px</button>
       <button type="button" class="sim-chip" id="sim-open-dict">Sổ từ điển tự học (8)</button>

@@ -2076,10 +2076,91 @@ p {
   color: #FFFFFF;
 }
 
+.xq-top-switch {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.xq-top-btn {
+  min-height: 60px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border-strong);
+  background-color: var(--bg-paper);
+  color: var(--ink-primary);
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: center;
+  white-space: normal;
+}
+
+.xq-top-btn.active {
+  background-color: var(--accent-terracotta);
+  border-color: var(--accent-terracotta);
+  color: #FFFFFF;
+}
+
 .xq-puzzle-strip {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.xq-opp-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.xq-captured-strip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background-color: var(--bg-paper);
+  border: 1px solid var(--border-subtle);
+  font-size: 0.88rem;
+}
+
+.xq-check-banner {
+  padding: 8px 12px;
+  border-radius: 10px;
+  background-color: var(--danger-soft);
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  font-weight: 700;
+  font-size: 0.92rem;
+  text-align: center;
+}
+
+.xq-move-log-strip {
+  padding: 8px 10px;
+  border-radius: 10px;
+  background-color: var(--bg-paper);
+  border: 1px solid var(--border-subtle);
+  font-size: 0.88rem;
+  color: var(--ink-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.home-main-btn.is-wood {
+  background-color: #6B3F24;
+  border-color: #522E18;
+  color: #FFFDF7;
+}
+
+.home-main-btn.is-wood small {
+  color: #F2E3CE;
+}
+
+.home-main-btn.is-wood .home-main-icon {
+  background-color: rgba(255, 253, 247, 0.16);
+  color: #FFFDF7;
 }
 
 /* Analytics & Decree 13/2023/NĐ-CP Privacy Center */

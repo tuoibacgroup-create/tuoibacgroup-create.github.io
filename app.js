@@ -1,5 +1,5 @@
 (function () {
-  const STORAGE_KEY = "tuoi_bac_sim_v4";
+  const STORAGE_KEY = "tuoi_bac_sim_v5";
   const D = window.TuoiBacData;
   const XQ = window.TuoiBacXiangqi;
   const RT = window.TuoiBacRealtime;
@@ -102,21 +102,25 @@
         zaloInviteUrl: ""
       },
       xiangqi: {
-        mode: "puzzle",
+        mode: "ai",
+        aiLevel: "club",
         puzzleIdx: 0,
         puzzleStep: 0,
+        solvedPuzzleIds: [],
         solved: false,
         board: null,
         turn: "red",
         selected: null,
         lastMove: null,
+        hintMove: null,
         prevBoard: null,
+        moveLog: [],
         matchId: "",
         mySide: "red",
         hostName: "",
         guestName: "",
         inviteUrl: "",
-        status: "Đỏ đi tiên: Chạm vào quân Đỏ rồi chạm ô chấm xanh để đi nước 1."
+        status: "Bàn chuẩn 9×10 (32 quân) — Bác cầm quân Đỏ đi tiên: chạm quân Đỏ rồi chạm chấm xanh để đi."
       },
       poems: D.POEMS.map((p) => Object.assign({}, p)),
       watch: {
@@ -812,6 +816,41 @@
           <button type="button" class="home-mode-btn ${!isMvpMode ? "active" : ""}" id="btn-mode-full">Đầy đủ (Tất cả góc)</button>
         </div>
 
+        <!-- 4 Nút lớn ưu tiên đặt ngay đầu màn hình để mở 1 chạm không phải cuộn -->
+        <div class="home-hero-list">
+          <button type="button" class="home-main-btn is-primary" data-go="checkin">
+            <span class="home-main-icon">${ico("sun", "ico-lg")}</span>
+            <span class="home-main-text">
+              <strong>${state.user.checkedInToday ? "Xem bản đồ Điểm danh bình an" : "1. Điểm danh bình an"}</strong>
+              <small>${state.user.checkedInToday ? `Tỉnh ${prov.short} đã sáng đèn hôm nay` : "Chạm 1 lần để thắp sáng tỉnh nhà & báo tin cho con"}</small>
+            </span>
+          </button>
+
+          <button type="button" class="home-main-btn is-jade" data-go="tearoom">
+            <span class="home-main-icon">${ico("tea", "ico-lg")}</span>
+            <span class="home-main-text">
+              <strong>2. Vào phòng sinh hoạt (${escHtml(getCurrentRoom().shortName)})</strong>
+              <small>${getCurrentRoom().tables.length} bàn đang mở · Ghép bàn người thật & đồng niên của ${pron}</small>
+            </span>
+          </button>
+
+          <button type="button" class="home-main-btn" data-go="newspaper">
+            <span class="home-main-icon">${ico("paper", "ico-lg")}</span>
+            <span class="home-main-text">
+              <strong>3. Đọc Tờ Báo Sáng</strong>
+              <small>${state.newspaper.articles.length} tin chọn lọc dễ đọc, tìm từ khóa & đàm đạo theo tin</small>
+            </span>
+          </button>
+
+          <button type="button" class="home-main-btn is-wood" data-go="xiangqi">
+            <span class="home-main-icon">${ico("xiangqi", "ico-lg")}</span>
+            <span class="home-main-text">
+              <strong>4. Cờ Tướng 9×10 &amp; Giải Cờ Thế</strong>
+              <small>Đánh ván thật 32 quân (Máy CLB / 2 người / Ván treo) &amp; Giải 6 thế cờ cổ phổ</small>
+            </span>
+          </button>
+        </div>
+
         ${
           !state.user.profileConfigured
             ? `
@@ -846,32 +885,6 @@
           </div>
         `
         }
-
-        <div class="home-hero-list">
-          <button type="button" class="home-main-btn is-primary" data-go="checkin">
-            <span class="home-main-icon">${ico("sun", "ico-lg")}</span>
-            <span class="home-main-text">
-              <strong>${state.user.checkedInToday ? "Xem bản đồ Điểm danh bình an" : "1. Điểm danh bình an"}</strong>
-              <small>${state.user.checkedInToday ? `Tỉnh ${prov.short} đã sáng đèn hôm nay` : "Chạm 1 lần để thắp sáng tỉnh nhà & báo tin cho con"}</small>
-            </span>
-          </button>
-
-          <button type="button" class="home-main-btn is-jade" data-go="tearoom">
-            <span class="home-main-icon">${ico("tea", "ico-lg")}</span>
-            <span class="home-main-text">
-              <strong>2. Vào phòng sinh hoạt (${escHtml(getCurrentRoom().shortName)})</strong>
-              <small>${getCurrentRoom().tables.length} bàn đang mở · Ghép bàn người thật & đồng niên của ${pron}</small>
-            </span>
-          </button>
-
-          <button type="button" class="home-main-btn" data-go="newspaper">
-            <span class="home-main-icon">${ico("paper", "ico-lg")}</span>
-            <span class="home-main-text">
-              <strong>3. Đọc Tờ Báo Sáng</strong>
-              <small>${state.newspaper.articles.length} tin chọn lọc dễ đọc, tìm từ khóa & đàm đạo theo tin</small>
-            </span>
-          </button>
-        </div>
 
         ${
           showPwaCard
@@ -908,16 +921,22 @@
         <section class="section-block">
           <h2>Khu sinh hoạt mở rộng &amp; Quản trị</h2>
           <div class="module-grid">
-            <button type="button" class="module-tile" data-go="quiz">
-              ${ico("quiz")}
-              <strong>Đố vui hôm nay</strong>
-              <span class="sub">5 câu mỗi ngày, không phạt người chậm</span>
+            <button type="button" class="module-tile" data-go="xiangqi">
+              ${ico("xiangqi")}
+              <strong>Cờ tướng 9×10 &amp; Giải cờ thế</strong>
+              <span class="sub">Ván thật 32 quân &amp; 6 thế cờ giang hồ</span>
             </button>
 
             <button type="button" class="module-tile" data-go="games">
               ${ico("board")}
-              <strong>Ô ăn quan &amp; Cờ tướng 9×10</strong>
-              <span class="sub">Bàn chuẩn 9×10, giải thế &amp; ván treo thật</span>
+              <strong>Ô ăn quan dân gian</strong>
+              <span class="sub">Đấu với Máy hoặc Ván treo qua link</span>
+            </button>
+
+            <button type="button" class="module-tile" data-go="quiz">
+              ${ico("quiz")}
+              <strong>Đố vui hôm nay</strong>
+              <span class="sub">5 câu mỗi ngày, không phạt người chậm</span>
             </button>
 
             <button type="button" class="module-tile" data-go="poetry">
@@ -1182,14 +1201,15 @@
       const van = params.get("van");
       if (van) {
         const cleanVan = van.trim();
-        state.route = "games";
         if (cleanVan.startsWith("xq-")) {
+          state.route = "xiangqi";
           activeGameTab = "cotuong";
           state.xiangqi.mode = "async";
           state.xiangqi.matchId = cleanVan;
           state.xiangqi.inviteUrl = `${getPublicBaseUrl()}?van=${encodeURIComponent(cleanVan)}`;
           state.xiangqi.status = "Đang tải trạng thái Ván treo Cờ tướng thời gian thực...";
         } else {
+          state.route = "games";
           activeGameTab = "oaq";
           state.oaq.mode = "async";
           state.oaq.matchId = cleanVan;
@@ -1810,6 +1830,9 @@
     state.teaRoom.tableIdx = safeIdx;
     state.teaRoom.subView = "table";
     state.teaRoom.log = table.initialLog.slice();
+    if (room.id === "phong-co") {
+      switchXiangqiMode(safeIdx === 0 ? "puzzle" : "ai");
+    }
     pendingQueue = [];
     lastTableActivityAt = Date.now();
     trackEvent("tea_table_joined");
@@ -2214,6 +2237,21 @@
         <p class="lead-copy">${escHtml(room.description)} · Hiện có <strong class="num">${totalSeated}</strong> anh chị đang ngồi tại <strong class="num">${room.tables.length}</strong> bàn.</p>
       </div>
 
+      ${
+        room.id === "phong-co"
+          ? `
+        <div class="surface-panel warm" id="phong-co-quick-banner">
+          <h3>Bàn Cờ Tướng 9×10 &amp; Kho 6 Thế Cờ Giang Hồ</h3>
+          <p style="font-size:0.9rem; color:var(--ink-secondary);">Ngồi vào bất kỳ bàn nào bên dưới đều có sẵn bàn cờ 9×10 ngay tại bàn, hoặc bấm mở toàn màn hình để đánh ngay:</p>
+          <div class="btn-row">
+            <button type="button" class="btn-primary" id="btn-lobby-play-full9x10">${ico("xiangqi")}<span>Đánh ván 9×10 thật</span></button>
+            <button type="button" class="btn-jade" id="btn-lobby-play-cothe">${ico("award")}<span>Giải 6 Cờ thế</span></button>
+          </div>
+        </div>
+      `
+          : ""
+      }
+
       <!-- Thói quen & Sở thích để ghép bàn -->
       <div class="surface-panel">
         <h3>Sở thích & Thói quen của ${getUserPronoun()} (chạm để ghép bàn hợp ý)</h3>
@@ -2298,6 +2336,21 @@
 
     bindRoomSwitcherEvents();
     mountRoomSceneView("overview", room, room.tables[0], best.idx);
+
+    const playFull9x10Btn = document.getElementById("btn-lobby-play-full9x10");
+    if (playFull9x10Btn) {
+      playFull9x10Btn.addEventListener("click", () => {
+        switchXiangqiMode("ai");
+        navigate("xiangqi");
+      });
+    }
+    const playCoTheBtn = document.getElementById("btn-lobby-play-cothe");
+    if (playCoTheBtn) {
+      playCoTheBtn.addEventListener("click", () => {
+        switchXiangqiMode("puzzle");
+        navigate("xiangqi");
+      });
+    }
 
     els.main.querySelectorAll("[data-habit]").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -2420,6 +2473,20 @@
 
       <button type="button" class="btn-secondary" id="btn-snap-tea">${ico("camera")}<span>Check-in bàn trà (Ảnh + Mã QR)</span></button>
 
+      ${
+        room.id === "phong-co"
+          ? `
+        <div class="section-block" id="phong-co-table-chess">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+            <h2>Bàn Cờ Tướng 9×10 Ngay Tại Bàn</h2>
+            <button type="button" class="btn-mini" id="btn-open-fullscreen-xq">Mở rộng toàn màn hình</button>
+          </div>
+          <div id="xq-host-container"></div>
+        </div>
+      `
+          : ""
+      }
+
       <!-- Trợ lý tự gợi chuyện sau 60 giây im lặng -->
       <div class="idle-assistant-bar" id="idle-assistant-bar">
         <span id="idle-assistant-status">${escHtml(room.hostName || "Chị Trà (Trợ lý)")} tự gợi chuyện mới nếu bàn im lặng quá 60 giây</span>
@@ -2476,6 +2543,15 @@
 
     bindRoomSwitcherEvents();
     mountRoomSceneView("table", room, baseTable, 0);
+
+    const inlineXqHost = document.getElementById("xq-host-container");
+    if (inlineXqHost) {
+      renderXiangqiTab(inlineXqHost);
+    }
+    const openFullXqBtn = document.getElementById("btn-open-fullscreen-xq");
+    if (openFullXqBtn) {
+      openFullXqBtn.addEventListener("click", () => navigate("xiangqi"));
+    }
 
     if (coolLeft > 0) startCooldownTicker();
 
@@ -3646,28 +3722,79 @@
     });
   }
 
-  // ==================== STANDARD 9x10 XIANGQI (PUZZLES + FULL AI + LIVE ASYNC) ====================
+  // ==================== STANDARD 9x10 XIANGQI (FULL 32-PIECE GAME + 6 CỜ THẾ PUZZLES + LIVE ASYNC) ====================
+  function playWoodPieceClack(isCapture) {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    try {
+      const ctx = new AudioCtx();
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(isCapture ? 210 : 320, now);
+      osc.frequency.exponentialRampToValueAtTime(75, now + 0.065);
+      gain.gain.setValueAtTime(isCapture ? 0.28 : 0.18, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.075);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.08);
+    } catch (e) {}
+  }
+
+  function refreshXiangqiHosts() {
+    const inlineHost = document.getElementById("xq-host-container");
+    if (inlineHost) {
+      renderXiangqiTab(inlineHost);
+      return;
+    }
+    if (state.route === "xiangqi") {
+      renderXiangqiScreen();
+    } else if (state.route === "games" && activeGameTab === "cotuong") {
+      renderGames();
+    }
+  }
+
+  function switchXiangqiMode(nextMode) {
+    if (!XQ) return;
+    const x = state.xiangqi;
+    x.mode = nextMode;
+    x.selected = null;
+    x.lastMove = null;
+    x.hintMove = null;
+    x.prevBoard = null;
+    x.solved = false;
+    x.moveLog = [];
+    if (nextMode === "puzzle") {
+      const curPz = XQ.PUZZLES[(x.puzzleIdx || 0) % XQ.PUZZLES.length];
+      x.board = XQ.buildBoardFromList(curPz.pieces);
+      x.turn = "red";
+      x.puzzleStep = 0;
+      x.status = `${curPz.name} — Đỏ đi tiên: chạm quân Đỏ rồi chạm chấm xanh để chiếu Tướng.`;
+    } else if (nextMode === "ai") {
+      x.board = XQ.createInitialBoard();
+      x.turn = "red";
+      x.status = `Ván thật 9×10 (32 quân) đấu với Máy (${x.aiLevel === "club" ? "Mức CLB" : "Mức Thư giãn"}) — Bác cầm Đỏ đi tiên!`;
+    } else if (nextMode === "local2p") {
+      x.board = XQ.createInitialBoard();
+      x.turn = "red";
+      x.status = "Đánh 2 người chung máy (32 quân) — Bên Đỏ đi trước, chạm quân để đi.";
+    } else {
+      x.matchId = "";
+      ensureXiangqiAsyncMatch();
+    }
+    saveState();
+  }
+
   function ensureXiangqiBoardInitialized() {
     const x = state.xiangqi;
     if (!XQ) return;
+    if (!Array.isArray(x.solvedPuzzleIds)) x.solvedPuzzleIds = [];
+    if (!Array.isArray(x.moveLog)) x.moveLog = [];
+    if (!x.aiLevel) x.aiLevel = "club";
     if (!Array.isArray(x.board) || x.board.length !== 10) {
-      if (x.mode === "puzzle") {
-        const pz = XQ.PUZZLES[x.puzzleIdx % XQ.PUZZLES.length];
-        x.board = XQ.buildBoardFromList(pz.pieces);
-        x.turn = "red";
-        x.solved = false;
-        x.puzzleStep = 0;
-        x.selected = null;
-        x.lastMove = null;
-        x.status = "Đỏ đi tiên: Chạm vào quân Đỏ rồi chạm ô chấm xanh để chiếu Tướng.";
-      } else {
-        x.board = XQ.createInitialBoard();
-        x.turn = "red";
-        x.solved = false;
-        x.selected = null;
-        x.lastMove = null;
-        x.status = "Ván 9×10 chuẩn (32 quân) — Đỏ đi tiên.";
-      }
+      switchXiangqiMode(x.mode || "ai");
     }
   }
 
@@ -3683,7 +3810,9 @@
       x.turn = "red";
       x.selected = null;
       x.lastMove = null;
+      x.hintMove = null;
       x.solved = false;
+      x.moveLog = [];
       x.inviteUrl = `${getPublicBaseUrl()}?van=${encodeURIComponent(code)}`;
       x.status = "Bác cầm quân Đỏ (đi tiên). Gửi link bên dưới để kỳ hữu cầm quân Đen trên máy khác.";
       if (RT) {
@@ -3704,77 +3833,146 @@
     }
   }
 
+  function renderXiangqiScreen() {
+    els.main.innerHTML = `
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+        <h1>Cờ Tướng 9×10 &amp; Giải Cờ Thế</h1>
+        <button type="button" class="btn-mini" id="btn-xq-goto-oaq">Sang Ô ăn quan</button>
+      </div>
+      <p class="lead-copy">Bàn cờ chuẩn 9 cột × 10 hàng đầy đủ luật Cửu cung, cản Mã, cản Tượng, ngòi Pháo và lộ mặt Tướng. Chơi ván thật 32 quân hoặc thử sức 6 thế cờ cổ phổ.</p>
+      <div id="xq-host-container"></div>
+    `;
+    document.getElementById("btn-xq-goto-oaq").addEventListener("click", () => {
+      activeGameTab = "oaq";
+      navigate("games");
+    });
+    renderXiangqiTab(document.getElementById("xq-host-container"));
+  }
+
   function renderXiangqiTab(container) {
-    if (!XQ) return;
+    if (!XQ || !container) return;
     const x = state.xiangqi;
     ensureXiangqiBoardInitialized();
 
     const pz = XQ.PUZZLES[(x.puzzleIdx || 0) % XQ.PUZZLES.length];
-    const myControllableSide = x.mode === "async" ? x.mySide || "red" : "red";
+    const isPlayGameTab = x.mode !== "puzzle";
+    const myControllableSide =
+      x.mode === "local2p"
+        ? x.turn
+        : x.mode === "async"
+        ? x.mySide || "red"
+        : "red";
     const canInteract = !x.solved && x.turn === myControllableSide;
     const legalTargets =
       canInteract && x.selected
         ? XQ.getLegalMovesForSquare(x.board, x.selected.r, x.selected.c)
         : [];
+    const inCheckNow = !x.solved && XQ.isInCheck(x.board, x.turn);
+    const capInfo = isPlayGameTab ? XQ.getCapturedPieces(x.board) : null;
+    const solvedCount = (x.solvedPuzzleIds || []).length;
 
     container.innerHTML = `
       <div class="surface-panel">
-        <div class="xq-mode-grid" role="group" aria-label="Chế độ chơi Cờ tướng 9×10">
-          <button type="button" class="xq-mode-btn ${x.mode === "puzzle" ? "active" : ""}" data-xq-mode="puzzle">Giải cờ thế</button>
-          <button type="button" class="xq-mode-btn ${x.mode === "ai" ? "active" : ""}" data-xq-mode="ai">Đấu Máy 9×10</button>
-          <button type="button" class="xq-mode-btn ${x.mode === "async" ? "active" : ""}" data-xq-mode="async">Ván treo 9×10</button>
+        <!-- 2 Chế độ lớn dễ chọn nhất: Đánh Ván Thật 32 Quân vs Giải 6 Thế Cờ -->
+        <div class="xq-top-switch" role="tablist" aria-label="Chọn Đánh ván thật hoặc Giải cờ thế">
+          <button type="button" class="xq-top-btn ${isPlayGameTab ? "active" : ""}" id="xq-top-play">Đánh ván thật (32 quân)</button>
+          <button type="button" class="xq-top-btn ${!isPlayGameTab ? "active" : ""}" id="xq-top-puzzle">Giải Cờ thế (${solvedCount}/${XQ.PUZZLES.length} thế)</button>
         </div>
 
         ${
-          x.mode === "puzzle"
+          isPlayGameTab
             ? `
-          <div>
-            <h2 style="font-size:1.06rem;">${escHtml(pz.name)}</h2>
-            <p style="font-size:0.88rem; color:var(--ink-secondary);">${escHtml(pz.subtitle)}</p>
+          <div class="xq-opp-grid" role="group" aria-label="Chọn đối thủ trên bàn 9×10">
+            <button type="button" class="xq-mode-btn ${x.mode === "ai" && x.aiLevel !== "easy" ? "active" : ""}" data-xq-play="ai-club">Đấu Máy CLB (Khá)</button>
+            <button type="button" class="xq-mode-btn ${x.mode === "ai" && x.aiLevel === "easy" ? "active" : ""}" data-xq-play="ai-easy">Đấu Máy (Thư giãn)</button>
+            <button type="button" class="xq-mode-btn ${x.mode === "local2p" ? "active" : ""}" data-xq-play="local2p">2 Người chung máy</button>
+            <button type="button" class="xq-mode-btn ${x.mode === "async" ? "active" : ""}" data-xq-play="async">Ván treo qua link</button>
           </div>
-          <div class="xq-puzzle-strip">
-            ${XQ.PUZZLES.map(
-              (item, idx) =>
-                `<button type="button" class="btn-mini ${idx === (x.puzzleIdx || 0) ? "active-equip" : ""}" data-pz-idx="${idx}" style="justify-content:center; ${idx === (x.puzzleIdx || 0) ? "background:var(--accent-jade);color:#fff;" : ""}">Thế ${idx + 1}</button>`
-            ).join("")}
+
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; font-size:0.92rem;">
+            <span><strong>Quân Đỏ:</strong> ${escHtml(x.mode === "async" ? x.hostName || state.user.name : state.user.name)}</span>
+            <span><strong>Quân Đen:</strong> ${escHtml(
+              x.mode === "local2p"
+                ? "Người chơi 2 (Tại chỗ)"
+                : x.mode === "async"
+                ? x.guestName || "Chờ kỳ hữu..."
+                : x.aiLevel === "easy"
+                ? "Máy (Thư giãn)"
+                : "Máy (Kỳ hữu CLB)"
+            )}</span>
           </div>
-        `
-            : x.mode === "ai"
-            ? `
-          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; font-size:0.9rem;">
-            <span><strong>Đỏ:</strong> ${escHtml(state.user.name)}</span>
-            <span><strong>Đen:</strong> Máy (Kỳ hữu tự động)</span>
+
+          <div class="xq-captured-strip">
+            <span>Đỏ ăn: <strong>${capInfo.capturedByRed.length ? escHtml(capInfo.capturedByRed.join(", ")) : "chưa ăn quân"}</strong></span>
+            <span>Đen ăn: <strong>${capInfo.capturedByBlack.length ? escHtml(capInfo.capturedByBlack.join(", ")) : "chưa ăn quân"}</strong></span>
           </div>
         `
             : `
-          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; font-size:0.9rem;">
-            <span><strong>Đỏ:</strong> ${escHtml(x.hostName || state.user.name)}</span>
-            <span><strong>Đen:</strong> ${escHtml(x.guestName || "Chờ bạn cờ...")}</span>
+          <div class="surface-panel warm" style="padding:10px 12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+              <strong style="font-size:1.02rem;">${escHtml(pz.name)}</strong>
+              <span class="badge-tag amber">${escHtml(pz.difficulty || "Cờ thế")}</span>
+            </div>
+            <p style="font-size:0.88rem; color:var(--ink-secondary);">${escHtml(pz.story || pz.subtitle)}</p>
+          </div>
+
+          <div class="xq-puzzle-strip" role="group" aria-label="Danh sách 6 thế cờ">
+            ${XQ.PUZZLES.map((item, idx) => {
+              const isCurr = idx === (x.puzzleIdx || 0);
+              const isDone = (x.solvedPuzzleIds || []).includes(item.id);
+              return `<button type="button" class="btn-mini" data-pz-idx="${idx}" style="justify-content:space-between; ${isCurr ? "background:var(--accent-jade);color:#fff;border-color:var(--accent-jade);" : ""}">
+                <span>${escHtml(item.shortTitle || `Thế ${idx + 1}`)}</span>
+                <span>${isDone ? "Đã giải" : item.difficulty}</span>
+              </button>`;
+            }).join("")}
           </div>
         `
         }
+
+        ${inCheckNow ? `<div class="xq-check-banner">CHIẾU TƯỚNG! Bên ${x.turn === "red" ? "Đỏ" : "Đen"} cần đỡ nước chiếu ngay!</div>` : ""}
 
         <div class="xq-board-wrap" id="xq-board-mount">
           ${XQ.renderBoardSvg({
             board: x.board,
             selected: x.selected,
             legalTargets,
-            lastMove: x.lastMove
+            lastMove: x.lastMove,
+            hintMove: x.hintMove
           })}
         </div>
 
         <p id="xq-status-line" style="font-weight:700; color:${x.solved ? "var(--accent-jade)" : "var(--accent-terracotta)"};">${escHtml(x.status)}</p>
 
+        ${
+          Array.isArray(x.moveLog) && x.moveLog.length > 0
+            ? `<div class="xq-move-log-strip">Biên bản gần nhất: ${escHtml(x.moveLog.slice(-3).join("  ·  "))}</div>`
+            : ""
+        }
+
         <div class="btn-row">
           ${
-            x.mode === "puzzle"
-              ? `<button type="button" class="btn-secondary" id="xq-btn-hint">Gợi ý nước đi</button>`
-              : x.mode === "ai" && x.prevBoard
-              ? `<button type="button" class="btn-secondary" id="xq-btn-undo">Đi lại 1 nước</button>`
+            !x.solved && canInteract
+              ? `<button type="button" class="btn-secondary" id="xq-btn-hint">${x.mode === "puzzle" ? "Gợi ý nước giải" : "Gợi ý nước hay"}</button>`
               : ""
           }
-          <button type="button" class="btn-primary" id="xq-btn-reset">${x.mode === "puzzle" ? "Xếp lại thế cờ" : "Ván 9×10 mới"}</button>
+          ${
+            x.mode === "puzzle" && !x.solved && canInteract
+              ? `<button type="button" class="btn-jade" id="xq-btn-demo-step">Đi mẫu 1 nước</button>`
+              : ""
+          }
+          ${
+            isPlayGameTab && x.prevBoard && x.mode !== "async"
+              ? `<button type="button" class="btn-secondary" id="xq-btn-undo">Hoàn lại 1 nước</button>`
+              : ""
+          }
+          <button type="button" class="btn-primary" id="xq-btn-reset">${x.mode === "puzzle" ? "Xếp lại thế cờ" : "Xếp ván 9×10 mới"}</button>
         </div>
+
+        ${
+          x.mode === "puzzle" && x.solved
+            ? `<button type="button" class="btn-jade" id="xq-btn-next-puzzle">Sang Thế cờ tiếp theo →</button>`
+            : ""
+        }
 
         ${
           x.mode === "async" && x.inviteUrl
@@ -3797,46 +3995,42 @@
       </div>
     `;
 
-    container.querySelectorAll("[data-xq-mode]").forEach((btn) => {
+    container.querySelector("#xq-top-play").addEventListener("click", () => {
+      if (x.mode === "puzzle") {
+        switchXiangqiMode("ai");
+        refreshXiangqiHosts();
+      }
+    });
+    container.querySelector("#xq-top-puzzle").addEventListener("click", () => {
+      if (x.mode !== "puzzle") {
+        switchXiangqiMode("puzzle");
+        refreshXiangqiHosts();
+      }
+    });
+
+    container.querySelectorAll("[data-xq-play]").forEach((btn) => {
       btn.addEventListener("click", () => {
-        const nextMode = btn.dataset.xqMode;
-        x.mode = nextMode;
-        x.selected = null;
-        x.lastMove = null;
-        x.prevBoard = null;
-        x.solved = false;
-        if (nextMode === "puzzle") {
-          const curPz = XQ.PUZZLES[(x.puzzleIdx || 0) % XQ.PUZZLES.length];
-          x.board = XQ.buildBoardFromList(curPz.pieces);
-          x.turn = "red";
-          x.puzzleStep = 0;
-          x.status = "Đỏ đi tiên: Chạm vào quân Đỏ rồi chạm ô chấm xanh để chiếu Tướng.";
-        } else if (nextMode === "ai") {
-          x.board = XQ.createInitialBoard();
-          x.turn = "red";
-          x.status = "Ván 9×10 chuẩn (32 quân) đấu với Máy — mời bác cầm quân Đỏ đi tiên.";
+        const key = btn.dataset.xqPlay;
+        if (key === "ai-club") {
+          x.aiLevel = "club";
+          switchXiangqiMode("ai");
+        } else if (key === "ai-easy") {
+          x.aiLevel = "easy";
+          switchXiangqiMode("ai");
+        } else if (key === "local2p") {
+          switchXiangqiMode("local2p");
         } else {
-          x.matchId = "";
-          ensureXiangqiAsyncMatch();
+          switchXiangqiMode("async");
         }
-        saveState();
-        renderGames();
+        refreshXiangqiHosts();
       });
     });
 
     container.querySelectorAll("[data-pz-idx]").forEach((btn) => {
       btn.addEventListener("click", () => {
         x.puzzleIdx = Number(btn.dataset.pzIdx);
-        const nextPz = XQ.PUZZLES[x.puzzleIdx];
-        x.board = XQ.buildBoardFromList(nextPz.pieces);
-        x.turn = "red";
-        x.puzzleStep = 0;
-        x.solved = false;
-        x.selected = null;
-        x.lastMove = null;
-        x.status = `Đang giải ${nextPz.name} — mời bác chọn quân Đỏ.`;
-        saveState();
-        renderGames();
+        switchXiangqiMode("puzzle");
+        refreshXiangqiHosts();
       });
     });
 
@@ -3847,7 +4041,6 @@
         const c = Number(sq.dataset.c);
         const tappedPiece = x.board[r][c];
 
-        // Check if tapping a valid destination of currently selected piece
         if (x.selected) {
           const chosenMove = legalTargets.find((m) => m.tr === r && m.tc === c);
           if (chosenMove) {
@@ -3856,35 +4049,68 @@
           }
         }
 
-        // Otherwise select own piece
         if (tappedPiece && tappedPiece.side === myControllableSide) {
           const moves = XQ.getLegalMovesForSquare(x.board, r, c);
           x.selected = { r, c };
+          x.hintMove = null;
           const pLabel = XQ.PIECE_LABELS[tappedPiece.type] || tappedPiece.type;
           x.status =
             moves.length > 0
-              ? `Đã chọn quân ${pLabel} — có ${moves.length} nước đi hợp lệ (chấm xanh).`
-              : `Quân ${pLabel} này hiện đang bị cản hoặc giữ Tướng, mời chọn quân khác.`;
-          renderGames();
+              ? `Đã chọn quân ${pLabel} — có ${moves.length} ô hợp lệ (chấm xanh trên bàn cờ).`
+              : `Quân ${pLabel} này đang bị cản hoặc bận giữ Tướng, mời chọn quân khác.`;
+          refreshXiangqiHosts();
         }
       });
     });
 
-    const hintBtn = document.getElementById("xq-btn-hint");
+    const hintBtn = container.querySelector("#xq-btn-hint");
     if (hintBtn) {
       hintBtn.addEventListener("click", () => {
-        const hintMv = x.puzzleStep === 0 ? pz.hintMove1 : pz.hintMove2;
-        if (hintMv && x.board[hintMv.fr] && x.board[hintMv.fr][hintMv.fc]) {
-          x.selected = { r: hintMv.fr, c: hintMv.fc };
+        if (x.mode === "puzzle") {
+          const hintMv = x.puzzleStep === 0 ? pz.hintMove1 : pz.hintMove2;
+          if (hintMv && x.board[hintMv.fr] && x.board[hintMv.fr][hintMv.fc]) {
+            x.selected = { r: hintMv.fr, c: hintMv.fc };
+            x.hintMove = hintMv;
+          }
+          const msg = x.puzzleStep === 0 ? pz.hint1 : pz.hint2;
+          x.status = msg;
+          showToast("Đã khoanh vàng quân cờ và ô đích gợi ý trên bàn!");
+        } else {
+          const bestMv = XQ.suggestBestMove(x.board, myControllableSide);
+          if (bestMv) {
+            x.selected = { r: bestMv.fr, c: bestMv.fc };
+            x.hintMove = bestMv;
+            const desc = XQ.formatMoveLabel(x.board, bestMv);
+            x.status = `Gợi ý nước hay: ${desc} (chạm vào vòng tròn vàng để đi).`;
+            showToast(`Gợi ý: ${desc}`);
+          }
         }
-        const msg = x.puzzleStep === 0 ? pz.hint1 : pz.hint2;
-        x.status = msg;
-        showToast(msg);
-        renderGames();
+        refreshXiangqiHosts();
       });
     }
 
-    const undoBtn = document.getElementById("xq-btn-undo");
+    const demoStepBtn = container.querySelector("#xq-btn-demo-step");
+    if (demoStepBtn) {
+      demoStepBtn.addEventListener("click", () => {
+        const stepMv = x.puzzleStep === 0 ? pz.hintMove1 : pz.hintMove2;
+        if (stepMv) {
+          const legal = XQ.getLegalMovesForSquare(x.board, stepMv.fr, stepMv.fc);
+          const valid = legal.find((m) => m.tr === stepMv.tr && m.tc === stepMv.tc) || XQ.suggestBestMove(x.board, "red");
+          if (valid) executeUserXiangqiMove(valid);
+        }
+      });
+    }
+
+    const nextPzBtn = container.querySelector("#xq-btn-next-puzzle");
+    if (nextPzBtn) {
+      nextPzBtn.addEventListener("click", () => {
+        x.puzzleIdx = ((x.puzzleIdx || 0) + 1) % XQ.PUZZLES.length;
+        switchXiangqiMode("puzzle");
+        refreshXiangqiHosts();
+      });
+    }
+
+    const undoBtn = container.querySelector("#xq-btn-undo");
     if (undoBtn) {
       undoBtn.addEventListener("click", () => {
         if (x.prevBoard) {
@@ -3893,33 +4119,18 @@
           x.turn = "red";
           x.solved = false;
           x.selected = null;
+          x.hintMove = null;
+          if (Array.isArray(x.moveLog) && x.moveLog.length > 0) x.moveLog.pop();
           x.status = "Đã hoàn lại 1 nước cờ — mời bác đi lại thong thả.";
           saveState();
-          renderGames();
+          refreshXiangqiHosts();
         }
       });
     }
 
-    document.getElementById("xq-btn-reset").addEventListener("click", () => {
-      x.selected = null;
-      x.lastMove = null;
-      x.prevBoard = null;
-      x.solved = false;
-      if (x.mode === "puzzle") {
-        x.board = XQ.buildBoardFromList(pz.pieces);
-        x.turn = "red";
-        x.puzzleStep = 0;
-        x.status = "Đã xếp lại thế cờ — Đỏ đi tiên.";
-      } else if (x.mode === "ai") {
-        x.board = XQ.createInitialBoard();
-        x.turn = "red";
-        x.status = "Đã xếp ván Cờ tướng 9×10 mới (32 quân).";
-      } else {
-        x.matchId = "";
-        ensureXiangqiAsyncMatch();
-      }
-      saveState();
-      renderGames();
+    container.querySelector("#xq-btn-reset").addEventListener("click", () => {
+      switchXiangqiMode(x.mode);
+      refreshXiangqiHosts();
     });
 
     if (x.mode === "async" && x.inviteUrl) {
@@ -3934,16 +4145,35 @@
 
   function executeUserXiangqiMove(mv) {
     const x = state.xiangqi;
+    const isCapture = Boolean(x.board[mv.tr][mv.tc]);
     const moveDesc = XQ.formatMoveLabel(x.board, mv);
+    playWoodPieceClack(isCapture);
+
     x.prevBoard = XQ.cloneBoard(x.board);
     x.board = XQ.applyMoveClone(x.board, mv);
     x.lastMove = mv;
     x.selected = null;
+    x.hintMove = null;
+    if (!Array.isArray(x.moveLog)) x.moveLog = [];
+    x.moveLog.push(moveDesc);
 
-    const mySide = x.mode === "async" ? x.mySide || "red" : "red";
-    const enemySide = mySide === "red" ? "black" : "red";
+    const movedSide = x.mode === "local2p" ? x.turn : x.mode === "async" ? x.mySide || "red" : "red";
+    const enemySide = movedSide === "red" ? "black" : "red";
     const enemyMoves = XQ.getAllLegalMoves(x.board, enemySide);
     const enemyChecked = XQ.isInCheck(x.board, enemySide);
+
+    if (x.mode === "local2p") {
+      if (enemyMoves.length === 0) {
+        x.solved = true;
+        x.status = `Chiếu bí! Bên ${movedSide === "red" ? "Đỏ" : "Đen"} đã thắng ván 9×10!`;
+      } else {
+        x.turn = enemySide;
+        x.status = `${moveDesc}${enemyChecked ? " (Chiếu Tướng!)" : ""} — Đến lượt bên ${enemySide === "red" ? "Đỏ" : "Đen"} đi.`;
+      }
+      saveState();
+      refreshXiangqiHosts();
+      return;
+    }
 
     if (x.mode === "async") {
       trackEvent("async_game_move");
@@ -3963,8 +4193,8 @@
           kind: "xiangqi",
           hostId: existing.hostId || RT.getClientId(),
           hostName: x.hostName || `${state.user.name} · ${getUserAge()}t`,
-          guestId: mySide === "black" ? RT.getClientId() : existing.guestId || "",
-          guestName: mySide === "black" ? `${state.user.name} · ${getUserAge()}t` : x.guestName || "",
+          guestId: movedSide === "black" ? RT.getClientId() : existing.guestId || "",
+          guestName: movedSide === "black" ? `${state.user.name} · ${getUserAge()}t` : x.guestName || "",
           turn: x.turn,
           statusText: `${state.user.name} vừa đi ${moveDesc}${enemyChecked ? " (Chiếu Tướng!)" : ""}`,
           payload: { board: x.board, lastMove: mv, solved: x.solved },
@@ -3972,53 +4202,66 @@
         });
       }
       saveState();
-      renderGames();
+      refreshXiangqiHosts();
       return;
     }
 
     if (enemyMoves.length === 0) {
       x.solved = true;
+      if (x.mode === "puzzle") {
+        const pz = XQ.PUZZLES[(x.puzzleIdx || 0) % XQ.PUZZLES.length];
+        if (!Array.isArray(x.solvedPuzzleIds)) x.solvedPuzzleIds = [];
+        if (pz && !x.solvedPuzzleIds.includes(pz.id)) {
+          x.solvedPuzzleIds.push(pz.id);
+        }
+      }
       const newlyUnlocked = unlockTitleFrame("ky-thu", "Kỳ Thủ Đầu Xuân");
       x.status = newlyUnlocked
         ? "Chiếu bí xuất sắc! Bác đã mở khóa khung danh hiệu 3D 'Kỳ Thủ Đầu Xuân' gắn lên nhân vật!"
-        : "Chiếu bí đẹp mắt! Tướng Đen đã hết đường chạy!";
-      addXu(6, "Giải thắng Cờ tướng 9×10");
+        : x.mode === "puzzle"
+        ? "Chiếu bí chuẩn xác! Bác đã phá giải thành công thế cờ này!"
+        : "Chiếu bí tuyệt đẹp! Bác đã chiến thắng đối thủ Máy trên bàn 9×10!";
+      addXu(6, x.mode === "puzzle" ? "Phá giải thế cờ thành công" : "Thắng ván Cờ tướng 9×10");
       saveState();
-      renderGames();
+      refreshXiangqiHosts();
       return;
     }
 
     x.turn = "black";
     x.puzzleStep = (x.puzzleStep || 0) + 1;
-    x.status = `${moveDesc}${enemyChecked ? " — Chiếu Tướng!" : ""}. Máy đang đỡ nước cờ...`;
+    x.status = `${moveDesc}${enemyChecked ? " — Chiếu Tướng!" : ""}. Máy đang suy nghĩ đỡ nước cờ...`;
     saveState();
-    renderGames();
+    refreshXiangqiHosts();
 
     setTimeout(() => {
-      if (state.route !== "games" || activeGameTab !== "cotuong") return;
-      const aiMv = XQ.pickAiMove(x.board, "black", x.mode === "puzzle");
+      if (x.turn !== "black" || x.solved) return;
+      const aiParam = x.mode === "puzzle" ? "puzzle" : x.aiLevel || "club";
+      const aiMv = XQ.pickAiMove(x.board, "black", aiParam);
       if (!aiMv) {
         x.solved = true;
         x.status = "Đối phương hết nước đi — bác đã thắng ván này!";
         saveState();
-        renderGames();
+        refreshXiangqiHosts();
         return;
       }
+      const aiCap = Boolean(x.board[aiMv.tr][aiMv.tc]);
       const aiDesc = XQ.formatMoveLabel(x.board, aiMv);
+      playWoodPieceClack(aiCap);
       x.board = XQ.applyMoveClone(x.board, aiMv);
       x.lastMove = aiMv;
+      x.moveLog.push(aiDesc);
       x.turn = "red";
       const redMoves = XQ.getAllLegalMoves(x.board, "red");
       const redChecked = XQ.isInCheck(x.board, "red");
       if (redMoves.length === 0) {
         x.solved = true;
-        x.status = `Máy vừa đi ${aiDesc} — Đỏ hết nước đi. Bác bấm Xếp lại để thử lại nhé!`;
+        x.status = `Máy vừa đi ${aiDesc} — Đỏ hết nước đi. Bác bấm Hoàn lại 1 nước hoặc Xếp lại nhé!`;
       } else {
         x.status = `Máy đỡ: ${aiDesc}${redChecked ? " (Chiếu Tướng!)" : ""}. Đến lượt bác cầm quân Đỏ!`;
       }
       saveState();
-      renderGames();
-    }, 650);
+      refreshXiangqiHosts();
+    }, 520);
   }
 
   // ==================== MODULE 6: POETRY, DAN TRANH ZITHER & 3D BADGE UNLOCK ====================
@@ -5441,6 +5684,9 @@
       case "games":
         renderGames();
         break;
+      case "xiangqi":
+        renderXiangqiScreen();
+        break;
       case "poetry":
         renderPoetry();
         break;
@@ -5622,7 +5868,7 @@
             ? `Đến lượt bác cầm quân ${state.xiangqi.mySide === "red" ? "Đỏ" : "Đen"}!`
             : "Đang chờ bạn cờ đi nước tiếp theo...");
         saveState();
-        if (state.route === "games" && activeGameTab === "cotuong") renderGames();
+        refreshXiangqiHosts();
       }
     });
   }
@@ -5633,6 +5879,10 @@
   els.dialogClose.addEventListener("click", closeDialog);
   if (els.stripRtBtn) {
     els.stripRtBtn.addEventListener("click", openRealtimeStatusModal);
+  }
+  const simOpenXq = document.getElementById("sim-open-xiangqi");
+  if (simOpenXq) {
+    simOpenXq.addEventListener("click", () => navigate("xiangqi"));
   }
 
   els.btnFont.addEventListener("click", () => {
