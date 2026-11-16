@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="referrer" content="no-referrer" />
+  <meta name="theme-color" content="#F6EFE2" />
+  <title>Tuổi Bạc — Quán Trà Sinh Hoạt Người Cao Tuổi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Merriweather:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
+  <script src="data.js" defer></script>
+  <script src="tearoom3d.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <!-- Unified SVG Icon Sprite -->
+  <svg xmlns="http://www.w3.org/2000/svg" class="svg-sprite" aria-hidden="true">
+    <symbol id="ico-back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M15 18l-6-6 6-6" />
+      <path d="M9 12h11" />
+    </symbol>
+    <symbol id="ico-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+    </symbol>
+    <symbol id="ico-tea" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 11h12v4a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5v-4z" />
+      <path d="M16 12h2a2.5 2.5 0 0 1 0 5h-2" />
+      <path d="M7 7c0-1.5 1.5-2 1.5-3.5M11 7c0-1.5 1.5-2 1.5-3.5" />
+    </symbol>
+    <symbol id="ico-paper" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 5h14v14H6a2 2 0 0 1-2-2V5z" />
+      <path d="M18 8h2v9a2 2 0 0 1-2 2" />
+      <path d="M8 9h6M8 13h6M8 17h4" />
+    </symbol>
+    <symbol id="ico-quiz" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M9.5 9a2.5 2.5 0 0 1 4.8.9c0 1.6-2.3 2-2.3 3.4" />
+      <circle cx="12" cy="17" r="0.7" fill="currentColor" />
+    </symbol>
+    <symbol id="ico-board" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="6" width="18" height="12" rx="6" />
+      <path d="M9 6v12M15 6v12M3 12h18" />
+    </symbol>
+    <symbol id="ico-poem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M20 4c-6 0-11 4-13 11l-3 5 5-3c7-2 11-7 11-13z" />
+      <path d="M9 15l6-6" />
+    </symbol>
+    <symbol id="ico-tv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="6" width="18" height="13" rx="2" />
+      <path d="M10 10l5 2.5-5 2.5v-5z" fill="currentColor" />
+    </symbol>
+    <symbol id="ico-lotus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 4c2.5 3.5 2.5 8 0 11-2.5-3-2.5-7.5 0-11z" />
+      <path d="M5 12c2.5-1 5.5.5 7 3.5-3.5 1.5-6.5.5-7-3.5z" />
+      <path d="M19 12c-2.5-1-5.5.5-7 3.5 3.5 1.5 6.5.5 7-3.5z" />
+      <path d="M5 19h14" />
+    </symbol>
+    <symbol id="ico-trophy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M7 4h10v5a5 5 0 0 1-10 0V4z" />
+      <path d="M7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3M12 14v5M8 19h8" />
+    </symbol>
+    <symbol id="ico-heart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 20s-7-4.5-8.5-9A4.8 4.8 0 0 1 12 6.5 4.8 4.8 0 0 1 20.5 11C19 15.5 12 20 12 20z" />
+      <path d="M9 12h2l1-2 1.5 4 1-2H16" />
+    </symbol>
+    <symbol id="ico-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="8" r="4" />
+      <path d="M5 20a7 7 0 0 1 14 0" />
+    </symbol>
+    <symbol id="ico-family" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="8.5" cy="7.5" r="3" />
+      <circle cx="16.5" cy="8.5" r="2.5" />
+      <path d="M3 19a5.5 5.5 0 0 1 11 0M14 19a4.5 4.5 0 0 1 7 0" />
+    </symbol>
+    <symbol id="ico-speaker" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M5 9v6h4l5 4V5L9 9H5z" />
+      <path d="M17.5 8.5a5 5 0 0 1 0 7M19.8 6a8.5 8.5 0 0 1 0 12" />
+    </symbol>
+    <symbol id="ico-mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="9" y="3" width="6" height="11" rx="3" />
+      <path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8" />
+    </symbol>
+    <symbol id="ico-font" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 18L9 6l5 12M5.8 14h6.4M16 18l3-7 3 7M17 15.5h4" />
+    </symbol>
+    <symbol id="ico-share" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="18" cy="5" r="2.5" />
+      <circle cx="6" cy="12" r="2.5" />
+      <circle cx="18" cy="19" r="2.5" />
+      <path d="M8.3 10.8l7.4-4.6M8.3 13.2l7.4 4.6" />
+    </symbol>
+    <symbol id="ico-camera" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="6" width="18" height="14" rx="2.5" />
+      <path d="M8 6l1.5-2h5L16 6" />
+      <circle cx="12" cy="13" r="3.5" />
+    </symbol>
+    <symbol id="ico-flag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M5 21V4M5 5h12l-2 4 2 4H5" />
+    </symbol>
+    <symbol id="ico-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M18 15H6l1.5-3.5V9a4.5 4.5 0 0 1 9 0v2.5L18 15z" />
+      <path d="M10 18a2 2 0 0 0 4 0" />
+    </symbol>
+    <symbol id="ico-flower" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="2.5" />
+      <path d="M12 4a2.8 2.8 0 0 1 2.5 4.2A2.8 2.8 0 0 1 18.8 11a2.8 2.8 0 0 1-2.5 4.8A2.8 2.8 0 0 1 12 20a2.8 2.8 0 0 1-4.3-4.2A2.8 2.8 0 0 1 5.2 11a2.8 2.8 0 0 1 4.3-2.8A2.8 2.8 0 0 1 12 4z" />
+    </symbol>
+    <symbol id="ico-coin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="8.5" />
+      <rect x="9.5" y="9.5" width="5" height="5" />
+    </symbol>
+    <symbol id="ico-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M5 12.5l4.5 4.5L19 7" />
+    </symbol>
+    <symbol id="ico-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21V5.5z" />
+      <path d="M8 7h8M8 11h6" />
+    </symbol>
+    <symbol id="ico-phone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M6.5 4h3l1.5 4-2 1.5a11 11 0 0 0 5.5 5.5L16 13l4 1.5v3a2 2 0 0 1-2.2 2A15.5 15.5 0 0 1 4.5 6.2 2 2 0 0 1 6.5 4z" />
+    </symbol>
+    <symbol id="ico-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6S2 12 2 12z" />
+      <circle cx="12" cy="12" r="2.8" />
+    </symbol>
+  </svg>
+
+  <!-- Desktop / Testing Helper Bar (hidden on narrow mobile viewports) -->
+  <aside class="desktop-sim-bar" aria-label="Bảng điều khiển mô phỏng trên máy tính">
+    <div class="sim-bar-brand">
+      <strong>Mô phỏng Tuổi Bạc</strong>
+      <span>Khung điện thoại 480px (Mobile-First PWA)</span>
+    </div>
+    <div class="sim-bar-controls">
+      <button type="button" class="sim-chip" id="sim-toggle-render">Đồ họa: 3D Low-poly</button>
+      <button type="button" class="sim-chip" id="sim-toggle-font">Cỡ chữ: 20px</button>
+      <button type="button" class="sim-chip" id="sim-open-dict">Sổ từ điển tự học (8)</button>
+      <button type="button" class="sim-chip" id="sim-voice-sample">Thử giọng nói mẫu</button>
+      <button type="button" class="sim-chip" id="sim-trigger-eyecare">Thử nhắc nghỉ mắt 20 phút</button>
+      <button type="button" class="sim-chip" id="sim-open-family">Góc nhìn Con cái</button>
+      <button type="button" class="sim-chip" id="sim-reset-demo">Đặt lại dữ liệu mẫu</button>
+    </div>
+  </aside>
+
+  <!-- Primary Mobile Frame -->
+  <div class="phone-shell">
+    <header class="app-topbar">
+      <div class="topbar-left">
+        <button type="button" class="btn-back" id="btn-back" hidden aria-label="Quay về màn hình chính">
+          <svg class="ico"><use href="#ico-back" /></svg>
+          <span>Quay về</span>
+        </button>
+        <div class="brand-compact" id="brand-compact">
+          <span class="brand-mark" aria-hidden="true">TB</span>
+          <div class="brand-text">
+            <strong>Tuổi Bạc</strong>
+            <small id="topbar-sub">Chưa điểm danh sáng nay</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="topbar-actions">
+        <button type="button" class="btn-tool" id="btn-read-screen" aria-label="Đọc to màn hình hiện tại">
+          <svg class="ico"><use href="#ico-speaker" /></svg>
+          <span>Đọc to</span>
+        </button>
+        <button type="button" class="btn-tool" id="btn-font-toggle" aria-label="Đổi cỡ chữ to hơn">
+          <svg class="ico"><use href="#ico-font" /></svg>
+          <span id="font-label">Chữ to</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- User Status Strip -->
+    <div class="user-strip" id="user-strip">
+      <button type="button" class="user-pill" id="btn-go-profile">
+        <span class="avatar-dot" id="strip-avatar">A</span>
+        <span class="user-pill-info">
+          <strong id="strip-name">Anh Tám Vườn · 65t</strong>
+          <small id="strip-province">Cần Thơ</small>
+        </span>
+      </button>
+      <div class="strip-counters">
+        <span class="coin-pill" title="Xu sinh hoạt">
+          <svg class="ico ico-sm"><use href="#ico-coin" /></svg>
+          <span class="num" id="strip-xu">35</span>
+          <span>Xu</span>
+        </span>
+        <span class="timer-pill" title="Thời gian sinh hoạt phiên này">
+          <svg class="ico ico-sm"><use href="#ico-eye" /></svg>
+          <span class="num" id="strip-timer">00:00</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Main Dynamic View -->
+    <main class="app-main" id="app-main" tabindex="-1"></main>
+  </div>
+
+  <!-- Global Accessible Dialog Overlay (Eye rest, Logs, Report, Card Preview, Dictionary) -->
+  <dialog class="tb-dialog" id="tb-dialog" aria-labelledby="tb-dialog-title">
+    <div class="tb-dialog-inner">
+      <div class="tb-dialog-head">
+        <h2 id="tb-dialog-title">Thông báo</h2>
+        <button type="button" class="btn-close-dialog" id="tb-dialog-close">Đóng</button>
+      </div>
+      <div class="tb-dialog-body" id="tb-dialog-body"></div>
+    </div>
+  </dialog>
+
+  <!-- Toast Banner -->
+  <div class="toast-banner" id="toast-banner" role="status" aria-live="polite" hidden></div>
+</body>
+</html>

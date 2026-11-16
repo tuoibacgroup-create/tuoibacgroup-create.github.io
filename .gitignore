@@ -1,0 +1,6 @@
+# Keep internal planning & launcher files local-only when publishing static web demo
+Tuổi Bạc Bản mô tả dự án để lập kế hoạch.md
+PRODUCT.md
+DESIGN.md
+run.bat
+.vercel/
