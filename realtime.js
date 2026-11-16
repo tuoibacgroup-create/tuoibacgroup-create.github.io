@@ -20,11 +20,18 @@ window.TuoiBacRealtime = (function () {
   let providerName = "Đang kết nối...";
   let activeTableKey = null;
   let myPresencePayload = null;
+  let myGlobalOnlinePayload = null;
+  let myMemberCode = "";
   let heartbeatTimer = null;
   let subscribedMatchIds = new Set();
+  const accountLookupWaiters = {}; // { [accountHash]: [cb, ...] }
 
   // Live synced stores
   const presenceByTable = {}; // { [tableKey]: { [clientId]: peerObj } }
+  const onlinePeers = {};     // { [peerKey]: { clientId, memberCode, name, age, province, where, roomId, tableIdx, ts } }
+  const sharedGroups = {};    // { [groupId]: groupObj }
+  const directoryByCode = {}; // { [memberCode]: summaryObj }
+  const accountsCache = {};   // { [accountHash]: accountSnapshotObj }
   const checkinsToday = {};   // { [clientId]: { clientId, name, age, provinceId, provinceShort, mood, ts } }
   const matchesById = {};     // { [matchId]: matchObj }
   const sharedPoems = {};     // { [poemId]: poemObj }
@@ -33,6 +40,9 @@ window.TuoiBacRealtime = (function () {
   const listeners = {
     status: [],
     presence: [],
+    online: [],
+    groups: [],
+    friends: [],
     chat: [],
     tableLog: [],
     checkins: [],
@@ -123,6 +133,15 @@ window.TuoiBacRealtime = (function () {
       });
     });
     if (changed) emit("presence", getPresenceSnapshot());
+
+    let onlineChanged = false;
+    Object.keys(onlinePeers).forEach((pkey) => {
+      if (now - (onlinePeers[pkey].ts || 0) > PRESENCE_TTL_MS) {
+        delete onlinePeers[pkey];
+        onlineChanged = true;
+      }
+    });
+    if (onlineChanged) emit("online", getOnlinePeers());
   }
 
   function handleIncomingPacket(kind, payload) {
@@ -160,6 +179,42 @@ window.TuoiBacRealtime = (function () {
       if (!payload.id) return;
       sharedPoems[payload.id] = payload;
       emit("poems", getSharedPoems());
+    } else if (kind === "online") {
+      if (!payload.peerKey) return;
+      if (payload.removed) {
+        delete onlinePeers[payload.peerKey];
+      } else if (Date.now() - (payload.ts || Date.now()) <= PRESENCE_TTL_MS) {
+        onlinePeers[payload.peerKey] = payload;
+        if (payload.memberCode) {
+          directoryByCode[payload.memberCode] = Object.assign({}, directoryByCode[payload.memberCode] || {}, payload);
+        }
+      }
+      emit("online", getOnlinePeers());
+    } else if (kind === "group") {
+      if (!payload.id) return;
+      const prev = sharedGroups[payload.id];
+      if (!prev || (payload.updatedAt || 0) >= (prev.updatedAt || 0)) {
+        sharedGroups[payload.id] = payload;
+        emit("groups", getSharedGroups());
+      }
+    } else if (kind === "directory") {
+      if (!payload.memberCode) return;
+      directoryByCode[payload.memberCode] = payload;
+    } else if (kind === "friend") {
+      if (!payload.toCode || !payload.fromCode) return;
+      emit("friends", payload);
+    } else if (kind === "account") {
+      if (!payload.accountHash) return;
+      accountsCache[payload.accountHash] = payload;
+      const waiters = accountLookupWaiters[payload.accountHash];
+      if (Array.isArray(waiters) && waiters.length > 0) {
+        delete accountLookupWaiters[payload.accountHash];
+        waiters.forEach((fn) => {
+          try {
+            fn(payload);
+          } catch (e) {}
+        });
+      }
     }
   }
 
@@ -288,9 +343,21 @@ window.TuoiBacRealtime = (function () {
 
       const dayKey = getTodayKey();
       mqttClient.subscribe(`${TOPIC_ROOT}/presence/+/+`, { qos: 0 });
+      mqttClient.subscribe(`${TOPIC_ROOT}/online/+`, { qos: 0 });
+      mqttClient.subscribe(`${TOPIC_ROOT}/groups/+`, { qos: 0 });
+      mqttClient.subscribe(`${TOPIC_ROOT}/directory/+`, { qos: 0 });
       mqttClient.subscribe(`${TOPIC_ROOT}/checkins/${dayKey}/+`, { qos: 0 });
       mqttClient.subscribe(`${TOPIC_ROOT}/poems/+`, { qos: 0 });
+      if (myMemberCode) {
+        mqttClient.subscribe(`${TOPIC_ROOT}/friends/${myMemberCode}/+`, { qos: 1 });
+      }
+      Object.keys(accountLookupWaiters).forEach((ah) => {
+        mqttClient.subscribe(`${TOPIC_ROOT}/accounts/${ah}`, { qos: 1 });
+      });
 
+      if (myGlobalOnlinePayload) {
+        publishGlobalOnlineNow();
+      }
       if (activeTableKey) {
         mqttClient.subscribe(`${TOPIC_ROOT}/chat/${activeTableKey}`, { qos: 0 });
         mqttClient.subscribe(`${TOPIC_ROOT}/log/${activeTableKey}`, { qos: 0 });
@@ -327,6 +394,35 @@ window.TuoiBacRealtime = (function () {
         try {
           const peer = JSON.parse(str);
           handleIncomingPacket("presence", { tableKey, peer, removed: false });
+        } catch (e) {}
+      } else if (parts[0] === "online" && parts[1]) {
+        const pkey = parts[1];
+        if (!str) {
+          handleIncomingPacket("online", { peerKey: pkey, removed: true });
+          return;
+        }
+        try {
+          handleIncomingPacket("online", JSON.parse(str));
+        } catch (e) {}
+      } else if (parts[0] === "groups" && parts[1]) {
+        if (!str) return;
+        try {
+          handleIncomingPacket("group", JSON.parse(str));
+        } catch (e) {}
+      } else if (parts[0] === "directory" && parts[1]) {
+        if (!str) return;
+        try {
+          handleIncomingPacket("directory", JSON.parse(str));
+        } catch (e) {}
+      } else if (parts[0] === "friends" && parts.length >= 3) {
+        if (!str) return;
+        try {
+          handleIncomingPacket("friend", JSON.parse(str));
+        } catch (e) {}
+      } else if (parts[0] === "accounts" && parts[1]) {
+        if (!str) return;
+        try {
+          handleIncomingPacket("account", JSON.parse(str));
         } catch (e) {}
       } else if (parts[0] === "chat" && parts[1]) {
         if (!str) return;
@@ -372,10 +468,14 @@ window.TuoiBacRealtime = (function () {
       if (activeTableKey && myPresencePayload) {
         publishPresenceNow();
       }
+      if (myGlobalOnlinePayload) {
+        publishGlobalOnlineNow();
+      }
     }, HEARTBEAT_MS);
 
     window.addEventListener("beforeunload", () => {
       clearMyPresence();
+      clearGlobalOnline();
     });
   }
 
@@ -673,16 +773,251 @@ window.TuoiBacRealtime = (function () {
       .map((cid) => map[cid]);
   }
 
+  function publishGlobalOnlineNow() {
+    if (!myGlobalOnlinePayload) return;
+    const peerKey = String(myGlobalOnlinePayload.memberCode || clientId).replace(/[^a-zA-Z0-9_-]/g, "_");
+    const pkt = Object.assign({}, myGlobalOnlinePayload, {
+      peerKey,
+      clientId,
+      ts: Date.now()
+    });
+    onlinePeers[peerKey] = pkt;
+    if (mqttClient && connected) {
+      mqttClient.publish(`${TOPIC_ROOT}/online/${peerKey}`, JSON.stringify(pkt), { qos: 0, retain: true });
+    }
+    if (sbChannel && connected) {
+      sbChannel.send({ type: "broadcast", event: "tb_event", payload: { kind: "online", data: pkt } });
+    }
+    postLocalBroadcast("online", pkt);
+  }
+
+  function publishGlobalOnline(peerMeta) {
+    if (!peerMeta) return;
+    // If memberCode changed from guest clientId to TB-xxxx, remove stale guest key
+    if (myGlobalOnlinePayload && myGlobalOnlinePayload.memberCode !== peerMeta.memberCode) {
+      clearGlobalOnline();
+    }
+    myGlobalOnlinePayload = Object.assign({}, peerMeta);
+    publishGlobalOnlineNow();
+  }
+
+  function clearGlobalOnline() {
+    if (!myGlobalOnlinePayload) return;
+    const peerKey = String(myGlobalOnlinePayload.memberCode || clientId).replace(/[^a-zA-Z0-9_-]/g, "_");
+    myGlobalOnlinePayload = null;
+    delete onlinePeers[peerKey];
+    if (mqttClient && connected) {
+      mqttClient.publish(`${TOPIC_ROOT}/online/${peerKey}`, "", { qos: 0, retain: true });
+    }
+    if (sbChannel && connected) {
+      sbChannel.send({ type: "broadcast", event: "tb_event", payload: { kind: "online", data: { peerKey, removed: true } } });
+    }
+    postLocalBroadcast("online", { peerKey, removed: true });
+  }
+
+  function getOnlinePeers() {
+    prunePresence();
+    return Object.values(onlinePeers)
+      .filter((p) => p && p.clientId !== clientId && (!myMemberCode || p.memberCode !== myMemberCode))
+      .sort((a, b) => (b.ts || 0) - (a.ts || 0));
+  }
+
+  function setMyMemberCode(code) {
+    const clean = String(code || "").trim().toUpperCase().replace(/[^A-Z0-9_-]/g, "");
+    if (!clean || clean === myMemberCode) return;
+    myMemberCode = clean;
+    if (mqttClient && connected) {
+      mqttClient.subscribe(`${TOPIC_ROOT}/friends/${myMemberCode}/+`, { qos: 1 });
+    }
+  }
+
+  function publishMemberDirectory(entry) {
+    if (!entry || !entry.memberCode) return;
+    const cleanCode = String(entry.memberCode).trim().toUpperCase().replace(/[^A-Z0-9_-]/g, "");
+    const pkt = Object.assign({}, entry, { memberCode: cleanCode, clientId, ts: Date.now() });
+    directoryByCode[cleanCode] = pkt;
+    if (mqttClient && connected) {
+      mqttClient.publish(`${TOPIC_ROOT}/directory/${cleanCode}`, JSON.stringify(pkt), { qos: 0, retain: true });
+    }
+    if (sbChannel && connected) {
+      sbChannel.send({ type: "broadcast", event: "tb_event", payload: { kind: "directory", data: pkt } });
+    }
+    postLocalBroadcast("directory", pkt);
+  }
+
+  function getMemberByCode(code) {
+    const cleanCode = String(code || "").trim().toUpperCase().replace(/[^A-Z0-9_-]/g, "");
+    return directoryByCode[cleanCode] || null;
+  }
+
+  function publishGroup(groupObj) {
+    if (!groupObj || !groupObj.id) return;
+    const cleanId = String(groupObj.id).replace(/[^a-zA-Z0-9_-]/g, "-");
+    const pkt = Object.assign({}, groupObj, {
+      id: cleanId,
+      updatedAt: Date.now()
+    });
+    sharedGroups[cleanId] = pkt;
+    if (mqttClient && connected) {
+      mqttClient.publish(`${TOPIC_ROOT}/groups/${cleanId}`, JSON.stringify(pkt), { qos: 1, retain: true });
+    }
+    if (sbChannel && connected) {
+      sbChannel.send({ type: "broadcast", event: "tb_event", payload: { kind: "group", data: pkt } });
+      if (sbClient) {
+        sbClient
+          .from("community_groups")
+          .upsert({
+            id: cleanId,
+            name: pkt.name,
+            short_name: pkt.shortName || pkt.name,
+            category: pkt.category || "veteran",
+            subtitle: pkt.subtitle || "",
+            motto: pkt.motto || "",
+            leader_name: pkt.leaderName || "",
+            join_pin: pkt.joinPin || "",
+            unit_spec: pkt.unitSpec || {},
+            payload_json: pkt
+          })
+          .then(() => {})
+          .catch(() => {});
+      }
+    }
+    postLocalBroadcast("group", pkt);
+  }
+
+  function getSharedGroups() {
+    return Object.values(sharedGroups).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  }
+
+  function publishFriendSignal(targetCode, signalObj) {
+    const toCode = String(targetCode || "").trim().toUpperCase().replace(/[^A-Z0-9_-]/g, "");
+    const fromCode = String((signalObj && signalObj.fromCode) || myMemberCode || clientId)
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9_-]/g, "");
+    if (!toCode || !fromCode) return;
+    const pkt = Object.assign({}, signalObj, {
+      toCode,
+      fromCode,
+      ts: Date.now()
+    });
+    if (mqttClient && connected) {
+      mqttClient.publish(`${TOPIC_ROOT}/friends/${toCode}/${fromCode}`, JSON.stringify(pkt), { qos: 1, retain: true });
+    }
+    if (sbChannel && connected) {
+      sbChannel.send({ type: "broadcast", event: "tb_event", payload: { kind: "friend", data: pkt } });
+      if (sbClient) {
+        const pairKey = [fromCode, toCode].sort().join("__");
+        sbClient
+          .from("friend_links")
+          .upsert({
+            pair_key: pairKey,
+            from_code: fromCode,
+            to_code: toCode,
+            payload_json: pkt
+          })
+          .then(() => {})
+          .catch(() => {});
+      }
+    }
+    postLocalBroadcast("friend", pkt);
+  }
+
+  function publishAccountBackup(accountHash, snapshotObj) {
+    const cleanHash = String(accountHash || "").replace(/[^a-zA-Z0-9_-]/g, "");
+    if (!cleanHash || !snapshotObj) return;
+    const pkt = Object.assign({}, snapshotObj, {
+      accountHash: cleanHash,
+      updatedAt: Date.now()
+    });
+    accountsCache[cleanHash] = pkt;
+    if (mqttClient && connected) {
+      mqttClient.publish(`${TOPIC_ROOT}/accounts/${cleanHash}`, JSON.stringify(pkt), { qos: 1, retain: true });
+    }
+    if (sbChannel && connected) {
+      sbChannel.send({ type: "broadcast", event: "tb_event", payload: { kind: "account", data: pkt } });
+    }
+    if (sbClient) {
+      sbClient
+        .from("member_accounts")
+        .upsert({
+          account_hash: cleanHash,
+          member_code: pkt.memberCode || "",
+          phone_masked: pkt.phoneMasked || "",
+          honorific: pkt.honorific || "Anh",
+          base_name: pkt.baseName || "",
+          age: pkt.age || 65,
+          province_id: pkt.provinceId || "ha-noi",
+          snapshot_json: pkt
+        })
+        .then(() => {})
+        .catch(() => {});
+    }
+    postLocalBroadcast("account", pkt);
+  }
+
+  function fetchAccountBackup(accountHash, callback) {
+    const cleanHash = String(accountHash || "").replace(/[^a-zA-Z0-9_-]/g, "");
+    if (!cleanHash) {
+      callback(null);
+      return;
+    }
+    if (accountsCache[cleanHash]) {
+      callback(accountsCache[cleanHash]);
+      return;
+    }
+
+    let resolved = false;
+    const finish = (res) => {
+      if (resolved) return;
+      resolved = true;
+      callback(res || null);
+    };
+
+    if (!accountLookupWaiters[cleanHash]) accountLookupWaiters[cleanHash] = [];
+    accountLookupWaiters[cleanHash].push(finish);
+
+    if (mqttClient && connected) {
+      mqttClient.subscribe(`${TOPIC_ROOT}/accounts/${cleanHash}`, { qos: 1 });
+    }
+    if (sbClient) {
+      sbClient
+        .from("member_accounts")
+        .select("*")
+        .eq("account_hash", cleanHash)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data && data.snapshot_json) {
+            accountsCache[cleanHash] = data.snapshot_json;
+            finish(data.snapshot_json);
+          }
+        })
+        .catch(() => {});
+    }
+
+    setTimeout(() => {
+      if (accountLookupWaiters[cleanHash]) {
+        accountLookupWaiters[cleanHash] = accountLookupWaiters[cleanHash].filter((fn) => fn !== finish);
+      }
+      finish(accountsCache[cleanHash] || null);
+    }, 1350);
+  }
+
   function getPresenceSnapshot() {
     prunePresence();
-    let totalOtherPeers = 0;
+    const seenCids = new Set();
     const byTableCounts = {};
     Object.keys(presenceByTable).forEach((tKey) => {
       const others = Object.keys(presenceByTable[tKey]).filter((cid) => cid !== clientId);
       byTableCounts[tKey] = others.length;
-      totalOtherPeers += others.length;
+      others.forEach((cid) => seenCids.add(cid));
     });
-    return { totalOtherPeers, byTableCounts };
+    Object.values(onlinePeers).forEach((p) => {
+      if (p && p.clientId && p.clientId !== clientId) {
+        seenCids.add(p.clientId);
+      }
+    });
+    return { totalOtherPeers: seenCids.size, byTableCounts };
   }
 
   function getCheckinsSummary() {
@@ -730,6 +1065,17 @@ window.TuoiBacRealtime = (function () {
     leaveTableChannel,
     getPeersAtTable,
     getPresenceSnapshot,
+    publishGlobalOnline,
+    clearGlobalOnline,
+    getOnlinePeers,
+    setMyMemberCode,
+    publishMemberDirectory,
+    getMemberByCode,
+    publishGroup,
+    getSharedGroups,
+    publishFriendSignal,
+    publishAccountBackup,
+    fetchAccountBackup,
     sendTableMessage,
     publishMorningCheckin,
     getCheckinsSummary,

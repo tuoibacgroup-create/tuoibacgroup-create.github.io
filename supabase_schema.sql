@@ -76,6 +76,43 @@ create table if not exists public.safety_reports (
   created_at timestamptz not null default now()
 );
 
+-- Bảng Thẻ Hội Viên (chỉ lưu mã băm một chiều account_hash từ SĐT + Mã 4 số, tuyệt đối không lưu SĐT thô)
+create table if not exists public.member_accounts (
+  account_hash text primary key,
+  member_code text not null unique,
+  phone_masked text not null,
+  honorific text not null default 'Anh',
+  base_name text not null,
+  age int not null default 65,
+  province_id text not null default 'ha-noi',
+  snapshot_json jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+-- Bảng Đơn vị Đồng ngũ / Hội nhóm / Câu lạc bộ (VD: Đại đội 1K2 · D3 · Sư đoàn 25)
+create table if not exists public.community_groups (
+  id text primary key,
+  name text not null,
+  short_name text not null,
+  category text not null default 'veteran',
+  subtitle text,
+  motto text,
+  leader_name text,
+  join_pin text default '',
+  unit_spec jsonb default '{}'::jsonb,
+  payload_json jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+-- Bảng Kết bạn Tâm giao & Đồng đội
+create table if not exists public.friend_links (
+  pair_key text primary key,
+  from_code text not null,
+  to_code text not null,
+  payload_json jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
 -- Bật Row Level Security (cho phép khách không cần tạo tài khoản đọc/ghi an toàn trong MVP)
 alter table public.morning_checkins enable row level security;
 alter table public.tea_messages enable row level security;
@@ -84,6 +121,9 @@ alter table public.poems enable row level security;
 alter table public.phonetic_dictionary enable row level security;
 alter table public.analytics_events enable row level security;
 alter table public.safety_reports enable row level security;
+alter table public.member_accounts enable row level security;
+alter table public.community_groups enable row level security;
+alter table public.friend_links enable row level security;
 
 drop policy if exists "mvp_public_checkins" on public.morning_checkins;
 create policy "mvp_public_checkins" on public.morning_checkins for all using (true) with check (true);
@@ -105,3 +145,12 @@ create policy "mvp_public_analytics" on public.analytics_events for all using (t
 
 drop policy if exists "mvp_public_reports" on public.safety_reports;
 create policy "mvp_public_reports" on public.safety_reports for all using (true) with check (true);
+
+drop policy if exists "mvp_public_member_accounts" on public.member_accounts;
+create policy "mvp_public_member_accounts" on public.member_accounts for all using (true) with check (true);
+
+drop policy if exists "mvp_public_community_groups" on public.community_groups;
+create policy "mvp_public_community_groups" on public.community_groups for all using (true) with check (true);
+
+drop policy if exists "mvp_public_friend_links" on public.friend_links;
+create policy "mvp_public_friend_links" on public.friend_links for all using (true) with check (true);

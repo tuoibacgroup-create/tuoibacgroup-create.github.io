@@ -1,5 +1,12 @@
 (function () {
-  const STORAGE_KEY = "tuoi_bac_sim_v5";
+  const URL_SLOT = (function () {
+    try {
+      return new URLSearchParams(window.location.search || "").get("may") || "";
+    } catch (e) {
+      return "";
+    }
+  })();
+  const STORAGE_KEY = URL_SLOT ? `tuoi_bac_sim_v6_${URL_SLOT}` : "tuoi_bac_sim_v6";
   const D = window.TuoiBacData;
   const XQ = window.TuoiBacXiangqi;
   const RT = window.TuoiBacRealtime;
@@ -7,6 +14,48 @@
   function createDefaultState() {
     return {
       route: "home",
+      auth: {
+        isRegistered: false,
+        memberCode: "",
+        accountHash: "",
+        phoneMasked: "",
+        recoveryToken: "",
+        passkeyEnabled: false,
+        primaryUnitLabel: "Đại đội 1K2 · D3 · Sư đoàn 25"
+      },
+      social: {
+        activeTab: "units",
+        selectedGroupId: "d25-d3-1k2-mn75",
+        subView: "list",
+        joinedGroupIds: [],
+        groups: JSON.parse(JSON.stringify(D.INITIAL_GROUPS || [])),
+        friends: [
+          {
+            memberCode: "TB-102",
+            id: "minh",
+            name: "Anh Minh",
+            age: 71,
+            province: "Hải Phòng",
+            provinceId: "hai-phong",
+            outfitColor: "#556B45",
+            hat: "cap",
+            unitLabel: "Đại đội 1K2 · D3 · Sư đoàn 25",
+            isRealPeer: false
+          },
+          {
+            memberCode: "TB-109",
+            id: "vinh",
+            name: "Anh Vĩnh",
+            age: 74,
+            province: "Nghệ An",
+            provinceId: "nghe-an",
+            outfitColor: "#556B45",
+            hat: "cap",
+            unitLabel: "Đại đội 1K2 · D3 · Sư đoàn 25",
+            isRealPeer: false
+          }
+        ]
+      },
       user: {
         honorific: "Anh",
         baseName: "Tám Vườn",
@@ -199,6 +248,8 @@
       const parsed = JSON.parse(raw);
       const def = createDefaultState();
       const merged = Object.assign({}, def, parsed, {
+        auth: Object.assign({}, def.auth, parsed.auth || {}),
+        social: Object.assign({}, def.social, parsed.social || {}),
         user: Object.assign({}, def.user, parsed.user || {}),
         settings: Object.assign({}, def.settings, parsed.settings || {}),
         privacy: Object.assign({}, def.privacy, parsed.privacy || {}),
@@ -211,6 +262,15 @@
         zen: Object.assign({}, def.zen, parsed.zen || {}),
         health: Object.assign({}, def.health, parsed.health || {})
       });
+      if (!Array.isArray(merged.social.groups) || merged.social.groups.length === 0) {
+        merged.social.groups = def.social.groups;
+      }
+      if (!Array.isArray(merged.social.friends)) {
+        merged.social.friends = def.social.friends;
+      }
+      if (!Array.isArray(merged.social.joinedGroupIds)) {
+        merged.social.joinedGroupIds = [];
+      }
       if (!Array.isArray(merged.user.habits)) {
         merged.user.habits = def.user.habits;
       }
@@ -623,6 +683,10 @@
     state.user.profileConfigured = true;
     saveState();
     updateGlobalChrome();
+    syncMyGlobalOnlinePresence();
+    if (state.auth && state.auth.isRegistered) {
+      syncMyCloudAccountBackup();
+    }
   }
 
   function updateGlobalChrome() {
@@ -633,7 +697,10 @@
     const baseInitial = (state.user.baseName || state.user.name || "A").trim().charAt(0).toUpperCase();
     els.stripAvatar.textContent = baseInitial;
     els.stripName.textContent = `${state.user.name} · ${getUserAge()}t`;
-    els.stripProvince.textContent = prov.short;
+    els.stripProvince.textContent =
+      state.auth && state.auth.isRegistered && state.auth.memberCode
+        ? `${prov.short} · ${state.auth.memberCode}`
+        : prov.short;
     els.stripXu.textContent = String(state.user.xu);
     els.topbarSub.textContent = state.user.checkedInToday
       ? `Đã điểm danh (${state.user.streakDays} ngày)`
@@ -679,6 +746,7 @@
     }
     state.route = route;
     saveState();
+    syncMyGlobalOnlinePresence();
     render();
     window.scrollTo({ top: 0, behavior: "instant" });
   }
@@ -849,6 +917,41 @@
               <small>Đánh ván thật 32 quân (Máy CLB / 2 người / Ván treo) &amp; Giải 6 thế cờ cổ phổ</small>
             </span>
           </button>
+
+          <button type="button" class="home-main-btn is-veteran" data-go="groups">
+            <span class="home-main-icon">${ico("users", "ico-lg")}</span>
+            <span class="home-main-text">
+              <strong>5. Hội Đồng Ngũ · CLB &amp; Kết Bạn</strong>
+              <small>Đại đội 1K2 · D3 · Sư đoàn 25, lập đơn vị riêng &amp; xem bạn Đang Online (${countOnlineFriendsNow()} người)</small>
+            </span>
+          </button>
+        </div>
+
+        <div class="passcard-banner ${state.auth.isRegistered ? "verified" : ""}" id="home-passcard-banner">
+          <div class="passcard-head">
+            <strong>${
+              state.auth.isRegistered
+                ? `Thẻ Hội Viên đã mở (${escHtml(state.auth.memberCode)})`
+                : "Thẻ Hội Viên 10 Giây (Không mật khẩu rắc rối)"
+            }</strong>
+            <span class="member-code-chip">${state.auth.isRegistered ? escHtml(state.auth.phoneMasked || state.auth.memberCode) : "Đang vào tự do"}</span>
+          </div>
+          <p style="font-size:0.88rem; color:var(--ink-secondary);">
+            ${
+              state.auth.isRegistered
+                ? `Đã lưu an toàn ${state.social.friends.length} bạn tâm giao & ${state.social.joinedGroupIds.length} đơn vị/hội nhóm khi đổi điện thoại.`
+                : "Đọc báo, Điểm danh, Đánh cờ không cần đăng ký. Chỉ khi Kết bạn hoặc Lập Đơn vị mới cần cấp Thẻ bằng SĐT + 4 số dễ nhớ."
+            }
+          </p>
+          <div class="btn-row">
+            <button type="button" class="btn-${state.auth.isRegistered ? "jade" : "primary"}" id="btn-home-open-auth">
+              ${ico("card")}
+              <span>${state.auth.isRegistered ? "Xem Ảnh Thẻ QR / Đổi máy" : "Cấp Thẻ / Đăng nhập (10 giây)"}</span>
+            </button>
+            <button type="button" class="btn-secondary" id="btn-home-open-friends">
+              <span>Bạn Online (${countOnlineFriendsNow()})</span>
+            </button>
+          </div>
         </div>
 
         ${
@@ -921,6 +1024,12 @@
         <section class="section-block">
           <h2>Khu sinh hoạt mở rộng &amp; Quản trị</h2>
           <div class="module-grid">
+            <button type="button" class="module-tile" data-go="groups">
+              ${ico("users")}
+              <strong>Hội Đồng Ngũ &amp; Kết bạn</strong>
+              <span class="sub">Đại đội 1K2 · D3 · F25, lập hội &amp; bạn Online</span>
+            </button>
+
             <button type="button" class="module-tile" data-go="xiangqi">
               ${ico("xiangqi")}
               <strong>Cờ tướng 9×10 &amp; Giải cờ thế</strong>
@@ -989,6 +1098,19 @@
     els.main.querySelectorAll("[data-go]").forEach((btn) => {
       btn.addEventListener("click", () => navigate(btn.dataset.go));
     });
+
+    const homeOpenAuth = document.getElementById("btn-home-open-auth");
+    if (homeOpenAuth) {
+      homeOpenAuth.addEventListener("click", () => openMemberAuthModal());
+    }
+    const homeOpenFriends = document.getElementById("btn-home-open-friends");
+    if (homeOpenFriends) {
+      homeOpenFriends.addEventListener("click", () => {
+        state.social.activeTab = "friends";
+        state.social.subView = "list";
+        navigate("groups");
+      });
+    }
 
     document.getElementById("btn-mode-mvp").addEventListener("click", () => {
       state.settings.homeMode = "mvp";
@@ -1227,6 +1349,29 @@
           joinArticleDiscussionTable(foundArt, true);
           return;
         }
+      }
+      const khoiphuc = params.get("khoiphuc");
+      if (khoiphuc) {
+        restoreFromQrRecoveryToken(khoiphuc);
+      }
+      const ketban = params.get("ketban");
+      if (ketban) {
+        state.route = "groups";
+        state.social.activeTab = "friends";
+        state.social.subView = "list";
+        state.social.pendingFriendCodeFromUrl = ketban.trim().toUpperCase();
+        saveState();
+        return;
+      }
+      const hoi = params.get("hoi");
+      if (hoi) {
+        const cleanHoi = hoi.trim();
+        state.route = "groups";
+        state.social.activeTab = "units";
+        state.social.selectedGroupId = cleanHoi;
+        state.social.subView = "detail";
+        saveState();
+        return;
       }
       const phong = params.get("phong");
       const ban = Number(params.get("ban"));
@@ -1791,13 +1936,16 @@
 
   function buildMyRealtimePeerInfo() {
     return {
+      memberCode: state.auth && state.auth.isRegistered ? state.auth.memberCode : "",
       name: state.user.name,
       age: getUserAge(),
       gender: state.user.honorific === "Chị" ? "female" : "male",
       provinceId: state.user.provinceId,
       province: getProvince(state.user.provinceId).short,
       habits: (state.user.habits || []).slice(),
-      bio: `${state.user.name} đang trực tuyến trên điện thoại thật tại bàn trà.`,
+      bio: state.auth && state.auth.primaryUnitLabel
+        ? `${state.user.name} · ${state.auth.primaryUnitLabel}`
+        : `${state.user.name} đang trực tuyến trên điện thoại thật tại bàn trà.`,
       outfitColor: getOutfit(state.user.outfitId).color,
       hat: state.user.accessoryId || "glasses",
       item: state.user.itemId,
@@ -1837,6 +1985,7 @@
     lastTableActivityAt = Date.now();
     trackEvent("tea_table_joined");
     saveState();
+    syncMyGlobalOnlinePresence();
     showToast(`Đã ngồi vào ${table.name} (${room.shortName}).`);
     renderTeaRoom();
   }
@@ -2042,13 +2191,19 @@
     const tbl = isArtTbl ? state.teaRoom.articleTable : room.tables[tableIdx];
     const userHabits = state.user.habits || [];
     const sameProv = member.provinceId === state.user.provinceId;
+    const mCode = member.memberCode || (member.clientId ? `TB-${String(member.clientId).slice(-4).toUpperCase()}` : "");
+    const alreadyFriend = isAlreadyFriend(member);
     openDialog(
       `Hồ sơ: ${member.name}`,
       `
       <div class="surface-panel warm">
-        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
           <strong>${escHtml(member.name)} (${member.age} tuổi)</strong>
           <span class="badge-tag ${sameProv ? "jade" : ""}">${escHtml(member.province)}</span>
+        </div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+          <span class="online-status-pill"><span class="online-dot-live"></span>Đang Online</span>
+          ${mCode ? `<span class="member-code-chip">Mã: ${escHtml(mCode)}</span>` : ""}
         </div>
         <p>${escHtml(member.bio)}</p>
         <div class="member-pill-list">
@@ -2058,12 +2213,25 @@
         </div>
       </div>
       <p style="font-size:0.88rem;">Đang ngồi tại: <strong>${escHtml(tbl.name)}</strong> (${escHtml(isArtTbl ? "Bàn Đàm Đạo Báo Sáng" : room.shortName)})</p>
-      <button type="button" class="btn-primary" id="btn-join-senior-table">
-        ${ico("tea")}
-        <span>${isArtTbl ? `Tiếp tục đàm đạo cùng ${escHtml(member.name)}` : `Ngồi cùng bàn với ${escHtml(member.name)}`}</span>
-      </button>
+      <div class="btn-row">
+        <button type="button" class="btn-${alreadyFriend ? "secondary" : "jade"}" id="btn-add-friend-from-profile" ${alreadyFriend ? "disabled" : ""}>
+          ${ico("users")}
+          <span>${alreadyFriend ? "Đã là Bạn tâm giao" : "+ Kết bạn / Đồng đội"}</span>
+        </button>
+        <button type="button" class="btn-primary" id="btn-join-senior-table">
+          ${ico("tea")}
+          <span>${isArtTbl ? "Tiếp tục đàm đạo" : "Ngồi cùng bàn"}</span>
+        </button>
+      </div>
       `
     );
+    const addFrBtn = document.getElementById("btn-add-friend-from-profile");
+    if (addFrBtn && !alreadyFriend) {
+      addFrBtn.addEventListener("click", () => {
+        closeDialog();
+        requestAddFriendWithAuth(Object.assign({}, member, { memberCode: mCode }));
+      });
+    }
     document.getElementById("btn-join-senior-table").addEventListener("click", () => {
       closeDialog();
       if (!isArtTbl) joinTable(tableIdx);
@@ -5665,10 +5833,1588 @@
     });
   }
 
+  // ==================== MODULE 11: HỘI ĐỒNG NGŨ, CLB, KẾT BẠN, HIỆN ONLINE & THẺ HỘI VIÊN 10 GIÂY ====================
+  let activeGroupCatFilter = "all";
+
+  function normalizePhoneDigits(rawPhone) {
+    let digits = String(rawPhone || "").replace(/\D/g, "");
+    if (digits.startsWith("84") && digits.length >= 10) {
+      digits = "0" + digits.slice(2);
+    }
+    return digits;
+  }
+
+  function maskPhoneDigits(digits) {
+    const d = normalizePhoneDigits(digits);
+    if (d.length < 7) return d;
+    return `${d.slice(0, 3)}***${d.slice(-3)}`;
+  }
+
+  function fnv32Hex(str, seed) {
+    let h = seed >>> 0;
+    for (let i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 0x01000193) >>> 0;
+    }
+    h ^= h >>> 16;
+    h = Math.imul(h, 0x85ebca6b) >>> 0;
+    h ^= h >>> 13;
+    return (h >>> 0).toString(16).padStart(8, "0");
+  }
+
+  function computeAccountHashSync(phoneDigits, pin4) {
+    const payload = `tuoibac_senior_card_v1|${phoneDigits}|${pin4}`;
+    return (
+      fnv32Hex(payload + "|a", 0x811c9dc5) +
+      fnv32Hex(payload + "|b", 0x9e3779b9) +
+      fnv32Hex(payload + "|c", 0x243f6a88) +
+      fnv32Hex(payload + "|d", 0xb7e15162)
+    );
+  }
+
+  function deriveMemberCodeFromPhone(phoneDigits) {
+    let h = 2166136261 >>> 0;
+    const s = `tb_code|${phoneDigits}`;
+    for (let i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619) >>> 0;
+    }
+    const num = 1000 + (h % 8999);
+    return `TB-${num}`;
+  }
+
+  function encodeRecoveryToken(obj) {
+    try {
+      const json = JSON.stringify(obj);
+      return btoa(unescape(encodeURIComponent(json)))
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/g, "");
+    } catch (e) {
+      return "";
+    }
+  }
+
+  function decodeRecoveryToken(tok) {
+    try {
+      let b64 = String(tok || "").trim().replace(/-/g, "+").replace(/_/g, "/");
+      while (b64.length % 4 !== 0) b64 += "=";
+      const json = decodeURIComponent(escape(atob(b64)));
+      return JSON.parse(json);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function buildAccountBackupSnapshot() {
+    return {
+      accountHash: state.auth.accountHash,
+      memberCode: state.auth.memberCode,
+      phoneMasked: state.auth.phoneMasked,
+      primaryUnitLabel: state.auth.primaryUnitLabel || "",
+      honorific: state.user.honorific,
+      baseName: state.user.baseName,
+      name: state.user.name,
+      age: getUserAge(),
+      provinceId: state.user.provinceId,
+      outfitId: state.user.outfitId,
+      accessoryId: state.user.accessoryId,
+      itemId: state.user.itemId,
+      titleFrameId: state.user.titleFrameId,
+      unlockedTitleFrames: (state.user.unlockedTitleFrames || []).slice(),
+      xu: state.user.xu,
+      joinedGroupIds: (state.social.joinedGroupIds || []).slice(),
+      friends: (state.social.friends || []).slice()
+    };
+  }
+
+  function syncMyCloudAccountBackup() {
+    if (!RT || !state.auth || !state.auth.isRegistered || !state.auth.accountHash) return;
+    RT.publishAccountBackup(state.auth.accountHash, buildAccountBackupSnapshot());
+    RT.setMyMemberCode(state.auth.memberCode);
+    RT.publishMemberDirectory({
+      memberCode: state.auth.memberCode,
+      name: state.user.name,
+      age: getUserAge(),
+      province: getProvince(state.user.provinceId).short,
+      provinceId: state.user.provinceId,
+      outfitColor: getOutfit(state.user.outfitId).color,
+      hat: state.user.accessoryId || "glasses",
+      unitLabel: state.auth.primaryUnitLabel || "Hội viên Tuổi Bạc",
+      isRealPeer: true
+    });
+  }
+
+  function applyCloudAccountSnapshot(snap) {
+    if (!snap) return;
+    if (snap.honorific) state.user.honorific = snap.honorific;
+    if (snap.baseName) state.user.baseName = snap.baseName;
+    if (snap.name) state.user.name = snap.name;
+    if (snap.age) state.user.age = snap.age;
+    if (snap.provinceId) state.user.provinceId = snap.provinceId;
+    if (snap.outfitId) state.user.outfitId = snap.outfitId;
+    if (snap.accessoryId) state.user.accessoryId = snap.accessoryId;
+    if (snap.itemId) state.user.itemId = snap.itemId;
+    if (snap.titleFrameId) state.user.titleFrameId = snap.titleFrameId;
+    if (Array.isArray(snap.unlockedTitleFrames)) {
+      state.user.unlockedTitleFrames = Array.from(new Set(state.user.unlockedTitleFrames.concat(snap.unlockedTitleFrames)));
+    }
+    if (typeof snap.xu === "number" && snap.xu > state.user.xu) {
+      state.user.xu = snap.xu;
+    }
+    if (snap.primaryUnitLabel) {
+      state.auth.primaryUnitLabel = snap.primaryUnitLabel;
+    }
+    if (Array.isArray(snap.joinedGroupIds)) {
+      state.social.joinedGroupIds = Array.from(new Set((state.social.joinedGroupIds || []).concat(snap.joinedGroupIds)));
+    }
+    if (Array.isArray(snap.friends)) {
+      snap.friends.forEach((f) => {
+        if (!isAlreadyFriend(f)) {
+          state.social.friends.unshift(f);
+        }
+      });
+    }
+    state.user.profileConfigured = true;
+    saveState();
+    updateGlobalChrome();
+  }
+
+  function restoreFromQrRecoveryToken(rawTok) {
+    const decoded = decodeRecoveryToken(rawTok);
+    if (!decoded || !decoded.h || !decoded.c) return;
+    state.auth.isRegistered = true;
+    state.auth.accountHash = decoded.h;
+    state.auth.memberCode = decoded.c;
+    state.auth.phoneMasked = decoded.m || "";
+    state.auth.recoveryToken = rawTok;
+    if (decoded.n) {
+      const hon = decoded.hon === "Chị" ? "Chị" : "Anh";
+      applyUserIdentity(hon, decoded.n, decoded.a || 65, decoded.p || state.user.provinceId);
+    }
+    saveState();
+    setTimeout(() => {
+      if (RT) {
+        RT.setMyMemberCode(decoded.c);
+        RT.fetchAccountBackup(decoded.h, (cloudSnap) => {
+          if (cloudSnap) {
+            applyCloudAccountSnapshot(cloudSnap);
+            showToast(`Đã đăng nhập từ Thẻ QR: khôi phục ${state.auth.memberCode}!`);
+            render();
+          } else {
+            showToast(`Đã mở Thẻ Hội Viên ${state.auth.memberCode} từ mã QR!`);
+            render();
+          }
+          syncMyGlobalOnlinePresence();
+        });
+      }
+    }, 600);
+  }
+
+  function computeCurrentActivityWhere() {
+    if (state.route === "tearoom") {
+      const room = getCurrentRoom();
+      if (state.teaRoom.subView === "table") {
+        const tbl = getCurrentTable();
+        const suffix = tbl.name.includes(room.shortName) ? "" : ` (${room.shortName})`;
+        return `Đang ngồi ${tbl.name}${suffix}`;
+      }
+      return `Đang ở sảnh ${room.name}`;
+    }
+    if (state.route === "xiangqi") {
+      return state.xiangqi.mode === "puzzle" ? "Đang giải Cờ Thế cổ phổ" : "Đang đánh Cờ Tướng 9×10";
+    }
+    if (state.route === "groups") {
+      const g = getGroupById(state.social.selectedGroupId);
+      if (state.social.subView === "detail" && g) {
+        return `Đang xem ${g.shortName || g.name}`;
+      }
+      return "Đang ở Hội Đồng Ngũ & Kết Bạn";
+    }
+    if (state.route === "newspaper") return "Đang đọc Tờ Báo Sáng";
+    if (state.route === "checkin") return "Vừa Điểm danh bình an";
+    if (state.route === "poetry") return "Đang ngâm thơ Lục Bát";
+    return "Đang ở Sảnh Quán Trà";
+  }
+
+  function syncMyGlobalOnlinePresence() {
+    if (!RT) return;
+    if (!state.privacy || !state.privacy.consentRealtimePresence) {
+      RT.clearGlobalOnline();
+      return;
+    }
+    if (state.auth && state.auth.isRegistered && state.auth.memberCode) {
+      RT.setMyMemberCode(state.auth.memberCode);
+    }
+    const room = getCurrentRoom();
+    RT.publishGlobalOnline({
+      memberCode: state.auth && state.auth.isRegistered ? state.auth.memberCode : "",
+      name: state.user.name,
+      age: getUserAge(),
+      gender: state.user.honorific === "Chị" ? "female" : "male",
+      provinceId: state.user.provinceId,
+      province: getProvince(state.user.provinceId).short,
+      outfitColor: getOutfit(state.user.outfitId).color,
+      hat: state.user.accessoryId || "glasses",
+      titleFrameId: state.user.titleFrameId || "tri-am",
+      unitLabel: (state.auth && state.auth.primaryUnitLabel) || "",
+      where: computeCurrentActivityWhere(),
+      roomId: state.route === "tearoom" ? room.id : "",
+      tableIdx: state.route === "tearoom" && state.teaRoom.subView === "table" ? state.teaRoom.tableIdx : 0,
+      isRealPeer: true
+    });
+  }
+
+  function getAllMergedGroups() {
+    const byId = {};
+    (state.social.groups || []).forEach((g) => {
+      byId[g.id] = g;
+    });
+    if (RT && typeof RT.getSharedGroups === "function") {
+      RT.getSharedGroups().forEach((cg) => {
+        if (!cg || !cg.id) return;
+        if (!byId[cg.id]) {
+          byId[cg.id] = cg;
+          state.social.groups.push(cg);
+        } else {
+          // Merge realMembers & bulletins cleanly
+          const local = byId[cg.id];
+          if (Array.isArray(cg.realMembers)) {
+            const seen = new Set((local.realMembers || []).map((m) => m.memberCode || m.name));
+            local.realMembers = (local.realMembers || []).slice();
+            cg.realMembers.forEach((rm) => {
+              const k = rm.memberCode || rm.name;
+              if (k && !seen.has(k)) {
+                seen.add(k);
+                local.realMembers.unshift(rm);
+              }
+            });
+          }
+          if (Array.isArray(cg.bulletins)) {
+            const seenB = new Set((local.bulletins || []).map((b) => `${b.author}|${b.text}`));
+            local.bulletins = (local.bulletins || []).slice();
+            cg.bulletins.forEach((b) => {
+              const kb = `${b.author}|${b.text}`;
+              if (!seenB.has(kb)) {
+                seenB.add(kb);
+                local.bulletins.unshift(b);
+              }
+            });
+          }
+        }
+      });
+    }
+    return Object.values(byId);
+  }
+
+  function getGroupById(gid) {
+    const list = getAllMergedGroups();
+    return list.find((g) => g.id === gid) || list[0] || null;
+  }
+
+  function isAlreadyFriend(candidate) {
+    if (!candidate) return false;
+    const list = state.social.friends || [];
+    return list.some(
+      (f) =>
+        (candidate.memberCode && f.memberCode && f.memberCode.toUpperCase() === candidate.memberCode.toUpperCase()) ||
+        (candidate.id && f.id && f.id === candidate.id) ||
+        (candidate.clientId && f.clientId && f.clientId === candidate.clientId)
+    );
+  }
+
+  function resolvePeerLiveOnlineInfo(friendOrMember) {
+    const code = (friendOrMember.memberCode || "").toUpperCase();
+    if (
+      state.auth &&
+      state.auth.isRegistered &&
+      code &&
+      state.auth.memberCode.toUpperCase() === code
+    ) {
+      return {
+        online: Boolean(state.privacy && state.privacy.consentRealtimePresence),
+        isRealPeer: true,
+        where: computeCurrentActivityWhere(),
+        roomId: state.route === "tearoom" ? getCurrentRoom().id : "",
+        tableIdx: state.teaRoom.tableIdx || 0
+      };
+    }
+    const livePeers = RT ? RT.getOnlinePeers() : [];
+    const matchedLive = livePeers.find(
+      (p) =>
+        (code && p.memberCode && p.memberCode.toUpperCase() === code) ||
+        (friendOrMember.clientId && p.clientId === friendOrMember.clientId) ||
+        (friendOrMember.isRealPeer && p.name === friendOrMember.name)
+    );
+    if (matchedLive) {
+      return {
+        online: true,
+        isRealPeer: true,
+        where: matchedLive.where || "Đang trực tuyến trên điện thoại thật",
+        roomId: matchedLive.roomId || "",
+        tableIdx: matchedLive.tableIdx || 0
+      };
+    }
+    // Check directory fallback for simulated senior companions
+    const dir = (D.SENIOR_DIRECTORY || []).find(
+      (s) => s.id === friendOrMember.id || (code && s.memberCode === code)
+    );
+    if (dir) {
+      return {
+        online: Boolean(dir.onlineNow),
+        isRealPeer: false,
+        where: dir.onlineWhere || "Vừa điểm danh sáng nay",
+        roomId: dir.onlineRoomId || "phong-tra",
+        tableIdx: dir.onlineTableIdx || 0
+      };
+    }
+    return {
+      online: false,
+      isRealPeer: Boolean(friendOrMember.isRealPeer),
+      where: "Chưa mở máy lúc này",
+      roomId: "",
+      tableIdx: 0
+    };
+  }
+
+  function countOnlineFriendsNow() {
+    const liveRealCount = RT ? RT.getOnlinePeers().length : 0;
+    const friendOnlineCount = (state.social.friends || []).filter((f) => resolvePeerLiveOnlineInfo(f).online).length;
+    return Math.max(liveRealCount, friendOnlineCount);
+  }
+
+  function requireMemberCard(reasonText, onReadyCallback) {
+    if (state.auth && state.auth.isRegistered && state.auth.memberCode) {
+      if (typeof onReadyCallback === "function") onReadyCallback();
+      return;
+    }
+    openMemberAuthModal({
+      reason: reasonText,
+      onSuccess: onReadyCallback
+    });
+  }
+
+  function drawMemberPasscardPng() {
+    const c = document.createElement("canvas");
+    c.width = 680;
+    c.height = 420;
+    const ctx = c.getContext("2d");
+
+    ctx.fillStyle = "#F7F1E3";
+    ctx.fillRect(0, 0, 680, 420);
+    ctx.strokeStyle = "#3E5634";
+    ctx.lineWidth = 6;
+    ctx.strokeRect(16, 16, 648, 388);
+    ctx.strokeStyle = "#C88A28";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(24, 24, 632, 372);
+
+    ctx.fillStyle = "#3E5634";
+    ctx.fillRect(32, 32, 616, 78);
+    ctx.fillStyle = "#FFFDF7";
+    ctx.font = "bold 25px sans-serif";
+    ctx.fillText("THẺ HỘI VIÊN & ĐỒNG NGŨ TUỔI BẠC", 50, 74);
+    ctx.font = "16px sans-serif";
+    ctx.fillStyle = "#E4EEDB";
+    ctx.fillText("Quét mã QR trên thẻ này để đăng nhập lại khi đổi điện thoại", 50, 98);
+
+    ctx.fillStyle = "#231A14";
+    ctx.font = "bold 30px sans-serif";
+    ctx.fillText(`${state.user.name} · ${getUserAge()} tuổi`, 48, 162);
+
+    ctx.fillStyle = "#B83B2A";
+    ctx.font = "bold 24px sans-serif";
+    ctx.fillText(`Mã Thẻ: ${state.auth.memberCode || "TB-0000"}`, 48, 200);
+
+    const prov = getProvince(state.user.provinceId).short;
+    const unitTxt = state.auth.primaryUnitLabel || "Hội viên Quán Trà Tuổi Bạc";
+    ctx.fillStyle = "#4A3A2C";
+    ctx.font = "20px sans-serif";
+    ctx.fillText(`Quê hương: ${prov}  ·  SĐT bảo mật: ${state.auth.phoneMasked || "Đã mã hóa"}`, 48, 240);
+    ctx.font = "bold 19px sans-serif";
+    ctx.fillStyle = "#3E5634";
+    ctx.fillText(`Đơn vị / Hội: ${unitTxt.slice(0, 42)}`, 48, 278);
+
+    ctx.fillStyle = "#6B5644";
+    ctx.font = "17px sans-serif";
+    ctx.fillText(`Đã kết nối ${state.social.friends.length} bạn tâm giao · Không cần nhớ mật khẩu`, 48, 324);
+    const baseShare = getPublicBaseUrl();
+    const shortHost = baseShare.replace(/^https?:\/\//, "").replace(/\/$/, "");
+    ctx.fillText(`Mở trên điện thoại: ${shortHost}`, 48, 360);
+
+    const qrUrl = `${baseShare}?khoiphuc=${encodeURIComponent(state.auth.recoveryToken || "")}`;
+    if (window.TeaRoomScene && typeof window.TeaRoomScene.drawQrToCanvas === "function") {
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fillRect(500, 134, 136, 136);
+      window.TeaRoomScene.drawQrToCanvas(ctx, qrUrl, 506, 140, 124);
+      ctx.fillStyle = "#3E5634";
+      ctx.font = "bold 14px sans-serif";
+      ctx.fillText("QR KHÔI PHỤC 1 CHẠM", 492, 292);
+    }
+    return c.toDataURL("image/png");
+  }
+
+  function openMemberAuthModal(opts) {
+    const options = opts || {};
+    const isReg = Boolean(state.auth && state.auth.isRegistered && state.auth.memberCode);
+    const baseName = state.user.baseName || state.user.name.replace(/^(Anh|Chị|Bác)\s+/i, "");
+
+    if (isReg && !options.forceSwitchAccount) {
+      const cardPng = drawMemberPasscardPng();
+      const friendInviteUrl = `${getPublicBaseUrl()}?ketban=${encodeURIComponent(state.auth.memberCode)}`;
+      openDialog(
+        `Thẻ Hội Viên: ${state.auth.memberCode}`,
+        `
+        <div class="surface-panel jade">
+          <div class="passcard-head">
+            <strong>${escHtml(state.user.name)} · ${getUserAge()} tuổi</strong>
+            <span class="member-code-chip">Mã: ${escHtml(state.auth.memberCode)}</span>
+          </div>
+          <p style="font-size:0.88rem;">SĐT đã mã hóa chống lộ: <strong>${escHtml(state.auth.phoneMasked)}</strong>. Khi đổi sang điện thoại mới, chỉ cần nhập lại SĐT + 4 số hoặc quét tấm ảnh Thẻ dưới đây là lấy lại đủ Bạn bè & Đơn vị.</p>
+        </div>
+
+        <img src="${cardPng}" alt="Ảnh Thẻ Hội Viên QR Tuổi Bạc" style="width:100%; border-radius:12px; border:1px solid var(--border-strong);" />
+
+        <div class="btn-row">
+          <a class="btn-primary" href="${cardPng}" download="the-hoi-vien-${escHtml(state.auth.memberCode)}.png" style="text-decoration:none;">
+            ${ico("download")}
+            <span>Lưu Ảnh Thẻ vào máy</span>
+          </a>
+          <button type="button" class="btn-jade" id="btn-enable-passkey">
+            <span>${state.auth.passkeyEnabled ? "Đã bật Vân tay / FaceID" : "Bật mở bằng Vân tay"}</span>
+          </button>
+        </div>
+
+        <div class="surface-panel">
+          <strong>Gửi mã kết bạn cho đồng đội (${escHtml(state.auth.memberCode)})</strong>
+          <div class="share-url-row">
+            <input type="text" class="input-lg share-url-input" readonly value="${escHtml(friendInviteUrl)}" />
+            <button type="button" class="btn-secondary btn-inline" id="btn-copy-my-friend-link">Chép link</button>
+          </div>
+        </div>
+
+        <button type="button" class="btn-secondary" id="btn-switch-another-account">Đổi sang tài khoản khác / Đăng nhập lại</button>
+        `
+      );
+
+      document.getElementById("btn-copy-my-friend-link").addEventListener("click", () => {
+        copyTextSafe(friendInviteUrl, `Đã chép link kết bạn của mã ${state.auth.memberCode}!`);
+      });
+      document.getElementById("btn-enable-passkey").addEventListener("click", async () => {
+        if (window.PublicKeyCredential && navigator.credentials && typeof navigator.credentials.create === "function") {
+          try {
+            const challenge = new Uint8Array(16);
+            window.crypto.getRandomValues(challenge);
+            const userIdBytes = new TextEncoder().encode(state.auth.memberCode);
+            await navigator.credentials.create({
+              publicKey: {
+                challenge,
+                rp: { name: "Quán Trà Tuổi Bạc" },
+                user: {
+                  id: userIdBytes,
+                  name: state.auth.memberCode,
+                  displayName: `${state.user.name} (${state.auth.memberCode})`
+                },
+                pubKeyCredParams: [{ alg: -7, type: "public-key" }],
+                timeout: 30000
+              }
+            });
+            state.auth.passkeyEnabled = true;
+            saveState();
+            showToast("Đã liên kết Vân tay / Khuôn mặt trên điện thoại này!");
+            openMemberAuthModal();
+            return;
+          } catch (err) {
+            // Fall through to local quick-pin binding notice
+          }
+        }
+        state.auth.passkeyEnabled = true;
+        saveState();
+        showToast("Đã bật ghi nhớ tự động trên thiết bị này!");
+        openMemberAuthModal();
+      });
+      document.getElementById("btn-switch-another-account").addEventListener("click", () => {
+        openMemberAuthModal({ forceSwitchAccount: true });
+      });
+      return;
+    }
+
+    openDialog(
+      "Thẻ Hội Viên 10 Giây (Không Mật Khẩu Phức Tạp)",
+      `
+      ${
+        options.reason
+          ? `<div class="surface-panel warm">
+               <strong>Cần mở Thẻ Hội Viên để: ${escHtml(options.reason)}</strong>
+               <p style="font-size:0.88rem;">Chỉ điền 1 lần trong 10 giây. Nếu đã từng lập thẻ ở máy khác, nhập lại đúng SĐT + 4 số cũ để lấy lại toàn bộ đồng đội & bạn bè.</p>
+             </div>`
+          : `<div class="surface-panel jade">
+               <strong>Vào mới hay Đăng nhập lại đều chung 1 bước siêu dễ</strong>
+               <p style="font-size:0.88rem;">Không cần Email, không cần mật khẩu chữ hoa ký tự lạ. Số điện thoại được băm ẩn một chiều, người lạ không thể nhìn thấy.</p>
+             </div>`
+      }
+
+      <div class="honorific-toggle-row" role="group" aria-label="Xưng hô trên thẻ">
+        <button type="button" class="honorific-btn ${getUserHonorific() === "Anh" ? "selected" : ""}" data-auth-hon="Anh">Xưng là Anh</button>
+        <button type="button" class="honorific-btn ${getUserHonorific() === "Chị" ? "selected" : ""}" data-auth-hon="Chị">Xưng là Chị</button>
+      </div>
+
+      <div class="btn-row">
+        <label class="field-label">
+          Tên thường gọi
+          <input type="text" class="input-lg" id="auth-name-in" value="${escHtml(baseName)}" placeholder="VD: Nam, Minh..." />
+        </label>
+        <label class="field-label">
+          Tuổi hiện tại
+          <input type="number" class="input-lg num" id="auth-age-in" min="45" max="105" value="${getUserAge()}" />
+        </label>
+      </div>
+
+      <label class="field-label">
+        1. Số điện thoại của ${getUserPronoun()} (chỉ dùng làm chìa khóa tìm lại thẻ, tự động ẩn)
+        <input type="tel" inputmode="numeric" class="input-lg num" id="auth-phone-in" placeholder="Ví dụ: 0912345678" autocomplete="tel" />
+      </label>
+
+      <label class="field-label">
+        2. Mã nhớ 4 chữ số dễ thuộc (VD: năm sinh 1954 hoặc năm nhập ngũ 1975)
+        <input type="tel" inputmode="numeric" maxlength="4" class="input-lg pin-4-input" id="auth-pin4-in" placeholder="1975" />
+      </label>
+
+      <button type="button" class="btn-primary" id="btn-submit-senior-auth">
+        ${ico("card")}
+        <span>Mở Thẻ Hội Viên / Đăng Nhập Ngay</span>
+      </button>
+
+      <details class="surface-panel" style="padding:10px 12px;">
+        <summary style="font-weight:700; cursor:pointer; min-height:44px; display:flex; align-items:center;">Cách 2: Khôi phục từ Mã QR Thẻ Hội Viên đã lưu</summary>
+        <div style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">
+          <p style="font-size:0.88rem; color:var(--ink-secondary);">Nếu có đường dẫn trên Ảnh Thẻ Hội Viên QR đã cất trong máy, dán vào ô dưới đây để vào lại ngay:</p>
+          <input type="text" class="input-lg" id="auth-qr-token-in" placeholder="Dán link ?khoiphuc=... trên Thẻ QR" />
+          <button type="button" class="btn-secondary" id="btn-restore-by-token">Khôi phục từ Thẻ QR</button>
+        </div>
+      </details>
+      `
+    );
+
+    let chosenHon = getUserHonorific();
+    els.dialogBody.querySelectorAll("[data-auth-hon]").forEach((b) => {
+      b.addEventListener("click", () => {
+        chosenHon = b.dataset.authHon === "Chị" ? "Chị" : "Anh";
+        els.dialogBody.querySelectorAll("[data-auth-hon]").forEach((x) => x.classList.toggle("selected", x === b));
+      });
+    });
+
+    const restoreBtn = document.getElementById("btn-restore-by-token");
+    if (restoreBtn) {
+      restoreBtn.addEventListener("click", () => {
+        const raw = (document.getElementById("auth-qr-token-in").value || "").trim();
+        const match = raw.match(/khoiphuc=([A-Za-z0-9_-]+)/);
+        const tok = match ? match[1] : raw;
+        if (!decodeRecoveryToken(tok)) {
+          showToast("Mã khôi phục chưa đúng định dạng trên Thẻ QR.");
+          return;
+        }
+        closeDialog();
+        restoreFromQrRecoveryToken(tok);
+        if (typeof options.onSuccess === "function") options.onSuccess();
+      });
+    }
+
+    document.getElementById("btn-submit-senior-auth").addEventListener("click", () => {
+      const nameVal = (document.getElementById("auth-name-in").value || "").trim() || baseName;
+      const ageVal = Number(document.getElementById("auth-age-in").value) || getUserAge();
+      const phoneDigits = normalizePhoneDigits(document.getElementById("auth-phone-in").value);
+      const pin4 = String(document.getElementById("auth-pin4-in").value || "").replace(/\D/g, "");
+
+      if (phoneDigits.length < 9 || phoneDigits.length > 11) {
+        showToast("Vui lòng nhập đúng Số điện thoại (9–11 chữ số).");
+        return;
+      }
+      if (pin4.length !== 4) {
+        showToast("Vui lòng nhập đúng 4 chữ số dễ nhớ (ví dụ 1975).");
+        return;
+      }
+
+      const submitBtn = document.getElementById("btn-submit-senior-auth");
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Đang kiểm tra & đồng bộ Thẻ...";
+
+      const acctHash = computeAccountHashSync(phoneDigits, pin4);
+      const memCode = deriveMemberCodeFromPhone(phoneDigits);
+      const masked = maskPhoneDigits(phoneDigits);
+
+      const finalizeActivation = (cloudSnap) => {
+        state.auth.isRegistered = true;
+        state.auth.accountHash = acctHash;
+        state.auth.memberCode = (cloudSnap && cloudSnap.memberCode) || memCode;
+        state.auth.phoneMasked = masked;
+
+        if (cloudSnap) {
+          // Existing account recovered on a second phone!
+          applyCloudAccountSnapshot(cloudSnap);
+        } else {
+          applyUserIdentity(chosenHon, nameVal, ageVal, state.user.provinceId);
+        }
+
+        state.auth.recoveryToken = encodeRecoveryToken({
+          h: acctHash,
+          c: state.auth.memberCode,
+          m: masked,
+          hon: state.user.honorific,
+          n: state.user.baseName,
+          a: getUserAge(),
+          p: state.user.provinceId
+        });
+
+        saveState();
+        syncMyCloudAccountBackup();
+        syncMyGlobalOnlinePresence();
+        updateGlobalChrome();
+        closeDialog();
+
+        if (cloudSnap) {
+          showToast(`Chào mừng quay lại! Đã khôi phục Thẻ ${state.auth.memberCode}, bạn bè & đơn vị!`);
+        } else {
+          showToast(`Đã cấp Thẻ Hội Viên ${state.auth.memberCode}!`);
+        }
+
+        if (typeof options.onSuccess === "function") {
+          options.onSuccess();
+        } else {
+          render();
+        }
+      };
+
+      if (RT && typeof RT.fetchAccountBackup === "function") {
+        RT.fetchAccountBackup(acctHash, (snap) => finalizeActivation(snap));
+      } else {
+        finalizeActivation(null);
+      }
+    });
+  }
+
+  function requestAddFriendWithAuth(targetPeer) {
+    if (!targetPeer) return;
+    requireMemberCard(`Kết bạn với ${targetPeer.name} và hiện đèn Online`, () => {
+      const cleanCode =
+        (targetPeer.memberCode && String(targetPeer.memberCode).toUpperCase()) ||
+        (targetPeer.clientId ? `TB-${String(targetPeer.clientId).slice(-4).toUpperCase()}` : `TB-${Math.floor(1000 + Math.random() * 8999)}`);
+      const friendEntry = {
+        memberCode: cleanCode,
+        id: targetPeer.id || "",
+        clientId: targetPeer.clientId || "",
+        name: targetPeer.name || `Hội viên ${cleanCode}`,
+        age: targetPeer.age || 66,
+        province: targetPeer.province || "Việt Nam",
+        provinceId: targetPeer.provinceId || "ha-noi",
+        outfitColor: targetPeer.outfitColor || "#3E5634",
+        hat: targetPeer.hat || "cap",
+        unitLabel: targetPeer.unitLabel || "",
+        isRealPeer: Boolean(targetPeer.isRealPeer)
+      };
+
+      if (!isAlreadyFriend(friendEntry)) {
+        state.social.friends.unshift(friendEntry);
+        saveState();
+        syncMyCloudAccountBackup();
+      }
+
+      if (RT && cleanCode) {
+        RT.publishFriendSignal(cleanCode, {
+          fromCode: state.auth.memberCode,
+          fromName: state.user.name,
+          fromAge: getUserAge(),
+          fromProvince: getProvince(state.user.provinceId).short,
+          fromProvinceId: state.user.provinceId,
+          fromOutfitColor: getOutfit(state.user.outfitId).color,
+          fromHat: state.user.accessoryId || "glasses",
+          fromUnit: state.auth.primaryUnitLabel || ""
+        });
+      }
+
+      addXu(2, `Kết bạn tâm giao cùng ${friendEntry.name}`);
+      showToast(`Đã kết bạn với ${friendEntry.name} (${cleanCode})!`);
+      if (state.route === "groups") renderGroupsAndFriends();
+    });
+  }
+
+  function addFriendByCodeLookup(rawCode) {
+    const cleanCode = String(rawCode || "").trim().toUpperCase();
+    if (!cleanCode) {
+      showToast("Vui lòng nhập Mã Thẻ Hội Viên (ví dụ TB-102 hoặc TB-4821).");
+      return;
+    }
+    if (state.auth && state.auth.memberCode && cleanCode === state.auth.memberCode.toUpperCase()) {
+      showToast("Đây là Mã Thẻ của chính bác rồi ạ!");
+      return;
+    }
+
+    // Search live online peers -> directory cache -> built-in senior directory
+    const livePeers = RT ? RT.getOnlinePeers() : [];
+    const foundLive = livePeers.find((p) => p.memberCode && p.memberCode.toUpperCase() === cleanCode);
+    const foundDirRt = RT ? RT.getMemberByCode(cleanCode) : null;
+    const foundBuiltin = (D.SENIOR_DIRECTORY || []).find((s) => s.memberCode === cleanCode);
+    const resolved = foundLive || foundDirRt || foundBuiltin || {
+      memberCode: cleanCode,
+      name: `Đồng đội (${cleanCode})`,
+      age: 68,
+      province: "Đang đồng bộ",
+      provinceId: "ha-noi",
+      outfitColor: "#3E5634",
+      hat: "cap",
+      isRealPeer: true
+    };
+    requestAddFriendWithAuth(resolved);
+  }
+
+  function joinGroupUnit(group) {
+    if (!group) return;
+    requireMemberCard(`Gia nhập "${group.shortName || group.name}" & điểm danh quân số`, () => {
+      if (!state.social.joinedGroupIds.includes(group.id)) {
+        state.social.joinedGroupIds.push(group.id);
+      }
+      state.auth.primaryUnitLabel = group.shortName || group.name;
+
+      if (!Array.isArray(group.realMembers)) group.realMembers = [];
+      const myCode = state.auth.memberCode;
+      const existingIdx = group.realMembers.findIndex((m) => m.memberCode === myCode);
+      const myMemberRecord = {
+        memberCode: myCode,
+        clientId: RT ? RT.getClientId() : "",
+        name: state.user.name,
+        age: getUserAge(),
+        province: getProvince(state.user.provinceId).short,
+        provinceId: state.user.provinceId,
+        outfitColor: group.category === "veteran" ? "#556B45" : getOutfit(state.user.outfitId).color,
+        hat: group.category === "veteran" ? "cap" : state.user.accessoryId || "glasses",
+        unitLabel: group.shortName || group.name,
+        isRealPeer: true
+      };
+      if (existingIdx >= 0) {
+        group.realMembers[existingIdx] = myMemberRecord;
+      } else {
+        group.realMembers.unshift(myMemberRecord);
+      }
+
+      if (group.category === "veteran") {
+        unlockTitleFrame("dong-ngu", `Đồng đội ${group.shortName || group.name}`);
+      }
+
+      saveState();
+      if (RT) RT.publishGroup(group);
+      syncMyCloudAccountBackup();
+      syncMyGlobalOnlinePresence();
+      showToast(`Đã ghi tên vào quân số ${group.shortName || group.name}!`);
+      renderGroupsAndFriends();
+    });
+  }
+
+  function enterGroupPrivateTeaRoom(group) {
+    if (!group) return;
+    const roomId = `hoi-${group.id}`;
+    let targetRoom = (state.teaRoom.rooms || []).find((r) => r.id === roomId);
+    const seedMembers = (group.memberIds || [])
+      .map((sid) => (D.SENIOR_DIRECTORY || []).find((s) => s.id === sid))
+      .filter(Boolean)
+      .slice(0, 4);
+
+    if (!targetRoom) {
+      const isVet = group.category === "veteran";
+      targetRoom = {
+        id: roomId,
+        name: group.name,
+        shortName: group.shortName || group.name.slice(0, 20),
+        description: group.subtitle || group.motto || `Phòng sinh hoạt riêng của ${group.name}`,
+        hostName: isVet ? "Trực ban Đơn vị (Trợ lý)" : "Chị Trà (Trợ lý)",
+        focusHabits: isVet ? ["cuu-chien-binh", "uong-tra", "co-tuong"] : ["uong-tra", "tho-ca"],
+        theme: isVet
+          ? { floorHex: 0xd4c7ad, wallHex: 0xf2ede0, floor2D: "#D8CCB2", wall2D: "#F2EDE0", tableHex: 0x6b4428, cushionHex: 0x3e5634, accentHex: "#3E5634" }
+          : { floorHex: 0xd9bf9b, wallHex: 0xf4ead8, floor2D: "#DFC6A2", wall2D: "#F4EAD8", tableHex: 0x875434, cushionHex: 0x2e5e4e, accentHex: "#B83B2A" },
+        tables: [
+          {
+            id: `${roomId}-ban-1`,
+            shortLabel: "B1",
+            name: `Bàn 1: Ban Liên Lạc (${group.shortName || group.name})`,
+            topic: group.subtitle || "Điểm danh quân số & thăm hỏi sức khỏe",
+            tags: ["cuu-chien-binh", "uong-tra"],
+            members: seedMembers.length > 0 ? seedMembers : (D.SENIOR_DIRECTORY || []).slice(0, 3),
+            initialLog: [
+              {
+                speaker: group.leaderName || "Ban Liên Lạc",
+                text: group.motto || `Chào mừng anh chị em về ngôi nhà chung ${group.name}!`
+              }
+            ]
+          },
+          {
+            id: `${roomId}-ban-2`,
+            shortLabel: "B2",
+            name: "Bàn 2: Ôn Kỷ Niệm Năm Xưa",
+            topic: "Kể chuyện chiến trường, trường cũ & quê hương",
+            tags: ["bao-cap", "uong-tra"],
+            members: seedMembers.slice(0, 2),
+            initialLog: [
+              {
+                speaker: "Trực ban Đơn vị (Trợ lý)",
+                text: "Mời các anh chị pha ấm trà nóng, ôn lại kỷ niệm một thời sôi nổi nhé."
+              }
+            ]
+          },
+          {
+            id: `${roomId}-ban-3`,
+            shortLabel: "B3",
+            name: "Bàn 3: Giao Lưu Cờ & Thơ Đồng Đội",
+            topic: " Thư giãn buổi sáng cùng đồng đội",
+            tags: ["co-tuong", "tho-ca"],
+            members: seedMembers.slice(1, 4),
+            initialLog: [
+              {
+                speaker: "Trực ban Đơn vị (Trợ lý)",
+                text: "Bàn 3 sẵn sàng phục vụ trà nóng và các câu chuyện vui khỏe tuổi vàng."
+              }
+            ]
+          }
+        ]
+      };
+      state.teaRoom.rooms.unshift(targetRoom);
+    }
+
+    if (group.category === "veteran") {
+      unlockTitleFrame("dong-ngu", `Đồng đội ${group.shortName || group.name}`);
+    }
+    state.teaRoom.roomId = roomId;
+    state.teaRoom.tableIdx = 0;
+    state.teaRoom.subView = "table";
+    state.teaRoom.articleTable = null;
+    state.teaRoom.activeNewspaperRef = null;
+    state.teaRoom.log = targetRoom.tables[0].initialLog.slice();
+    lastTableActivityAt = Date.now();
+    saveState();
+    navigate("tearoom");
+    showToast(`Đã vào Bàn trà 3D riêng của ${group.shortName || group.name}!`);
+  }
+
+  function openCreateGroupModal() {
+    requireMemberCard("Lập Đơn vị Đồng ngũ / Hội nhóm mới", () => {
+      openDialog(
+        "Lập Đơn Vị Đồng Ngũ / Hội Nhóm Mới",
+        `
+        <label class="field-label">
+          Loại hình Hội nhóm
+          <select class="select-lg" id="cg-cat-in">
+            ${(D.GROUP_CATEGORIES || [])
+              .map((c) => `<option value="${c.id}">${escHtml(c.label)}</option>`)
+              .join("")}
+          </select>
+        </label>
+
+        <div class="surface-panel warm" id="cg-veteran-box">
+          <strong>Điền phiên hiệu Đơn vị (Gợi ý chuẩn Cựu chiến binh)</strong>
+          <div class="btn-row">
+            <label class="field-label">
+              Đại đội / Phân đội
+              <input type="text" class="input-lg" id="cg-comp-in" placeholder="VD: Đại đội 1K2" value="Đại đội 1K2" />
+            </label>
+            <label class="field-label">
+              Tiểu đoàn / Trung đoàn
+              <input type="text" class="input-lg" id="cg-bat-in" placeholder="VD: D3" value="Tiểu đoàn 3 (D3)" />
+            </label>
+          </div>
+          <div class="btn-row">
+            <label class="field-label">
+              Sư đoàn / Quân khu
+              <input type="text" class="input-lg" id="cg-div-in" placeholder="VD: Sư đoàn 25" value="Sư đoàn 25" />
+            </label>
+            <label class="field-label">
+              Chiến trường &amp; Năm
+              <input type="text" class="input-lg" id="cg-camp-in" placeholder="VD: Miền Nam 75" value="Chiến trường Miền Nam 75" />
+            </label>
+          </div>
+        </div>
+
+        <label class="field-label">
+          Tên đầy đủ của Đơn vị / Hội nhóm
+          <input type="text" class="input-lg" id="cg-name-in" value="Đại đội 1K2 · Tiểu đoàn 3 (D3) · Sư đoàn 25" />
+        </label>
+
+        <label class="field-label">
+          Lời nhắn chào mừng / Khẩu hiệu phòng sinh hoạt
+          <input type="text" class="input-lg" id="cg-motto-in" value="Anh em đồng ngũ điểm danh sức khỏe mỗi sáng, giữ trọn nghĩa tình đồng đội!" />
+        </label>
+
+        <button type="button" class="btn-primary" id="btn-confirm-create-group">
+          ${ico("users")}
+          <span>Tạo Đơn Vị &amp; Mở Bàn Trà Ngay</span>
+        </button>
+        `
+      );
+
+      const catSel = document.getElementById("cg-cat-in");
+      const vetBox = document.getElementById("cg-veteran-box");
+      const nameIn = document.getElementById("cg-name-in");
+      const compIn = document.getElementById("cg-comp-in");
+      const batIn = document.getElementById("cg-bat-in");
+      const divIn = document.getElementById("cg-div-in");
+
+      const syncVetName = () => {
+        if (catSel.value !== "veteran") return;
+        const parts = [compIn.value.trim(), batIn.value.trim(), divIn.value.trim()].filter(Boolean);
+        if (parts.length > 0) nameIn.value = parts.join(" · ");
+      };
+      [compIn, batIn, divIn].forEach((el) => el.addEventListener("input", syncVetName));
+      catSel.addEventListener("change", () => {
+        const isVet = catSel.value === "veteran";
+        vetBox.hidden = !isVet;
+        if (!isVet && nameIn.value.includes("Đại đội")) {
+          nameIn.value = catSel.value === "school" ? "Hội Bạn Học Khóa 1975" : catSel.value === "hometown" ? "Hội Đồng Hương Quê Nhà" : "CLB Cờ Tướng & Trà Sáng";
+        }
+      });
+
+      document.getElementById("btn-confirm-create-group").addEventListener("click", () => {
+        const cat = catSel.value;
+        const fullName = nameIn.value.trim() || "Hội Đồng Niên Mới";
+        const camp = (document.getElementById("cg-camp-in").value || "").trim();
+        const motto = (document.getElementById("cg-motto-in").value || "").trim() || "Chúc toàn hội luôn mạnh khỏe, an vui!";
+        const gid = "hoi-" + Math.random().toString(36).slice(2, 8);
+        const newGrp = {
+          id: gid,
+          name: fullName,
+          shortName: fullName.length > 26 ? fullName.slice(0, 25) + "…" : fullName,
+          category: cat,
+          unitSpec:
+            cat === "veteran"
+              ? {
+                  company: compIn.value.trim(),
+                  battalion: batIn.value.trim(),
+                  division: divIn.value.trim(),
+                  campaign: camp
+                }
+              : null,
+          subtitle: cat === "veteran" && camp ? camp : `Trưởng ban liên lạc: ${state.user.name} (${getUserAge()} tuổi)`,
+          motto,
+          leaderName: `${state.user.name} · ${getUserAge()} tuổi (Trưởng ban liên lạc)`,
+          joinPin: "",
+          memberIds: ["minh", "vinh"],
+          realMembers: [
+            {
+              memberCode: state.auth.memberCode,
+              clientId: RT ? RT.getClientId() : "",
+              name: state.user.name,
+              age: getUserAge(),
+              province: getProvince(state.user.provinceId).short,
+              provinceId: state.user.provinceId,
+              outfitColor: cat === "veteran" ? "#556B45" : getOutfit(state.user.outfitId).color,
+              hat: cat === "veteran" ? "cap" : state.user.accessoryId || "glasses",
+              unitLabel: fullName,
+              isRealPeer: true
+            }
+          ],
+          bulletins: [
+            {
+              author: `${state.user.name} (Ban liên lạc)`,
+              time: "Vừa xong",
+              text: motto
+            }
+          ]
+        };
+
+        state.social.groups.unshift(newGrp);
+        if (!state.social.joinedGroupIds.includes(gid)) {
+          state.social.joinedGroupIds.push(gid);
+        }
+        state.auth.primaryUnitLabel = newGrp.shortName;
+        state.social.selectedGroupId = gid;
+        state.social.subView = "detail";
+        state.social.activeTab = "units";
+        if (cat === "veteran") {
+          unlockTitleFrame("dong-ngu", `Ban liên lạc ${newGrp.shortName}`);
+        }
+        saveState();
+        if (RT) RT.publishGroup(newGrp);
+        syncMyCloudAccountBackup();
+        syncMyGlobalOnlinePresence();
+        closeDialog();
+        showToast(`Đã thành lập "${newGrp.name}" thành công!`);
+        renderGroupsAndFriends();
+      });
+    });
+  }
+
+  function jumpToOnlineCompanion(onlineInfo, peerName) {
+    if (onlineInfo && onlineInfo.roomId) {
+      const foundRoom = (state.teaRoom.rooms || []).find((r) => r.id === onlineInfo.roomId);
+      if (foundRoom) {
+        state.teaRoom.roomId = foundRoom.id;
+        state.teaRoom.tableIdx = Math.max(0, Math.min(foundRoom.tables.length - 1, onlineInfo.tableIdx || 0));
+        state.teaRoom.subView = "table";
+        state.teaRoom.log = foundRoom.tables[state.teaRoom.tableIdx].initialLog.slice();
+        lastTableActivityAt = Date.now();
+        saveState();
+        navigate("tearoom");
+        showToast(`Đã sang ngồi chung bàn với ${peerName}!`);
+        return;
+      }
+      // Check if roomId matches a group id (like d25-d3-1k2-mn75)
+      const grp = getGroupById(onlineInfo.roomId.replace(/^hoi-/, ""));
+      if (grp) {
+        enterGroupPrivateTeaRoom(grp);
+        return;
+      }
+    }
+    navigate("tearoom");
+  }
+
+  function renderGroupsAndFriends() {
+    // Handle deep link ?ketban=TB-xxxx if queued
+    if (state.social.pendingFriendCodeFromUrl) {
+      const pendingCode = state.social.pendingFriendCodeFromUrl;
+      delete state.social.pendingFriendCodeFromUrl;
+      saveState();
+      setTimeout(() => addFriendByCodeLookup(pendingCode), 150);
+    }
+
+    const tab = state.social.activeTab || "units";
+    const allGroups = getAllMergedGroups();
+    const onlineCount = countOnlineFriendsNow();
+    const livePeers = RT ? RT.getOnlinePeers() : [];
+
+    let bodyHtml = "";
+
+    if (tab === "units") {
+      if (state.social.subView === "detail") {
+        const g = getGroupById(state.social.selectedGroupId);
+        const isJoined = state.social.joinedGroupIds.includes(g.id);
+        const builtinMembers = (g.memberIds || [])
+          .map((sid) => (D.SENIOR_DIRECTORY || []).find((s) => s.id === sid))
+          .filter(Boolean);
+        const realMembers = Array.isArray(g.realMembers) ? g.realMembers : [];
+        const combinedRoster = realMembers.concat(
+          builtinMembers.filter((bm) => !realMembers.some((rm) => rm.memberCode === bm.memberCode))
+        );
+        const shareGroupUrl = `${getPublicBaseUrl()}?hoi=${encodeURIComponent(g.id)}`;
+        const qrImg = makeStandaloneQrDataUrl(shareGroupUrl, g.shortName || g.name);
+        const sharePost = `Thông báo Ban liên lạc ${g.name} (${g.subtitle || ""}): Mời anh chị em đồng đội bấm vào đường dẫn dưới đây để điểm danh quân số và ngồi Bàn trà 3D trực tuyến của đơn vị mình:\n${shareGroupUrl}`;
+
+        bodyHtml = `
+          <button type="button" class="btn-secondary" id="btn-back-group-list">← Xem tất cả Đơn vị &amp; Hội nhóm</button>
+
+          <div class="group-unit-card ${g.category === "veteran" ? "veteran" : ""}">
+            <div class="passcard-head">
+              <span class="badge-tag jade">${escHtml(
+                ((D.GROUP_CATEGORIES || []).find((c) => c.id === g.category) || { badge: "Hội nhóm" }).badge
+              )}</span>
+              <span class="online-status-pill"><span class="online-dot-live"></span>Quân số: ${combinedRoster.length} thành viên</span>
+            </div>
+            <h2>${escHtml(g.name)}</h2>
+            <p style="font-weight:700; color:var(--accent-terracotta);">${escHtml(g.subtitle || "")}</p>
+            ${
+              g.unitSpec
+                ? `<div class="unit-spec-badges">
+                     ${g.unitSpec.company ? `<span class="unit-spec-pill">${escHtml(g.unitSpec.company)}</span>` : ""}
+                     ${g.unitSpec.battalion ? `<span class="unit-spec-pill">${escHtml(g.unitSpec.battalion)}</span>` : ""}
+                     ${g.unitSpec.division ? `<span class="unit-spec-pill">${escHtml(g.unitSpec.division)}</span>` : ""}
+                     ${g.unitSpec.campaign ? `<span class="unit-spec-pill">${escHtml(g.unitSpec.campaign)}</span>` : ""}
+                   </div>`
+                : ""
+            }
+            <p style="font-size:0.92rem;">${escHtml(g.motto || "")}</p>
+            <small style="color:var(--ink-secondary);">${escHtml(g.leaderName || "")}</small>
+
+            <div class="btn-row">
+              <button type="button" class="btn-jade" id="btn-enter-unit-tearoom">
+                ${ico("tea")}
+                <span>Vào Bàn Trà 3D Đơn Vị</span>
+              </button>
+              <button type="button" class="btn-${isJoined ? "secondary" : "primary"}" id="btn-join-unit-roster">
+                ${ico("check")}
+                <span>${isJoined ? "Đã ghi tên Quân số" : "Ghi tên vào Đơn vị"}</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="surface-panel">
+            <h3>Bảng Quân Số &amp; Đèn Online Trực Tiếp (${combinedRoster.length})</h3>
+            <div style="display:flex; flex-direction:column; gap:10px;">
+              ${combinedRoster
+                .map((m, idx) => {
+                  const info = resolvePeerLiveOnlineInfo(m);
+                  const isMe = state.auth.isRegistered && m.memberCode === state.auth.memberCode;
+                  const alreadyFr = isMe || isAlreadyFriend(m);
+                  return `
+                    <div class="friend-row-card">
+                      <div class="friend-row-head">
+                        ${renderSeniorAvatarSvg(m)}
+                        <div class="friend-row-meta">
+                          <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; flex-wrap:wrap;">
+                            <strong>${escHtml(m.name)} · ${m.age || 68}t ${isMe ? "(Bạn)" : ""}</strong>
+                            <span class="online-status-pill ${info.online ? "" : "offline"}">
+                              <span class="online-dot-live ${info.online ? "" : "offline"}"></span>
+                              ${info.online ? "Đang Online" : "Tạm nghỉ"}
+                            </span>
+                          </div>
+                          <small style="color:var(--ink-secondary); font-size:0.88rem;">
+                            Quê ${escHtml(m.province || "Việt Nam")} ${m.memberCode ? `· Mã ${escHtml(m.memberCode)}` : ""} · ${escHtml(info.where)}
+                          </small>
+                        </div>
+                      </div>
+                      ${
+                        !isMe
+                          ? `<div class="btn-row">
+                               <button type="button" class="btn-${alreadyFr ? "secondary" : "jade"}" data-roster-friend="${idx}" ${alreadyFr ? "disabled" : ""}>
+                                 ${alreadyFr ? "Đã kết bạn" : "+ Kết bạn"}
+                               </button>
+                               <button type="button" class="btn-primary" data-roster-jump="${idx}">
+                                 Sang ngồi cùng
+                               </button>
+                             </div>`
+                          : ""
+                      }
+                    </div>
+                  `;
+                })
+                .join("")}
+            </div>
+          </div>
+
+          <div class="surface-panel">
+            <h3>Bảng Tin Ban Liên Lạc &amp; Hẹn Giờ Uống Trà</h3>
+            <div style="display:flex; gap:8px;">
+              <input type="text" class="input-lg" id="unit-bulletin-in" placeholder="Nhắn tin cho toàn đơn vị (VD: 8h sáng mai họp mặt nhé)..." style="flex:1;" />
+              <button type="button" class="btn-primary btn-inline" id="btn-post-bulletin">Đăng</button>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              ${(g.bulletins || [])
+                .slice(0, 6)
+                .map(
+                  (b) => `
+                  <div class="bulletin-item">
+                    <div style="display:flex; justify-content:space-between; gap:8px; font-size:0.88rem; color:var(--accent-terracotta); font-weight:700;">
+                      <span>${escHtml(b.author)}</span>
+                      <span>${escHtml(b.time || "")}</span>
+                    </div>
+                    <p>${escHtml(b.text)}</p>
+                  </div>
+                `
+                )
+                .join("")}
+            </div>
+          </div>
+
+          <div class="surface-panel warm">
+            <h3>Thẻ QR &amp; Đường Dẫn Mời Đồng Đội Vào Đơn Vị</h3>
+            <p style="font-size:0.88rem; color:var(--ink-secondary);">Gửi ảnh QR hoặc sao chép lời mời dưới đây dán vào nhóm Zalo Cựu chiến binh / Hội đồng niên:</p>
+            <img src="${qrImg}" alt="Mã QR chiêu tập đồng đội" style="width:100%; max-width:250px; margin:0 auto; display:block; border-radius:12px; border:1px solid var(--border-strong);" />
+            ${renderSocialShareKitHtml({
+              prefix: "unit-share",
+              copyLinkBtnId: "btn-copy-unit-link",
+              shareUrl: shareGroupUrl,
+              postText: sharePost
+            })}
+          </div>
+        `;
+      } else {
+        const filteredGroups =
+          activeGroupCatFilter === "all"
+            ? allGroups
+            : allGroups.filter((g) => g.category === activeGroupCatFilter);
+
+        bodyHtml = `
+          <div class="surface-panel jade">
+            <div class="passcard-head">
+              <strong>Tìm lại Đồng đội, Trường cũ &amp; Bạn đồng hương</strong>
+              <span class="badge-tag jade">${allGroups.length} hội đang mở</span>
+            </div>
+            <p style="font-size:0.9rem;">Lập riêng phiên hiệu đơn vị (như <strong>Đại đội 1K2 · D3 · Sư đoàn 25 · Chiến trường Miền Nam 75</strong>) có sẵn Bàn trà 3D riêng, bảng quân số Online và mã QR gửi nhóm Zalo.</p>
+            <button type="button" class="btn-primary" id="btn-open-create-group">
+              ${ico("users")}
+              <span>+ Lập Đơn Vị / Hội Nhóm Mới</span>
+            </button>
+          </div>
+
+          <div class="habit-grid" role="group" aria-label="Lọc loại hội nhóm">
+            <button type="button" class="habit-chip ${activeGroupCatFilter === "all" ? "selected" : ""}" data-gcat="all">Tất cả (${allGroups.length})</button>
+            ${(D.GROUP_CATEGORIES || [])
+              .map(
+                (c) =>
+                  `<button type="button" class="habit-chip ${activeGroupCatFilter === c.id ? "selected" : ""}" data-gcat="${c.id}">${escHtml(c.badge)}</button>`
+              )
+              .join("")}
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:12px;">
+            ${filteredGroups
+              .map((g) => {
+                const isJoined = state.social.joinedGroupIds.includes(g.id);
+                const totalMem = (g.memberIds || []).length + (g.realMembers || []).length;
+                return `
+                  <div class="group-unit-card ${g.category === "veteran" ? "veteran" : ""}">
+                    <div class="passcard-head">
+                      <span class="badge-tag ${g.category === "veteran" ? "jade" : "amber"}">${escHtml(
+                        ((D.GROUP_CATEGORIES || []).find((c) => c.id === g.category) || { badge: "Hội nhóm" }).badge
+                      )}</span>
+                      <span class="online-status-pill"><span class="online-dot-live"></span>${totalMem} thành viên</span>
+                    </div>
+                    <h3>${escHtml(g.name)}</h3>
+                    <p style="font-size:0.9rem; font-weight:600; color:var(--accent-terracotta);">${escHtml(g.subtitle || "")}</p>
+                    <p style="font-size:0.88rem; color:var(--ink-secondary);">${escHtml(g.motto || "")}</p>
+                    <div class="btn-row">
+                      <button type="button" class="btn-primary" data-open-group="${escHtml(g.id)}">
+                        ${isJoined ? "Mở Phòng Đơn Vị" : "Xem & Gia nhập"}
+                      </button>
+                      <button type="button" class="btn-jade" data-direct-tearoom="${escHtml(g.id)}">
+                        Vào Bàn Trà 3D
+                      </button>
+                    </div>
+                  </div>
+                `;
+              })
+              .join("")}
+          </div>
+        `;
+      }
+    } else if (tab === "friends") {
+      const sortedFriends = (state.social.friends || []).slice().sort((a, b) => {
+        const oa = resolvePeerLiveOnlineInfo(a).online ? 1 : 0;
+        const ob = resolvePeerLiveOnlineInfo(b).online ? 1 : 0;
+        return ob - oa;
+      });
+
+      bodyHtml = `
+        <div class="surface-panel warm">
+          <div class="passcard-head">
+            <strong>Kết bạn nhanh bằng Mã Thẻ Hội Viên</strong>
+            <span class="member-code-chip">${
+              state.auth.isRegistered ? `Mã của ${getUserPronoun()}: ${escHtml(state.auth.memberCode)}` : "Chưa mở Thẻ"
+            }</span>
+          </div>
+          <p style="font-size:0.88rem; color:var(--ink-secondary);">Đọc cho đồng đội 4 số Mã Thẻ (ví dụ <code>TB-103</code> hoặc mã máy bạn) để kết bạn và thấy nhau Online mỗi sáng:</p>
+          <div style="display:flex; gap:8px;">
+            <input type="text" class="input-lg num" id="add-friend-code-in" placeholder="Nhập mã TB-xxxx (VD: TB-103)" style="flex:1;" />
+            <button type="button" class="btn-primary btn-inline" id="btn-add-friend-by-code">+ Kết bạn</button>
+          </div>
+        </div>
+
+        ${
+          livePeers.length > 0
+            ? `
+          <div class="surface-panel jade">
+            <div class="passcard-head">
+              <strong>Người thật đang mở máy trực tuyến (${livePeers.length})</strong>
+              <span class="online-status-pill"><span class="online-dot-live"></span>Thời gian thực</span>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              ${livePeers
+                .map((lp, idx) => {
+                  const already = isAlreadyFriend(lp);
+                  return `
+                    <div class="friend-row-card">
+                      <div class="friend-row-head">
+                        ${renderSeniorAvatarSvg(lp)}
+                        <div class="friend-row-meta">
+                          <strong>${escHtml(lp.name)} · ${lp.age || 65}t (${escHtml(lp.province || "VN")})</strong>
+                          <small style="font-size:0.88rem; color:var(--accent-jade); font-weight:700;">
+                            ${lp.memberCode ? `Mã ${escHtml(lp.memberCode)} · ` : ""}${escHtml(lp.where || "Đang trực tuyến")}
+                          </small>
+                        </div>
+                      </div>
+                      <div class="btn-row">
+                        <button type="button" class="btn-${already ? "secondary" : "jade"}" data-live-add="${idx}" ${already ? "disabled" : ""}>
+                          ${already ? "Đã là Bạn bè" : "+ Kết bạn ngay"}
+                        </button>
+                        <button type="button" class="btn-primary" data-live-jump="${idx}">
+                          Sang ngồi cùng
+                        </button>
+                      </div>
+                    </div>
+                  `;
+                })
+                .join("")}
+            </div>
+          </div>
+        `
+            : ""
+        }
+
+        <div class="surface-panel">
+          <div class="passcard-head">
+            <h3>Danh sách Bạn Tâm Giao &amp; Đồng Đội (${sortedFriends.length})</h3>
+            <span class="online-status-pill"><span class="online-dot-live"></span>${onlineCount} đang Online</span>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            ${sortedFriends
+              .map((f, idx) => {
+                const info = resolvePeerLiveOnlineInfo(f);
+                return `
+                  <div class="friend-row-card">
+                    <div class="friend-row-head">
+                      ${renderSeniorAvatarSvg(f)}
+                      <div class="friend-row-meta">
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap:6px; flex-wrap:wrap;">
+                          <strong>${escHtml(f.name)} · ${f.age || 68}t</strong>
+                          <span class="online-status-pill ${info.online ? "" : "offline"}">
+                            <span class="online-dot-live ${info.online ? "" : "offline"}"></span>
+                            ${info.online ? "Đang Online" : "Ngoại tuyến"}
+                          </span>
+                        </div>
+                        <small style="font-size:0.88rem; color:var(--ink-secondary);">
+                          ${escHtml(f.province || "Việt Nam")} ${f.memberCode ? `· ${escHtml(f.memberCode)}` : ""} ${f.unitLabel ? `· ${escHtml(f.unitLabel)}` : ""}
+                        </small>
+                        <small style="font-size:0.88rem; font-weight:600; color:${info.online ? "var(--accent-jade)" : "var(--ink-secondary)"};">
+                          ${escHtml(info.where)}
+                        </small>
+                      </div>
+                    </div>
+                    <div class="btn-row">
+                      <button type="button" class="btn-primary" data-friend-jump="${idx}">
+                        ${ico("tea")}
+                        <span>Sang ngồi cùng</span>
+                      </button>
+                      <button type="button" class="btn-secondary" data-friend-chess="${idx}">
+                        ${ico("xiangqi")}
+                        <span>Rủ đánh Cờ</span>
+                      </button>
+                    </div>
+                  </div>
+                `;
+              })
+              .join("")}
+          </div>
+        </div>
+      `;
+    } else {
+      // Tab 3: Thẻ Hội Viên & Bảng Phân Quyền Mở Tự Do vs Cần Đăng Ký
+      const tier = D.AUTH_TIER_GUIDE || { freeFeatures: [], memberFeatures: [] };
+      bodyHtml = `
+        <div class="passcard-banner ${state.auth.isRegistered ? "verified" : ""}">
+          <div class="passcard-head">
+            <strong>${
+              state.auth.isRegistered
+                ? `Thẻ Hội Viên Đang Hoạt Động: ${escHtml(state.auth.memberCode)}`
+                : "Chưa mở Thẻ Hội Viên (Đang dùng chế độ Mở Cửa Tự Do)"
+            }</strong>
+            <span class="member-code-chip">${state.auth.isRegistered ? escHtml(state.auth.phoneMasked) : "0 mật khẩu"}</span>
+          </div>
+          <p style="font-size:0.9rem;">
+            ${
+              state.auth.isRegistered
+                ? "Bấm nút dưới đây để tải Ảnh Thẻ Hội Viên QR về máy (phòng khi đổi điện thoại mới chỉ cần quét ảnh là vào lại ngay)."
+                : "Chỉ mất 10 giây điền Số điện thoại + 4 số dễ nhớ (như năm nhập ngũ 1975). Không cần Email, không sợ quên mật khẩu."
+            }
+          </p>
+          <button type="button" class="btn-primary" id="btn-auth-guide-open-modal">
+            ${ico("card")}
+            <span>${state.auth.isRegistered ? "Xem & Lưu Ảnh Thẻ Hội Viên QR" : "Cấp Thẻ Hội Viên / Đăng Nhập Ngay (10s)"}</span>
+          </button>
+        </div>
+
+        <div class="surface-panel jade">
+          <h3>Tầng 0 — Mở Cửa Tự Do (Không cần đăng ký)</h3>
+          <ul class="tier-compare-list">
+            ${tier.freeFeatures.map((item) => `<li>${escHtml(item)}</li>`).join("")}
+          </ul>
+        </div>
+
+        <div class="surface-panel warm">
+          <h3>Tầng 1 — Cần Thẻ Hội Viên (Giữ Bạn bè &amp; Đơn vị lâu dài)</h3>
+          <ul class="tier-compare-list">
+            ${tier.memberFeatures.map((item) => `<li>${escHtml(item)}</li>`).join("")}
+          </ul>
+        </div>
+      `;
+    }
+
+    els.main.innerHTML = `
+      <h1>Hội Đồng Ngũ · CLB &amp; Kết Bạn</h1>
+      <p class="lead-copy">Tập hợp đồng đội đơn vị cũ, bạn học đồng niên, thấy nhau sáng đèn Online mỗi sáng và vào thẳng Bàn trà 3D riêng.</p>
+
+      <div class="social-top-tabs" role="tablist" aria-label="Chọn mục Hội nhóm, Bạn bè hoặc Thẻ Hội Viên">
+        <button type="button" class="social-tab-btn ${tab === "units" ? "active" : ""}" data-soc-tab="units">Đơn vị &amp; Hội</button>
+        <button type="button" class="social-tab-btn ${tab === "friends" ? "active" : ""}" data-soc-tab="friends">Bạn Online (${onlineCount})</button>
+        <button type="button" class="social-tab-btn ${tab === "auth-guide" ? "active" : ""}" data-soc-tab="auth-guide">Thẻ Hội Viên</button>
+      </div>
+
+      ${bodyHtml}
+    `;
+
+    els.main.querySelectorAll("[data-soc-tab]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        state.social.activeTab = btn.dataset.socTab;
+        if (btn.dataset.socTab !== "units") state.social.subView = "list";
+        saveState();
+        renderGroupsAndFriends();
+      });
+    });
+
+    // Units List bindings
+    const createGrpBtn = document.getElementById("btn-open-create-group");
+    if (createGrpBtn) createGrpBtn.addEventListener("click", openCreateGroupModal);
+
+    els.main.querySelectorAll("[data-gcat]").forEach((chip) => {
+      chip.addEventListener("click", () => {
+        activeGroupCatFilter = chip.dataset.gcat;
+        renderGroupsAndFriends();
+      });
+    });
+
+    els.main.querySelectorAll("[data-open-group]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        state.social.selectedGroupId = btn.dataset.openGroup;
+        state.social.subView = "detail";
+        saveState();
+        syncMyGlobalOnlinePresence();
+        renderGroupsAndFriends();
+      });
+    });
+
+    els.main.querySelectorAll("[data-direct-tearoom]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const g = getGroupById(btn.dataset.directTearoom);
+        enterGroupPrivateTeaRoom(g);
+      });
+    });
+
+    // Unit Detail bindings
+    const backListBtn = document.getElementById("btn-back-group-list");
+    if (backListBtn) {
+      backListBtn.addEventListener("click", () => {
+        state.social.subView = "list";
+        saveState();
+        renderGroupsAndFriends();
+      });
+    }
+
+    const enterUnitTeaBtn = document.getElementById("btn-enter-unit-tearoom");
+    if (enterUnitTeaBtn) {
+      enterUnitTeaBtn.addEventListener("click", () => {
+        enterGroupPrivateTeaRoom(getGroupById(state.social.selectedGroupId));
+      });
+    }
+
+    const joinRosterBtn = document.getElementById("btn-join-unit-roster");
+    if (joinRosterBtn) {
+      joinRosterBtn.addEventListener("click", () => {
+        joinGroupUnit(getGroupById(state.social.selectedGroupId));
+      });
+    }
+
+    if (tab === "units" && state.social.subView === "detail") {
+      const g = getGroupById(state.social.selectedGroupId);
+      const builtinMembers = (g.memberIds || [])
+        .map((sid) => (D.SENIOR_DIRECTORY || []).find((s) => s.id === sid))
+        .filter(Boolean);
+      const realMembers = Array.isArray(g.realMembers) ? g.realMembers : [];
+      const combinedRoster = realMembers.concat(
+        builtinMembers.filter((bm) => !realMembers.some((rm) => rm.memberCode === bm.memberCode))
+      );
+
+      els.main.querySelectorAll("[data-roster-friend]").forEach((b) => {
+        b.addEventListener("click", () => {
+          const m = combinedRoster[Number(b.dataset.rosterFriend)];
+          if (m) requestAddFriendWithAuth(Object.assign({}, m, { unitLabel: g.shortName || g.name }));
+        });
+      });
+
+      els.main.querySelectorAll("[data-roster-jump]").forEach((b) => {
+        b.addEventListener("click", () => {
+          const m = combinedRoster[Number(b.dataset.rosterJump)];
+          if (m) jumpToOnlineCompanion(resolvePeerLiveOnlineInfo(m), m.name);
+        });
+      });
+
+      const postBulBtn = document.getElementById("btn-post-bulletin");
+      if (postBulBtn) {
+        postBulBtn.addEventListener("click", () => {
+          const txt = (document.getElementById("unit-bulletin-in").value || "").trim();
+          if (!txt) {
+            showToast("Vui lòng nhập nội dung thông báo gửi đồng đội.");
+            return;
+          }
+          requireMemberCard("Đăng thông báo lên Bảng tin Đơn vị", () => {
+            if (!Array.isArray(g.bulletins)) g.bulletins = [];
+            g.bulletins.unshift({
+              author: `${state.user.name} · ${getUserAge()} tuổi`,
+              time: "Vừa xong",
+              text: txt
+            });
+            saveState();
+            if (RT) RT.publishGroup(g);
+            showToast("Đã đăng thông báo lên Bảng tin Đơn vị!");
+            renderGroupsAndFriends();
+          });
+        });
+      }
+
+      const shareGroupUrl = `${getPublicBaseUrl()}?hoi=${encodeURIComponent(g.id)}`;
+      const sharePost = `Thông báo Ban liên lạc ${g.name} (${g.subtitle || ""}): Mời anh chị em đồng đội bấm vào đường dẫn dưới đây để điểm danh quân số và ngồi Bàn trà 3D trực tuyến của đơn vị mình:\n${shareGroupUrl}`;
+      bindSocialShareKit({
+        prefix: "unit-share",
+        copyLinkBtnId: "btn-copy-unit-link",
+        shareUrl: shareGroupUrl,
+        postText: sharePost
+      });
+    }
+
+    // Friends Tab bindings
+    const addByCodeBtn = document.getElementById("btn-add-friend-by-code");
+    if (addByCodeBtn) {
+      addByCodeBtn.addEventListener("click", () => {
+        const val = document.getElementById("add-friend-code-in").value;
+        addFriendByCodeLookup(val);
+      });
+    }
+
+    els.main.querySelectorAll("[data-live-add]").forEach((b) => {
+      b.addEventListener("click", () => {
+        const lp = livePeers[Number(b.dataset.liveAdd)];
+        if (lp) requestAddFriendWithAuth(lp);
+      });
+    });
+
+    els.main.querySelectorAll("[data-live-jump]").forEach((b) => {
+      b.addEventListener("click", () => {
+        const lp = livePeers[Number(b.dataset.liveJump)];
+        if (lp) jumpToOnlineCompanion({ online: true, roomId: lp.roomId, tableIdx: lp.tableIdx }, lp.name);
+      });
+    });
+
+    if (tab === "friends") {
+      const sortedFriends = (state.social.friends || []).slice().sort((a, b) => {
+        const oa = resolvePeerLiveOnlineInfo(a).online ? 1 : 0;
+        const ob = resolvePeerLiveOnlineInfo(b).online ? 1 : 0;
+        return ob - oa;
+      });
+
+      els.main.querySelectorAll("[data-friend-jump]").forEach((b) => {
+        b.addEventListener("click", () => {
+          const f = sortedFriends[Number(b.dataset.friendJump)];
+          if (f) jumpToOnlineCompanion(resolvePeerLiveOnlineInfo(f), f.name);
+        });
+      });
+
+      els.main.querySelectorAll("[data-friend-chess]").forEach((b) => {
+        b.addEventListener("click", () => {
+          const f = sortedFriends[Number(b.dataset.friendChess)];
+          switchXiangqiMode("async");
+          navigate("xiangqi");
+          if (f) showToast(`Đã tạo ván Cờ Tướng 9×10 — hãy chép link gửi cho ${f.name}!`);
+        });
+      });
+    }
+
+    // Auth Guide Tab binding
+    const authGuideBtn = document.getElementById("btn-auth-guide-open-modal");
+    if (authGuideBtn) {
+      authGuideBtn.addEventListener("click", () => openMemberAuthModal());
+    }
+  }
+
   // ==================== ROUTER & GLOBAL TIMERS ====================
   function render() {
     updateGlobalChrome();
     switch (state.route) {
+      case "groups":
+        renderGroupsAndFriends();
+        break;
       case "checkin":
         renderCheckin();
         break;
@@ -5832,6 +7578,57 @@
       }, 160);
     });
 
+    let onlineDebounceId = null;
+    RT.on("online", () => {
+      updateGlobalChrome();
+      clearTimeout(onlineDebounceId);
+      onlineDebounceId = setTimeout(() => {
+        if (state.route === "groups") {
+          const activeTag = document.activeElement && document.activeElement.tagName;
+          if (activeTag !== "INPUT" && activeTag !== "TEXTAREA") {
+            renderGroupsAndFriends();
+          }
+        }
+      }, 220);
+    });
+
+    let groupsDebounceId = null;
+    RT.on("groups", () => {
+      clearTimeout(groupsDebounceId);
+      groupsDebounceId = setTimeout(() => {
+        getAllMergedGroups();
+        saveState();
+        if (state.route === "groups") {
+          const activeTag = document.activeElement && document.activeElement.tagName;
+          if (activeTag !== "INPUT" && activeTag !== "TEXTAREA") {
+            renderGroupsAndFriends();
+          }
+        }
+      }, 220);
+    });
+
+    RT.on("friends", (pkt) => {
+      if (!pkt || !pkt.fromCode) return;
+      const incoming = {
+        memberCode: pkt.fromCode,
+        name: pkt.fromName || `Đồng đội ${pkt.fromCode}`,
+        age: pkt.fromAge || 68,
+        province: pkt.fromProvince || "Việt Nam",
+        provinceId: pkt.fromProvinceId || "ha-noi",
+        outfitColor: pkt.fromOutfitColor || "#3E5634",
+        hat: pkt.fromHat || "cap",
+        unitLabel: pkt.fromUnit || "",
+        isRealPeer: true
+      };
+      if (!isAlreadyFriend(incoming)) {
+        state.social.friends.unshift(incoming);
+        saveState();
+        syncMyCloudAccountBackup();
+        showToast(`${incoming.name} (${incoming.memberCode}) vừa kết bạn với bác!`);
+        if (state.route === "groups") renderGroupsAndFriends();
+      }
+    });
+
     RT.on("match", (m) => {
       if (!m || !m.matchId) return;
       const myCid = RT.getClientId();
@@ -5883,6 +7680,10 @@
   const simOpenXq = document.getElementById("sim-open-xiangqi");
   if (simOpenXq) {
     simOpenXq.addEventListener("click", () => navigate("xiangqi"));
+  }
+  const simOpenGroups = document.getElementById("sim-open-groups");
+  if (simOpenGroups) {
+    simOpenGroups.addEventListener("click", () => navigate("groups"));
   }
 
   els.btnFont.addEventListener("click", () => {
@@ -5965,6 +7766,14 @@
   }
 
   applyUrlDeepLinkIfPresent();
-  if (RT) RT.start();
+  if (RT) {
+    RT.start();
+    setTimeout(() => {
+      syncMyGlobalOnlinePresence();
+      if (state.auth && state.auth.isRegistered) {
+        syncMyCloudAccountBackup();
+      }
+    }, 500);
+  }
   render();
 })();

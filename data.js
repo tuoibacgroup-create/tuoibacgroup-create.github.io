@@ -112,6 +112,15 @@ window.TuoiBacData = (function () {
       color: "#B6731E",
       rimHex: 0xf0b23a,
       cost: 15
+    },
+    {
+      id: "dong-ngu",
+      name: "Đồng Đội Năm Xưa",
+      shortTag: "Đồng Ngũ",
+      desc: "Khung xanh quân đội viền sao đồng (tự mở khi gia nhập hoặc lập Đơn vị Đồng ngũ)",
+      color: "#435B35",
+      rimHex: 0x6b8f4e,
+      cost: 0
     }
   ];
 
@@ -1162,6 +1171,155 @@ window.TuoiBacData = (function () {
     { name: "Chị Hoa · 63 tuổi", province: "Đà Nẵng", score: 310, title: "Thành viên Chăm Điểm Danh", tag: "Người mới" }
   ];
 
+  // Gán Mã Thẻ Hội Viên & trạng thái hoạt động trực tuyến cho danh bạ bạn đồng niên
+  const DIRECTORY_ACTIVITIES = [
+    { roomId: "phong-tra", tableIdx: 0, online: true, where: "Đang ở Bàn 1: Trà Sen Sáng" },
+    { roomId: "d25-d3-1k2-mn75", tableIdx: 0, online: true, where: "Đang ở Bàn trà Đại đội 1K2 · D3 · Sư đoàn 25" },
+    { roomId: "phong-tra", tableIdx: 0, online: true, where: "Đang ở Bàn 1: Trà Sen Sáng" },
+    { roomId: "phong-cay", tableIdx: 0, online: false, where: "Vừa điểm danh sáng nay" },
+    { roomId: "phong-co", tableIdx: 0, online: true, where: "Đang giải Cờ Thế (Phòng Cờ)" },
+    { roomId: "phong-tra", tableIdx: 2, online: false, where: "Online 25 phút trước" },
+    { roomId: "phong-tra", tableIdx: 3, online: true, where: "Đang ở Bàn 4: Dưỡng Sinh" },
+    { roomId: "phong-co", tableIdx: 1, online: true, where: "Đang đánh Cờ Tướng 9×10" },
+    { roomId: "d25-d3-1k2-mn75", tableIdx: 0, online: true, where: "Đang trực Bàn trà Đại đội 1K2 · D3 · Sư đoàn 25" },
+    { roomId: "phong-tho", tableIdx: 0, online: false, where: "Vừa ngâm thơ lục bát" },
+    { roomId: "phong-tra", tableIdx: 5, online: true, where: "Đang ở Bàn 6: Ký Ức Bao Cấp" },
+    { roomId: "phong-tra", tableIdx: 1, online: false, where: "Đang đọc Tờ Báo Sáng" },
+    { roomId: "phong-tho", tableIdx: 0, online: true, where: "Đang ở Phòng Thơ Lục Bát" },
+    { roomId: "phong-tho", tableIdx: 1, online: true, where: "Đang tặng hoa Sân Thơ" },
+    { roomId: "phong-co", tableIdx: 0, online: true, where: "Đang giải Thế 4: Thiết Môn Thuyên" },
+    { roomId: "d25-d3-1k2-mn75", tableIdx: 0, online: true, where: "Đang ở Bàn trà Đại đội 1K2 · D3 · Sư đoàn 25" },
+    { roomId: "d25-d3-1k2-mn75", tableIdx: 0, online: true, where: "Đang điểm danh quân số Đại đội 1K2" },
+    { roomId: "phong-tra", tableIdx: 2, online: false, where: "Vừa điểm danh sáng nay" }
+  ];
+
+  SENIOR_DIRECTORY.forEach((s, idx) => {
+    s.memberCode = `TB-${101 + idx}`;
+    const act = DIRECTORY_ACTIVITIES[idx % DIRECTORY_ACTIVITIES.length];
+    s.onlineNow = act.online;
+    s.onlineWhere = act.where;
+    s.onlineRoomId = act.roomId;
+    s.onlineTableIdx = act.tableIdx;
+  });
+
+  // Phân loại Hội nhóm / Đơn vị
+  const GROUP_CATEGORIES = [
+    { id: "veteran", label: "Đơn vị Quân đội / Đồng ngũ", badge: "Đồng ngũ" },
+    { id: "school", label: "Đồng niên / Trường cũ", badge: "Đồng niên" },
+    { id: "hometown", label: "Hội Đồng hương", badge: "Đồng hương" },
+    { id: "hobby", label: "CLB Cờ · Thơ · Cây cảnh", badge: "Câu lạc bộ" }
+  ];
+
+  // Các Đơn vị / Hội nhóm khởi tạo sẵn (có mẫu chuẩn Đại đội 1K2 · D3 · Sư đoàn 25 · Miền Nam 75)
+  const INITIAL_GROUPS = [
+    {
+      id: "d25-d3-1k2-mn75",
+      name: "Đại đội 1K2 · Tiểu đoàn 3 (D3) · Sư đoàn 25",
+      shortName: "Đại đội 1K2 · D3 · F25",
+      category: "veteran",
+      unitSpec: {
+        company: "Đại đội 1K2",
+        battalion: "Tiểu đoàn 3 (D3)",
+        division: "Sư đoàn 25",
+        campaign: "Chiến trường Miền Nam 75"
+      },
+      subtitle: "Chiến trường Miền Nam 75 (Đông Nam Bộ – Tây Ninh – Củ Chi)",
+      motto: "Anh em Đại đội 1K2 – D3 – Sư đoàn 25 giữ ấm tình đồng chí: sáng điểm danh quân số, pha ấm trà ôn kỷ niệm chiến trường Miền Nam mùa Xuân 1975.",
+      leaderName: "Anh Minh · 71 tuổi (Trưởng ban liên lạc)",
+      joinPin: "",
+      memberIds: ["minh", "vinh", "hung-ccb", "quynh"],
+      realMembers: [],
+      bulletins: [
+        {
+          author: "Anh Minh · 71 tuổi (Ban liên lạc)",
+          time: "Sáng nay · 06:30",
+          text: "Chào anh em Đại đội 1K2 - D3 - F25! Tôi vừa mở Bàn trà trực tuyến của đơn vị mình, anh em vào điểm danh sức khỏe và gửi đường dẫn cho các đồng đội ở tỉnh xa nhé."
+        },
+        {
+          author: "Anh Cường · 73 tuổi (Quảng Trị)",
+          time: "Sáng nay · 07:05",
+          text: "Ngồi đây nghe tiếng anh em trò chuyện lại nhớ những đêm hành quân Đông Nam Bộ mùa khô 75. Chúc toàn đại đội luôn dẻo dai!"
+        }
+      ]
+    },
+    {
+      id: "hoi-dong-nien-7x",
+      name: "Hội Cựu Giáo Chức & Bạn Học Thập Niên 70",
+      shortName: "Cựu Giáo Chức 7X",
+      category: "school",
+      unitSpec: null,
+      subtitle: "Giao lưu thơ lục bát, chuyện bục giảng xưa & sức khỏe tuổi hưu",
+      motto: "Mái đầu bạc vẫn vẹn nguyên tình thầy trò, bạn học năm xưa.",
+      leaderName: "Chị Lan · 68 tuổi (Hà Nội)",
+      joinPin: "",
+      memberIds: ["lan", "mai", "dung", "thu"],
+      realMembers: [],
+      bulletins: [
+        {
+          author: "Chị Lan · 68 tuổi (Hà Nội)",
+          time: "Sáng nay · 06:45",
+          text: "Sáng thứ Bảy tuần này hội mình tổ chức xướng họa thơ thu tại Bàn trà riêng của hội nhé các anh chị."
+        }
+      ]
+    },
+    {
+      id: "clb-ky-huu-bonsai",
+      name: "CLB Kỳ Hữu Cờ Tướng & Cây Cảnh Ba Miền",
+      shortName: "CLB Cờ & Bonsai",
+      category: "hobby",
+      unitSpec: null,
+      subtitle: "Giải 6 thế cờ giang hồ, giao lưu ván treo 9×10 & chăm cây cảnh",
+      motto: "Sáng tỉa cành tùng, trưa bày thế cờ — vui khỏe minh mẫn mỗi ngày.",
+      leaderName: "Anh Thành · 69 tuổi (Ninh Bình)",
+      joinPin: "",
+      memberIds: ["thanh", "tu", "phat", "bay"],
+      realMembers: [],
+      bulletins: [
+        {
+          author: "Anh Thành · 69 tuổi (Ninh Bình)",
+          time: "Sáng nay · 07:15",
+          text: "Mời các kỳ hữu thử sức Thế 4 Thiết Môn Thuyên và Thế 6 Song Pháo Lồng Mã mới cập nhật trong Phòng Cờ!"
+        }
+      ]
+    },
+    {
+      id: "hoi-dong-huong-nam-bo",
+      name: "Hội Đồng Hương Sông Nước Miền Tây",
+      shortName: "Đồng Hương Miền Tây",
+      category: "hometown",
+      unitSpec: null,
+      subtitle: "Cần Thơ – Đồng Tháp – Vĩnh Long – An Giang – Cà Mau",
+      motto: "Dù ở quê nhà hay đi xa thăm con cháu, vào bàn trà là nghe giọng quê hương.",
+      leaderName: "Anh Phát · 66 tuổi (Cần Thơ)",
+      joinPin: "",
+      memberIds: ["phat", "binh", "bay", "sau"],
+      realMembers: [],
+      bulletins: [
+        {
+          author: "Anh Phát · 66 tuổi (Cần Thơ)",
+          time: "Sáng nay · 06:50",
+          text: "Mời bà con đồng hương miền Tây ghé uống trà sáng, nghe tin mùa nước nổi và giá lúa mới."
+        }
+      ]
+    }
+  ];
+
+  // Bảng phân định rõ tính năng nào Mở Cửa Tự Do vs tính năng nào Cần Thẻ Hội Viên
+  const AUTH_TIER_GUIDE = {
+    freeFeatures: [
+      "Điểm danh bình an buổi sáng & xem bản đồ đèn sáng 34 tỉnh thành",
+      "Đọc Tờ Báo Sáng chữ to, nghe Đọc to tiếng Việt, giải Đố vui",
+      "Đánh Cờ Tướng 9×10 (32 quân) với Máy & Giải 6 thế Cờ Thế cổ phổ",
+      "Ghé ngồi thử Bàn trà công cộng, Nghe thơ & Góc tĩnh tâm"
+    ],
+    memberFeatures: [
+      "Lập hoặc Gia nhập Đơn vị Đồng ngũ (như Đại đội 1K2 · D3 · Sư đoàn 25) & giữ bảng quân số",
+      "Kết bạn tâm giao & thấy đèn xanh Bạn bè Đang Online ở bàn trà nào để sang ngồi cùng",
+      "Đổi điện thoại mới hoặc lỡ xóa trình duyệt vẫn lấy lại 100% Bạn bè, Đơn vị, Xu & Khung 3D",
+      "Cấp ảnh Thẻ Hội Viên QR cất vào máy — quét lại 1 chạm không cần nhớ mật khẩu phức tạp"
+    ]
+  };
+
   return {
     PROVINCES,
     OUTFITS,
@@ -1171,6 +1329,9 @@ window.TuoiBacData = (function () {
     IDLE_ICEBREAKERS,
     HABIT_TAGS,
     SENIOR_DIRECTORY,
+    GROUP_CATEGORIES,
+    INITIAL_GROUPS,
+    AUTH_TIER_GUIDE,
     ROOM_TEMPLATES,
     cloneRoomTemplate,
     TEA_TABLES,
