@@ -47,6 +47,7 @@ window.TuoiBacRealtime = (function () {
     groups: [],
     friends: [],
     memberLogs: [],
+    telemetry: [],
     tableMeta: [],
     temple: [],
     chat: [],
@@ -225,6 +226,13 @@ window.TuoiBacRealtime = (function () {
       if (!payload.id) return;
       memberLogsById[payload.id] = payload;
       emit("memberLogs", getMemberLogs());
+    } else if (kind === "telemetry") {
+      if (!payload.id) return;
+      if (payload.clientId === clientId) return;
+      if (window.TuoiBacTelemetry && typeof window.TuoiBacTelemetry.ingestRemoteEvent === "function") {
+        window.TuoiBacTelemetry.ingestRemoteEvent(payload);
+      }
+      emit("telemetry", payload);
     } else if (kind === "tableMeta") {
       if (!payload.tableKey) return;
       customTablesByKey[payload.tableKey] = payload;
@@ -371,6 +379,7 @@ window.TuoiBacRealtime = (function () {
       mqttClient.subscribe(`${TOPIC_ROOT}/tablemeta/+`, { qos: 0 });
       mqttClient.subscribe(`${TOPIC_ROOT}/temple/+`, { qos: 0 });
       mqttClient.subscribe(`${TOPIC_ROOT}/memberlogs/+`, { qos: 0 });
+      mqttClient.subscribe(`${TOPIC_ROOT}/telemetry/+`, { qos: 0 });
       if (myMemberCode) {
         mqttClient.subscribe(`${TOPIC_ROOT}/friends/${myMemberCode}/+`, { qos: 1 });
       }
@@ -492,6 +501,11 @@ window.TuoiBacRealtime = (function () {
           } else {
             handleIncomingPacket("memberLog", arr);
           }
+        } catch (e) {}
+      } else if (parts[0] === "telemetry" && parts[1]) {
+        if (!str) return;
+        try {
+          handleIncomingPacket("telemetry", JSON.parse(str));
         } catch (e) {}
       }
     });
@@ -1184,6 +1198,7 @@ window.TuoiBacRealtime = (function () {
             user_name: pkt.userName || "",
             province: pkt.province || "",
             ritual_kind: pkt.ritualKind || "incense",
+            cushion_idx: typeof pkt.cushionIdx === "number" ? pkt.cushionIdx : 2,
             prayer_text: pkt.prayerText
           })
           .then(() => {})
@@ -1191,6 +1206,47 @@ window.TuoiBacRealtime = (function () {
       }
     }
     postLocalBroadcast("temple", pkt);
+  }
+
+  function publishTelemetryEvent(evObj) {
+    if (!evObj || !evObj.id) return;
+    const pkt = Object.assign({}, evObj, { clientId });
+    const ownerKey = String(pkt.memberCode || clientId).replace(/[^a-zA-Z0-9_-]/g, "_");
+    if (mqttClient && connected) {
+      mqttClient.publish(`${TOPIC_ROOT}/telemetry/${ownerKey}`, JSON.stringify(pkt), { qos: 0, retain: false });
+    }
+    if (sbChannel && connected) {
+      sbChannel.send({ type: "broadcast", event: "tb_event", payload: { kind: "telemetry", data: pkt } });
+      if (sbClient) {
+        const m = pkt.meta || {};
+        sbClient
+          .from("member_telemetry_events")
+          .insert({
+            id: pkt.id,
+            seq: pkt.seq || 0,
+            member_code: pkt.memberCode || clientId,
+            client_id: clientId,
+            user_name: pkt.userName || "",
+            age: pkt.age || 65,
+            province: pkt.province || "",
+            seniority_level: pkt.seniorityLevel || 0,
+            seniority_title: pkt.seniorityTitle || "",
+            hour_of_day: typeof pkt.hour === "number" ? pkt.hour : 6,
+            day_of_week: typeof pkt.dayOfWeek === "number" ? pkt.dayOfWeek : 0,
+            time_bucket: pkt.timeBucket || "sang_som_5_7",
+            dwell_sec: pkt.dwellSec || 0,
+            event_type: pkt.eventType || "interaction",
+            module: pkt.module || "home",
+            sub_action: pkt.subAction || "",
+            input_method: m.inputMethod || "",
+            word_count: m.wordCount || 0,
+            payload_json: pkt
+          })
+          .then(() => {})
+          .catch(() => {});
+      }
+    }
+    postLocalBroadcast("telemetry", pkt);
   }
 
   function getTemplePrayers() {
@@ -1246,6 +1302,7 @@ window.TuoiBacRealtime = (function () {
     getSharedPoems,
     publishMemberLog,
     getMemberLogs,
+    publishTelemetryEvent,
     publishTableCustomMeta,
     getAllTableCustomMeta,
     publishTempleRitual,

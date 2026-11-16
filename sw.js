@@ -1,10 +1,13 @@
-const CACHE_VERSION = "tuoibac-pwa-v12";
+const CACHE_VERSION = "tuoibac-pwa-v13";
 const CORE_ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
   "./data.js",
+  "./progression.js",
+  "./telemetry.js",
   "./tearoom3d.js",
+  "./temple3d.js",
   "./xiangqi.js",
   "./realtime.js",
   "./app.js",

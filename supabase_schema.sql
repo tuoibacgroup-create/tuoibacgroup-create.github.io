@@ -143,16 +143,45 @@ create table if not exists public.custom_tea_tables (
   updated_at timestamptz not null default now()
 );
 
--- Bảng Viếng Chùa & Chánh Điện Online (Dâng hương, lời cầu bình an, rút Thẻ An Lạc)
+-- Bảng Viếng Chùa & Chánh Điện Online 3D (Dâng hương, treo Thẻ Đỏ ước nguyện sân chùa, thả Hoa Đăng hồ sen, Bồ Đoàn)
 create table if not exists public.temple_prayers (
   id text primary key,
   member_code text not null default '',
   user_name text not null,
   province text not null default '',
   ritual_kind text not null default 'incense',
+  cushion_idx int not null default 2,
   prayer_text text not null default '',
   created_at timestamptz not null default now()
 );
+
+-- Bảng Kho Lưu Trữ 100% Sự Kiện AI Telemetry Toàn Thành Viên (Giờ giấc, thời lượng màn hình, kiểu chat, chủ đề, đối thoại)
+create table if not exists public.member_telemetry_events (
+  id text primary key,
+  seq bigint not null default 0,
+  member_code text not null,
+  client_id text not null,
+  user_name text not null default '',
+  age int not null default 65,
+  province text not null default '',
+  seniority_level int not null default 0,
+  seniority_title text not null default '',
+  hour_of_day int not null default 6,
+  day_of_week int not null default 0,
+  time_bucket text not null default 'sang_som_5_7',
+  dwell_sec int not null default 0,
+  event_type text not null,
+  module text not null default 'home',
+  sub_action text not null default '',
+  input_method text not null default '',
+  word_count int not null default 0,
+  payload_json jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_member_telemetry_member_time
+  on public.member_telemetry_events (member_code, created_at desc);
+create index if not exists idx_member_telemetry_hour_type
+  on public.member_telemetry_events (hour_of_day, event_type);
 
 -- Bật Row Level Security (cho phép khách không cần tạo tài khoản đọc/ghi an toàn trong MVP)
 alter table public.morning_checkins enable row level security;
@@ -168,6 +197,7 @@ alter table public.friend_links enable row level security;
 alter table public.member_activity_logs enable row level security;
 alter table public.custom_tea_tables enable row level security;
 alter table public.temple_prayers enable row level security;
+alter table public.member_telemetry_events enable row level security;
 
 drop policy if exists "mvp_public_checkins" on public.morning_checkins;
 create policy "mvp_public_checkins" on public.morning_checkins for all using (true) with check (true);
@@ -207,3 +237,6 @@ create policy "mvp_public_custom_tea_tables" on public.custom_tea_tables for all
 
 drop policy if exists "mvp_public_temple_prayers" on public.temple_prayers;
 create policy "mvp_public_temple_prayers" on public.temple_prayers for all using (true) with check (true);
+
+drop policy if exists "mvp_public_member_telemetry_events" on public.member_telemetry_events;
+create policy "mvp_public_member_telemetry_events" on public.member_telemetry_events for all using (true) with check (true);

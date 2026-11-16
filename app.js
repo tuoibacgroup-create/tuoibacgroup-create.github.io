@@ -9,6 +9,8 @@
   const STORAGE_KEY = URL_SLOT ? `tuoi_bac_sim_v7_${URL_SLOT}` : "tuoi_bac_sim_v7";
   const VAULT_BACKUP_KEY = `${STORAGE_KEY}_vault_bak`;
   const D = window.TuoiBacData;
+  const PROG = window.TuoiBacProgression;
+  const TEL = window.TuoiBacTelemetry;
   const XQ = window.TuoiBacXiangqi;
   const RT = window.TuoiBacRealtime;
 
@@ -70,6 +72,16 @@
         titleFrameId: "tri-am",
         xu: 35,
         seniorityPoints: 28,
+        skillPoints: {
+          tea_host: 4,
+          xiangqi: 3,
+          poetry: 2,
+          folk_games: 2,
+          morning_habit: 4,
+          comrade_social: 3,
+          temple_zen: 3,
+          voice_wisdom: 2
+        },
         flowersLeft: 3,
         giftedPoemIds: [],
         checkedInToday: false,
@@ -183,23 +195,30 @@
       },
       zen: {
         spaceIdx: 0,
+        cameraView: "wide",
+        userCushionIdx: 2,
         incenseLit: true,
         incenseCount: 14,
         muyuCount: 0,
         bellCount: 0,
         lanternsReleased: 18,
+        wishPlaquesCount: 16,
         peaceCardIdx: 0,
         prayers: [
           {
             id: "seed-p1",
             userName: "Chị Lan · 68t",
             province: "Hà Nội",
+            ritualKind: "wish_plaque",
+            cushionIdx: 1,
             prayerText: "Cầu chúc đại gia đình bình an, các con đi làm xa mạnh khỏe thuận hòa."
           },
           {
             id: "seed-p2",
             userName: "Anh Minh · 71t",
             province: "Hải Phòng",
+            ritualKind: "incense",
+            cushionIdx: 3,
             prayerText: "Tưởng nhớ đồng đội năm xưa, chúc anh em Sư đoàn 25 luôn dẻo dai."
           }
         ]
@@ -224,7 +243,7 @@
   let pendingQueue = [];
   let pendingVoiceDraft = null;
   let activeGameTab = "oaq";
-  let activeLeaderTab = "Tỉnh";
+  let activeLeaderTab = "Cay32";
   let activeRankProvinceFilter = "all";
   let lastTableActivityAt = Date.now();
   let idlePromptRotIdx = 0;
@@ -316,6 +335,10 @@
       if (!Array.isArray(merged.user.unlockedTitleFrames)) {
         merged.user.unlockedTitleFrames = def.user.unlockedTitleFrames;
       }
+      merged.user.skillPoints = Object.assign({}, def.user.skillPoints, (parsed.user && parsed.user.skillPoints) || {});
+      if (typeof merged.zen.userCushionIdx !== "number") merged.zen.userCushionIdx = 2;
+      if (!merged.zen.cameraView) merged.zen.cameraView = "wide";
+      if (typeof merged.zen.wishPlaquesCount !== "number") merged.zen.wishPlaquesCount = 16;
       if (!Array.isArray(merged.user.giftedPoemIds)) {
         merged.user.giftedPoemIds = [];
       }
@@ -335,80 +358,170 @@
   }
 
   function getSeniorityProgress() {
-    const tiers = D.SENIORITY_TIERS || [];
     const pts = Number(state.user.seniorityPoints) || 28;
     const isReg = Boolean(state.auth && state.auth.isRegistered);
-    if (!isReg) {
-      const guestTier = tiers[0];
-      const potentialPts = pts + 30;
-      let unlockedIfReg = tiers[1] || guestTier;
-      tiers.forEach((t) => {
-        if (t.level >= 1 && potentialPts >= t.minPoints) unlockedIfReg = t;
-      });
+    if (PROG && typeof PROG.evaluateMainProgress === "function") {
+      const ev = PROG.evaluateMainProgress(pts, isReg);
+      const cohort = PROG.getCohortComparisonLabel(ev.current.level, isReg);
+      const mapTierCompat = (t) =>
+        t
+          ? {
+              id: t.id,
+              level: t.level,
+              name: t.fullLabel,
+              rawTitle: t.title,
+              shortBadge: t.shortTag,
+              minPoints: t.minXp,
+              color: (t.era && t.era.color) || "#6E4A35",
+              bg: (t.era && t.era.bg) || "#F7EDE2",
+              eraName: (t.era && t.era.eraName) || "",
+              frameUnlock: (t.era && t.era.frameUnlock) || "none",
+              perk: t.perk
+            }
+          : null;
       return {
-        current: guestTier,
-        next: unlockedIfReg,
-        points: pts,
-        percent: Math.min(92, Math.round((pts / 65) * 100)),
-        isGuest: true
+        current: mapTierCompat(ev.current),
+        next: mapTierCompat(ev.next),
+        points: ev.xp,
+        xpNeededForNext: ev.xpNeededForNext,
+        percent: ev.percent,
+        isGuest: ev.isGuest,
+        cohort
       };
     }
-    let current = tiers[1] || tiers[0];
-    let next = null;
-    for (let i = 1; i < tiers.length; i++) {
-      if (pts >= tiers[i].minPoints) {
-        current = tiers[i];
-        next = tiers[i + 1] || null;
-      }
-    }
-    const pct = next
-      ? Math.min(100, Math.max(8, Math.round(((pts - current.minPoints) / (next.minPoints - current.minPoints)) * 100)))
-      : 100;
-    return { current, next, points: pts, percent: pct, isGuest: false };
+
+    const tiers = D.SENIORITY_TIERS || [];
+    const guestTier = tiers[0];
+    return {
+      current: guestTier,
+      next: tiers[1] || null,
+      points: pts,
+      xpNeededForNext: 37,
+      percent: 45,
+      isGuest: !isReg,
+      cohort: { tag: "Khách ghé", cls: "guest", desc: "Chưa định danh" }
+    };
   }
 
-  function awardSeniorityPoints(delta, actionKey, category, detail) {
+  function buildTelemetryUserCtx() {
+    const prog = getSeniorityProgress();
+    const code =
+      state.auth && state.auth.isRegistered && state.auth.memberCode
+        ? state.auth.memberCode
+        : `KH-${String(RT ? RT.getClientId() : "local").slice(-4).toUpperCase()}`;
+    return {
+      memberCode: code,
+      clientId: RT ? RT.getClientId() : "local",
+      isRegistered: Boolean(state.auth && state.auth.isRegistered),
+      userName: state.user.name,
+      honorific: state.user.honorific || "Anh",
+      age: getUserAge(),
+      provinceId: state.user.provinceId || "ha-noi",
+      province: getProvince(state.user.provinceId).short,
+      seniorityLevel: prog.current ? prog.current.level : 0,
+      seniorityTitle: prog.current ? prog.current.name : "Bậc 0 · Khách Ghé Hiên Trà",
+      cohortTag: prog.cohort ? prog.cohort.tag : "Khách ghé",
+      xlFont: Boolean(state.settings && state.settings.xlFont),
+      renderMode: (state.settings && state.settings.preferredRender) || "3d"
+    };
+  }
+
+  function awardSkillPoints(treeId, deltaPts) {
+    if (!treeId || !PROG) return;
+    if (!state.user.skillPoints) state.user.skillPoints = {};
+    const prevPts = Number(state.user.skillPoints[treeId]) || 0;
+    const prevEval = PROG.evaluateSkillTree(treeId, prevPts);
+    const nextPts = prevPts + Math.max(0, Number(deltaPts) || 0);
+    state.user.skillPoints[treeId] = nextPts;
+    const nextEval = PROG.evaluateSkillTree(treeId, nextPts);
+    const prevRank = prevEval.current ? prevEval.current.rank : 0;
+    const nextRank = nextEval.current ? nextEval.current.rank : 0;
+    if (nextRank > prevRank && nextEval.current) {
+      const badgeTitle = `${nextEval.tree.name.split("(")[0].trim()} · Bậc ${nextEval.current.roman}: ${nextEval.current.title}`;
+      if (!state.user.unlockedTitles.includes(badgeTitle)) {
+        state.user.unlockedTitles.unshift(badgeTitle);
+      }
+    }
+  }
+
+  function mapCategoryToSkillTree(actionKey, category) {
+    const act = String(actionKey || "");
+    const cat = String(category || "");
+    if (act.includes("voice") || act.includes("dict")) return "voice_wisdom";
+    if (cat === "chua-online" || act.startsWith("temple_")) return "temple_zen";
+    if (cat === "co-tuong" || act.includes("xiangqi") || act.includes("puzzle")) return "xiangqi";
+    if (cat === "tho-ca" || act.includes("poem")) return "poetry";
+    if (cat === "dan-gian" || act.includes("oaq") || act.includes("quiz")) return "folk_games";
+    if (cat === "diem-danh" || cat === "doc-bao" || act.includes("news") || act.includes("checkin")) return "morning_habit";
+    if (cat === "dong-ngu" || act.includes("group") || act.includes("friend")) return "comrade_social";
+    if (cat === "giao-luu" || act.includes("table") || act.includes("tea")) return "tea_host";
+    return null;
+  }
+
+  function awardSeniorityPoints(delta, actionKey, category, detail, extraMeta) {
+    const prevProg = getSeniorityProgress();
     state.user.seniorityPoints = (Number(state.user.seniorityPoints) || 28) + (Number(delta) || 0);
+    const treeId = mapCategoryToSkillTree(actionKey, category);
+    if (treeId) {
+      awardSkillPoints(treeId, Math.max(1, Math.round((Number(delta) || 2) * 0.85)));
+    }
     const prog = getSeniorityProgress();
     if (!prog.isGuest && prog.current && prog.current.frameUnlock && prog.current.frameUnlock !== "none") {
       unlockTitleFrame(prog.current.frameUnlock, prog.current.name);
     }
+    if (!prog.isGuest && prevProg.current && prog.current && prog.current.level > prevProg.current.level) {
+      if (!state.user.unlockedTitles.includes(prog.current.name)) {
+        state.user.unlockedTitles.unshift(prog.current.name);
+      }
+    }
     if (actionKey) {
-      logMemberBehavior(actionKey, category || "sinh-hoat", detail || "");
+      logMemberBehavior(actionKey, category || "sinh-hoat", detail || "", extraMeta);
     } else {
       saveState();
     }
   }
 
-  function logMemberBehavior(action, category, detail) {
+  function logMemberBehavior(action, category, detail, extraMeta) {
     if (!Array.isArray(state.memberLogs)) state.memberLogs = [];
-    const prog = getSeniorityProgress();
+    const ctx = buildTelemetryUserCtx();
     const now = new Date();
-    const code =
-      state.auth && state.auth.isRegistered && state.auth.memberCode
-        ? state.auth.memberCode
-        : `KH-${String(RT ? RT.getClientId() : "local").slice(-4).toUpperCase()}`;
     const entry = {
-      id: `ml_${code}_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`,
+      id: `ml_${ctx.memberCode}_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`,
       ts: now.getTime(),
       hour: now.getHours(),
-      memberCode: code,
-      userName: state.user.name,
-      age: getUserAge(),
-      province: getProvince(state.user.provinceId).short,
-      seniorityTier: prog.current ? prog.current.name : "Khách Ghé Hiên Trà",
+      memberCode: ctx.memberCode,
+      userName: ctx.userName,
+      age: ctx.age,
+      province: ctx.province,
+      seniorityTier: ctx.seniorityTitle,
       action: action || "interaction",
       category: category || "sinh-hoat",
-      detail: String(detail || "").slice(0, 140)
+      detail: String(detail || "").slice(0, 160)
     };
     state.memberLogs.unshift(entry);
-    if (state.memberLogs.length > 120) {
-      state.memberLogs = state.memberLogs.slice(0, 120);
+    if (state.memberLogs.length > 150) {
+      state.memberLogs = state.memberLogs.slice(0, 150);
     }
     saveState();
+    if (TEL && typeof TEL.record === "function") {
+      const evType = (extraMeta && extraMeta.eventType) || "member_action";
+      const modName = (extraMeta && extraMeta.module) || state.route || "home";
+      TEL.record(
+        evType,
+        modName,
+        action || "interaction",
+        Object.assign({ category: category || "sinh-hoat", detail: entry.detail }, extraMeta || {}),
+        ctx
+      );
+    }
     if (RT && typeof RT.publishMemberLog === "function") {
       RT.publishMemberLog(entry, state.memberLogs.slice(0, 10));
     }
+  }
+
+  function trackTelemetryDirect(eventType, moduleName, subAction, metaObj) {
+    if (!TEL || typeof TEL.record !== "function") return;
+    TEL.record(eventType, moduleName || state.route || "home", subAction, metaObj || {}, buildTelemetryUserCtx());
   }
 
   function getAllMemberLogsMerged() {
@@ -956,10 +1069,16 @@
     if ((state.route === "tearoom" || state.route === "profile") && route !== state.route) {
       window.TeaRoomScene.dispose();
     }
+    if (state.route === "zen" && route !== "zen" && window.TempleScene3D) {
+      window.TempleScene3D.dispose();
+    }
     if (state.route === "tearoom" && route !== "tearoom" && RT) {
       RT.leaveTableChannel();
     }
     state.route = route;
+    if (TEL && typeof TEL.recordRouteChange === "function") {
+      TEL.recordRouteChange(route, buildTelemetryUserCtx());
+    }
     saveState();
     syncMyGlobalOnlinePresence();
     render();
@@ -1144,8 +1263,8 @@
           <button type="button" class="home-main-btn is-temple" data-go="zen">
             <span class="home-main-icon">${ico("lotus", "ico-lg")}</span>
             <span class="home-main-text">
-              <strong>6. Viếng Chùa &amp; Chánh Điện Online</strong>
-              <small>Ngồi bồ đoàn tĩnh tâm, dâng hương, gõ mõ, thỉnh chuông &amp; rút Thẻ An Lạc (0 thu phí)</small>
+              <strong>6. Chánh Điện 3D &amp; Sân Hồ Sen</strong>
+              <small>Mái chùa cổ, 10 chiếu bồ đoàn 3D, hồ sen hoa đăng &amp; cây ước nguyện treo thẻ đỏ</small>
             </span>
           </button>
         </div>
@@ -1156,9 +1275,7 @@
         <div class="passcard-banner ${state.auth.isRegistered ? "verified" : ""}" id="home-passcard-banner">
           <div class="passcard-head">
             <strong>${escHtml(prog.current.name)}</strong>
-            <span class="member-code-chip">${
-              state.auth.isRegistered ? `Thẻ ${escHtml(state.auth.memberCode)} · ${prog.points} điểm` : `${prog.points} điểm tích lũy`
-            }</span>
+            <span class="cohort-pill ${escHtml(prog.cohort.cls)}">${escHtml(prog.cohort.tag)} · ${prog.points} XP</span>
           </div>
           <div class="seniority-progress-wrap">
             <div class="seniority-progress-track">
@@ -1167,20 +1284,21 @@
             <small style="font-size:0.88rem; color:var(--ink-secondary);">
               ${
                 prog.isGuest
-                  ? `Đang ở bậc <strong>Khách Ghé Hiên Trà</strong>. Mở Thẻ Hội Viên 10 giây nhận ngay <strong>+30 điểm &amp; +15 Xu</strong>, lên thẳng <strong>${escHtml(prog.next.name)}</strong> và lưu dữ liệu đa lớp!`
+                  ? `Đang ở <strong>Bậc 0 · Khách Ghé Hiên Trà</strong>. Mở Thẻ 10 giây nhận <strong>+35 XP &amp; +15 Xu</strong>, lên thẳng <strong>${escHtml(prog.next.name)}</strong> và lưu 96 danh hiệu!`
                   : prog.next
-                  ? `Còn <strong class="num">${prog.next.minPoints - prog.points}</strong> điểm thâm niên để thăng lên <strong>${escHtml(prog.next.name)}</strong> · Đã sao lưu đa lớp.`
-                  : "Đã đạt bậc cao quý nhất Cây Cao Bóng Cả (Lâu Năm)!"
+                  ? `Còn <strong class="num">${prog.xpNeededForNext}</strong> XP để lên <strong>${escHtml(prog.next.name)}</strong> (${escHtml(prog.current.eraName)}).`
+                  : "Đã đạt đỉnh cao Tầng 32 · Đại Thụ Trăm Năm!"
               }
             </small>
           </div>
           <div class="btn-row">
             <button type="button" class="btn-${state.auth.isRegistered ? "jade" : "primary"}" id="btn-home-open-auth">
               ${ico("card")}
-              <span>${state.auth.isRegistered ? "Thẻ QR & Bậc Thâm Niên" : "Đăng nhập nhận Bậc Mộc Mạc"}</span>
+              <span>${state.auth.isRegistered ? "Thẻ QR Hội Viên" : "Mở Thẻ Lên Tầng 1"}</span>
             </button>
-            <button type="button" class="btn-secondary" id="btn-home-open-friends">
-              <span>Bạn Online (${countOnlineFriendsNow()})</span>
+            <button type="button" class="btn-secondary" id="btn-home-open-96titles">
+              ${ico("trophy")}
+              <span>Cây 96 Danh Hiệu</span>
             </button>
           </div>
         </div>`;
@@ -1334,6 +1452,13 @@
     const homeOpenAuth = document.getElementById("btn-home-open-auth");
     if (homeOpenAuth) {
       homeOpenAuth.addEventListener("click", () => openMemberAuthModal());
+    }
+    const homeOpen96 = document.getElementById("btn-home-open-96titles");
+    if (homeOpen96) {
+      homeOpen96.addEventListener("click", () => {
+        activeLeaderTab = "Cay32";
+        navigate("leaderboard");
+      });
     }
     const homeOpenFriends = document.getElementById("btn-home-open-friends");
     if (homeOpenFriends) {
@@ -2373,7 +2498,26 @@
     }
     playWoodPieceClack(false);
     trackEvent("tea_msg_quick_0token");
-    awardSeniorityPoints(2, "tea_sticker", "giao-luu", `Gửi Sticker "${stk.shortLabel}" tại ${table.name}`);
+    const peerNames = (table.members || []).map((m) => m.name);
+    awardSeniorityPoints(
+      2,
+      "tea_sticker",
+      "giao-luu",
+      `Gửi Sticker "${stk.shortLabel}" tại ${table.name}`,
+      {
+        eventType: "chat_message",
+        module: "tearoom",
+        inputMethod: "sticker_1tap",
+        text: stk.fullText,
+        stickerId: stk.id,
+        stickerLabel: stk.shortLabel,
+        roomId: state.teaRoom.roomId,
+        tableId: baseTable.id,
+        tableName: table.name,
+        companions: peerNames,
+        topicHint: table.topic || "Trà đàm buổi sáng"
+      }
+    );
 
     pushTableMessage(speakerLabel, stk.fullText, userSeatIdx, stk.id);
 
@@ -2537,11 +2681,39 @@
     const speakerLabel = `${state.user.name} · ${getUserAge()} tuổi (${provShort})`;
     state.teaRoom.lastSentAt = Date.now();
     lastTableActivityAt = Date.now();
-    if (opts && opts.source === "voice_or_text") {
+    const src = (opts && opts.source) || "quick";
+    const inputMethod =
+      src === "voice"
+        ? "voice_speech"
+        : src === "typed" || src === "voice_or_text"
+        ? "typed_text"
+        : "quick_0token";
+    if (src === "voice" || src === "typed" || src === "voice_or_text") {
       trackEvent("tea_msg_voice_or_text");
     } else {
       trackEvent("tea_msg_quick_0token");
     }
+    const peerNames = (table.members || []).map((m) => m.name);
+    if (src === "voice") {
+      awardSkillPoints("voice_wisdom", 4);
+    }
+    awardSeniorityPoints(
+      src === "voice" ? 3 : 2,
+      src === "voice" ? "tea_voice_chat" : "tea_chat_msg",
+      "giao-luu",
+      `Trò chuyện (${inputMethod}) tại ${table.name}: "${String(text || "").slice(0, 68)}"`,
+      {
+        eventType: "chat_message",
+        module: "tearoom",
+        inputMethod,
+        text: String(text || ""),
+        roomId: state.teaRoom.roomId,
+        tableId: baseTable.id,
+        tableName: table.name,
+        companions: peerNames,
+        topicHint: table.topic || "Trà đàm buổi sáng"
+      }
+    );
     saveState();
 
     pushTableMessage(speakerLabel, text, userSeatIdx);
@@ -3404,7 +3576,7 @@
         }
         textIn.value = "";
         if (state.privacy.consentVoiceDict) commitVoiceDictionaryLearning(checked);
-        sendUserTeaMessage(checked.aiPolished, { source: "voice_or_text" });
+        sendUserTeaMessage(checked.aiPolished, { source: "typed" });
       };
       sendTextBtn.addEventListener("click", submitTyped);
       textIn.addEventListener("keydown", (e) => {
@@ -3427,6 +3599,11 @@
         right: res.learnedCandidate.right,
         hits: 1,
         learnedBy: `Tự học (${state.user.name})`
+      });
+      awardSkillPoints("voice_wisdom", 6);
+      trackTelemetryDirect("dict_correction", "tearoom", "learned_new_phonetic_pair", {
+        wrong: res.learnedCandidate.wrong,
+        right: res.learnedCandidate.right
       });
     }
     saveState();
@@ -3484,7 +3661,7 @@
       pendingVoiceDraft = null;
       box.hidden = true;
       box.innerHTML = "";
-      sendUserTeaMessage(editedText, { source: "voice_or_text" });
+      sendUserTeaMessage(editedText, { source: "voice" });
     });
 
     document.getElementById("btn-inline-voice-cancel").addEventListener("click", () => {
@@ -3835,6 +4012,13 @@
       const q = String(rawVal || "").trim();
       state.newspaper.searchQuery = q;
       state.newspaper.liveItems = [];
+      if (q) {
+        awardSkillPoints("morning_habit", 2);
+        trackTelemetryDirect("news_search", "newspaper", "search_keyword", {
+          query: q,
+          category: state.newspaper.selectedCategory
+        });
+      }
       saveState();
       const matched = getFilteredNewspaperArticles();
       if (q && matched.length === 0) {
@@ -4038,6 +4222,12 @@
           const gained = 60 + Math.round((state.quiz.timeLeft / 25) * 40);
           state.quiz.score += gained;
           addXu(3, `Đáp đúng +${gained} điểm`);
+          awardSeniorityPoints(3, "quiz_correct", "dan-gian", `Đáp đúng câu Đố vui (+${gained} điểm)`, {
+            eventType: "folk_game",
+            module: "quiz",
+            gameKind: "quiz",
+            score: state.quiz.score
+          });
         }
         saveState();
         renderQuiz();
@@ -4310,6 +4500,12 @@
       // On top row (guest), visual Left corresponds to +1 index around board, Right to -1
       const actualStep = isHostSide ? dir : -dir;
       executeOaqMove(chosen, actualStep, isHostSide);
+      awardSeniorityPoints(2, "oaq_move", "dan-gian", `Rải quân Ô ăn quan ô số ${chosen + 1}`, {
+        eventType: "folk_game",
+        module: "games",
+        gameKind: "oaq",
+        cellIdx: chosen
+      });
 
       if (state.oaq.mode === "async") {
         ensureOaqAsyncMatch();
@@ -4901,6 +5097,14 @@
         ? "Chiếu bí chuẩn xác! Bác đã phá giải thành công thế cờ này!"
         : "Chiếu bí tuyệt đẹp! Bác đã chiến thắng đối thủ Máy trên bàn 9×10!";
       addXu(6, x.mode === "puzzle" ? "Phá giải thế cờ thành công" : "Thắng ván Cờ tướng 9×10");
+      awardSkillPoints("xiangqi", x.mode === "puzzle" ? 10 : 8);
+      awardSeniorityPoints(
+        x.mode === "puzzle" ? 8 : 6,
+        x.mode === "puzzle" ? "puzzle_solved" : "xiangqi_win",
+        "co-tuong",
+        x.mode === "puzzle" ? "Phá giải thế cờ cổ phổ thành công" : "Thắng ván Cờ tướng 9×10",
+        { eventType: "puzzle_solved", module: "xiangqi", mode: x.mode }
+      );
       saveState();
       refreshXiangqiHosts();
       return;
@@ -5161,6 +5365,13 @@
         state.user.giftedPoemIds.push(p.id);
         if (RT) RT.publishPoem(p);
         addXu(2, `Tặng hoa cho ${p.reciter}`);
+        awardSkillPoints("poetry", 3);
+        awardSeniorityPoints(3, "poem_flower_gift", "tho-ca", `Tặng hoa cho bài thơ "${p.title}"`, {
+          eventType: "poem_action",
+          module: "poetry",
+          poemId: p.id,
+          poemTitle: p.title
+        });
         saveState();
         renderPoetry();
       });
@@ -5302,13 +5513,18 @@
     } catch (e) {}
   }
 
-  let templeWaveRipples = [];
-  let templeFloatingPops = [];
-
-  function triggerTempleVisualWave(colorHex, popText) {
-    templeWaveRipples.push({ r: 16, alpha: 0.92, color: colorHex || "#F6C367" });
-    if (popText) {
-      templeFloatingPops.push({ y: 0, alpha: 1, text: popText });
+  function triggerTempleVisualWave(colorHex, popText, ritualKind) {
+    if (!window.TempleScene3D) return;
+    if (ritualKind === "bell") {
+      window.TempleScene3D.triggerBell(popText || "Chánh Điện");
+    } else if (ritualKind === "muyu") {
+      window.TempleScene3D.triggerMuyu(state.zen.muyuCount || 1);
+    } else if (ritualKind === "wish_plaque") {
+      window.TempleScene3D.spawnWishPlaque(popText || state.user.name, false);
+    } else if (ritualKind === "pond_lantern") {
+      window.TempleScene3D.spawnPondLantern(popText || state.user.name);
+    } else {
+      window.TempleScene3D.triggerIncense(popText || state.user.name);
     }
   }
 
@@ -5322,211 +5538,68 @@
         byId[p.id] = p;
       });
     }
-    return Object.values(byId).slice(0, 8);
+    return Object.values(byId).slice(0, 12);
   }
 
-  function mountTempleSanctuaryCanvas() {
-    const canvas = document.getElementById("temple-sanctuary-canvas");
-    if (!canvas) return;
-    if (templeAnimId) cancelAnimationFrame(templeAnimId);
+  function buildTempleTenCushionAttendees() {
+    const myCushion = Math.max(0, Math.min(9, Number(state.zen.userCushionIdx) || 2));
+    const prog = getSeniorityProgress();
+    const occupiedMap = {};
 
-    const smokePuffs = Array.from({ length: 14 }, (_, i) => ({
-      phase: i * 0.65,
-      drift: (i % 3 - 1) * 6
-    }));
-
-    const drawFrame = (now) => {
-      if (state.route !== "zen") return;
-      templeAnimId = requestAnimationFrame(drawFrame);
-      const rect = canvas.parentElement.getBoundingClientRect();
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const w = Math.max(300, Math.round(rect.width || 360));
-      const h = Math.max(230, Math.round(rect.height || 290));
-      if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
-        canvas.width = Math.round(w * dpr);
-        canvas.height = Math.round(h * dpr);
-      }
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-      // Warm dark sandalwood & golden sanctuary backdrop
-      const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
-      bgGrad.addColorStop(0, "#2A1B12");
-      bgGrad.addColorStop(0.62, "#3D2719");
-      bgGrad.addColorStop(1, "#523522");
-      ctx.fillStyle = bgGrad;
-      ctx.fillRect(0, 0, w, h);
-
-      // Wooden sanctuary pillars (cột gỗ sơn son thếp vàng)
-      ctx.fillStyle = "#6E281D";
-      ctx.fillRect(w * 0.06, 0, 16, h * 0.76);
-      ctx.fillRect(w * 0.94 - 16, 0, 16, h * 0.76);
-      ctx.fillStyle = "#D9A441";
-      ctx.fillRect(w * 0.06, h * 0.16, 16, 4);
-      ctx.fillRect(w * 0.94 - 16, h * 0.16, 16, 4);
-
-      const cx = w * 0.5;
-
-      // Serene Golden Mandala Halo & Meditating Silhouette at Tam Bảo
-      const haloPulse = 44 + Math.sin(now * 0.0022) * 3.5;
-      const haloGrad = ctx.createRadialGradient(cx, h * 0.25, 8, cx, h * 0.25, haloPulse + 22);
-      haloGrad.addColorStop(0, "rgba(255, 229, 148, 0.95)");
-      haloGrad.addColorStop(0.55, "rgba(235, 178, 72, 0.38)");
-      haloGrad.addColorStop(1, "rgba(235, 178, 72, 0)");
-      ctx.fillStyle = haloGrad;
-      ctx.beginPath();
-      ctx.arc(cx, h * 0.25, haloPulse + 22, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Expanding sound-wave ripples from Chuông / Mõ
-      templeWaveRipples.forEach((wv) => {
-        wv.r += 2.2;
-        wv.alpha *= 0.96;
-        ctx.strokeStyle = wv.color;
-        ctx.globalAlpha = Math.max(0, wv.alpha);
-        ctx.lineWidth = 2.2;
-        ctx.beginPath();
-        ctx.arc(cx, h * 0.28, wv.r, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.globalAlpha = 1;
-      });
-      templeWaveRipples = templeWaveRipples.filter((wv) => wv.alpha > 0.05);
-
-      // Golden Lotus Throne & Serene Statue Silhouette
-      ctx.fillStyle = "#E8B954";
-      ctx.beginPath();
-      ctx.ellipse(cx, h * 0.34, 28, 8, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.arc(cx, h * 0.21, 9.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(cx - 20, h * 0.34);
-      ctx.quadraticCurveTo(cx, h * 0.2, cx + 20, h * 0.34);
-      ctx.closePath();
-      ctx.fill();
-
-      // Carved Altar Table + Pair of Lotus Lamps + Bronze Incense Burner (Lư hương đồng)
-      ctx.fillStyle = "#6B3D22";
-      ctx.fillRect(cx - w * 0.3, h * 0.38, w * 0.6, 18);
-      ctx.strokeStyle = "#D9A441";
-      ctx.lineWidth = 1.6;
-      ctx.strokeRect(cx - w * 0.3, h * 0.38, w * 0.6, 18);
-
-      // Left Bell (Đại Hồng Chung) & Right Wooden Fish (Mõ gỗ) icons on altar
-      ctx.fillStyle = "#C8963E";
-      ctx.beginPath();
-      ctx.arc(cx - w * 0.22, h * 0.35, 9, Math.PI, 0);
-      ctx.fillRect(cx - w * 0.22 - 9, h * 0.35, 18, 8);
-      ctx.fill();
-
-      ctx.fillStyle = "#A45B2A";
-      ctx.beginPath();
-      ctx.ellipse(cx + w * 0.22, h * 0.36, 11, 8, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Central Bronze Incense Urn + Glowing Incense Sticks + Rising Sandalwood Smoke
-      ctx.fillStyle = "#B88635";
-      ctx.fillRect(cx - 14, h * 0.33, 28, 12);
-      const sticks = Math.min(5, Math.max(1, state.zen.incenseLit ? 3 : 1));
-      for (let s = 0; s < sticks; s++) {
-        const sx = cx + (s - (sticks - 1) / 2) * 5;
-        ctx.strokeStyle = "#A8382B";
-        ctx.lineWidth = 1.6;
-        ctx.beginPath();
-        ctx.moveTo(sx, h * 0.33);
-        ctx.lineTo(sx, h * 0.26);
-        ctx.stroke();
-        ctx.fillStyle = "#FF6B3D";
-        ctx.beginPath();
-        ctx.arc(sx, h * 0.26, 1.8, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      if (state.zen.incenseLit) {
-        smokePuffs.forEach((sp) => {
-          const t = ((now * 0.00055 + sp.phase) % 1);
-          const py = h * 0.25 - t * (h * 0.21);
-          const px = cx + Math.sin(now * 0.0018 + sp.phase * 2) * (8 + t * 12) + sp.drift * t;
-          ctx.fillStyle = `rgba(248, 240, 225, ${(1 - t) * 0.34})`;
-          ctx.beginPath();
-          ctx.arc(px, py, 3 + t * 8, 0, Math.PI * 2);
-          ctx.fill();
-        });
-      }
-
-      // Sanctuary Mat Floor & Shared Lotus Meditation Cushions (Hàng chiếu Bồ Đoàn ngồi chung)
-      ctx.fillStyle = "#462D1D";
-      ctx.fillRect(0, h * 0.56, w, h * 0.44);
-      ctx.strokeStyle = "rgba(217, 164, 65, 0.28)";
-      ctx.beginPath();
-      ctx.moveTo(0, h * 0.56);
-      ctx.lineTo(w, h * 0.56);
-      ctx.stroke();
-
-      const livePeers = RT ? RT.getOnlinePeers().slice(0, 2) : [];
-      const fallbackElders = (D.SENIOR_DIRECTORY || []).slice(0, 4);
-      const seatedList = [
-        { name: "Bạn", outfitColor: getOutfit(state.user.outfitId).color, isMe: true }
-      ]
-        .concat(livePeers.map((lp) => ({ name: lp.name, outfitColor: lp.outfitColor || "#2E5E4E", isReal: true })))
-        .concat(fallbackElders)
-        .slice(0, 5);
-
-      const cushionXs = [w * 0.15, w * 0.32, w * 0.5, w * 0.68, w * 0.85];
-      const cushionYs = [h * 0.77, h * 0.82, h * 0.74, h * 0.82, h * 0.77];
-
-      seatedList.forEach((person, idx) => {
-        const bx = cushionXs[idx];
-        const by = cushionYs[idx];
-        // Woven lotus bồ đoàn cushion
-        ctx.fillStyle = idx === 0 ? "#C88A28" : "#8C4A27";
-        ctx.beginPath();
-        ctx.ellipse(bx, by + 11, 22, 9, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = "#F5D78E";
-        ctx.lineWidth = 1.2;
-        ctx.stroke();
-
-        // Seated elder back/shoulders facing the altar
-        ctx.fillStyle = person.outfitColor || "#5C4033";
-        ctx.beginPath();
-        ctx.roundRect(bx - 12, by - 9, 24, 20, 8);
-        ctx.fill();
-        ctx.fillStyle = "#E6E1D8";
-        ctx.beginPath();
-        ctx.arc(bx, by - 16, 9, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Crisp nameplate pill below cushion
-        const shortLbl = person.isMe ? "Bạn (Tĩnh tâm)" : String(person.name || "").slice(0, 11);
-        ctx.font = "bold 11px sans-serif";
-        const tw = ctx.measureText(shortLbl).width + 12;
-        ctx.fillStyle = person.isMe ? "rgba(184, 59, 42, 0.92)" : "rgba(28, 20, 14, 0.85)";
-        ctx.beginPath();
-        ctx.roundRect(bx - tw / 2, by + 18, tw, 18, 9);
-        ctx.fill();
-        ctx.fillStyle = "#FFFDF7";
-        ctx.textAlign = "center";
-        ctx.fillText(shortLbl, bx, by + 31);
-        ctx.textAlign = "start";
-      });
-
-      // Floating "+1 Tâm An" / Ritual feedback pops
-      templeFloatingPops.forEach((fp) => {
-        fp.y += 0.9;
-        fp.alpha *= 0.96;
-        ctx.fillStyle = `rgba(255, 232, 162, ${Math.max(0, fp.alpha)})`;
-        ctx.font = "bold 15px sans-serif";
-        ctx.textAlign = "center";
-        ctx.fillText(fp.text, cx, h * 0.48 - fp.y);
-        ctx.textAlign = "start";
-      });
-      templeFloatingPops = templeFloatingPops.filter((fp) => fp.alpha > 0.06);
+    occupiedMap[myCushion] = {
+      cushionIdx: myCushion,
+      name: state.user.name,
+      shortLabel: "Bạn",
+      outfitColor: getOutfit(state.user.outfitId).color,
+      isFemale: state.user.honorific === "Chị",
+      seniorityLevel: prog.current ? prog.current.level : 0,
+      isUser: true,
+      isRealPeer: false
     };
 
-    templeAnimId = requestAnimationFrame(drawFrame);
+    const livePeers = RT ? RT.getOnlinePeers() : [];
+    let nextFree = 0;
+    const takeFreeSlot = (preferred) => {
+      if (typeof preferred === "number" && preferred >= 0 && preferred <= 9 && !occupiedMap[preferred]) {
+        return preferred;
+      }
+      while (nextFree < 10 && occupiedMap[nextFree]) nextFree += 1;
+      return nextFree < 10 ? nextFree : -1;
+    };
+
+    livePeers.slice(0, 4).forEach((lp) => {
+      const slot = takeFreeSlot(typeof lp.cushionIdx === "number" ? lp.cushionIdx : undefined);
+      if (slot >= 0) {
+        occupiedMap[slot] = {
+          cushionIdx: slot,
+          name: lp.name || "Bạn trực tuyến",
+          shortLabel: String(lp.name || "Bạn thật").replace(/^(Anh|Chị|Bác)\s+/i, "").slice(0, 10),
+          outfitColor: lp.outfitColor || "#2E5E4E",
+          isFemale: /^Chị/i.test(lp.name || ""),
+          seniorityLevel: lp.seniorityLevel || 6,
+          isUser: false,
+          isRealPeer: true
+        };
+      }
+    });
+
+    const companionSeeds = [
+      { pref: 0, name: "Cụ Hòa", shortLabel: "Cụ Hòa", outfitColor: "#7A4B1E", isFemale: false, seniorityLevel: 26 },
+      { pref: 1, name: "Chị Lan", shortLabel: "Chị Lan", outfitColor: "#2E5E4E", isFemale: true, seniorityLevel: 14 },
+      { pref: 3, name: "Anh Minh", shortLabel: "Anh Minh", outfitColor: "#556B45", isFemale: false, seniorityLevel: 18 },
+      { pref: 4, name: "Chị Hạnh", shortLabel: "Chị Hạnh", outfitColor: "#8A3F22", isFemale: true, seniorityLevel: 23 },
+      { pref: 6, name: "Anh Vĩnh", shortLabel: "Anh Vĩnh", outfitColor: "#4F6842", isFemale: false, seniorityLevel: 15 },
+      { pref: 8, name: "Chị Mai", shortLabel: "Chị Mai", outfitColor: "#6E4A35", isFemale: true, seniorityLevel: 9 }
+    ];
+
+    companionSeeds.forEach((sc) => {
+      const slot = takeFreeSlot(sc.pref);
+      if (slot >= 0 && Object.keys(occupiedMap).length < 8) {
+        occupiedMap[slot] = Object.assign({ cushionIdx: slot, isUser: false, isRealPeer: false }, sc);
+      }
+    });
+
+    return Object.values(occupiedMap);
   }
 
   function renderZen() {
@@ -5534,53 +5607,88 @@
     const cards = D.TEMPLE_PEACE_CARDS || [];
     const curCard = cards[(state.zen.peaceCardIdx || 0) % cards.length];
     const prayers = getMergedTemplePrayers();
+    const attendees = buildTempleTenCushionAttendees();
+    const camMode = state.zen.cameraView || "wide";
+    const myCushion = Math.max(0, Math.min(9, Number(state.zen.userCushionIdx) || 2));
+    const plaqueTitles = ["TÂM AN VẠN SỰ AN", "HƯƠNG SEN TĨNH TẠI", "ĐẠI HỒNG CHUNG AN LẠC"];
 
     els.main.innerHTML = `
-      <h1>Viếng Chùa &amp; Chánh Điện Online</h1>
-      <p class="lead-copy">Không gian tĩnh tâm chung cho hội viên: ngồi bồ đoàn, dâng hương trầm, gõ mõ, thỉnh đại hồng chung và rút Thẻ An Lạc đầu ngày (100% miễn phí, không thu tiền cúng dường).</p>
+      <h1>Chánh Điện 3D &amp; Sân Chùa Cổ</h1>
+      <p class="lead-copy">Không gian 3D góc rộng: mái chùa cổ đao cong, 10 chiếu bồ đoàn ngồi chung, sân hồ sen thả hoa đăng và cây ước nguyện treo thẻ đỏ (hoàn toàn miễn phí, không thu tiền cúng dường).</p>
 
-      <div class="tab-bar">
+      <div class="temple-cam-bar" role="tablist" aria-label="Chọn không gian tĩnh tâm">
         ${D.ZEN_SPACES.map(
-          (s, i) => `<button type="button" class="tab-btn ${state.zen.spaceIdx === i ? "active" : ""}" data-zen="${i}">${escHtml(s.name)}</button>`
+          (s, i) => `<button type="button" class="temple-cam-btn ${state.zen.spaceIdx === i ? "active" : ""}" data-zen="${i}">${escHtml(s.name)}</button>`
         ).join("")}
       </div>
 
-      <div class="temple-sanctuary-wrap">
-        <canvas class="temple-canvas" id="temple-sanctuary-canvas"></canvas>
+      <!-- Chọn 3 góc máy 3D (kéo ngang trên màn hình để xoay quanh sân chùa) -->
+      <div class="temple-cam-bar" role="group" aria-label="Chọn góc nhìn Chánh Điện 3D">
+        <button type="button" class="temple-cam-btn ${camMode === "wide" ? "active" : ""}" data-tcam="wide">Toàn cảnh Chùa &amp; Sân</button>
+        <button type="button" class="temple-cam-btn ${camMode === "cushions" ? "active" : ""}" data-tcam="cushions">Cận cảnh 10 Bồ Đoàn</button>
+        <button type="button" class="temple-cam-btn ${camMode === "courtyard" ? "active" : ""}" data-tcam="courtyard">Hồ Sen &amp; Cây Thẻ Đỏ</button>
       </div>
 
-      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; font-size:0.9rem;">
-        <span>Hương trầm hôm nay: <strong class="num">${state.zen.incenseCount || 14}</strong> nén</span>
-        <span>Nhịp mõ tĩnh tâm: <strong class="num" id="zen-muyu-counter">${state.zen.muyuCount || 0}</strong> · Hoa đăng: <strong class="num">${state.zen.lanternsReleased}</strong></span>
+      <div class="temple-sanctuary-wrap" id="temple-3d-stage" aria-label="Không gian Chánh Điện 3D và Sân Chùa"></div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; font-size:0.88rem;" class="num">
+        <span>Thẻ đỏ trên cây: <strong id="zen-wish-counter">${state.zen.wishPlaquesCount || 16}</strong> thẻ · Hoa đăng hồ sen: <strong id="zen-lantern-counter">${state.zen.lanternsReleased || 18}</strong></span>
+        <span>Hương trầm: <strong>${state.zen.incenseCount || 14}</strong> · Nhịp mõ: <strong id="zen-muyu-counter">${state.zen.muyuCount || 0}</strong></span>
       </div>
 
-      <!-- 4 Nghi thức Chánh Điện 1 chạm -->
-      <div class="temple-ritual-grid" role="group" aria-label="Nghi thức Chánh Điện Online">
-        <button type="button" class="btn-primary" id="btn-temple-incense">
-          ${ico("lotus")}
-          <span>Dâng hương cầu an</span>
+      <!-- Chọn 1 trong 10 Chiếu Bồ Đoàn 3D để ngồi tĩnh tâm cùng bạn -->
+      <div class="surface-panel">
+        <div class="passcard-head">
+          <strong>Chọn Chiếu Bồ Đoàn 3D (Đang ngồi BĐ${myCushion + 1})</strong>
+          <span class="badge-tag jade num">${attendees.length}/10 chiếu có người</span>
+        </div>
+        <div class="cushion-pick-grid" role="group" aria-label="Chọn vị trí chiếu Bồ Đoàn từ 1 đến 10">
+          ${Array.from({ length: 10 }, (_, idx) => {
+            const occ = attendees.find((a) => a.cushionIdx === idx);
+            const isMe = idx === myCushion;
+            const sub = isMe ? "Bạn ngồi" : occ ? occ.shortLabel : "Trống";
+            return `
+              <button type="button" class="cushion-pick-btn ${isMe ? "selected" : ""} ${occ && occ.isRealPeer ? "peer-occupied" : ""}" data-cushion="${idx}">
+                <span>BĐ ${idx + 1}</span>
+                <span style="font-weight:500;">${escHtml(sub)}</span>
+              </button>
+            `;
+          }).join("")}
+        </div>
+      </div>
+
+      <!-- 6 Nghi thức Chánh Điện & Sân Chùa 3D 1 chạm -->
+      <div class="temple-ritual-grid" role="group" aria-label="Nghi thức Chánh Điện và Sân Chùa 3D">
+        <button type="button" class="btn-primary" id="btn-temple-hang-wish">
+          ${ico("award")}
+          <span>Treo Thẻ Đỏ Lên Cây</span>
         </button>
-        <button type="button" class="btn-jade" id="btn-temple-muyu">
-          <span>Gõ mõ tĩnh tâm (+1)</span>
+        <button type="button" class="btn-jade" id="btn-temple-pond-lantern">
+          ${ico("lotus")}
+          <span>Thả Hoa Đăng Hồ Sen</span>
+        </button>
+        <button type="button" class="btn-secondary" id="btn-temple-incense">
+          <span>Dâng Hương Tam Bảo</span>
+        </button>
+        <button type="button" class="btn-secondary" id="btn-temple-muyu">
+          <span>Gõ Mõ Tĩnh Tâm (+1)</span>
         </button>
         <button type="button" class="btn-secondary" id="btn-ring-bell">
           ${ico("bell")}
-          <span>Thỉnh đại hồng chung</span>
+          <span>Thỉnh Đại Hồng Chung</span>
         </button>
         <button type="button" class="btn-secondary" id="btn-draw-peace-card">
-          ${ico("award")}
-          <span>Rút Thẻ An Lạc mới</span>
+          <span>Rút Thẻ An Lạc Mới</span>
         </button>
       </div>
 
-      <!-- Thẻ An Lạc Đầu Ngày (Không bói toán mê tín, chỉ lời khuyên thiện lành) -->
       ${
         curCard
           ? `
         <div class="peace-card-slip" id="peace-card-box">
           <div class="passcard-head">
             <strong style="color:#7A3E12;">${escHtml(curCard.code)}</strong>
-            <span class="badge-tag amber">Thẻ Thiện Lành</span>
+            <span class="badge-tag amber">Thẻ Thiện Lành Đầu Ngày</span>
           </div>
           <div class="peace-card-verse">${escHtml(curCard.verse)}</div>
           <p style="font-size:0.92rem; color:var(--ink-primary);">${escHtml(curCard.advice)}</p>
@@ -5590,9 +5698,9 @@
           : ""
       }
 
-      <!-- Gửi lời cầu bình an & Sổ Nguyện Ước Chung Thời Gian Thực -->
+      <!-- Viết Thẻ Đỏ Ước Nguyện Treo Ngoài Sân Chùa -->
       <div class="surface-panel">
-        <h3>Gửi lời cầu bình an lên Chánh Điện (1 chạm)</h3>
+        <h3>Viết Thẻ Đỏ Ước Nguyện Treo Lên Cây Sân Chùa</h3>
         <div class="reply-stack">
           ${(D.TEMPLE_PRAYER_PRESETS || [])
             .map(
@@ -5602,19 +5710,19 @@
             .join("")}
         </div>
         <div style="display:flex; gap:8px;">
-          <input type="text" class="input-lg" id="temple-prayer-in" placeholder="Hoặc viết lời cầu chúc riêng cho gia đình..." style="flex:1;" />
-          <button type="button" class="btn-jade btn-inline" id="btn-send-prayer">Dâng lời chúc</button>
+          <input type="text" class="input-lg" id="temple-prayer-in" placeholder="Viết lời ước nguyện treo lên cây thẻ đỏ..." style="flex:1;" />
+          <button type="button" class="btn-primary btn-inline" id="btn-send-prayer">Treo thẻ đỏ</button>
         </div>
 
         <div style="display:flex; flex-direction:column; gap:8px; margin-top:4px;">
-          <strong>Lời nguyện cầu bình an vừa gửi lên Chánh Điện:</strong>
+          <strong>Thẻ đỏ ước nguyện &amp; lời cầu an của các bác (${prayers.length}):</strong>
           ${prayers
             .map(
               (item) => `
               <div class="bulletin-item">
                 <div style="display:flex; justify-content:space-between; gap:8px; font-size:0.88rem; color:var(--accent-jade); font-weight:700;">
-                  <span>${escHtml(item.userName)}</span>
-                  <span>${escHtml(item.province || "")}</span>
+                  <span>${escHtml(item.userName)}${typeof item.cushionIdx === "number" ? ` · BĐ${item.cushionIdx + 1}` : ""}</span>
+                  <span>${escHtml(item.ritualKind === "wish_plaque" ? "Thẻ đỏ sân chùa" : "Hương trầm")} · ${escHtml(item.province || "")}</span>
                 </div>
                 <p>${escHtml(item.prayerText)}</p>
               </div>
@@ -5625,7 +5733,26 @@
       </div>
     `;
 
-    mountTempleSanctuaryCanvas();
+    const stageEl = document.getElementById("temple-3d-stage");
+    if (stageEl && window.TempleScene3D) {
+      window.TempleScene3D.mount(
+        stageEl,
+        {
+          preferredRender: state.settings.preferredRender,
+          cameraView: camMode,
+          plaqueTitle: plaqueTitles[state.zen.spaceIdx % plaqueTitles.length],
+          userCushionIdx: myCushion,
+          attendees,
+          lanternCount: state.zen.lanternsReleased || 18,
+          totalWishCount: state.zen.wishPlaquesCount || 16,
+          wishes: prayers
+        },
+        () => {
+          state.settings.autoFallbacked = true;
+          updateGlobalChrome();
+        }
+      );
+    }
 
     els.main.querySelectorAll("[data-zen]").forEach((b) => {
       b.addEventListener("click", () => {
@@ -5635,35 +5762,115 @@
       });
     });
 
-    const submitPrayer = (text) => {
+    els.main.querySelectorAll("[data-tcam]").forEach((b) => {
+      b.addEventListener("click", () => {
+        const nextCam = b.dataset.tcam || "wide";
+        state.zen.cameraView = nextCam;
+        saveState();
+        els.main.querySelectorAll("[data-tcam]").forEach((el) => el.classList.toggle("active", el.dataset.tcam === nextCam));
+        if (window.TempleScene3D) window.TempleScene3D.setCameraView(nextCam);
+        trackTelemetryDirect("temple_ritual", "zen", "switch_3d_camera", { cameraView: nextCam });
+      });
+    });
+
+    els.main.querySelectorAll("[data-cushion]").forEach((b) => {
+      b.addEventListener("click", () => {
+        const cIdx = Math.max(0, Math.min(9, Number(b.dataset.cushion) || 0));
+        state.zen.userCushionIdx = cIdx;
+        awardSkillPoints("temple_zen", 2);
+        trackTelemetryDirect("temple_ritual", "zen", "select_cushion", { ritualKind: "cushion_select", cushionIdx: cIdx });
+        saveState();
+        syncMyGlobalOnlinePresence();
+        showToast(`Bác đã chuyển sang ngồi Chiếu Bồ Đoàn số ${cIdx + 1}.`);
+        renderZen();
+      });
+    });
+
+    const publishWishOrIncense = (text, ritualKind) => {
       const clean = String(text || "").trim();
       if (!clean) return;
-      state.zen.incenseLit = true;
-      state.zen.incenseCount = (state.zen.incenseCount || 14) + 1;
-      state.zen.lanternsReleased = (state.zen.lanternsReleased || 18) + 1;
+      const prog = getSeniorityProgress();
+      const isVeteranGold = Boolean(prog.current && prog.current.level >= 23);
+      if (ritualKind === "wish_plaque") {
+        state.zen.wishPlaquesCount = (state.zen.wishPlaquesCount || 16) + 1;
+      } else {
+        state.zen.incenseLit = true;
+        state.zen.incenseCount = (state.zen.incenseCount || 14) + 1;
+      }
       const pObj = {
         id: `pr_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
         memberCode: (state.auth && state.auth.memberCode) || "",
         userName: `${state.user.name} · ${getUserAge()}t`,
         province: getProvince(state.user.provinceId).short,
-        ritualKind: "incense",
+        ritualKind: ritualKind || "wish_plaque",
+        cushionIdx: myCushion,
+        isVeteranGold,
         prayerText: clean
       };
       if (!Array.isArray(state.zen.prayers)) state.zen.prayers = [];
       state.zen.prayers.unshift(pObj);
-      state.zen.prayers = state.zen.prayers.slice(0, 12);
+      state.zen.prayers = state.zen.prayers.slice(0, 16);
       if (RT && typeof RT.publishTempleRitual === "function") {
         RT.publishTempleRitual(pObj);
       }
-      awardSeniorityPoints(3, "temple_incense", "chua-online", `Dâng hương & cầu an: "${clean.slice(0, 50)}"`);
-      triggerTempleVisualWave("#FFD166", "Đã dâng nén hương tâm thành");
-      showToast("Đã dâng hương và gửi lời cầu bình an lên Chánh Điện!");
+      awardSeniorityPoints(
+        4,
+        ritualKind === "wish_plaque" ? "temple_wish_plaque" : "temple_incense",
+        "chua-online",
+        `${ritualKind === "wish_plaque" ? "Treo thẻ đỏ ước nguyện" : "Dâng hương Tam Bảo"}: "${clean.slice(0, 56)}"`,
+        {
+          eventType: "temple_ritual",
+          module: "zen",
+          ritualKind: ritualKind || "wish_plaque",
+          cushionIdx: myCushion,
+          wishText: clean
+        }
+      );
       renderZen();
+      if (window.TempleScene3D) {
+        if (ritualKind === "wish_plaque") {
+          window.TempleScene3D.spawnWishPlaque(state.user.name, isVeteranGold);
+        } else {
+          window.TempleScene3D.triggerIncense(state.user.name);
+        }
+      }
+      showToast(
+        ritualKind === "wish_plaque"
+          ? "Đã treo Thẻ Đỏ ước nguyện lên cây cổ thụ ngoài sân chùa!"
+          : "Đã dâng nén hương trầm thơm ấm tại Tam Bảo Chánh Điện!"
+      );
     };
+
+    document.getElementById("btn-temple-hang-wish").addEventListener("click", () => {
+      const presets = D.TEMPLE_PRAYER_PRESETS || [];
+      const chosen = presets[(state.zen.wishPlaquesCount || 0) % Math.max(1, presets.length)] || sp.quote;
+      publishWishOrIncense(chosen, "wish_plaque");
+    });
+
+    document.getElementById("btn-temple-pond-lantern").addEventListener("click", () => {
+      playWoodenFishSound();
+      state.zen.lanternsReleased = (state.zen.lanternsReleased || 18) + 1;
+      const lEl = document.getElementById("zen-lantern-counter");
+      if (lEl) lEl.textContent = String(state.zen.lanternsReleased);
+      if (window.TempleScene3D) {
+        window.TempleScene3D.spawnPondLantern(state.user.name);
+      }
+      if (RT && typeof RT.publishTempleRitual === "function") {
+        RT.publishTempleRitual({ userName: state.user.name, ritualKind: "pond_lantern", cushionIdx: myCushion });
+      }
+      awardSeniorityPoints(4, "temple_pond_lantern", "chua-online", "Thả Hoa Đăng sáng trên sân Hồ Sen 3D", {
+        eventType: "temple_ritual",
+        module: "zen",
+        ritualKind: "pond_lantern",
+        cushionIdx: myCushion
+      });
+      showToast("Đã thả thêm một ngọn Hoa Đăng trôi nhẹ trên mặt Hồ Sen!");
+    });
 
     document.getElementById("btn-temple-incense").addEventListener("click", () => {
       const presets = D.TEMPLE_PRAYER_PRESETS || [];
-      submitPrayer(presets[(state.zen.incenseCount || 0) % Math.max(1, presets.length)] || sp.quote);
+      const chosen = presets[(state.zen.incenseCount || 0) % Math.max(1, presets.length)] || sp.quote;
+      publishWishOrIncense(chosen, "incense");
     });
 
     document.getElementById("btn-temple-muyu").addEventListener("click", () => {
@@ -5671,87 +5878,242 @@
       state.zen.muyuCount = (state.zen.muyuCount || 0) + 1;
       const cntEl = document.getElementById("zen-muyu-counter");
       if (cntEl) cntEl.textContent = String(state.zen.muyuCount);
-      triggerTempleVisualWave("#E8B954", "+1 Nhịp Mõ Tâm An");
-      awardSeniorityPoints(1, "temple_muyu", "chua-online", `Gõ mõ tĩnh tâm (${state.zen.muyuCount} nhịp)`);
+      if (window.TempleScene3D) window.TempleScene3D.triggerMuyu(state.zen.muyuCount);
+      awardSeniorityPoints(1, "temple_muyu", "chua-online", `Gõ mõ tĩnh tâm (${state.zen.muyuCount} nhịp)`, {
+        eventType: "temple_ritual",
+        module: "zen",
+        ritualKind: "muyu",
+        cushionIdx: myCushion
+      });
     });
 
     document.getElementById("btn-ring-bell").addEventListener("click", () => {
       playTempleBell();
       state.zen.bellCount = (state.zen.bellCount || 0) + 1;
-      triggerTempleVisualWave("#FFE599", "Tiếng chuông Chánh Điện ngân vang");
+      if (window.TempleScene3D) window.TempleScene3D.triggerBell(state.user.name);
       if (RT && typeof RT.publishTempleRitual === "function") {
         RT.publishTempleRitual({
           userName: state.user.name,
-          ritualKind: "bell"
+          ritualKind: "bell",
+          cushionIdx: myCushion
         });
       }
-      awardSeniorityPoints(2, "temple_bell", "chua-online", "Thỉnh Đại Hồng Chung cầu an");
-      showToast("Tiếng đại hồng chung ngân vang mang lại phút giây thư thái.");
+      awardSeniorityPoints(2, "temple_bell", "chua-online", "Thỉnh Đại Hồng Chung ngân vang Chánh Điện", {
+        eventType: "temple_ritual",
+        module: "zen",
+        ritualKind: "bell",
+        cushionIdx: myCushion
+      });
+      showToast("Tiếng Đại Hồng Chung ngân vang khắp sân chùa 3D.");
     });
 
     document.getElementById("btn-draw-peace-card").addEventListener("click", () => {
       playWoodenFishSound();
       state.zen.peaceCardIdx = ((state.zen.peaceCardIdx || 0) + 1) % Math.max(1, cards.length);
       const nextCard = cards[state.zen.peaceCardIdx];
-      awardSeniorityPoints(3, "temple_peace_card", "chua-online", `Rút ${nextCard ? nextCard.code : "Thẻ An Lạc"}`);
+      awardSeniorityPoints(3, "temple_peace_card", "chua-online", `Rút ${nextCard ? nextCard.code : "Thẻ An Lạc"}`, {
+        eventType: "temple_ritual",
+        module: "zen",
+        ritualKind: "peace_card"
+      });
       showToast(`Đã rút ${nextCard ? nextCard.code : "Thẻ An Lạc mới"}!`);
       renderZen();
     });
 
     els.main.querySelectorAll("[data-prayer-preset]").forEach((b) => {
-      b.addEventListener("click", () => submitPrayer(b.dataset.prayerPreset));
+      b.addEventListener("click", () => publishWishOrIncense(b.dataset.prayerPreset, "wish_plaque"));
     });
 
     document.getElementById("btn-send-prayer").addEventListener("click", () => {
       const inp = document.getElementById("temple-prayer-in");
       if (!inp.value.trim()) {
-        showToast("Mời bác nhập lời chúc hoặc chạm 1 trong 4 câu mẫu bên trên.");
+        showToast("Mời bác nhập lời ước nguyện hoặc chạm 1 trong 4 câu mẫu bên trên.");
         return;
       }
-      submitPrayer(inp.value);
+      publishWishOrIncense(inp.value, "wish_plaque");
     });
 
     const listenBtn = document.getElementById("btn-zen-listen");
     if (listenBtn && curCard) {
       listenBtn.addEventListener("click", () => {
+        awardSkillPoints("voice_wisdom", 1);
         speak(`${curCard.code}. ${curCard.verse}. Lời nhắn gửi: ${curCard.advice}`);
       });
     }
   }
 
-  // ==================== MODULE 9: LEADERBOARD & PROFILE ====================
+  // ==================== MODULE 9: 96-TITLE PROGRESSION TREES & LEADERBOARD ====================
   function renderLeaderboard() {
-    const myScore = state.user.xu * 8 + state.user.streakDays * 15;
+    const prog = getSeniorityProgress();
     const myProv = getProvince(state.user.provinceId).short;
-    const rows = D.LEADERBOARD.concat([{ name: state.user.name + " (Bạn)", province: myProv, score: myScore, title: state.user.unlockedTitles[0], tag: "Người mới" }])
-      .filter((r) => (activeRankProvinceFilter === "all" ? true : r.province === myProv))
+    const mainTiers = PROG ? PROG.MAIN_TIERS : [];
+    const eras = PROG ? PROG.ERAS : [];
+    const skillTrees = PROG ? PROG.SKILL_TREES : [];
+    const userSkills = state.user.skillPoints || {};
+
+    let unlockedSkillBadgesCount = 0;
+    skillTrees.forEach((tr) => {
+      const ev = PROG.evaluateSkillTree(tr.id, userSkills[tr.id] || 0);
+      if (ev.current) unlockedSkillBadgesCount += ev.current.rank;
+    });
+
+    const myScore = (prog.points || 28) * 3 + state.user.xu * 4 + state.user.streakDays * 15;
+    const enrichedLeaderboard = [
+      { name: `${state.user.name} (Bạn)`, province: myProv, score: myScore, level: prog.current.level || 1, title: prog.current.name, cohortCls: prog.cohort.cls, cohortTag: prog.cohort.tag },
+      { name: "Cụ Hòa · 79t", province: "Hà Nội", score: 49200, level: 29, title: "Tầng 29 · Trưởng Thượng Tri Âm", cohortCls: "veteran", cohortTag: "Cây đại thụ · Tầng 29" },
+      { name: "Chị Hạnh · 74t", province: "Thừa Thiên Huế", score: 31400, level: 24, title: "Tầng 24 · Cội Tùng Vững Chãi", cohortCls: "veteran", cohortTag: "Cây đại thụ · Tầng 24" },
+      { name: "Anh Minh · 71t", province: "Hải Phòng", score: 17850, level: 18, title: "Tầng 18 · Trưởng Lão Hòa Hiếu", cohortCls: "elder", cohortTag: "Trưởng lão · Tầng 18" },
+      { name: "Chị Lan · 68t", province: "Hà Nội", score: 9640, level: 14, title: "Tầng 14 · Cây Trúc Giữa Sân", cohortCls: "trusted", cohortTag: "Tri kỷ · Tầng 14" },
+      { name: "Anh Sơn · 63t", province: myProv, score: 1120, level: 4, title: "Tầng 4 · Khách Quý Hiên Nhà", cohortCls: "newcomer", cohortTag: "Người mới · Tầng 4" },
+      { name: "Chị Thảo · 61t", province: "Đà Nẵng", score: 680, level: 2, title: "Tầng 2 · Bạn Trà Đầu Ngõ", cohortCls: "newcomer", cohortTag: "Người mới · Tầng 2" }
+    ]
+      .filter((r) => {
+        if (activeRankProvinceFilter === "mine") return r.province === myProv;
+        if (activeRankProvinceFilter === "newcomer") return r.level <= 5;
+        if (activeRankProvinceFilter === "veteran") return r.level >= 14;
+        return true;
+      })
       .sort((a, b) => b.score - a.score);
 
     els.main.innerHTML = `
-      <h1>Bảng xếp hạng & Danh hiệu</h1>
-      <p class="lead-copy">Đặt lại hàng tuần để ai cũng có cơ hội. Danh hiệu cũ lưu vào tủ kỷ niệm, không dùng danh hiệu chê bai.</p>
+      <h1>Hệ Thống 96 Danh Hiệu &amp; Bảng Vinh Danh</h1>
+      <p class="lead-copy">Gồm 32 tầng thâm niên chính thức và 8 cây danh hiệu chuyên môn (64 bậc) tính theo công thức toán học lồi độ khó tăng dần, vinh danh rõ ràng cả người mới lẫn bậc lão làng.</p>
 
-      <div class="tab-bar">
-        <button type="button" class="tab-btn ${activeLeaderTab === "Tỉnh" ? "active" : ""}" id="lb-tab-all">Toàn quốc</button>
-        <button type="button" class="tab-btn ${activeLeaderTab === "Tủ kỷ niệm" ? "active" : ""}" id="lb-tab-mem">Tủ kỷ niệm</button>
+      <!-- Thẻ tóm tắt thâm niên hiện tại của Hội viên -->
+      <div class="surface-panel warm">
+        <div class="passcard-head">
+          <strong>${escHtml(prog.current.name)}</strong>
+          <span class="cohort-pill ${escHtml(prog.cohort.cls)}">${escHtml(prog.cohort.tag)}</span>
+        </div>
+        <div class="seniority-progress-wrap">
+          <div class="seniority-progress-track">
+            <div class="seniority-progress-fill" style="width:${prog.percent}%"></div>
+          </div>
+          <small style="font-size:0.88rem; color:var(--ink-secondary);" class="num">
+            Tích lũy hiện tại: <strong>${prog.points} XP</strong> · Đã mở <strong>${unlockedSkillBadgesCount}/64</strong> bậc chuyên môn${
+              prog.next ? ` · Cần thêm <strong>${prog.xpNeededForNext} XP</strong> lên ${escHtml(prog.next.name)}` : ""
+            }.
+          </small>
+        </div>
+        ${
+          prog.isGuest
+            ? `<button type="button" class="btn-primary" id="btn-lb-open-card">${ico("card")}<span>Mở Thẻ 10 Giây — Nhận +35 XP Lên Tầng 1 Ngay</span></button>`
+            : ""
+        }
+      </div>
+
+      <div class="temple-cam-bar" role="tablist" aria-label="Chọn nhánh danh hiệu">
+        <button type="button" class="temple-cam-btn ${activeLeaderTab === "Cay32" ? "active" : ""}" id="lb-tab-32">Cây 32 Tầng Thâm Niên</button>
+        <button type="button" class="temple-cam-btn ${activeLeaderTab === "ChuyenMon" ? "active" : ""}" id="lb-tab-skills">8 Cây Chuyên Môn (64)</button>
+        <button type="button" class="temple-cam-btn ${activeLeaderTab === "Tinh" ? "active" : ""}" id="lb-tab-board">Bảng Vàng Mới &amp; Cũ</button>
       </div>
 
       ${
-        activeLeaderTab === "Tủ kỷ niệm"
+        activeLeaderTab === "Cay32"
           ? `
-        <div class="surface-panel">
-          <h3>Tủ kỷ niệm của ${escHtml(state.user.name)}</h3>
-          ${state.user.unlockedTitles.map((t) => `<div class="province-rank-item"><strong>${escHtml(t)}</strong><span class="badge-tag jade">Đã lưu</span></div>`).join("")}
+        <div class="math-formula-box">
+          <strong>Công thức toán học độ khó tăng dần (Hàm lũy thừa kết hợp mũ lồi):</strong>
+          <div class="math-formula-code">XP(L) = floor( 20 · L^1.85 + 12 · L · 1.11^L )   với L = 1..32</div>
+          <span>Tầng 1 chỉ cần <strong>33 XP</strong> (người mới lên ngay trong ngày đầu), Tầng 10 cần <strong>1.756 XP</strong>, Tầng 20 cần <strong>7.024 XP</strong>, và đỉnh cao Tầng 32 cần <strong>23.006 XP</strong> gắn bó bền bỉ nhiều năm.</span>
+        </div>
+
+        ${eras
+          .slice(1)
+          .map((era) => {
+            const tiersInEra = mainTiers.filter((t) => t.era && t.era.id === era.id);
+            return `
+            <div class="era-section-card">
+              <div class="passcard-head">
+                <strong style="color:${escHtml(era.color)};">${escHtml(era.eraName)} (${escHtml(era.rangeLabel)})</strong>
+                <span class="badge-tag" style="background:${escHtml(era.bg)};color:${escHtml(era.color)};">${escHtml(era.cohortRole)}</span>
+              </div>
+              <div class="era-tier-grid">
+                ${tiersInEra
+                  .map((t) => {
+                    const isCurr = !prog.isGuest && prog.current.level === t.level;
+                    const isReached = !prog.isGuest && prog.current.level >= t.level;
+                    const prevMin = t.level > 1 ? mainTiers[t.level - 1].minXp : 0;
+                    const deltaReq = t.minXp - prevMin;
+                    return `
+                    <div class="tier-32-row ${isCurr ? "current" : isReached ? "reached" : ""}">
+                      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                        <strong style="color:${escHtml(era.color)};">${escHtml(t.fullLabel)}</strong>
+                        <span class="badge-tag ${isCurr ? "amber" : isReached ? "jade" : ""} num">${
+                          isCurr ? "Đang đạt" : `${t.minXp.toLocaleString("vi-VN")} XP (+${deltaReq.toLocaleString("vi-VN")})`
+                        }</span>
+                      </div>
+                      <span style="color:var(--ink-secondary);">${escHtml(t.perk)}</span>
+                    </div>
+                  `;
+                  })
+                  .join("")}
+              </div>
+            </div>
+          `;
+          })
+          .join("")}
+      `
+          : activeLeaderTab === "ChuyenMon"
+          ? `
+        <div class="math-formula-box">
+          <strong>Công thức toán cho 8 Cây Tính Năng (Mỗi cây 8 bậc I → VIII = 64 danh hiệu):</strong>
+          <div class="math-formula-code">M(k) = ceil( a · k^2.15 + b · (1.38^(k-1) - 1) )   với k = 1..8</div>
+          <span>Bậc I chỉ cần 1 điểm để khích lệ người mới thử tính năng; từ Bậc V đến Bậc VIII khoảng cách điểm giãn rộng theo cấp số nhân để tôn vinh chuyên gia thực thụ.</span>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          ${skillTrees
+            .map((tree) => {
+              const ev = PROG.evaluateSkillTree(tree.id, userSkills[tree.id] || 0);
+              return `
+              <div class="skill-tree-card">
+                <div class="passcard-head">
+                  <strong style="color:${escHtml(tree.color)};">${escHtml(tree.name)}</strong>
+                  <span class="badge-tag amber num">${ev.points} điểm</span>
+                </div>
+                <small style="font-size:0.88rem; color:var(--ink-secondary);">Cách tích điểm: ${escHtml(tree.howToEarn)} · <code>${escHtml(tree.formulaNote)}</code></small>
+                <div class="seniority-progress-wrap">
+                  <div class="seniority-progress-track">
+                    <div class="seniority-progress-fill" style="width:${ev.percent}%; background-color:${escHtml(tree.color)};"></div>
+                  </div>
+                  <small style="font-size:0.88rem;">
+                    Hiện đạt: <strong>${ev.current ? `Bậc ${ev.current.roman} · ${escHtml(ev.current.title)}` : "Chưa mở bậc I"}</strong>
+                    ${ev.next ? ` · Mốc tiếp: Bậc ${ev.next.roman} (${ev.next.reqPoints} điểm)` : " · Đã đạt đỉnh Bậc VIII!"}
+                  </small>
+                </div>
+                <div class="skill-tier-pill-grid">
+                  ${tree.tiers
+                    .map((rk) => {
+                      const unlocked = ev.points >= rk.reqPoints;
+                      const isActive = ev.current && ev.current.rank === rk.rank;
+                      return `
+                      <div class="skill-tier-pill ${isActive ? "active-rank" : unlocked ? "unlocked" : ""}">
+                        <strong>${rk.roman}. ${escHtml(rk.title)}</strong>
+                        <span style="color:var(--ink-secondary);">${rk.reqPoints} điểm</span>
+                      </div>
+                    `;
+                    })
+                    .join("")}
+                </div>
+                <button type="button" class="btn-secondary" data-go-skill="${escHtml(tree.featureRoute)}">Vào rèn luyện tính năng này</button>
+              </div>
+            `;
+            })
+            .join("")}
         </div>
       `
           : `
         <div class="surface-panel">
-          <div class="btn-row">
-            <button type="button" class="btn-secondary" id="lb-filter-all" style="${activeRankProvinceFilter === "all" ? "background:var(--accent-jade);color:#fff;" : ""}">Cả nước</button>
-            <button type="button" class="btn-secondary" id="lb-filter-prov" style="${activeRankProvinceFilter === "mine" ? "background:var(--accent-jade);color:#fff;" : ""}">Riêng ${escHtml(myProv)}</button>
+          <h3>Phân tầng vinh danh Người Mới &amp; Bậc Lão Làng</h3>
+          <p style="font-size:0.88rem; color:var(--ink-secondary);">Người mới (Tầng 1–5) có bảng chào đón riêng để tự tin hòa nhập; các bậc Tri Kỷ &amp; Cây Đại Thụ (Tầng 14–32) được gắn huy hiệu uy tín toàn quán.</p>
+          <div class="temple-ritual-grid">
+            <button type="button" class="btn-${activeRankProvinceFilter === "all" ? "jade" : "secondary"}" data-rkf="all">Tất cả hội viên</button>
+            <button type="button" class="btn-${activeRankProvinceFilter === "newcomer" ? "jade" : "secondary"}" data-rkf="newcomer">Vinh danh Người mới</button>
+            <button type="button" class="btn-${activeRankProvinceFilter === "veteran" ? "jade" : "secondary"}" data-rkf="veteran">Bậc Trưởng Lão / Cũ</button>
+            <button type="button" class="btn-${activeRankProvinceFilter === "mine" ? "jade" : "secondary"}" data-rkf="mine">Đồng hương ${escHtml(myProv)}</button>
           </div>
-          <div class="province-rank-list">
-            ${rows
+          <div class="province-rank-list" style="margin-top:8px;">
+            ${enrichedLeaderboard
               .map(
                 (r, idx) => `
               <div class="province-rank-item">
@@ -5759,7 +6121,7 @@
                   <strong>${idx + 1}. ${escHtml(r.name)}</strong>
                   <div style="font-size:0.88rem; color:var(--ink-secondary);">${escHtml(r.province)} · ${escHtml(r.title)}</div>
                 </div>
-                <span class="badge-tag amber num">${r.score} điểm</span>
+                <span class="cohort-pill ${escHtml(r.cohortCls)}">${escHtml(r.cohortTag)}</span>
               </div>
             `
               )
@@ -5770,28 +6132,34 @@
       }
     `;
 
-    document.getElementById("lb-tab-all").addEventListener("click", () => {
-      activeLeaderTab = "Tỉnh";
+    document.getElementById("lb-tab-32").addEventListener("click", () => {
+      activeLeaderTab = "Cay32";
       renderLeaderboard();
     });
-    document.getElementById("lb-tab-mem").addEventListener("click", () => {
-      activeLeaderTab = "Tủ kỷ niệm";
+    document.getElementById("lb-tab-skills").addEventListener("click", () => {
+      activeLeaderTab = "ChuyenMon";
       renderLeaderboard();
     });
-    const fAll = document.getElementById("lb-filter-all");
-    const fProv = document.getElementById("lb-filter-prov");
-    if (fAll) {
-      fAll.addEventListener("click", () => {
-        activeRankProvinceFilter = "all";
+    document.getElementById("lb-tab-board").addEventListener("click", () => {
+      activeLeaderTab = "Tinh";
+      renderLeaderboard();
+    });
+
+    const openCardBtn = document.getElementById("btn-lb-open-card");
+    if (openCardBtn) {
+      openCardBtn.addEventListener("click", () => openMemberAuthModal());
+    }
+
+    els.main.querySelectorAll("[data-go-skill]").forEach((b) => {
+      b.addEventListener("click", () => navigate(b.dataset.goSkill));
+    });
+
+    els.main.querySelectorAll("[data-rkf]").forEach((b) => {
+      b.addEventListener("click", () => {
+        activeRankProvinceFilter = b.dataset.rkf || "all";
         renderLeaderboard();
       });
-    }
-    if (fProv) {
-      fProv.addEventListener("click", () => {
-        activeRankProvinceFilter = "mine";
-        renderLeaderboard();
-      });
-    }
+    });
   }
 
   let profilePreviewDraft = null;
@@ -6566,6 +6934,40 @@
   // ==================== MODULE 11: ANALYTICS METRICS & DECREE 13/2023/NĐ-CP PRIVACY CENTER ====================
   let activePrivacySubTab = "ai-logs";
 
+  function renderHourlyHistogramHtml(hourly24) {
+    const arr = Array.isArray(hourly24) && hourly24.length === 24 ? hourly24 : new Array(24).fill(0);
+    // Group into 12 clear 2-hour bins (00h, 02h, ..., 22h) so 390px mobile renders crisp bars with zero crowding
+    const bins = [];
+    let maxBin = 1;
+    let peakBinIdx = 3;
+    for (let b = 0; b < 12; b++) {
+      const sum = (arr[b * 2] || 0) + (arr[b * 2 + 1] || 0);
+      bins.push({ label: `${String(b * 2).padStart(2, "0")}h`, val: sum });
+      if (sum > maxBin) {
+        maxBin = sum;
+        peakBinIdx = b;
+      }
+    }
+    return `
+      <div class="hourly-hist-wrap">
+        <small style="font-size:0.88rem; color:var(--ink-secondary); font-weight:600;">Biểu đồ nhịp giờ hoạt động 24h (đỏ = khung giờ cao điểm):</small>
+        <div class="hourly-hist-bars">
+          ${bins
+            .map((bin, idx) => {
+              const pct = Math.max(8, Math.round((bin.val / maxBin) * 100));
+              return `
+                <div class="hourly-bar-col" title="${bin.label}: ${bin.val} sự kiện">
+                  <div class="hourly-bar-fill ${idx === peakBinIdx && bin.val > 0 ? "peak" : ""}" style="height:${pct}%"></div>
+                  <span class="hourly-bar-lbl">${idx % 2 === 0 ? bin.label : ""}</span>
+                </div>
+              `;
+            })
+            .join("")}
+        </div>
+      </div>
+    `;
+  }
+
   function renderPrivacyAndMetrics() {
     const a = state.analytics || {};
     const quickCount = a.tea_msg_quick_0token || 0;
@@ -6573,15 +6975,16 @@
     const totalMsgs = quickCount + voiceTextCount;
     const zeroTokenPct = totalMsgs > 0 ? Math.round((quickCount / totalMsgs) * 100) : 100;
     const st = RT ? RT.getStatus() : { connected: false, providerName: "Cục bộ", totalOtherPeers: 0, clientId: "local" };
-    const allMemberLogs = getAllMemberLogsMerged();
-    const aiPersonas = synthesizeMemberAiInsights();
+    const hotEvents = TEL ? TEL.getHotEvents() : [];
+    const totalIdbEvents = TEL ? TEL.getTotalStoredEstimate() : hotEvents.length;
+    const deepProfiles = TEL ? TEL.getMemberDeepProfiles() : [];
 
     els.main.innerHTML = `
-      <h1>Lưu Trữ · AI Tracking &amp; Quyền Riêng Tư</h1>
-      <p class="lead-copy">Hệ thống lưu trữ cẩn thận 3 lớp (Máy chính + Bản sao dự phòng + Đám mây) kèm phân tích AI từ Log hành vi để thấu hiểu nhu cầu từng hội viên.</p>
+      <h1>Kho AI Tracking 100% &amp; Quyền Riêng Tư</h1>
+      <p class="lead-copy">Ghi nhận 100% nhịp sinh hoạt, khung giờ mở máy, thời lượng từng màn hình, phương thức trò chuyện và chủ đề quan tâm vào kho IndexedDB không giới hạn dung lượng để phục vụ phân tích AI lâu dài.</p>
 
-      <div class="xq-top-switch" role="tablist" aria-label="Chọn Bảng AI Log Thành Viên hoặc Quyền Riêng Tư">
-        <button type="button" class="xq-top-btn ${activePrivacySubTab === "ai-logs" ? "active" : ""}" id="btn-priv-tab-ai">AI Hiểu Thành Viên &amp; Kho Log (${allMemberLogs.length})</button>
+      <div class="xq-top-switch" role="tablist" aria-label="Chọn Kho AI Tracking hoặc Quyền Riêng Tư">
+        <button type="button" class="xq-top-btn ${activePrivacySubTab === "ai-logs" ? "active" : ""}" id="btn-priv-tab-ai">Kho AI Tracking 100% (${totalIdbEvents} log)</button>
         <button type="button" class="xq-top-btn ${activePrivacySubTab === "privacy" ? "active" : ""}" id="btn-priv-tab-gdpr">Chỉ Số 0-Token &amp; Quyền Riêng Tư</button>
       </div>
 
@@ -6590,53 +6993,69 @@
           ? `
         <div class="surface-panel jade">
           <div class="passcard-head">
-            <strong>Trạng thái Kho Lưu Trữ 3 Lớp Cẩn Thận</strong>
-            <span class="online-status-pill"><span class="online-dot-live"></span>An toàn 100%</span>
+            <strong>Kho Lưu Trữ 4 Lớp Bền Vững (Tracking 100%)</strong>
+            <span class="online-status-pill"><span class="online-dot-live"></span>Đang ghi 100%</span>
           </div>
-          <p style="font-size:0.88rem;">1. Bộ nhớ chính (<code>${escHtml(STORAGE_KEY)}</code>) · 2. Bản sao chống lỗi (<code>_vault_bak</code>) · 3. Đồng bộ đám mây (${escHtml(st.providerName)}).</p>
-          <div class="btn-row">
-            <button type="button" class="btn-primary" id="btn-export-ai-logs-json">${ico("download")}<span>Xuất Kho Log AI (.json)</span></button>
-            <button type="button" class="btn-secondary" id="btn-export-ai-logs-csv"><span>Xuất Bảng CSV</span></button>
+          <p style="font-size:0.88rem;">1. <strong>IndexedDB Không Giới Hạn</strong> (<code>tuoibac_telemetry_db_v1</code>: <strong class="num">${totalIdbEvents}</strong> bản ghi) · 2. Bộ nhớ nóng (<code>${escHtml(STORAGE_KEY)}</code>) · 3. Bản sao dự phòng (<code>_vault_bak</code>) · 4. Đám mây (${escHtml(st.providerName)}).</p>
+          <div class="temple-ritual-grid">
+            <button type="button" class="btn-primary" id="btn-export-ai-jsonl">${ico("download")}<span>Xuất Chuẩn AI (.jsonl)</span></button>
+            <button type="button" class="btn-jade" id="btn-export-ai-logs-json">${ico("download")}<span>Xuất Kho Đầy Đủ (.json)</span></button>
+            <button type="button" class="btn-secondary" id="btn-export-ai-logs-csv"><span>Xuất Bảng Excel (.csv)</span></button>
+            <button type="button" class="btn-secondary" id="btn-flush-dwell-now"><span>Chốt Thời Lượng Hiện Tại</span></button>
           </div>
         </div>
 
         <div class="surface-panel">
-          <h3>Chân dung AI Thấu Hiểu Từng Thành Viên (${aiPersonas.length} hồ sơ)</h3>
-          <p style="font-size:0.88rem; color:var(--ink-secondary);">Tổng hợp tự động từ giờ giấc mở máy, chuyên mục báo hay đọc, bàn trà, ván cờ và nghi thức tĩnh tâm:</p>
-          <div style="display:flex; flex-direction:column; gap:10px;">
-            ${aiPersonas
-              .map(
-                (p) => `
+          <h3>Hồ Sơ Thói Quen Giờ Giấc &amp; Chat Chit Toàn Thành Viên (${deepProfiles.length} hồ sơ)</h3>
+          <div style="display:flex; flex-direction:column; gap:12px;">
+            ${deepProfiles
+              .map((p) => {
+                const cs = p.chatSummary;
+                return `
               <div class="ai-persona-card">
                 <div class="passcard-head">
                   <strong>${escHtml(p.userName)} · ${p.age}t (${escHtml(p.province)})</strong>
-                  <span class="member-code-chip">${escHtml(p.memberCode)} · ${p.totalActions} hoạt động</span>
+                  <span class="cohort-pill ${p.seniorityLevel >= 17 ? "veteran" : p.seniorityLevel >= 6 ? "trusted" : "newcomer"}">${escHtml(p.memberCode)} · ${p.totalEvents} sự kiện</span>
                 </div>
-                <small style="font-size:0.88rem; color:#6B4208; font-weight:700;">Bậc danh hiệu: ${escHtml(p.seniorityTier)}</small>
-                <div style="font-size:0.9rem;"><strong>Nhịp sinh hoạt &amp; Mối quan tâm:</strong> ${escHtml(p.timePersona)} · ${escHtml(p.topInterests)}</div>
-                <div style="font-size:0.88rem; color:var(--accent-jade); font-weight:700;">${escHtml(p.aiRecommendation)}</div>
+                <small style="font-size:0.88rem; color:#6B4208; font-weight:700;">${escHtml(p.seniorityTitle)} · Giờ hoạt động mạnh nhất: ${String(p.peakHour).padStart(2, "0")}h00 (${escHtml(p.peakTimeBucketLabel)})</small>
+                ${renderHourlyHistogramHtml(p.hourlyHist)}
+                <div style="font-size:0.88rem;"><strong>Thời lượng gắn bó theo màn hình:</strong> ${escHtml(p.topDwellSummary)}</div>
+                <div class="chat-method-grid">
+                  <div class="chat-method-chip"><span>Câu nhanh 0-Token</span><strong>${cs.byMethod.quick_0token}</strong></div>
+                  <div class="chat-method-chip"><span>Sticker 1 chạm</span><strong>${cs.byMethod.sticker_1tap}</strong></div>
+                  <div class="chat-method-chip"><span>Gõ phím chữ</span><strong>${cs.byMethod.typed_text}</strong></div>
+                  <div class="chat-method-chip"><span>Giọng nói Micro</span><strong>${cs.byMethod.voice_speech}</strong></div>
+                </div>
+                <div style="font-size:0.88rem;">
+                  <strong>Thói quen chat:</strong> Tổng <span class="num">${cs.totalMessages}</span> câu (TB <span class="num">${cs.avgWords}</span> từ/câu · Ưu tiên: ${escHtml(cs.dominantMethodLabel)})${
+                  cs.topCompanions.length > 0 ? ` · Hay trò chuyện cùng: ${escHtml(cs.topCompanions.join(", "))}` : ""
+                }${p.searchQueries.length > 0 ? ` · Từ khóa tìm báo: "${escHtml(p.searchQueries.join(", "))}"` : ""}
+                </div>
+                <div style="font-size:0.88rem; color:var(--accent-jade); font-weight:700;">Hành động gợi ý từ dữ liệu: ${escHtml(p.aiActionableInsight)}</div>
               </div>
-            `
-              )
+            `;
+              })
               .join("")}
           </div>
         </div>
 
         <div class="surface-panel">
-          <h3>Nhật ký Log Hành Vi Toàn Thành Viên Mới Nhất (${allMemberLogs.length})</h3>
+          <h3>Dòng Sự Kiện Telemetry Chi Tiết Thời Gian Thực (${hotEvents.length} bản ghi gần nhất)</h3>
           <div style="display:flex; flex-direction:column; gap:8px;">
-            ${allMemberLogs
-              .slice(0, 18)
-              .map((l) => {
-                const d = new Date(l.ts || Date.now());
-                const hm = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+            ${hotEvents
+              .slice(0, 20)
+              .map((ev) => {
+                const d = new Date(ev.ts || Date.now());
+                const hms = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`;
+                const m = ev.meta || {};
+                const methodBadge = m.inputMethod ? ` · Kiểu: ${m.inputMethod} (${m.wordCount || 0} từ)` : "";
                 return `
                   <div class="member-log-item">
                     <div style="display:flex; justify-content:space-between; gap:8px; font-weight:700;">
-                      <span>[${hm}] ${escHtml(l.userName)} (${escHtml(l.memberCode)})</span>
-                      <span style="color:var(--accent-terracotta);">${escHtml(l.action)}</span>
+                      <span>[${hms}] ${escHtml(ev.userName)} (${escHtml(ev.memberCode)})</span>
+                      <span style="color:var(--accent-terracotta);">${escHtml(ev.module)}/${escHtml(ev.subAction)}</span>
                     </div>
-                    <span>${escHtml(l.detail)}</span>
+                    <span>Lưu màn hình: ${ev.dwellSec || 0}s${escHtml(methodBadge)} · ${escHtml(m.detail || m.text || m.query || m.wishText || JSON.stringify(m).slice(0, 90))}</span>
                   </div>
                 `;
               })
@@ -6742,64 +7161,60 @@
       renderPrivacyAndMetrics();
     });
 
-    const expAiJson = document.getElementById("btn-export-ai-logs-json");
-    if (expAiJson) {
-      expAiJson.addEventListener("click", () => {
-        const blob = new Blob(
-          [
-            JSON.stringify(
-              {
-                exportedAt: new Date().toISOString(),
-                aiMemberPersonas: aiPersonas,
-                memberActivityLogs: allMemberLogs
-              },
-              null,
-              2
-            )
-          ],
-          { type: "application/json" }
+    const triggerDownloadBlob = (blob, filename, msg) => {
+      const url = URL.createObjectURL(blob);
+      const aTag = document.createElement("a");
+      aTag.href = url;
+      aTag.download = filename;
+      document.body.appendChild(aTag);
+      aTag.click();
+      document.body.removeChild(aTag);
+      setTimeout(() => URL.revokeObjectURL(url), 1200);
+      showToast(msg);
+    };
+
+    const expJsonl = document.getElementById("btn-export-ai-jsonl");
+    if (expJsonl && TEL) {
+      expJsonl.addEventListener("click", async () => {
+        const jsonlStr = await TEL.buildExportJsonlString();
+        triggerDownloadBlob(
+          new Blob([jsonlStr], { type: "application/x-ndjson;charset=utf-8" }),
+          "tuoibac-ai-telemetry-100pct.jsonl",
+          "Đã xuất tệp chuẩn huấn luyện & phân tích AI (.jsonl)!"
         );
-        const url = URL.createObjectURL(blob);
-        const aTag = document.createElement("a");
-        aTag.href = url;
-        aTag.download = "kho-luu-tru-ai-logs-tuoi-bac.json";
-        document.body.appendChild(aTag);
-        aTag.click();
-        document.body.removeChild(aTag);
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-        showToast("Đã xuất toàn bộ Hồ sơ AI & Log thành viên (.json)!");
+      });
+    }
+
+    const expAiJson = document.getElementById("btn-export-ai-logs-json");
+    if (expAiJson && TEL) {
+      expAiJson.addEventListener("click", async () => {
+        const fullObj = await TEL.buildExportFullJsonObject();
+        triggerDownloadBlob(
+          new Blob([JSON.stringify(fullObj, null, 2)], { type: "application/json;charset=utf-8" }),
+          "kho-ai-telemetry-toan-thanh-vien.json",
+          "Đã xuất toàn bộ Kho AI Telemetry & Ma trận thói quen (.json)!"
+        );
       });
     }
 
     const expAiCsv = document.getElementById("btn-export-ai-logs-csv");
-    if (expAiCsv) {
-      expAiCsv.addEventListener("click", () => {
-        const header = "ThoiGian,MaThanhVien,HoTen,Tuoi,Tinh,BacThamNien,HanhDong,ChuyenMuc,ChiTiet\n";
-        const rowsCsv = allMemberLogs
-          .map((l) =>
-            [
-              new Date(l.ts || Date.now()).toISOString(),
-              l.memberCode,
-              `"${String(l.userName || "").replace(/"/g, '""')}"`,
-              l.age,
-              `"${String(l.province || "").replace(/"/g, '""')}"`,
-              `"${String(l.seniorityTier || "").replace(/"/g, '""')}"`,
-              l.action,
-              l.category,
-              `"${String(l.detail || "").replace(/"/g, '""')}"`
-            ].join(",")
-          )
-          .join("\n");
-        const blob = new Blob(["\uFEFF" + header + rowsCsv], { type: "text/csv;charset=utf-8;" });
-        const url = URL.createObjectURL(blob);
-        const aTag = document.createElement("a");
-        aTag.href = url;
-        aTag.download = "bang-log-thanh-vien-tuoi-bac.csv";
-        document.body.appendChild(aTag);
-        aTag.click();
-        document.body.removeChild(aTag);
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-        showToast("Đã tải bảng CSV Log hành vi tất cả thành viên!");
+    if (expAiCsv && TEL) {
+      expAiCsv.addEventListener("click", async () => {
+        const csvStr = await TEL.buildExportCsvString();
+        triggerDownloadBlob(
+          new Blob([csvStr], { type: "text/csv;charset=utf-8" }),
+          "bang-telemetry-thanh-vien-tuoi-bac.csv",
+          "Đã xuất bảng CSV toàn bộ sự kiện Telemetry!"
+        );
+      });
+    }
+
+    const flushBtn = document.getElementById("btn-flush-dwell-now");
+    if (flushBtn && TEL) {
+      flushBtn.addEventListener("click", () => {
+        TEL.flushDwellHeartbeat(buildTelemetryUserCtx());
+        showToast("Đã chốt thời lượng lưu màn hình hiện tại vào kho AI Tracking!");
+        renderPrivacyAndMetrics();
       });
     }
 
@@ -6863,6 +7278,7 @@
       document.getElementById("btn-cancel-wipe").addEventListener("click", closeDialog);
       document.getElementById("btn-confirm-wipe-now").addEventListener("click", () => {
         if (RT) RT.wipeMyCloudData();
+        if (TEL && typeof TEL.wipeLocalTelemetry === "function") TEL.wipeLocalTelemetry();
         localStorage.removeItem(STORAGE_KEY);
         state = createDefaultState();
         pendingQueue = [];
@@ -6964,6 +7380,7 @@
       unlockedTitleFrames: (state.user.unlockedTitleFrames || []).slice(),
       xu: state.user.xu,
       seniorityPoints: state.user.seniorityPoints || 28,
+      skillPoints: Object.assign({}, state.user.skillPoints || {}),
       memberLogs: (state.memberLogs || []).slice(0, 35),
       joinedGroupIds: (state.social.joinedGroupIds || []).slice(),
       friends: (state.social.friends || []).slice()
@@ -7006,6 +7423,12 @@
     }
     if (typeof snap.seniorityPoints === "number" && snap.seniorityPoints > (state.user.seniorityPoints || 0)) {
       state.user.seniorityPoints = snap.seniorityPoints;
+    }
+    if (snap.skillPoints && typeof snap.skillPoints === "object") {
+      if (!state.user.skillPoints) state.user.skillPoints = {};
+      Object.keys(snap.skillPoints).forEach((sk) => {
+        state.user.skillPoints[sk] = Math.max(Number(state.user.skillPoints[sk]) || 0, Number(snap.skillPoints[sk]) || 0);
+      });
     }
     if (Array.isArray(snap.memberLogs)) {
       const existingIds = new Set((state.memberLogs || []).map((x) => x.id));
@@ -7087,6 +7510,8 @@
     if (state.route === "newspaper") return "Đang đọc Tờ Báo Sáng";
     if (state.route === "checkin") return "Vừa Điểm danh bình an";
     if (state.route === "poetry") return "Đang ngâm thơ Lục Bát";
+    if (state.route === "zen") return `Đang ngồi Bồ Đoàn BĐ${(state.zen.userCushionIdx || 0) + 1} Chánh Điện 3D`;
+    if (state.route === "leaderboard") return "Đang xem Cây 96 Danh Hiệu";
     return "Đang ở Sảnh Quán Trà";
   }
 
@@ -7110,6 +7535,8 @@
       outfitColor: getOutfit(state.user.outfitId).color,
       hat: state.user.accessoryId || "glasses",
       titleFrameId: state.user.titleFrameId || "tri-am",
+      seniorityLevel: getSeniorityProgress().current.level || 0,
+      cushionIdx: state.zen.userCushionIdx || 2,
       unitLabel: (state.auth && state.auth.primaryUnitLabel) || "",
       where: computeCurrentActivityWhere(),
       roomId: state.route === "tearoom" ? room.id : "",
@@ -7309,29 +7736,35 @@
 
   function renderSeniorityLadderHtml() {
     const prog = getSeniorityProgress();
-    const tiers = D.SENIORITY_TIERS || [];
+    const eras = PROG ? PROG.ERAS.slice(1) : [];
+    const mainTiers = PROG ? PROG.MAIN_TIERS : [];
     return `
       <div class="surface-panel">
         <div class="passcard-head">
-          <strong>Thang Danh Hiệu Thâm Niên (Mộc Mạc → Lâu Năm)</strong>
-          <span class="member-code-chip">${prog.points} điểm gắn bó</span>
+          <strong>6 Giai Đoạn · 32 Tầng Thâm Niên &amp; 64 Bậc Chuyên Môn</strong>
+          <span class="cohort-pill ${escHtml(prog.cohort.cls)}">${prog.points} XP</span>
         </div>
         <div class="seniority-ladder">
-          ${tiers
-            .map((t) => {
-              const isCurr = prog.current && prog.current.id === t.id;
+          ${eras
+            .map((era) => {
+              const firstT = mainTiers.find((t) => t.era && t.era.id === era.id);
+              const lastT = mainTiers.filter((t) => t.era && t.era.id === era.id).slice(-1)[0];
+              const isMyEra = !prog.isGuest && prog.current && prog.current.eraName === era.eraName;
               return `
-              <div class="seniority-tier-row ${isCurr ? "current" : ""}">
+              <div class="seniority-tier-row ${isMyEra ? "current" : ""}">
                 <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
-                  <strong style="color:${escHtml(t.color)};">${escHtml(t.name)}</strong>
-                  <span class="badge-tag ${isCurr ? "amber" : ""}">${isCurr ? "Đang đạt" : `${t.minPoints}+ điểm`}</span>
+                  <strong style="color:${escHtml(era.color)};">${escHtml(era.eraName)} (${escHtml(era.rangeLabel)})</strong>
+                  <span class="badge-tag ${isMyEra ? "amber" : ""} num">${
+                    isMyEra ? `Đang ở Tầng ${prog.current.level}` : `${firstT ? firstT.minXp : 33}–${lastT ? lastT.minXp : 23006} XP`
+                  }</span>
                 </div>
-                <span style="color:var(--ink-secondary);">${escHtml(t.perk)}</span>
+                <span style="color:var(--ink-secondary);">${escHtml(era.cohortRole)}</span>
               </div>
             `;
             })
             .join("")}
         </div>
+        <button type="button" class="btn-secondary" id="btn-modal-open-full-96-tree">${ico("trophy")}<span>Xem Trọn Bộ 96 Danh Hiệu &amp; Công Thức Toán</span></button>
       </div>
     `;
   }
@@ -7385,6 +7818,14 @@
       document.getElementById("btn-copy-my-friend-link").addEventListener("click", () => {
         copyTextSafe(friendInviteUrl, `Đã chép link kết bạn của mã ${state.auth.memberCode}!`);
       });
+      const btnFullTree = document.getElementById("btn-modal-open-full-96-tree");
+      if (btnFullTree) {
+        btnFullTree.addEventListener("click", () => {
+          closeDialog();
+          activeLeaderTab = "Cay32";
+          navigate("leaderboard");
+        });
+      }
       document.getElementById("btn-enable-passkey").addEventListener("click", async () => {
         if (window.PublicKeyCredential && navigator.credentials && typeof navigator.credentials.create === "function") {
           try {
@@ -7467,7 +7908,7 @@
 
       <button type="button" class="btn-primary" id="btn-submit-senior-auth">
         ${ico("card")}
-        <span>Mở Thẻ Nhận +30 Điểm Thâm Niên &amp; +15 Xu</span>
+        <span>Mở Thẻ Nhận +35 XP Lên Tầng 1 &amp; +15 Xu</span>
       </button>
 
       ${renderSeniorityLadderHtml()}
@@ -7543,7 +7984,13 @@
         } else {
           applyUserIdentity(chosenHon, nameVal, ageVal, state.user.provinceId);
           state.user.xu += 15;
-          awardSeniorityPoints(30, "member_card_created", "sinh-hoat", `Mở Thẻ Hội Viên ${memCode} — thăng Bậc Bạn Trà Mộc Mạc`);
+          awardSeniorityPoints(
+            35,
+            "member_card_created",
+            "sinh-hoat",
+            `Mở Thẻ Hội Viên ${memCode} — thăng Tầng 1 · Tân Khách Mộc Mạc`,
+            { eventType: "auth_passcard", module: "auth", memberCode: memCode }
+          );
         }
 
         state.auth.recoveryToken = encodeRecoveryToken({
@@ -7918,6 +8365,13 @@
         if (cat === "veteran") {
           unlockTitleFrame("dong-ngu", `Ban liên lạc ${newGrp.shortName}`);
         }
+        awardSkillPoints("comrade_social", 8);
+        awardSeniorityPoints(8, "group_created", "dong-ngu", `Thành lập đơn vị / hội "${newGrp.name}"`, {
+          eventType: "social_group",
+          module: "groups",
+          groupId: gid,
+          groupName: newGrp.name
+        });
         saveState();
         if (RT) RT.publishGroup(newGrp);
         syncMyCloudAccountBackup();
@@ -8571,9 +9025,20 @@
     });
   }
 
-  // 1-second session & 60-second Tea Table silence watchdog
+  if (TEL && RT && typeof TEL.setRemoteForwarder === "function") {
+    TEL.setRemoteForwarder((ev) => {
+      if (RT && typeof RT.publishTelemetryEvent === "function") {
+        RT.publishTelemetryEvent(ev);
+      }
+    });
+  }
+
+  // 1-second session, 20-second AI dwell-time flush & 60-second Tea Table silence watchdog
   setInterval(() => {
     sessionSeconds += 1;
+    if (sessionSeconds % 20 === 0 && TEL && typeof TEL.flushDwellHeartbeat === "function") {
+      TEL.flushDwellHeartbeat(buildTelemetryUserCtx());
+    }
     if (sessionSeconds >= 1200 && !eyeCareShownThisCycle) {
       showEyeRestModal();
     }
@@ -8657,13 +9122,23 @@
     RT.on("temple", (pkt) => {
       if (!pkt || pkt.clientId === RT.getClientId()) return;
       if (state.route === "zen") {
-        triggerTempleVisualWave("#FFD166", pkt.prayerText ? `${pkt.userName} vừa dâng hương` : `${pkt.userName} vừa thỉnh chuông`);
+        triggerTempleVisualWave(
+          "#FFD166",
+          pkt.userName || "Bạn trực tuyến",
+          pkt.ritualKind || (pkt.prayerText ? "wish_plaque" : "bell")
+        );
         if (pkt.prayerText) {
           const activeTag = document.activeElement && document.activeElement.tagName;
           if (activeTag !== "INPUT" && activeTag !== "TEXTAREA") {
             renderZen();
           }
         }
+      }
+    });
+
+    RT.on("telemetry", () => {
+      if (state.route === "privacy" && activePrivacySubTab === "ai-logs") {
+        renderPrivacyAndMetrics();
       }
     });
 
