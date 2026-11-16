@@ -66,6 +66,55 @@ window.TuoiBacData = (function () {
     { id: "non-la", name: "Nón lá truyền thống", desc: "Nón lá chằm tay vành tre mộc mạc quê hương", cost: 20 }
   ];
 
+  // Khung danh hiệu gắn lên thẻ tên & huy hiệu nhân vật 3D
+  const TITLE_FRAMES = [
+    {
+      id: "none",
+      name: "Thẻ tên mộc giản dị",
+      shortTag: "",
+      desc: "Bảng tên gỗ mộc mặc định, nhẹ nhàng dễ đọc",
+      color: "#3A2A20",
+      rimHex: 0x8b6240,
+      cost: 0
+    },
+    {
+      id: "tri-am",
+      name: "Tri Âm Sáng Sớm",
+      shortTag: "Tri Âm",
+      desc: "Viền ngọc bích & huy hiệu lá trà xanh (mở sẵn cho thành viên điểm danh sáng)",
+      color: "#2E5E4E",
+      rimHex: 0x2e7d63,
+      cost: 0
+    },
+    {
+      id: "thi-huu",
+      name: "Thi Hữu Tao Đàn",
+      shortTag: "Thi Hữu",
+      desc: "Khung gấm đỏ thêu bút nghiên (tự mở khi đăng thơ mới hoặc đổi bằng 10 Xu)",
+      color: "#A2382B",
+      rimHex: 0xc84b38,
+      cost: 10
+    },
+    {
+      id: "ky-thu",
+      name: "Kỳ Thủ Đầu Xuân",
+      shortTag: "Kỳ Thủ",
+      desc: "Khung gỗ mun khảm đồng (tự mở khi giải thế Cờ tướng 9×10 hoặc đổi bằng 10 Xu)",
+      color: "#5C3621",
+      rimHex: 0xd49a35,
+      cost: 10
+    },
+    {
+      id: "giu-lua",
+      name: "Người Giữ Lửa Trà",
+      shortTag: "Giữ Lửa",
+      desc: "Khung hoàng kim ấm áp tôn vinh người hay mời trà kết bạn",
+      color: "#B6731E",
+      rimHex: 0xf0b23a,
+      cost: 15
+    }
+  ];
+
   // Thói quen & sở thích dùng để ghép bàn thông minh
   const HABIT_TAGS = [
     { id: "day-som", label: "Dậy sớm 5h30" },
@@ -81,24 +130,24 @@ window.TuoiBacData = (function () {
 
   // Danh bạ các anh chị đang sinh hoạt trong quán (xưng hô Anh / Chị + hiển thị tuổi rõ ràng)
   const SENIOR_DIRECTORY = [
-    { id: "lan", name: "Chị Lan", gender: "female", age: 68, provinceId: "ha-noi", province: "Hà Nội", habits: ["uong-tra", "tho-ca", "day-som"], bio: "Cựu giáo viên, thích trà nhài và ngâm thơ lục bát mỗi sáng.", outfitColor: "#A2382B", hat: "hair-bun", item: "binh-sen", badge: "Vừa cười" },
-    { id: "minh", name: "Anh Minh", gender: "male", age: 71, provinceId: "hai-phong", province: "Hải Phòng", habits: ["cuu-chien-binh", "co-tuong", "doc-bao"], bio: "Cựu chiến binh Hải quân, mê cờ tướng và đọc thời sự sáng.", outfitColor: "#556B45", hat: "cap", item: "radio-go", badge: "Đang nghe" },
-    { id: "hoa", name: "Chị Hoa", gender: "female", age: 63, provinceId: "da-nang", province: "Đà Nẵng", habits: ["duong-sinh", "uong-tra", "tho-ca"], bio: "Trưởng nhóm dân vũ phường, hay mời trà và bánh đậu xanh.", outfitColor: "#2E5E4E", hat: "hair-bob", item: "dia-hat-dua", badge: "Mời trà" },
-    { id: "bay", name: "Anh Bảy", gender: "male", age: 66, provinceId: "dong-thap", province: "Đồng Tháp", habits: ["cay-canh", "day-som", "uong-tra"], bio: "Chăm vườn mai vàng và đờn ca tài tử buổi trưa.", outfitColor: "#6E4A35", hat: "scarf", item: "bonsai-mini", badge: "Đang ngồi" },
-    { id: "thanh", name: "Anh Thành", gender: "male", age: 69, provinceId: "ninh-binh", province: "Ninh Bình", habits: ["cay-canh", "co-tuong", "day-som"], bio: "Có 15 chậu sanh bonsai tự uốn trên sân thượng.", outfitColor: "#556B45", hat: "cap", item: "bonsai-mini", badge: "Đang nói" },
-    { id: "sau", name: "Anh Sáu", gender: "male", age: 72, provinceId: "vinh-long", province: "Vĩnh Long", habits: ["cay-canh", "bao-cap", "uong-tra"], bio: "Thích kể chuyện miệt vườn sông nước và trồng lan rừng.", outfitColor: "#6E4A35", hat: "scarf", item: "am-tu-sa", badge: "Đang ngồi" },
-    { id: "nga", name: "Chị Nga", gender: "female", age: 61, provinceId: "lam-dong", province: "Lâm Đồng", habits: ["duong-sinh", "cay-canh", "tho-ca"], bio: "Trồng hoa cúc Đà Lạt và tập thái cực quyền lúc 6 giờ.", outfitColor: "#2E5E4E", hat: "hair-bun", item: "binh-sen", badge: "Mời trà" },
-    { id: "tu", name: "Anh Tư", gender: "male", age: 65, provinceId: "an-giang", province: "An Giang", habits: ["doc-bao", "co-tuong", "bao-cap"], bio: "Đọc báo giấy mỗi sáng, hay giải thế cờ tàn.", outfitColor: "#C48A2D", hat: "none", item: "den-dau", badge: "Đang nghe" },
-    { id: "vinh", name: "Anh Vĩnh", gender: "male", age: 74, provinceId: "nghe-an", province: "Nghệ An", habits: ["cuu-chien-binh", "bao-cap", "day-som"], bio: "Từng đóng quân Trường Sơn, nhớ nhiều kỷ niệm thời tem phiếu.", outfitColor: "#556B45", hat: "cap", item: "den-dau", badge: "Đang nói" },
-    { id: "mai", name: "Chị Mai", gender: "female", age: 70, provinceId: "thanh-hoa", province: "Thanh Hóa", habits: ["bao-cap", "tho-ca", "duong-sinh"], bio: "Hay đọc ca dao xứ Thanh và kể chuyện xếp hàng mậu dịch.", outfitColor: "#A2382B", hat: "hair-bun", item: "am-tu-sa", badge: "Vừa cười" },
-    { id: "hai", name: "Anh Hải", gender: "male", age: 68, provinceId: "hue", province: "TP. Huế", habits: ["uong-tra", "tho-ca", "bao-cap"], bio: "Pha trà sen cung đình, thích nghe đài phát thanh xưa.", outfitColor: "#6E4A35", hat: "none", item: "radio-go", badge: "Đang nghe" },
-    { id: "lien", name: "Chị Liên", gender: "female", age: 62, provinceId: "tp-hcm", province: "TP. HCM", habits: ["duong-sinh", "doc-bao", "uong-tra"], bio: "Thích mẹo chăm sóc giấc ngủ và sống khỏe tuổi nghỉ hưu.", outfitColor: "#2E5E4E", hat: "hair-bob", item: "dia-hat-dua", badge: "Đang ngồi" },
-    { id: "dung", name: "Anh Dũng", gender: "male", age: 67, provinceId: "bac-ninh", province: "Bắc Ninh", habits: ["tho-ca", "co-tuong", "uong-tra"], bio: "Yêu dân ca Quan họ và xướng họa thơ Đường luật.", outfitColor: "#C48A2D", hat: "none", item: "am-tu-sa", badge: "Đang nói" },
-    { id: "thu", name: "Chị Thu", gender: "female", age: 64, provinceId: "thai-nguyen", province: "Thái Nguyên", habits: ["uong-tra", "tho-ca", "cay-canh"], bio: "Quê đất chè Tân Cương, hay tặng hoa trong sân thơ.", outfitColor: "#2E5E4E", hat: "hair-bun", item: "binh-sen", badge: "Vừa cười" },
-    { id: "phat", name: "Anh Phát", gender: "male", age: 66, provinceId: "can-tho", province: "Cần Thơ", habits: ["co-tuong", "uong-tra", "day-som"], bio: "Đồng hương Cần Thơ, mê ô ăn quan và cờ tướng mỗi sáng.", outfitColor: "#6E4A35", hat: "scarf", item: "dia-hat-dua", badge: "Đang nghe" },
-    { id: "quynh", name: "Anh Quỳnh", gender: "male", age: 70, provinceId: "phu-tho", province: "Phú Thọ", habits: ["cuu-chien-binh", "doc-bao", "bao-cap"], bio: "Cán bộ hưu trí, hay bàn tin lương hưu và chuyện đồng đội.", outfitColor: "#A2382B", hat: "glasses", item: "den-dau", badge: "Đang ngồi" },
-    { id: "hung-ccb", name: "Anh Cường", gender: "male", age: 73, provinceId: "quang-tri", province: "Quảng Trị", habits: ["cuu-chien-binh", "co-tuong", "uong-tra"], bio: "Cựu chiến binh thành cổ, thích cờ tướng và thăm hỏi đồng đội.", outfitColor: "#556B45", hat: "cap", item: "radio-go", badge: "Mời trà" },
-    { id: "binh", name: "Chị Bình", gender: "female", age: 60, provinceId: "can-tho", province: "Cần Thơ", habits: ["duong-sinh", "doc-bao", "cay-canh"], bio: "Tập dưỡng sinh buổi sáng ở bến Ninh Kiều, thích trồng rau sạch.", outfitColor: "#2E5E4E", hat: "hair-bob", item: "bonsai-mini", badge: "Đang ngồi" }
+    { id: "lan", name: "Chị Lan", gender: "female", age: 68, provinceId: "ha-noi", province: "Hà Nội", habits: ["uong-tra", "tho-ca", "day-som"], bio: "Cựu giáo viên, thích trà nhài và ngâm thơ lục bát mỗi sáng.", outfitColor: "#A2382B", hat: "hair-bun", item: "binh-sen", badge: "Vừa cười", titleFrameId: "thi-huu" },
+    { id: "minh", name: "Anh Minh", gender: "male", age: 71, provinceId: "hai-phong", province: "Hải Phòng", habits: ["cuu-chien-binh", "co-tuong", "doc-bao"], bio: "Cựu chiến binh Hải quân, mê cờ tướng và đọc thời sự sáng.", outfitColor: "#556B45", hat: "cap", item: "radio-go", badge: "Đang nghe", titleFrameId: "ky-thu" },
+    { id: "hoa", name: "Chị Hoa", gender: "female", age: 63, provinceId: "da-nang", province: "Đà Nẵng", habits: ["duong-sinh", "uong-tra", "tho-ca"], bio: "Trưởng nhóm dân vũ phường, hay mời trà và bánh đậu xanh.", outfitColor: "#2E5E4E", hat: "hair-bob", item: "dia-hat-dua", badge: "Mời trà", titleFrameId: "tri-am" },
+    { id: "bay", name: "Anh Bảy", gender: "male", age: 66, provinceId: "dong-thap", province: "Đồng Tháp", habits: ["cay-canh", "day-som", "uong-tra"], bio: "Chăm vườn mai vàng và đờn ca tài tử buổi trưa.", outfitColor: "#6E4A35", hat: "scarf", item: "bonsai-mini", badge: "Đang ngồi", titleFrameId: "none" },
+    { id: "thanh", name: "Anh Thành", gender: "male", age: 69, provinceId: "ninh-binh", province: "Ninh Bình", habits: ["cay-canh", "co-tuong", "day-som"], bio: "Có 15 chậu sanh bonsai tự uốn trên sân thượng.", outfitColor: "#556B45", hat: "cap", item: "bonsai-mini", badge: "Đang nói", titleFrameId: "ky-thu" },
+    { id: "sau", name: "Anh Sáu", gender: "male", age: 72, provinceId: "vinh-long", province: "Vĩnh Long", habits: ["cay-canh", "bao-cap", "uong-tra"], bio: "Thích kể chuyện miệt vườn sông nước và trồng lan rừng.", outfitColor: "#6E4A35", hat: "scarf", item: "am-tu-sa", badge: "Đang ngồi", titleFrameId: "none" },
+    { id: "nga", name: "Chị Nga", gender: "female", age: 61, provinceId: "lam-dong", province: "Lâm Đồng", habits: ["duong-sinh", "cay-canh", "tho-ca"], bio: "Trồng hoa cúc Đà Lạt và tập thái cực quyền lúc 6 giờ.", outfitColor: "#2E5E4E", hat: "hair-bun", item: "binh-sen", badge: "Mời trà", titleFrameId: "tri-am" },
+    { id: "tu", name: "Anh Tư", gender: "male", age: 65, provinceId: "an-giang", province: "An Giang", habits: ["doc-bao", "co-tuong", "bao-cap"], bio: "Đọc báo giấy mỗi sáng, hay giải thế cờ tàn.", outfitColor: "#C48A2D", hat: "none", item: "den-dau", badge: "Đang nghe", titleFrameId: "none" },
+    { id: "vinh", name: "Anh Vĩnh", gender: "male", age: 74, provinceId: "nghe-an", province: "Nghệ An", habits: ["cuu-chien-binh", "bao-cap", "day-som"], bio: "Từng đóng quân Trường Sơn, nhớ nhiều kỷ niệm thời tem phiếu.", outfitColor: "#556B45", hat: "cap", item: "den-dau", badge: "Đang nói", titleFrameId: "giu-lua" },
+    { id: "mai", name: "Chị Mai", gender: "female", age: 70, provinceId: "thanh-hoa", province: "Thanh Hóa", habits: ["bao-cap", "tho-ca", "duong-sinh"], bio: "Hay đọc ca dao xứ Thanh và kể chuyện xếp hàng mậu dịch.", outfitColor: "#A2382B", hat: "hair-bun", item: "am-tu-sa", badge: "Vừa cười", titleFrameId: "thi-huu" },
+    { id: "hai", name: "Anh Hải", gender: "male", age: 68, provinceId: "hue", province: "TP. Huế", habits: ["uong-tra", "tho-ca", "bao-cap"], bio: "Pha trà sen cung đình, thích nghe đài phát thanh xưa.", outfitColor: "#6E4A35", hat: "none", item: "radio-go", badge: "Đang nghe", titleFrameId: "giu-lua" },
+    { id: "lien", name: "Chị Liên", gender: "female", age: 62, provinceId: "tp-hcm", province: "TP. HCM", habits: ["duong-sinh", "doc-bao", "uong-tra"], bio: "Thích mẹo chăm sóc giấc ngủ và sống khỏe tuổi nghỉ hưu.", outfitColor: "#2E5E4E", hat: "hair-bob", item: "dia-hat-dua", badge: "Đang ngồi", titleFrameId: "tri-am" },
+    { id: "dung", name: "Anh Dũng", gender: "male", age: 67, provinceId: "bac-ninh", province: "Bắc Ninh", habits: ["tho-ca", "co-tuong", "uong-tra"], bio: "Yêu dân ca Quan họ và xướng họa thơ Đường luật.", outfitColor: "#C48A2D", hat: "none", item: "am-tu-sa", badge: "Đang nói", titleFrameId: "thi-huu" },
+    { id: "thu", name: "Chị Thu", gender: "female", age: 64, provinceId: "thai-nguyen", province: "Thái Nguyên", habits: ["uong-tra", "tho-ca", "cay-canh"], bio: "Quê đất chè Tân Cương, hay tặng hoa trong sân thơ.", outfitColor: "#2E5E4E", hat: "hair-bun", item: "binh-sen", badge: "Vừa cười", titleFrameId: "thi-huu" },
+    { id: "phat", name: "Anh Phát", gender: "male", age: 66, provinceId: "can-tho", province: "Cần Thơ", habits: ["co-tuong", "uong-tra", "day-som"], bio: "Đồng hương Cần Thơ, mê ô ăn quan và cờ tướng mỗi sáng.", outfitColor: "#6E4A35", hat: "scarf", item: "dia-hat-dua", badge: "Đang nghe", titleFrameId: "ky-thu" },
+    { id: "quynh", name: "Anh Quỳnh", gender: "male", age: 70, provinceId: "phu-tho", province: "Phú Thọ", habits: ["cuu-chien-binh", "doc-bao", "bao-cap"], bio: "Cán bộ hưu trí, hay bàn tin lương hưu và chuyện đồng đội.", outfitColor: "#A2382B", hat: "glasses", item: "den-dau", badge: "Đang ngồi", titleFrameId: "tri-am" },
+    { id: "hung-ccb", name: "Anh Cường", gender: "male", age: 73, provinceId: "quang-tri", province: "Quảng Trị", habits: ["cuu-chien-binh", "co-tuong", "uong-tra"], bio: "Cựu chiến binh thành cổ, thích cờ tướng và thăm hỏi đồng đội.", outfitColor: "#556B45", hat: "cap", item: "radio-go", badge: "Mời trà", titleFrameId: "giu-lua" },
+    { id: "binh", name: "Chị Bình", gender: "female", age: 60, provinceId: "can-tho", province: "Cần Thơ", habits: ["duong-sinh", "doc-bao", "cay-canh"], bio: "Tập dưỡng sinh buổi sáng ở bến Ninh Kiều, thích trồng rau sạch.", outfitColor: "#2E5E4E", hat: "hair-bob", item: "bonsai-mini", badge: "Đang ngồi", titleFrameId: "none" }
   ];
 
   function pickSeniors(ids) {
@@ -1097,6 +1146,14 @@ window.TuoiBacData = (function () {
 
   const RED_FLAG_WORDS = ["đau ngực", "tức ngực", "khó thở", "méo miệng", "yếu liệt", "tê nửa người", "nói ngọng", "chóng mặt ngất"];
 
+  const IDLE_ICEBREAKERS = [
+    "Tôi vừa châm thêm nước sôi vào ấm Tử Sa, sáng nay chỗ các anh chị thời tiết có dễ chịu không ạ?",
+    "Thấy bàn mình trầm ngâm thưởng trà, mời cả nhà nghe mẩu tin sáng nay về mẹo đi bộ sau bữa ăn cho nhẹ bụng nhé.",
+    "Nhắc chuyện xưa một chút cho vui: hồi còn công tác, buổi sáng các anh chị hay ăn sáng món gì nhất?",
+    "Có câu ca dao: 'Ấm trà buổi sáng thêm hương, gặp người tri kỷ dặm trường cũng vui' — mời các anh chị nối chuyện nhé!",
+    "Trên Tờ Báo Sáng vừa có tin mới về giá cả sinh hoạt và sức khỏe mùa giao mùa, các anh chị thấy sao ạ?"
+  ];
+
   // Bảng xếp hạng & Danh hiệu
   const LEADERBOARD = [
     { name: "Anh Dũng · 67 tuổi", province: "Bắc Ninh", score: 420, title: "Nhà thơ lãng mạn", tag: "Tỉnh" },
@@ -1110,6 +1167,8 @@ window.TuoiBacData = (function () {
     OUTFITS,
     TABLE_ITEMS,
     ACCESSORIES,
+    TITLE_FRAMES,
+    IDLE_ICEBREAKERS,
     HABIT_TAGS,
     SENIOR_DIRECTORY,
     ROOM_TEMPLATES,

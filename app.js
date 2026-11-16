@@ -1,6 +1,8 @@
 (function () {
-  const STORAGE_KEY = "tuoi_bac_sim_v3";
+  const STORAGE_KEY = "tuoi_bac_sim_v4";
   const D = window.TuoiBacData;
+  const XQ = window.TuoiBacXiangqi;
+  const RT = window.TuoiBacRealtime;
 
   function createDefaultState() {
     return {
@@ -15,14 +17,17 @@
         outfitId: "ao-ba-ba",
         itemId: "am-tu-sa",
         accessoryId: "glasses",
+        titleFrameId: "tri-am",
         xu: 35,
         flowersLeft: 3,
+        giftedPoemIds: [],
         checkedInToday: false,
         mood: "Khỏe khoắn",
         streakDays: 6,
         unlockedOutfits: ["ao-ba-ba", "ao-dai-xanh"],
         unlockedItems: ["am-tu-sa"],
         unlockedAccessories: ["none", "glasses"],
+        unlockedTitleFrames: ["none", "tri-am"],
         unlockedTitles: ["Thành viên Chăm Điểm Danh"],
         daysHistory: [true, true, true, true, true, true, false],
         habits: ["uong-tra", "doc-bao", "co-tuong"]
@@ -30,7 +35,26 @@
       settings: {
         xlFont: false,
         preferredRender: "3d",
-        autoFallbacked: false
+        autoFallbacked: false,
+        homeMode: "full",
+        pwaBannerDismissed: false
+      },
+      privacy: {
+        consentFamilyCheckin: true,
+        consentRealtimePresence: true,
+        consentVoiceDict: true
+      },
+      analytics: {
+        session_start: 1,
+        morning_checkin_done: 0,
+        tea_table_joined: 0,
+        tea_msg_quick_0token: 0,
+        tea_msg_voice_or_text: 0,
+        news_article_read: 0,
+        async_game_move: 0,
+        poem_posted: 0,
+        share_link_created: 0,
+        idle_prompts_triggered: 0
       },
       phoneticDict: D.INITIAL_PHONETIC_DICT.map((item) => Object.assign({}, item)),
       replyTemplates: D.REPLY_MATRIX.map((item) => ({
@@ -64,20 +88,35 @@
         timeLeft: 25
       },
       oaq: {
-        // 0..4: Player bottom (left->right), 5: Quan phải, 6..10: AI top (right->left), 11: Quan trái
         cells: [5, 5, 5, 5, 5, 10, 5, 5, 5, 5, 5, 10],
         scoreP: 0,
         scoreAI: 0,
-        turn: "player",
+        turn: "host",
         selectedCell: null,
         mode: "ai",
+        matchId: "",
+        myRole: "host",
+        hostName: "",
+        guestName: "",
         statusText: "Chọn một ô của bác (hàng dưới) để rải quân.",
         zaloInviteUrl: ""
       },
       xiangqi: {
-        step: 0,
+        mode: "puzzle",
+        puzzleIdx: 0,
+        puzzleStep: 0,
         solved: false,
-        status: "Đỏ đi tiên: Hãy chọn quân Xe Đỏ để chiếu tướng ở nước 1."
+        board: null,
+        turn: "red",
+        selected: null,
+        lastMove: null,
+        prevBoard: null,
+        matchId: "",
+        mySide: "red",
+        hostName: "",
+        guestName: "",
+        inviteUrl: "",
+        status: "Đỏ đi tiên: Chạm vào quân Đỏ rồi chạm ô chấm xanh để đi nước 1."
       },
       poems: D.POEMS.map((p) => Object.assign({}, p)),
       watch: {
@@ -112,6 +151,10 @@
   let activeGameTab = "oaq";
   let activeLeaderTab = "Tỉnh";
   let activeRankProvinceFilter = "all";
+  let lastTableActivityAt = Date.now();
+  let idlePromptRotIdx = 0;
+  let deferredPwaPrompt = null;
+  let lastRenderedPeerKey = "";
 
   const els = {
     main: document.getElementById("app-main"),
@@ -125,7 +168,9 @@
     stripName: document.getElementById("strip-name"),
     stripProvince: document.getElementById("strip-province"),
     stripXu: document.getElementById("strip-xu"),
-    stripTimer: document.getElementById("strip-timer"),
+    stripRtBtn: document.getElementById("btn-realtime-status"),
+    stripRtDot: document.getElementById("strip-rt-dot"),
+    stripRtLabel: document.getElementById("strip-rt-label"),
     btnProfile: document.getElementById("btn-go-profile"),
     dialog: document.getElementById("tb-dialog"),
     dialogTitle: document.getElementById("tb-dialog-title"),
@@ -136,7 +181,9 @@
     simFont: document.getElementById("sim-toggle-font"),
     simDict: document.getElementById("sim-open-dict"),
     simVoiceSample: document.getElementById("sim-voice-sample"),
+    simIdle60: document.getElementById("sim-trigger-idle60"),
     simEye: document.getElementById("sim-trigger-eyecare"),
+    simPrivacy: document.getElementById("sim-open-privacy"),
     simFamily: document.getElementById("sim-open-family"),
     simReset: document.getElementById("sim-reset-demo")
   };
@@ -150,15 +197,24 @@
       const merged = Object.assign({}, def, parsed, {
         user: Object.assign({}, def.user, parsed.user || {}),
         settings: Object.assign({}, def.settings, parsed.settings || {}),
+        privacy: Object.assign({}, def.privacy, parsed.privacy || {}),
+        analytics: Object.assign({}, def.analytics, parsed.analytics || {}),
         teaRoom: Object.assign({}, def.teaRoom, parsed.teaRoom || {}),
         newspaper: Object.assign({}, def.newspaper, parsed.newspaper || {}),
         oaq: Object.assign({}, def.oaq, parsed.oaq || {}),
+        xiangqi: Object.assign({}, def.xiangqi, parsed.xiangqi || {}),
         watch: Object.assign({}, def.watch, parsed.watch || {}),
         zen: Object.assign({}, def.zen, parsed.zen || {}),
         health: Object.assign({}, def.health, parsed.health || {})
       });
       if (!Array.isArray(merged.user.habits)) {
         merged.user.habits = def.user.habits;
+      }
+      if (!Array.isArray(merged.user.unlockedTitleFrames)) {
+        merged.user.unlockedTitleFrames = def.user.unlockedTitleFrames;
+      }
+      if (!Array.isArray(merged.user.giftedPoemIds)) {
+        merged.user.giftedPoemIds = [];
       }
       if (!Array.isArray(merged.teaRoom.rooms) || merged.teaRoom.rooms.length === 0) {
         merged.teaRoom.rooms = def.teaRoom.rooms;
@@ -173,6 +229,51 @@
     } catch (e) {
       return createDefaultState();
     }
+  }
+
+  function trackEvent(eventName) {
+    if (!state.analytics) state.analytics = {};
+    state.analytics[eventName] = (state.analytics[eventName] || 0) + 1;
+    saveState();
+  }
+
+  function getTitleFrame(id) {
+    return (D.TITLE_FRAMES || []).find((f) => f.id === id) || D.TITLE_FRAMES[0];
+  }
+
+  function unlockTitleFrame(frameId, announceLabel) {
+    if (!Array.isArray(state.user.unlockedTitleFrames)) {
+      state.user.unlockedTitleFrames = ["none", "tri-am"];
+    }
+    if (!state.user.unlockedTitleFrames.includes(frameId)) {
+      state.user.unlockedTitleFrames.push(frameId);
+      state.user.titleFrameId = frameId;
+      if (announceLabel && !state.user.unlockedTitles.includes(announceLabel)) {
+        state.user.unlockedTitles.unshift(announceLabel);
+      }
+      saveState();
+      return true;
+    }
+    return false;
+  }
+
+  function isStandalonePwa() {
+    return (
+      window.matchMedia("(display-mode: standalone)").matches ||
+      window.navigator.standalone === true
+    );
+  }
+
+  window.addEventListener("beforeinstallprompt", (ev) => {
+    ev.preventDefault();
+    deferredPwaPrompt = ev;
+    if (state.route === "home") renderHome();
+  });
+
+  if ("serviceWorker" in navigator && /^https?:$/i.test(window.location.protocol)) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("./sw.js").catch(() => {});
+    });
   }
 
   function saveState() {
@@ -534,6 +635,16 @@
       ? `Đã điểm danh (${state.user.streakDays} ngày)`
       : "Chưa điểm danh sáng nay";
 
+    if (els.stripRtDot && els.stripRtLabel && RT) {
+      const st = RT.getStatus();
+      els.stripRtDot.classList.toggle("online", Boolean(st.connected));
+      if (st.connected) {
+        els.stripRtLabel.textContent = st.totalOtherPeers > 0 ? `Trực tuyến (${st.totalOtherPeers})` : "Trực tuyến";
+      } else {
+        els.stripRtLabel.textContent = "Đang nối...";
+      }
+    }
+
     const isHome = state.route === "home";
     els.btnBack.hidden = isHome;
     els.brandCompact.hidden = !isHome;
@@ -559,6 +670,9 @@
     if ((state.route === "tearoom" || state.route === "profile") && route !== state.route) {
       window.TeaRoomScene.dispose();
     }
+    if (state.route === "tearoom" && route !== "tearoom" && RT) {
+      RT.leaveTableChannel();
+    }
     state.route = route;
     saveState();
     render();
@@ -572,6 +686,111 @@
     if (reason) showToast(`+${amount} Xu: ${reason}`);
   }
 
+  function openPwaInstallGuide() {
+    if (deferredPwaPrompt) {
+      deferredPwaPrompt.prompt();
+      deferredPwaPrompt.userChoice.then((choice) => {
+        if (choice && choice.outcome === "accepted") {
+          showToast("Đã đặt biểu tượng Quán Trà Tuổi Bạc ra màn hình chính!");
+          state.settings.pwaBannerDismissed = true;
+          saveState();
+          if (state.route === "home") renderHome();
+        }
+        deferredPwaPrompt = null;
+      });
+      return;
+    }
+
+    openDialog(
+      "Đặt Quán Trà ra màn hình chính điện thoại",
+      `
+      <div class="surface-panel warm">
+        <div class="pwa-install-top">
+          <img src="icons/icon-192.png" alt="Biểu tượng Tuổi Bạc" class="pwa-app-icon" />
+          <div>
+            <strong>Mở 1 chạm như ứng dụng riêng</strong>
+            <p style="font-size:0.88rem; color:var(--ink-secondary);">Chữ to tràn màn hình, tự đệm ngoại tuyến khi sóng 4G yếu.</p>
+          </div>
+        </div>
+      </div>
+      <div class="surface-panel">
+        <h3>Trên điện thoại Android (Chrome / Samsung)</h3>
+        <p style="font-size:0.92rem;">1. Chạm dấu <strong>3 chấm dọc (⋮)</strong> ở góc trên bên phải trình duyệt.</p>
+        <p style="font-size:0.92rem;">2. Chọn <strong>"Thêm vào màn hình chính"</strong> hoặc <strong>"Cài đặt ứng dụng"</strong>.</p>
+      </div>
+      <div class="surface-panel">
+        <h3>Trên iPhone / iPad (Safari)</h3>
+        <p style="font-size:0.92rem;">1. Chạm nút <strong>Chia sẻ (ô vuông có mũi tên hướng lên)</strong> ở thanh dưới cùng.</p>
+        <p style="font-size:0.92rem;">2. Kéo nhẹ lên và chạm <strong>"Thêm vào MH chính"</strong> rồi bấm <strong>Thêm</strong>.</p>
+      </div>
+      `
+    );
+  }
+
+  function openRealtimeStatusModal() {
+    const st = RT ? RT.getStatus() : { connected: false, providerName: "Cục bộ", totalOtherPeers: 0, clientId: "local" };
+    const savedCfg = RT ? RT.getSupabaseConfig() : null;
+    const baseShare = getPublicBaseUrl();
+    const room = getCurrentRoom();
+    const inviteSameTable = `${baseShare}?phong=${encodeURIComponent(room.id)}&ban=${state.teaRoom.tableIdx + 1}`;
+
+    openDialog(
+      "Kết nối Thời Gian Thực (Nhiều Điện Thoại Thật)",
+      `
+      <div class="surface-panel ${st.connected ? "jade" : "warm"}">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+          <strong>${st.connected ? "Đang kết nối phòng chung trực tuyến" : "Đang thử kết nối lại..."}</strong>
+          <span class="badge-tag num">${escHtml(st.providerName)}</span>
+        </div>
+        <p style="font-size:0.88rem;">Thiết bị khác đang mở cùng lúc: <strong class="num">${st.totalOtherPeers}</strong> máy · Mã máy của ${getUserPronoun()}: <code>${escHtml(st.clientId.slice(0, 12))}</code></p>
+        <p style="font-size:0.88rem;">Mở đường dẫn dưới đây trên điện thoại thứ 2 để thấy hai người thật ngồi chung Bàn ${state.teaRoom.tableIdx + 1} (${escHtml(room.shortName)}):</p>
+        <div class="share-url-row">
+          <input type="text" class="input-lg share-url-input" id="rt-quick-url" readonly value="${escHtml(inviteSameTable)}" />
+          <button type="button" class="btn-secondary btn-inline" id="btn-copy-rt-url">Chép link</button>
+        </div>
+      </div>
+
+      <div class="surface-panel">
+        <h3>Nối vào dự án Supabase riêng (Tùy chọn)</h3>
+        <p style="font-size:0.88rem; color:var(--ink-secondary);">Mặc định hệ thống đã chạy sẵn kênh WSS miễn phí 24/7. Nếu muốn lưu lâu dài vào PostgreSQL của riêng mình, chạy tệp <code>supabase_schema.sql</code> rồi dán Project URL + Anon Key:</p>
+        <label class="field-label">
+          Supabase Project URL
+          <input type="url" class="input-lg" id="sb-url-in" placeholder="https://xxxx.supabase.co" value="${escHtml(savedCfg ? savedCfg.url : "")}" />
+        </label>
+        <label class="field-label">
+          Supabase Public Anon Key
+          <input type="text" class="input-lg" id="sb-key-in" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6..." value="${escHtml(savedCfg ? savedCfg.anonKey : "")}" />
+        </label>
+        <div class="btn-row">
+          <button type="button" class="btn-primary" id="btn-save-sb-cfg">Lưu &amp; Chuyển sang Supabase</button>
+          <button type="button" class="btn-secondary" id="btn-reset-sb-cfg">Dùng kênh WSS mặc định</button>
+        </div>
+      </div>
+      `
+    );
+
+    document.getElementById("btn-copy-rt-url").addEventListener("click", () => {
+      trackEvent("share_link_created");
+      copyTextSafe(inviteSameTable, "Đã sao chép link bàn trà để mở trên điện thoại thứ 2!");
+    });
+    document.getElementById("btn-save-sb-cfg").addEventListener("click", () => {
+      const u = document.getElementById("sb-url-in").value.trim();
+      const k = document.getElementById("sb-key-in").value.trim();
+      if (!u || !k) {
+        showToast("Vui lòng điền đủ cả Project URL và Anon Key của Supabase.");
+        return;
+      }
+      RT.saveSupabaseConfig(u, k);
+      closeDialog();
+      showToast("Đã lưu cấu hình Supabase Realtime!");
+    });
+    document.getElementById("btn-reset-sb-cfg").addEventListener("click", () => {
+      RT.saveSupabaseConfig("", "");
+      closeDialog();
+      showToast("Đang dùng kênh Phòng Chung Trực Tuyến (WSS) miễn phí 24/7.");
+    });
+  }
+
   // ==================== HOME VIEW ====================
   function renderHome() {
     const prov = getProvince(state.user.provinceId);
@@ -579,11 +798,19 @@
     const hon = getUserHonorific();
     const age = getUserAge();
     const baseName = state.user.baseName || state.user.name.replace(/^(Anh|Chị|Bác)\s+/i, "");
+    const isMvpMode = state.settings.homeMode === "mvp";
+    const showPwaCard = !isStandalonePwa() && !state.settings.pwaBannerDismissed;
 
     els.main.innerHTML = `
       <section class="section-block">
         <h1>Chào ${escHtml(state.user.name)} · ${age} tuổi</h1>
         <p class="lead-copy">Mời ${pron} chọn một việc muốn làm sáng nay. Không cần gõ phím nhiều, chạm nút lớn để bắt đầu.</p>
+
+        <!-- Công tắc thu gọn Trang Chủ về chuẩn MVP 3 nút -->
+        <div class="home-mode-switch" role="group" aria-label="Chế độ hiển thị trang chủ">
+          <button type="button" class="home-mode-btn ${isMvpMode ? "active" : ""}" id="btn-mode-mvp">Chuẩn MVP (3 nút gọn)</button>
+          <button type="button" class="home-mode-btn ${!isMvpMode ? "active" : ""}" id="btn-mode-full">Đầy đủ (Tất cả góc)</button>
+        </div>
 
         ${
           !state.user.profileConfigured
@@ -633,7 +860,7 @@
             <span class="home-main-icon">${ico("tea", "ico-lg")}</span>
             <span class="home-main-text">
               <strong>2. Vào phòng sinh hoạt (${escHtml(getCurrentRoom().shortName)})</strong>
-              <small>${getCurrentRoom().tables.length} bàn đang mở · Gợi ý ghép bàn theo tuổi & sở thích của ${pron}</small>
+              <small>${getCurrentRoom().tables.length} bàn đang mở · Ghép bàn người thật & đồng niên của ${pron}</small>
             </span>
           </button>
 
@@ -641,69 +868,140 @@
             <span class="home-main-icon">${ico("paper", "ico-lg")}</span>
             <span class="home-main-text">
               <strong>3. Đọc Tờ Báo Sáng</strong>
-              <small>${state.newspaper.articles.length} tin chọn lọc dễ đọc, có giọng đọc & đem ra bàn trà</small>
+              <small>${state.newspaper.articles.length} tin chọn lọc dễ đọc, tìm từ khóa & đàm đạo theo tin</small>
             </span>
           </button>
         </div>
+
+        ${
+          showPwaCard
+            ? `
+          <div class="pwa-install-card" id="pwa-install-card">
+            <div class="pwa-install-top">
+              <img src="icons/icon-192.png" alt="Biểu tượng ứng dụng Tuổi Bạc" class="pwa-app-icon" />
+              <div>
+                <strong>Đặt Quán Trà ra màn hình chính điện thoại</strong>
+                <div style="font-size:0.88rem; color:var(--ink-secondary);">Mở 1 chạm như ứng dụng riêng, không phải tìm lại đường dẫn.</div>
+              </div>
+            </div>
+            <div class="btn-row">
+              <button type="button" class="btn-jade" id="btn-pwa-install">${ico("download")}<span>${deferredPwaPrompt ? "Cài ra màn hình chính ngay" : "Hướng dẫn đặt ra màn hình chính"}</span></button>
+              <button type="button" class="btn-secondary" id="btn-pwa-hide">Để sau</button>
+            </div>
+          </div>
+        `
+            : ""
+        }
       </section>
 
-      <section class="section-block">
-        <h2>Khu sinh hoạt & Trò chơi (Bản mô phỏng đầy đủ)</h2>
-        <div class="module-grid">
-          <button type="button" class="module-tile" data-go="quiz">
-            ${ico("quiz")}
-            <strong>Đố vui hôm nay</strong>
-            <span class="sub">5 câu mỗi ngày, không phạt người chậm</span>
-          </button>
+      ${
+        isMvpMode
+          ? `
+        <section class="section-block">
+          <div class="surface-panel">
+            <p style="font-size:0.9rem; color:var(--ink-secondary);">Đang ở <strong>Chế độ Chuẩn MVP (3 nút gọn)</strong> dành cho người mới làm quen lần đầu.</p>
+            <button type="button" class="btn-secondary" id="btn-expand-from-mvp">Mở thêm Cờ tướng 9×10, Ngâm thơ, Đố vui &amp; Quyền riêng tư</button>
+          </div>
+        </section>
+      `
+          : `
+        <section class="section-block">
+          <h2>Khu sinh hoạt mở rộng &amp; Quản trị</h2>
+          <div class="module-grid">
+            <button type="button" class="module-tile" data-go="quiz">
+              ${ico("quiz")}
+              <strong>Đố vui hôm nay</strong>
+              <span class="sub">5 câu mỗi ngày, không phạt người chậm</span>
+            </button>
 
-          <button type="button" class="module-tile" data-go="games">
-            ${ico("board")}
-            <strong>Ô ăn quan & Cờ tướng</strong>
-            <span class="sub">Đấu máy hoặc gửi ván treo qua Zalo</span>
-          </button>
+            <button type="button" class="module-tile" data-go="games">
+              ${ico("board")}
+              <strong>Ô ăn quan &amp; Cờ tướng 9×10</strong>
+              <span class="sub">Bàn chuẩn 9×10, giải thế &amp; ván treo thật</span>
+            </button>
 
-          <button type="button" class="module-tile" data-go="poetry">
-            ${ico("poem")}
-            <strong>Ngâm thơ & Tặng hoa</strong>
-            <span class="sub">Còn ${state.user.flowersLeft} bông hoa hôm nay</span>
-          </button>
+            <button type="button" class="module-tile" data-go="poetry">
+              ${ico("poem")}
+              <strong>Ngâm thơ &amp; Tặng hoa</strong>
+              <span class="sub">Tự đăng thơ, tiếng đàn tranh &amp; danh hiệu 3D</span>
+            </button>
 
-          <button type="button" class="module-tile" data-go="watch">
-            ${ico("tv")}
-            <strong>Phòng xem chung</strong>
-            <span class="sub">Dưỡng sinh 8h & Hài 20h có phụ đề</span>
-          </button>
+            <button type="button" class="module-tile" data-go="watch">
+              ${ico("tv")}
+              <strong>Phòng xem chung</strong>
+              <span class="sub">Dưỡng sinh 8h &amp; Hài 20h có phụ đề</span>
+            </button>
 
-          <button type="button" class="module-tile" data-go="zen">
-            ${ico("lotus")}
-            <strong>Góc tĩnh tâm</strong>
-            <span class="sub">Thỉnh chuông, thả hoa đăng miễn phí</span>
-          </button>
+            <button type="button" class="module-tile" data-go="zen">
+              ${ico("lotus")}
+              <strong>Góc tĩnh tâm</strong>
+              <span class="sub">Thỉnh chuông, thả hoa đăng miễn phí</span>
+            </button>
 
-          <button type="button" class="module-tile" data-go="leaderboard">
-            ${ico("trophy")}
-            <strong>Bảng xếp hạng & Danh hiệu</strong>
-            <span class="sub">Theo tỉnh, người mới & tủ kỷ niệm</span>
-          </button>
+            <button type="button" class="module-tile" data-go="leaderboard">
+              ${ico("trophy")}
+              <strong>Bảng xếp hạng &amp; Danh hiệu</strong>
+              <span class="sub">Theo tỉnh, người mới &amp; tủ kỷ niệm</span>
+            </button>
 
-          <button type="button" class="module-tile" data-go="health">
-            ${ico("heart")}
-            <strong>Trợ lý sức khỏe</strong>
-            <span class="sub">Nhắc uống thuốc, đo huyết áp & Gọi 115</span>
-          </button>
+            <button type="button" class="module-tile" data-go="health">
+              ${ico("heart")}
+              <strong>Trợ lý sức khỏe</strong>
+              <span class="sub">Nhắc uống thuốc, đo huyết áp &amp; Gọi 115</span>
+            </button>
 
-          <button type="button" class="module-tile" data-go="family">
-            ${ico("family")}
-            <strong>Góc Con Cái (30–50 tuổi)</strong>
-            <span class="sub">Xem lịch điểm danh & tạo link cho bố mẹ</span>
-          </button>
-        </div>
-      </section>
+            <button type="button" class="module-tile" data-go="family">
+              ${ico("family")}
+              <strong>Góc Con Cái (30–50 tuổi)</strong>
+              <span class="sub">Xem lịch điểm danh &amp; tạo link cho bố mẹ</span>
+            </button>
+
+            <button type="button" class="module-tile" data-go="privacy">
+              ${ico("shield")}
+              <strong>Chỉ số &amp; Quyền riêng tư</strong>
+              <span class="sub">Đo lường 0-token, Realtime &amp; xóa dữ liệu</span>
+            </button>
+          </div>
+        </section>
+      `
+      }
     `;
 
     els.main.querySelectorAll("[data-go]").forEach((btn) => {
       btn.addEventListener("click", () => navigate(btn.dataset.go));
     });
+
+    document.getElementById("btn-mode-mvp").addEventListener("click", () => {
+      state.settings.homeMode = "mvp";
+      saveState();
+      showToast("Đã bật chế độ Chuẩn MVP tinh gọn 3 nút.");
+      renderHome();
+    });
+    document.getElementById("btn-mode-full").addEventListener("click", () => {
+      state.settings.homeMode = "full";
+      saveState();
+      showToast("Đã mở đầy đủ tất cả góc sinh hoạt.");
+      renderHome();
+    });
+    const expandBtn = document.getElementById("btn-expand-from-mvp");
+    if (expandBtn) {
+      expandBtn.addEventListener("click", () => {
+        state.settings.homeMode = "full";
+        saveState();
+        renderHome();
+      });
+    }
+
+    const pwaBtn = document.getElementById("btn-pwa-install");
+    if (pwaBtn) pwaBtn.addEventListener("click", openPwaInstallGuide);
+    const pwaHideBtn = document.getElementById("btn-pwa-hide");
+    if (pwaHideBtn) {
+      pwaHideBtn.addEventListener("click", () => {
+        state.settings.pwaBannerDismissed = true;
+        saveState();
+        renderHome();
+      });
+    }
 
     let selectedHon = state.user.honorific === "Chị" ? "Chị" : "Anh";
     const syncHomeSetupBtnLabel = () => {
@@ -855,16 +1153,19 @@
     if (urlIn) {
       urlIn.addEventListener("click", () => {
         urlIn.select();
+        trackEvent("share_link_created");
         copyTextSafe(urlIn.value, "Đã sao chép đường dẫn!");
       });
     }
     if (copyUrlBtn) {
       copyUrlBtn.addEventListener("click", () => {
+        trackEvent("share_link_created");
         copyTextSafe(urlIn ? urlIn.value : opts.shareUrl, "Đã sao chép đường dẫn để gửi bạn bè!");
       });
     }
     if (copyPostBtn) {
       copyPostBtn.addEventListener("click", () => {
+        trackEvent("share_link_created");
         const fullPost = postIn ? postIn.value : opts.postText;
         copyTextSafe(fullPost, "Đã sao chép lời mời kèm link — dán ngay lên Zalo / Facebook!");
       });
@@ -877,6 +1178,27 @@
       const tinh = params.get("tinh");
       if (tinh && D.PROVINCES.some((p) => p.id === tinh)) {
         state.user.provinceId = tinh;
+      }
+      const van = params.get("van");
+      if (van) {
+        const cleanVan = van.trim();
+        state.route = "games";
+        if (cleanVan.startsWith("xq-")) {
+          activeGameTab = "cotuong";
+          state.xiangqi.mode = "async";
+          state.xiangqi.matchId = cleanVan;
+          state.xiangqi.inviteUrl = `${getPublicBaseUrl()}?van=${encodeURIComponent(cleanVan)}`;
+          state.xiangqi.status = "Đang tải trạng thái Ván treo Cờ tướng thời gian thực...";
+        } else {
+          activeGameTab = "oaq";
+          state.oaq.mode = "async";
+          state.oaq.matchId = cleanVan;
+          state.oaq.zaloInviteUrl = `${getPublicBaseUrl()}?van=${encodeURIComponent(cleanVan)}`;
+          state.oaq.statusText = "Đang tải trạng thái Ván treo Ô ăn quan thời gian thực...";
+        }
+        if (RT) RT.subscribeMatch(cleanVan);
+        saveState();
+        return;
       }
       const tin = params.get("tin");
       if (tin) {
@@ -897,6 +1219,7 @@
             state.teaRoom.tableIdx = ban - 1;
             state.teaRoom.subView = "table";
             state.teaRoom.log = targetRoom.tables[ban - 1].initialLog.slice();
+            lastTableActivityAt = Date.now();
           } else {
             state.teaRoom.subView = "lobby";
           }
@@ -954,12 +1277,19 @@
 
   function renderCheckin() {
     const myProv = getProvince(state.user.provinceId);
-    const totalLamps = D.PROVINCES.reduce((sum, p) => sum + p.lamps + (p.id === myProv.id && state.user.checkedInToday ? 1 : 0), 0);
+    const rtSummary = RT ? RT.getCheckinsSummary() : { totalRealCheckins: 0, countsByProvince: {}, recentList: [] };
+    const lampsOf = (p) => {
+      const realCount = rtSummary.countsByProvince[p.id] || 0;
+      const localFallback = realCount === 0 && p.id === myProv.id && state.user.checkedInToday ? 1 : 0;
+      return p.lamps + realCount + localFallback;
+    };
+    const totalLamps = D.PROVINCES.reduce((sum, p) => sum + lampsOf(p), 0);
 
     const mapDots = D.PROVINCES.map((p) => {
       const isMe = p.id === myProv.id;
-      const r = isMe ? 8 : Math.min(6.5, 3 + p.lamps / 320);
-      const fill = isMe ? (state.user.checkedInToday ? "#FFD166" : "#FF6B57") : "#F5B841";
+      const hasReal = Boolean(rtSummary.countsByProvince[p.id]);
+      const r = isMe ? 8 : Math.min(6.8, 3 + lampsOf(p) / 320);
+      const fill = isMe ? (state.user.checkedInToday ? "#FFD166" : "#FF6B57") : hasReal ? "#7BF1A8" : "#F5B841";
       return `
         <g class="map-dot" data-prov="${p.id}" style="cursor:pointer">
           ${isMe ? `<circle cx="${p.x}" cy="${p.y}" r="14" fill="rgba(255, 209, 102, 0.25)" />` : ""}
@@ -970,7 +1300,7 @@
     }).join("");
 
     const sortedProvinces = D.PROVINCES.slice()
-      .sort((a, b) => b.lamps - a.lamps)
+      .sort((a, b) => lampsOf(b) - lampsOf(a))
       .slice(0, 6);
 
     els.main.innerHTML = `
@@ -1001,7 +1331,7 @@
 
         ${state.user.checkedInToday ? `
           <div class="surface-panel jade">
-            <strong>Đã gửi Web Push miễn phí tới Anh Hùng (Con trai)</strong>
+            <strong>${state.privacy.consentFamilyCheckin ? "Đã gửi thông báo bình an miễn phí tới Anh Hùng (Con trai)" : "Đã ghi nhận điểm danh riêng tư trên máy"}</strong>
             <p style="font-size:0.86rem;">"Hôm nay ${escHtml(state.user.name)} đã ghé quán trà và chọn trạng thái: ${escHtml(state.user.mood)}."</p>
             <button type="button" class="btn-secondary" id="btn-share-zalo-card">
               ${ico("share")}
@@ -1011,6 +1341,28 @@
         ` : ""}
       </div>
 
+      ${
+        rtSummary.recentList.length > 0
+          ? `
+        <div class="surface-panel warm" id="real-checkins-live-box">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+            <strong>Đèn thật vừa thắp sáng trực tuyến</strong>
+            <span class="real-peer-pill num">+${rtSummary.totalRealCheckins} thiết bị thật</span>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:6px; font-size:0.9rem;">
+            ${rtSummary.recentList
+              .slice(0, 5)
+              .map(
+                (item) =>
+                  `<div>• <strong>${escHtml(item.name)} · ${item.age}t</strong> (${escHtml(item.provinceShort)}) — <span>${escHtml(item.mood)}</span></div>`
+              )
+              .join("")}
+          </div>
+        </div>
+      `
+          : ""
+      }
+
       <div class="map-card">
         <div class="map-stats-row">
           <div>
@@ -1019,7 +1371,7 @@
           </div>
           <div style="text-align:right;">
             <small style="color:#D8CCB8;">${escHtml(myProv.short)}</small>
-            <div><strong class="num">${(myProv.lamps + (state.user.checkedInToday ? 1 : 0)).toLocaleString("vi-VN")} lượt</strong></div>
+            <div><strong class="num">${lampsOf(myProv).toLocaleString("vi-VN")} lượt</strong></div>
           </div>
         </div>
 
@@ -1045,7 +1397,7 @@
           ${sortedProvinces.map((p, idx) => `
             <div class="province-rank-item">
               <span><strong>${idx + 1}. ${escHtml(p.name)}</strong></span>
-              <span class="badge-tag amber num">${p.lamps.toLocaleString("vi-VN")} đèn</span>
+              <span class="badge-tag amber num">${lampsOf(p).toLocaleString("vi-VN")} đèn</span>
             </div>
           `).join("")}
         </div>
@@ -1072,9 +1424,20 @@
         state.user.checkedInToday = true;
         state.user.streakDays += 1;
         state.user.daysHistory[6] = true;
+        unlockTitleFrame("tri-am", "Tri Âm Sáng Sớm");
+        trackEvent("morning_checkin_done");
         addXu(5, "Điểm danh sáng bình an");
       } else {
         showToast(`Đã thắp sáng lại lời chúc tại ${myProv.short}!`);
+      }
+      if (RT) {
+        RT.publishMorningCheckin({
+          name: state.user.name,
+          age: getUserAge(),
+          provinceId: myProv.id,
+          provinceShort: myProv.short,
+          mood: state.user.mood
+        });
       }
       saveState();
       updateGlobalChrome();
@@ -1350,10 +1713,12 @@
     );
 
     document.getElementById("modal-read-art-btn").addEventListener("click", () => {
+      trackEvent("news_article_read");
       const extra = Array.isArray(art.detailPoints) ? " " + art.detailPoints.join(" ") : "";
       speak(`${art.title}. ${art.body}${extra}`, { announceToast: true });
     });
     document.getElementById("modal-join-art-btn").addEventListener("click", () => {
+      trackEvent("news_article_read");
       closeDialog();
       joinArticleDiscussionTable(art, false);
     });
@@ -1404,6 +1769,38 @@
     };
   }
 
+  function buildMyRealtimePeerInfo() {
+    return {
+      name: state.user.name,
+      age: getUserAge(),
+      gender: state.user.honorific === "Chị" ? "female" : "male",
+      provinceId: state.user.provinceId,
+      province: getProvince(state.user.provinceId).short,
+      habits: (state.user.habits || []).slice(),
+      bio: `${state.user.name} đang trực tuyến trên điện thoại thật tại bàn trà.`,
+      outfitColor: getOutfit(state.user.outfitId).color,
+      hat: state.user.accessoryId || "glasses",
+      item: state.user.itemId,
+      titleFrameId: state.user.titleFrameId || "tri-am",
+      badge: "Trực tuyến",
+      isRealPeer: true
+    };
+  }
+
+  function getTableWithRealPeers(baseTable) {
+    if (!baseTable) return baseTable;
+    const realPeers = RT ? RT.getPeersAtTable(baseTable.id) : [];
+    if (realPeers.length === 0) return baseTable;
+    const mergedMembers = realPeers
+      .map((p) => Object.assign({}, p, { isRealPeer: true }))
+      .concat(baseTable.members)
+      .slice(0, 4);
+    return Object.assign({}, baseTable, {
+      members: mergedMembers,
+      realPeerCount: realPeers.length
+    });
+  }
+
   function joinTable(idx) {
     const room = getCurrentRoom();
     const safeIdx = Math.max(0, Math.min(room.tables.length - 1, idx));
@@ -1414,15 +1811,45 @@
     state.teaRoom.subView = "table";
     state.teaRoom.log = table.initialLog.slice();
     pendingQueue = [];
+    lastTableActivityAt = Date.now();
+    trackEvent("tea_table_joined");
     saveState();
     showToast(`Đã ngồi vào ${table.name} (${room.shortName}).`);
     renderTeaRoom();
   }
 
+  function switchNextTableFast() {
+    const room = getCurrentRoom();
+    const nextIdx = (state.teaRoom.tableIdx + 1) % room.tables.length;
+    joinTable(nextIdx);
+  }
+
+  function triggerIdleAssistantPrompt() {
+    if (state.route !== "tearoom" || state.teaRoom.subView !== "table") return;
+    lastTableActivityAt = Date.now();
+    const room = getCurrentRoom();
+    const table = getCurrentTable();
+    const hostLabel = room.hostName || "Chị Trà (Trợ lý)";
+    let promptText = "";
+    if (table.isArticleTable && table.article) {
+      promptText = `Tôi vừa châm thêm trà nóng. Về bản tin "${table.article.title.slice(0, 46)}...", chỗ các anh chị có câu chuyện thực tế nào gần gũi không ạ?`;
+    } else {
+      const pool = D.IDLE_ICEBREAKERS || [];
+      promptText = pool[idlePromptRotIdx % Math.max(1, pool.length)] || "Mời cả bàn dùng thêm chén trà nóng và kể chuyện sáng nay nhé!";
+      idlePromptRotIdx += 1;
+    }
+    if (window.TeaRoomScene && typeof window.TeaRoomScene.triggerTeaService === "function") {
+      window.TeaRoomScene.triggerTeaService();
+    }
+    trackEvent("idle_prompts_triggered");
+    pushTableMessage(hostLabel, promptText, null);
+    showToast(`${hostLabel} vừa rót trà và gợi mở chủ đề mới sau 60 giây yên ắng.`);
+  }
+
   function matchThreeReplies(latestText) {
     const low = String(latestText || "").toLowerCase();
     const userProv = getProvince(state.user.provinceId).short;
-    const table = getCurrentTable();
+    const table = getTableWithRealPeers(getCurrentTable());
     const lastLog = state.teaRoom.log[state.teaRoom.log.length - 1];
     const speakerName = lastLog ? lastLog.speaker.split("(")[0].split("·")[0].trim() : table.members[0].name;
 
@@ -1455,6 +1882,7 @@
   function pushTableMessage(speaker, text, seatIdx) {
     const trimmed = String(text || "").trim();
     const safeText = trimmed.length > 120 ? trimmed.slice(0, 117).trim() + "..." : trimmed;
+    lastTableActivityAt = Date.now();
     pendingQueue.push({ speaker, text: safeText, seatIdx });
     processQueueStep();
   }
@@ -1488,23 +1916,41 @@
     return Math.max(0, 10 - diff);
   }
 
-  function sendUserTeaMessage(text) {
+  function sendUserTeaMessage(text, opts) {
     const provShort = getProvince(state.user.provinceId).short;
-    const table = getCurrentTable();
+    const baseTable = getCurrentTable();
+    const table = getTableWithRealPeers(baseTable);
     const userSeatIdx = Math.min(4, table.members.length);
+    const speakerLabel = `${state.user.name} · ${getUserAge()} tuổi (${provShort})`;
     state.teaRoom.lastSentAt = Date.now();
+    lastTableActivityAt = Date.now();
+    if (opts && opts.source === "voice_or_text") {
+      trackEvent("tea_msg_voice_or_text");
+    } else {
+      trackEvent("tea_msg_quick_0token");
+    }
     saveState();
 
-    pushTableMessage(`${state.user.name} · ${getUserAge()} tuổi (${provShort})`, text, userSeatIdx);
+    pushTableMessage(speakerLabel, text, userSeatIdx);
 
-    // Trigger natural peer response via Pacing Queue (Nhịp nhấp trà 5s)
-    const peerIdx = Math.floor(Math.random() * table.members.length);
-    const peer = table.members[peerIdx];
-    const replies = matchThreeReplies(text);
-    const peerReply = replies[0].replace(new RegExp(peer.name, "g"), state.user.name);
-    setTimeout(() => {
-      pushTableMessage(`${peer.name} · ${peer.age} tuổi (${peer.province})`, peerReply, peerIdx);
-    }, 4500);
+    if (RT) {
+      const nextSlice = state.teaRoom.log.concat([{ speaker: speakerLabel, text }]).slice(-8);
+      RT.sendTableMessage(baseTable.id, speakerLabel, text, opts && opts.ritual ? opts.ritual : null, nextSlice);
+    }
+
+    // Only simulate NPC companion reply if no real human peer is sitting at this table right now
+    const realPeersHere = RT ? RT.getPeersAtTable(baseTable.id) : [];
+    if (realPeersHere.length === 0 && table.members.length > 0) {
+      const peerIdx = Math.floor(Math.random() * table.members.length);
+      const peer = table.members[peerIdx];
+      const replies = matchThreeReplies(text);
+      const peerReply = replies[0].replace(new RegExp(peer.name, "g"), state.user.name);
+      setTimeout(() => {
+        if (state.route === "tearoom" && state.teaRoom.subView === "table") {
+          pushTableMessage(`${peer.name} · ${peer.age} tuổi (${peer.province})`, peerReply, peerIdx);
+        }
+      }, 4500);
+    }
 
     startCooldownTicker();
   }
@@ -1686,6 +2132,7 @@
     const canvasEl = document.getElementById("tearoom-canvas");
     const tagsEl = document.getElementById("avatar-tags-layer");
     const outfit = getOutfit(state.user.outfitId);
+    const effectiveTables = room.tables.map((t) => getTableWithRealPeers(t));
 
     window.TeaRoomScene.mount(
       stageEl,
@@ -1695,16 +2142,17 @@
         viewMode,
         preferredMode: state.settings.preferredRender,
         roomTheme: room.theme,
-        tables: room.tables,
+        tables: effectiveTables,
         recommendedIdx,
-        table,
+        table: getTableWithRealPeers(table),
         userName: state.user.name,
         userAge: getUserAge(),
         userGender: state.user.honorific === "Chị" ? "female" : "male",
         userProvince: getProvince(state.user.provinceId).short,
         userOutfitColor: outfit.color,
         userItem: state.user.itemId,
-        userAccessory: state.user.accessoryId || "none"
+        userAccessory: state.user.accessoryId || "none",
+        userTitleFrame: state.user.titleFrameId || "tri-am"
       },
       () => {
         state.settings.autoFallbacked = true;
@@ -1731,18 +2179,32 @@
     if (state.teaRoom.subView === "table") {
       renderTeaRoomTableView(room);
     } else {
+      if (RT) RT.leaveTableChannel();
       renderTeaRoomLobby(room);
     }
   }
 
+  function computeRoomLobbyPeerKey(room) {
+    if (!RT || !room || !Array.isArray(room.tables)) return "";
+    return room.tables
+      .map((t) => `${t.id}:${RT.getPeersAtTable(t.id).map((p) => p.clientId).sort().join(",")}`)
+      .join("|");
+  }
+
+  let lastRenderedLobbyPeerKey = "";
+
   function renderTeaRoomLobby(room) {
-    const scoredTables = room.tables.map((t, idx) => ({
-      idx,
-      table: t,
-      match: scoreTableMatch(t)
-    }));
+    lastRenderedLobbyPeerKey = computeRoomLobbyPeerKey(room);
+    const scoredTables = room.tables.map((t, idx) => {
+      const eff = getTableWithRealPeers(t);
+      return {
+        idx,
+        table: eff,
+        match: scoreTableMatch(eff)
+      };
+    });
     const best = scoredTables.slice().sort((a, b) => b.match.score - a.match.score)[0];
-    const totalSeated = room.tables.reduce((sum, t) => sum + t.members.length, 0);
+    const totalSeated = scoredTables.reduce((sum, item) => sum + item.table.members.length, 0);
 
     els.main.innerHTML = `
       ${renderRoomSwitcherStrip()}
@@ -1794,12 +2256,15 @@
           .map(
             (item) => `
           <article class="table-card ${item.idx === best.idx ? "recommended" : ""}">
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; flex-wrap:wrap;">
               <div>
                 <h3>${escHtml(item.table.name)}</h3>
                 <small style="color:var(--ink-secondary);">${escHtml(item.table.topic)}</small>
               </div>
-              <span class="badge-tag ${item.idx === best.idx ? "amber" : "jade"} num">${item.match.percent}% hợp</span>
+              <div style="display:flex; gap:6px; align-items:center;">
+                ${item.table.realPeerCount ? `<span class="real-peer-pill num">${item.table.realPeerCount} người thật</span>` : ""}
+                <span class="badge-tag ${item.idx === best.idx ? "amber" : "jade"} num">${item.match.percent}% hợp</span>
+              </div>
             </div>
 
             <div class="member-pill-list">
@@ -1811,9 +2276,9 @@
                   <span class="member-chip-meta">
                     <span class="member-chip-top">
                       <strong>${escHtml(m.name)} <span class="member-age-inline">· ${m.age} tuổi</span></strong>
-                      <span class="member-chip-prov">${escHtml(m.province)}</span>
+                      ${m.isRealPeer ? `<span class="real-peer-pill">Trực tuyến</span>` : `<span class="member-chip-prov">${escHtml(m.province)}</span>`}
                     </span>
-                    <small>${escHtml((m.habits || []).slice(0, 2).map(getHabitLabel).join(" · "))}</small>
+                    <small>${escHtml((m.habits || []).slice(0, 2).map(getHabitLabel).join(" · ") || m.province)}</small>
                   </span>
                 </button>
               `
@@ -1861,14 +2326,19 @@
       btn.addEventListener("click", () => {
         const tIdx = Number(btn.dataset.tidx);
         const mIdx = Number(btn.dataset.midx);
-        const member = room.tables[tIdx].members[mIdx];
+        const member = scoredTables[tIdx].table.members[mIdx];
         if (member) openSeniorProfileDialog(member, tIdx, room);
       });
     });
   }
 
   function renderTeaRoomTableView(room) {
-    const table = getCurrentTable();
+    const baseTable = getCurrentTable();
+    if (RT) {
+      RT.joinTableChannel(baseTable.id, buildMyRealtimePeerInfo(), state.privacy.consentRealtimePresence);
+    }
+    const table = getTableWithRealPeers(baseTable);
+    lastRenderedPeerKey = (RT ? RT.getPeersAtTable(baseTable.id) : []).map((p) => p.clientId).sort().join(",");
     const log = state.teaRoom.log;
     const prev = log.length >= 2 ? log[log.length - 2] : null;
     const curr = log[log.length - 1];
@@ -1879,12 +2349,15 @@
     els.main.innerHTML = `
       ${renderRoomSwitcherStrip()}
 
-      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; flex-wrap:wrap;">
         <div>
           <h1>${escHtml(table.name)}</h1>
           <small style="color:var(--ink-secondary);">${escHtml(table.isArticleTable ? "Bàn trà ghép theo chủ đề báo sáng" : `${room.name} · ${table.topic}`)}</small>
         </div>
-        <button type="button" class="btn-mini" id="btn-back-lobby">Xem toàn phòng</button>
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+          ${!table.isArticleTable ? `<button type="button" class="btn-mini" id="btn-switch-table-fast">${ico("refresh", "ico-sm")}<span>Đổi bàn khác</span></button>` : ""}
+          <button type="button" class="btn-mini" id="btn-back-lobby">Xem toàn phòng</button>
+        </div>
       </div>
 
       ${
@@ -1909,24 +2382,26 @@
       <div class="surface-panel" style="padding:12px;">
         <div class="companion-head">
           <strong>Đang ngồi cùng bàn với ${getUserPronoun()} (${table.members.length + 1}/5 chỗ)</strong>
-          <span>Chạm để xem hồ sơ</span>
+          <span>${table.realPeerCount ? `<span class="real-peer-pill num">${table.realPeerCount} điện thoại thật</span>` : "Chạm để xem hồ sơ"}</span>
         </div>
         <div class="member-pill-list">
           ${table.members
-            .map(
-              (m, mIdx) => `
+            .map((m, mIdx) => {
+              const fObj = getTitleFrame(m.titleFrameId);
+              const frameBadge = fObj && fObj.shortTag ? ` · ${fObj.shortTag}` : "";
+              return `
             <button type="button" class="member-chip-btn" data-tidx="${state.teaRoom.tableIdx}" data-midx="${mIdx}">
               ${renderSeniorAvatarSvg(m)}
               <span class="member-chip-meta">
                 <span class="member-chip-top">
-                  <strong>${escHtml(m.name)} <span class="member-age-inline">· ${m.age} tuổi</span></strong>
-                  <span class="member-chip-prov">${escHtml(m.province)}</span>
+                  <strong>${escHtml(m.name)} <span class="member-age-inline">· ${m.age} tuổi${escHtml(frameBadge)}</span></strong>
+                  ${m.isRealPeer ? `<span class="real-peer-pill">Người thật</span>` : `<span class="member-chip-prov">${escHtml(m.province)}</span>`}
                 </span>
-                <small>${escHtml((m.habits || []).slice(0, 2).map(getHabitLabel).join(" · "))}</small>
+                <small>${escHtml((m.habits || []).slice(0, 2).map(getHabitLabel).join(" · ") || m.province)}</small>
               </span>
             </button>
-          `
-            )
+          `;
+            })
             .join("")}
         </div>
       </div>
@@ -1945,10 +2420,16 @@
 
       <button type="button" class="btn-secondary" id="btn-snap-tea">${ico("camera")}<span>Check-in bàn trà (Ảnh + Mã QR)</span></button>
 
+      <!-- Trợ lý tự gợi chuyện sau 60 giây im lặng -->
+      <div class="idle-assistant-bar" id="idle-assistant-bar">
+        <span id="idle-assistant-status">${escHtml(room.hostName || "Chị Trà (Trợ lý)")} tự gợi chuyện mới nếu bàn im lặng quá 60 giây</span>
+        <button type="button" class="btn-mini" id="btn-ask-host-icebreak">Nhờ Trợ lý gợi chuyện</button>
+      </div>
+
       <!-- Fixed 2-line Tea Table Board -->
       <div class="tea-board" aria-live="polite">
         <div class="tea-board-head">
-          <strong>Bảng lời bàn trà (Không tự biến mất)</strong>
+          <strong>Bảng lời bàn trà (Nhịp nhấp trà 5 giây)</strong>
           <span>Độ dài tối đa 25 chữ</span>
         </div>
         <div class="tea-board-lines">
@@ -1971,7 +2452,7 @@
 
       <!-- Quick Replies + Simple Text + 2-tap Inline Voice -->
       <div class="surface-panel">
-        <h3>Chọn nhanh câu trả lời:</h3>
+        <h3>Chọn nhanh câu trả lời (0 tốn Token):</h3>
         <div class="cooldown-note" id="tea-cooldown-note" ${coolLeft > 0 ? "" : "hidden"}>Bác nhấp ngụm trà nghe các bác khác nói nhé... (${coolLeft}s)</div>
         <div class="reply-stack" id="tea-reply-stack">
           ${suggestions
@@ -1994,14 +2475,22 @@
     `;
 
     bindRoomSwitcherEvents();
-    mountRoomSceneView("table", room, table, 0);
+    mountRoomSceneView("table", room, baseTable, 0);
 
     if (coolLeft > 0) startCooldownTicker();
+
+    const switchFastBtn = document.getElementById("btn-switch-table-fast");
+    if (switchFastBtn) {
+      switchFastBtn.addEventListener("click", switchNextTableFast);
+    }
+
+    document.getElementById("btn-ask-host-icebreak").addEventListener("click", triggerIdleAssistantPrompt);
 
     document.getElementById("btn-back-lobby").addEventListener("click", () => {
       state.teaRoom.articleTable = null;
       state.teaRoom.activeNewspaperRef = null;
       state.teaRoom.subView = "lobby";
+      if (RT) RT.leaveTableChannel();
       saveState();
       renderTeaRoom();
     });
@@ -2125,13 +2614,13 @@
       }
       window.TeaRoomScene.triggerTeaService();
       window.TeaRoomScene.setSeatBadge(userSeatIdx, "Mời trà");
-      sendUserTeaMessage("Mời cả bàn dùng thêm chén trà sen nóng cho ấm bụng nhé!");
+      sendUserTeaMessage("Mời cả bàn dùng thêm chén trà sen nóng cho ấm bụng nhé!", { ritual: "pour" });
     });
 
     document.getElementById("btn-snack-tea").addEventListener("click", () => {
       if (getCooldownRemaining() > 0) return;
       window.TeaRoomScene.setSeatBadge(userSeatIdx, "Mời bánh");
-      sendUserTeaMessage("Tôi mời các bác đĩa hạt dưa và miếng bánh đậu xanh Hải Dương.");
+      sendUserTeaMessage("Tôi mời các bác đĩa hạt dưa và miếng bánh đậu xanh Hải Dương.", { ritual: "snack" });
     });
 
     document.getElementById("btn-poem-tea").addEventListener("click", () => {
@@ -2140,7 +2629,7 @@
     });
 
     els.main.querySelectorAll(".reply-btn").forEach((btn) => {
-      btn.addEventListener("click", () => sendUserTeaMessage(btn.dataset.reply));
+      btn.addEventListener("click", () => sendUserTeaMessage(btn.dataset.reply, { source: "quick" }));
     });
 
     const textIn = document.getElementById("tea-text-input");
@@ -2159,8 +2648,8 @@
           return;
         }
         textIn.value = "";
-        commitVoiceDictionaryLearning(checked);
-        sendUserTeaMessage(checked.aiPolished);
+        if (state.privacy.consentVoiceDict) commitVoiceDictionaryLearning(checked);
+        sendUserTeaMessage(checked.aiPolished, { source: "voice_or_text" });
       };
       sendTextBtn.addEventListener("click", submitTyped);
       textIn.addEventListener("keydown", (e) => {
@@ -2236,11 +2725,11 @@
         showToast("Vì an toàn cho các bác, không gửi số điện thoại hoặc đường link.");
         return;
       }
-      commitVoiceDictionaryLearning(pendingVoiceDraft);
+      if (state.privacy.consentVoiceDict) commitVoiceDictionaryLearning(pendingVoiceDraft);
       pendingVoiceDraft = null;
       box.hidden = true;
       box.innerHTML = "";
-      sendUserTeaMessage(editedText);
+      sendUserTeaMessage(editedText, { source: "voice_or_text" });
     });
 
     document.getElementById("btn-inline-voice-cancel").addEventListener("click", () => {
@@ -2880,10 +3369,10 @@
 
   function renderGames() {
     els.main.innerHTML = `
-      <h1>Trò chơi dân gian</h1>
+      <h1>Trò chơi dân gian &amp; Cờ tướng 9×10</h1>
       <div class="tab-bar">
         <button type="button" class="tab-btn ${activeGameTab === "oaq" ? "active" : ""}" id="tab-oaq">Ô ăn quan</button>
-        <button type="button" class="tab-btn ${activeGameTab === "cotuong" ? "active" : ""}" id="tab-cotuong">Cờ tướng giải thế</button>
+        <button type="button" class="tab-btn ${activeGameTab === "cotuong" ? "active" : ""}" id="tab-cotuong">Cờ tướng 9×10</button>
       </div>
       <div id="game-tab-body"></div>
     `;
@@ -2905,22 +3394,63 @@
     }
   }
 
+  function ensureOaqAsyncMatch() {
+    if (!state.oaq.matchId) {
+      const code = "oaq-" + Math.random().toString(36).slice(2, 8);
+      state.oaq.matchId = code;
+      state.oaq.myRole = "host";
+      state.oaq.hostName = `${state.user.name} · ${getUserAge()}t`;
+      state.oaq.guestName = "Đang chờ bạn cờ bấm link...";
+      state.oaq.turn = "host";
+      state.oaq.zaloInviteUrl = `${getPublicBaseUrl()}?van=${encodeURIComponent(code)}`;
+      if (RT) {
+        RT.publishMatchState({
+          matchId: code,
+          kind: "oaq",
+          hostId: RT.getClientId(),
+          hostName: state.oaq.hostName,
+          guestId: "",
+          guestName: "",
+          turn: "host",
+          statusText: `Mời đi nước đầu tiên trên ván Ô ăn quan.`,
+          payload: {
+            cells: state.oaq.cells.slice(),
+            scoreHost: state.oaq.scoreP,
+            scoreGuest: state.oaq.scoreAI
+          },
+          moveCount: 0
+        });
+      }
+      saveState();
+    }
+  }
+
   function renderOaqTab(container) {
     const o = state.oaq;
+    if (o.mode !== "async" && o.turn !== "host" && o.turn !== "ai") {
+      o.turn = "host";
+    }
     const isGameOver = o.cells[5] === 0 && o.cells[11] === 0;
-    const topCells = [10, 9, 8, 7, 6]; // Rendered left -> right across top row
-    const bottomCells = [0, 1, 2, 3, 4];
+    const topCells = [10, 9, 8, 7, 6]; // Guest / AI side
+    const bottomCells = [0, 1, 2, 3, 4]; // Host / Player side
+    const isGuestAsync = o.mode === "async" && o.myRole === "guest";
+    const isMyTurn = o.mode === "ai" ? o.turn === "host" : o.turn === o.myRole;
+    const hostLabel = o.mode === "async" ? o.hostName || `${state.user.name}` : `${state.user.name}`;
+    const guestLabel =
+      o.mode === "ai"
+        ? "Máy (Đối thủ tự động)"
+        : o.guestName || "Bạn cờ qua link (Đang chờ)";
 
     container.innerHTML = `
       <div class="surface-panel">
         <div class="btn-row">
-          <button type="button" class="btn-secondary ${o.mode === "ai" ? "is-jade" : ""}" id="oaq-mode-ai" style="${o.mode === "ai" ? "background:var(--accent-jade);color:#fff;" : ""}">Đấu với Máy</button>
-          <button type="button" class="btn-secondary" id="oaq-mode-async" style="${o.mode === "async" ? "background:var(--accent-jade);color:#fff;" : ""}">Ván treo (Mời bạn)</button>
+          <button type="button" class="btn-secondary" id="oaq-mode-ai" style="${o.mode === "ai" ? "background:var(--accent-jade);color:#fff;" : ""}">Đấu với Máy</button>
+          <button type="button" class="btn-secondary" id="oaq-mode-async" style="${o.mode === "async" ? "background:var(--accent-jade);color:#fff;" : ""}">Ván treo thật (Qua link)</button>
         </div>
 
-        <div style="display:flex; justify-content:space-between; font-weight:700;">
-          <span>${escHtml(state.user.name)}: <span class="num">${o.scoreP}</span> quân</span>
-          <span>${o.mode === "ai" ? "Máy (Đối thủ tự động)" : "Anh Minh · 71t (Hải Phòng)"}: <span class="num">${o.scoreAI}</span> quân</span>
+        <div style="display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; font-weight:700; font-size:0.92rem;">
+          <span>Hàng dưới (${escHtml(hostLabel)}): <span class="num">${o.scoreP}</span> quân</span>
+          <span>Hàng trên (${escHtml(guestLabel)}): <span class="num">${o.scoreAI}</span> quân</span>
         </div>
 
         <div class="oaq-board" role="group" aria-label="Bàn cờ Ô ăn quan">
@@ -2930,25 +3460,41 @@
           </div>
 
           ${topCells
-            .map(
-              (idx) => `
-            <div class="oaq-cell" style="grid-row:1;">
-              <span class="num">${o.cells[idx]}</span>
-              <small>Ô${idx + 1}</small>
-            </div>
-          `
-            )
+            .map((idx) => {
+              if (isGuestAsync) {
+                return `
+                  <button type="button" class="oaq-cell player-side ${o.selectedCell === idx ? "selected" : ""}" data-cell="${idx}" style="grid-row:1;" ${!isMyTurn || o.cells[idx] === 0 || isGameOver ? "disabled" : ""}>
+                    <span class="num">${o.cells[idx]}</span>
+                    <small>Ô${idx + 1}</small>
+                  </button>
+                `;
+              }
+              return `
+                <div class="oaq-cell" style="grid-row:1;">
+                  <span class="num">${o.cells[idx]}</span>
+                  <small>Ô${idx + 1}</small>
+                </div>
+              `;
+            })
             .join("")}
 
           ${bottomCells
-            .map(
-              (idx) => `
-            <button type="button" class="oaq-cell player-side ${o.selectedCell === idx ? "selected" : ""}" data-cell="${idx}" style="grid-row:2;" ${o.turn !== "player" || o.cells[idx] === 0 || isGameOver ? "disabled" : ""}>
-              <span class="num">${o.cells[idx]}</span>
-              <small>Ô${idx + 1}</small>
-            </button>
-          `
-            )
+            .map((idx) => {
+              if (isGuestAsync) {
+                return `
+                  <div class="oaq-cell" style="grid-row:2;">
+                    <span class="num">${o.cells[idx]}</span>
+                    <small>Ô${idx + 1}</small>
+                  </div>
+                `;
+              }
+              return `
+                <button type="button" class="oaq-cell player-side ${o.selectedCell === idx ? "selected" : ""}" data-cell="${idx}" style="grid-row:2;" ${!isMyTurn || o.cells[idx] === 0 || isGameOver ? "disabled" : ""}>
+                  <span class="num">${o.cells[idx]}</span>
+                  <small>Ô${idx + 1}</small>
+                </button>
+              `;
+            })
             .join("")}
 
           <div class="oaq-quan oaq-quan-right">
@@ -2960,7 +3506,7 @@
         <p style="font-weight:600; color:var(--accent-terracotta);">${isGameOver ? "Ván cờ đã kết thúc — cả hai Quan đều đã ăn hết!" : escHtml(o.statusText)}</p>
 
         ${
-          o.selectedCell !== null && o.turn === "player" && !isGameOver
+          o.selectedCell !== null && isMyTurn && !isGameOver
             ? `
           <div class="btn-row">
             <button type="button" class="btn-primary" id="oaq-dir-left">Rải sang Trái</button>
@@ -2974,13 +3520,16 @@
           o.mode === "async" && o.zaloInviteUrl
             ? `
           <div class="surface-panel warm">
-            <strong>Ván treo đang chờ lượt bạn cờ</strong>
-            <p style="font-size:0.88rem;">Đã lưu nước đi. Gửi mã QR hoặc tin nhắn nhắc lượt cho Anh Minh:</p>
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+              <strong>Ván treo thời gian thực (${escHtml(o.matchId)})</strong>
+              <span class="real-peer-pill">${isMyTurn ? "Đến lượt bác" : "Đang chờ bạn cờ"}</span>
+            </div>
+            <p style="font-size:0.88rem;">Gửi link dưới đây cho người thứ 2 mở trên điện thoại thật để đánh chung ván này ngay lập tức:</p>
             ${renderSocialShareKitHtml({
               prefix: "oaq-share",
               copyLinkBtnId: "oaq-copy-zalo",
               shareUrl: o.zaloInviteUrl,
-              postText: `${state.user.name} vừa đi 1 nước trong ván Ô ăn quan cùng Anh Minh. Mời bấm vào link này để đi tiếp lượt của mình nhé:\n${o.zaloInviteUrl}`
+              postText: `${state.user.name} mời bạn đánh chung ván Ô ăn quan trực tuyến trên Tuổi Bạc. Bấm vào đường dẫn này là đi nước tiếp theo ngay:\n${o.zaloInviteUrl}`
             })}
           </div>
         `
@@ -3002,14 +3551,38 @@
     const doPlayerDir = (dir) => {
       const chosen = state.oaq.selectedCell;
       if (chosen === null) return;
-      executeOaqMove(chosen, dir, true);
+      const isHostSide = !isGuestAsync;
+      // On top row (guest), visual Left corresponds to +1 index around board, Right to -1
+      const actualStep = isHostSide ? dir : -dir;
+      executeOaqMove(chosen, actualStep, isHostSide);
 
       if (state.oaq.mode === "async") {
-        state.oaq.turn = "ai";
-        state.oaq.statusText = `Đã đi xong lượt. Ván treo đang chờ đối thủ phản hồi.`;
-        state.oaq.zaloInviteUrl = `${getPublicBaseUrl()}?phong=phong-co&ban=2`;
+        ensureOaqAsyncMatch();
+        const nextTurn = isHostSide ? "guest" : "host";
+        state.oaq.turn = nextTurn;
+        state.oaq.statusText = `${state.user.name} vừa rải Ô ${chosen + 1}. Đang chờ đối thủ đi lượt tiếp theo...`;
+        trackEvent("async_game_move");
+        if (RT) {
+          const existing = RT.getMatch(state.oaq.matchId) || {};
+          RT.publishMatchState({
+            matchId: state.oaq.matchId,
+            kind: "oaq",
+            hostId: existing.hostId || RT.getClientId(),
+            hostName: state.oaq.hostName || `${state.user.name} · ${getUserAge()}t`,
+            guestId: isGuestAsync ? RT.getClientId() : existing.guestId || "",
+            guestName: isGuestAsync ? `${state.user.name} · ${getUserAge()}t` : state.oaq.guestName || "",
+            turn: nextTurn,
+            statusText: `${state.user.name} vừa đi Ô ${chosen + 1} — mời đi tiếp!`,
+            payload: {
+              cells: state.oaq.cells.slice(),
+              scoreHost: state.oaq.scoreP,
+              scoreGuest: state.oaq.scoreAI
+            },
+            moveCount: (existing.moveCount || 0) + 1
+          });
+        }
         saveState();
-        addXu(3, "Đi nước cờ ván treo");
+        addXu(3, "Đi nước cờ ván treo thật");
         renderGames();
         return;
       }
@@ -3027,11 +3600,11 @@
           const aiDir = Math.random() > 0.5 ? 1 : -1;
           executeOaqMove(pick, aiDir, false);
         }
-        state.oaq.turn = "player";
+        state.oaq.turn = "host";
         state.oaq.statusText = "Máy đã đi xong. Đến lượt bác chọn một ô hàng dưới.";
         saveState();
         renderGames();
-      }, 900);
+      }, 850);
     };
 
     const btnL = document.getElementById("oaq-dir-left");
@@ -3041,7 +3614,7 @@
 
     document.getElementById("oaq-mode-ai").addEventListener("click", () => {
       state.oaq.mode = "ai";
-      state.oaq.turn = "player";
+      state.oaq.turn = "host";
       state.oaq.statusText = "Đang đấu với Máy (luôn ghi rõ là Máy).";
       saveState();
       renderGames();
@@ -3049,8 +3622,8 @@
 
     document.getElementById("oaq-mode-async").addEventListener("click", () => {
       state.oaq.mode = "async";
-      state.oaq.turn = "player";
-      state.oaq.statusText = "Chế độ Ván treo: đi 1 nước rồi gửi nhắc lượt qua Zalo.";
+      ensureOaqAsyncMatch();
+      state.oaq.statusText = "Chế độ Ván treo thật: gửi link bên dưới cho điện thoại thứ 2 để đánh trực tiếp.";
       saveState();
       renderGames();
     });
@@ -3060,139 +3633,500 @@
         prefix: "oaq-share",
         copyLinkBtnId: "oaq-copy-zalo",
         shareUrl: o.zaloInviteUrl,
-        postText: `${state.user.name} vừa đi 1 nước trong ván Ô ăn quan cùng Anh Minh. Mời bấm vào link này để đi tiếp lượt của mình nhé:\n${o.zaloInviteUrl}`
+        postText: `${state.user.name} mời bạn đánh chung ván Ô ăn quan trực tuyến trên Tuổi Bạc. Bấm vào đường dẫn này là đi nước tiếp theo ngay:\n${o.zaloInviteUrl}`
       });
     }
 
     document.getElementById("oaq-reset").addEventListener("click", () => {
-      state.oaq = Object.assign({}, createDefaultState().oaq, { mode: state.oaq.mode });
+      const keepMode = state.oaq.mode;
+      state.oaq = Object.assign({}, createDefaultState().oaq, { mode: keepMode });
+      if (keepMode === "async") ensureOaqAsyncMatch();
       saveState();
       renderGames();
     });
   }
 
-  function renderXiangqiTab(container) {
+  // ==================== STANDARD 9x10 XIANGQI (PUZZLES + FULL AI + LIVE ASYNC) ====================
+  function ensureXiangqiBoardInitialized() {
     const x = state.xiangqi;
-    // Puzzle: Tướng Đen ở (cột 5, hàng 1), Sĩ Đen (4,1), Xe Đỏ ở (4,3), Pháo Đỏ ở (5,4), Tướng Đỏ ở (5,9)
-    // Nước 1: Xe Đỏ tiến lên (6,1) hoặc (4,2)? Đơn giản cho bác: Xe Đỏ ăn Sĩ (4,1) chiếu Tướng! Tướng Đen buộc bình sang (4,1) ăn Xe -> Nước 2: Pháo Đỏ chiếu bí hoặc Xe/Mã chiếu.
-    // Chuẩn hơn: Tướng Đen (5,0). Xe Đỏ ở (3,2). Pháo Đỏ ở (5,4). Chốt Đỏ ở (4,1).
-    // Nút bấm rõ ràng cho 2 bước chiếu hết:
-    const step = x.step;
-    const pieces =
-      step === 0
-        ? [
-            { x: 180, y: 40, label: "Tướng", side: "black" },
-            { x: 140, y: 40, label: "Sĩ", side: "black" },
-            { x: 140, y: 120, label: "Xe", side: "red", id: "xe" },
-            { x: 180, y: 200, label: "Pháo", side: "red", id: "phao" },
-            { x: 140, y: 80, label: "Tốt", side: "red", id: "tot" }
-          ]
-        : step === 1
-        ? [
-            { x: 140, y: 40, label: "Tướng", side: "black" },
-            { x: 180, y: 200, label: "Pháo", side: "red", id: "phao" },
-            { x: 140, y: 80, label: "Tốt", side: "red", id: "tot" }
-          ]
-        : [
-            { x: 140, y: 40, label: "Tướng", side: "black" },
-            { x: 140, y: 160, label: "Pháo", side: "red", id: "phao" },
-            { x: 140, y: 80, label: "Tốt", side: "red", id: "tot" }
-          ];
+    if (!XQ) return;
+    if (!Array.isArray(x.board) || x.board.length !== 10) {
+      if (x.mode === "puzzle") {
+        const pz = XQ.PUZZLES[x.puzzleIdx % XQ.PUZZLES.length];
+        x.board = XQ.buildBoardFromList(pz.pieces);
+        x.turn = "red";
+        x.solved = false;
+        x.puzzleStep = 0;
+        x.selected = null;
+        x.lastMove = null;
+        x.status = "Đỏ đi tiên: Chạm vào quân Đỏ rồi chạm ô chấm xanh để chiếu Tướng.";
+      } else {
+        x.board = XQ.createInitialBoard();
+        x.turn = "red";
+        x.solved = false;
+        x.selected = null;
+        x.lastMove = null;
+        x.status = "Ván 9×10 chuẩn (32 quân) — Đỏ đi tiên.";
+      }
+    }
+  }
+
+  function ensureXiangqiAsyncMatch() {
+    const x = state.xiangqi;
+    if (!x.matchId) {
+      const code = "xq-" + Math.random().toString(36).slice(2, 8);
+      x.matchId = code;
+      x.mySide = "red";
+      x.hostName = `${state.user.name} · ${getUserAge()}t`;
+      x.guestName = "Đang chờ kỳ hữu mở link...";
+      x.board = XQ.createInitialBoard();
+      x.turn = "red";
+      x.selected = null;
+      x.lastMove = null;
+      x.solved = false;
+      x.inviteUrl = `${getPublicBaseUrl()}?van=${encodeURIComponent(code)}`;
+      x.status = "Bác cầm quân Đỏ (đi tiên). Gửi link bên dưới để kỳ hữu cầm quân Đen trên máy khác.";
+      if (RT) {
+        RT.publishMatchState({
+          matchId: code,
+          kind: "xiangqi",
+          hostId: RT.getClientId(),
+          hostName: x.hostName,
+          guestId: "",
+          guestName: "",
+          turn: "red",
+          statusText: x.status,
+          payload: { board: x.board, lastMove: null },
+          moveCount: 0
+        });
+      }
+      saveState();
+    }
+  }
+
+  function renderXiangqiTab(container) {
+    if (!XQ) return;
+    const x = state.xiangqi;
+    ensureXiangqiBoardInitialized();
+
+    const pz = XQ.PUZZLES[(x.puzzleIdx || 0) % XQ.PUZZLES.length];
+    const myControllableSide = x.mode === "async" ? x.mySide || "red" : "red";
+    const canInteract = !x.solved && x.turn === myControllableSide;
+    const legalTargets =
+      canInteract && x.selected
+        ? XQ.getLegalMovesForSquare(x.board, x.selected.r, x.selected.c)
+        : [];
 
     container.innerHTML = `
       <div class="surface-panel">
-        <h2>Thế cờ: Sát chiêu Tốt Pháo (2 nước)</h2>
-        <p style="font-size:0.86rem;">Đỏ đi tiên. Đang có 14 bác ngồi xem và cổ vũ thế cờ này.</p>
-
-        <svg viewBox="0 0 360 240" style="width:100%; background:#F1DCBA; border:2px solid #755333; border-radius:12px;">
-          <!-- Grid -->
-          ${[40, 80, 120, 160, 200].map((y) => `<line x1="20" y1="${y}" x2="340" y2="${y}" stroke="#876340" stroke-width="1.5" />`).join("")}
-          ${[20, 60, 100, 140, 180, 220, 260, 300, 340].map((xPos) => `<line x1="${xPos}" y1="40" x2="${xPos}" y2="200" stroke="#876340" stroke-width="1.5" />`).join("")}
-          <!-- Palace diagonals -->
-          <line x1="140" y1="40" x2="220" y2="120" stroke="#876340" stroke-width="1.5" />
-          <line x1="220" y1="40" x2="140" y2="120" stroke="#876340" stroke-width="1.5" />
-          ${pieces
-            .map(
-              (p) => `
-            <g>
-              <circle cx="${p.x}" cy="${p.y}" r="18" fill="#FFF7E6" stroke="${p.side === "red" ? "#B83B2A" : "#231A14"}" stroke-width="3" />
-              <text x="${p.x}" y="${p.y + 5}" text-anchor="middle" font-size="12" font-weight="700" fill="${p.side === "red" ? "#B83B2A" : "#231A14"}">${p.label}</text>
-            </g>
-          `
-            )
-            .join("")}
-        </svg>
-
-        <p style="font-weight:700; color:${x.solved ? "var(--accent-jade)" : "var(--accent-terracotta)"};">${escHtml(x.status)}</p>
+        <div class="xq-mode-grid" role="group" aria-label="Chế độ chơi Cờ tướng 9×10">
+          <button type="button" class="xq-mode-btn ${x.mode === "puzzle" ? "active" : ""}" data-xq-mode="puzzle">Giải cờ thế</button>
+          <button type="button" class="xq-mode-btn ${x.mode === "ai" ? "active" : ""}" data-xq-mode="ai">Đấu Máy 9×10</button>
+          <button type="button" class="xq-mode-btn ${x.mode === "async" ? "active" : ""}" data-xq-mode="async">Ván treo 9×10</button>
+        </div>
 
         ${
-          !x.solved
+          x.mode === "puzzle"
             ? `
-          <div class="btn-row">
-            <button type="button" class="btn-primary" id="xq-move-1">
-              ${step === 0 ? "1. Xe Đỏ ăn Sĩ (Chiếu)" : "2. Bình Pháo vào lộ 4 (Chiếu bí)"}
-            </button>
-            <button type="button" class="btn-secondary" id="xq-hint">Gợi ý nước đi</button>
+          <div>
+            <h2 style="font-size:1.06rem;">${escHtml(pz.name)}</h2>
+            <p style="font-size:0.88rem; color:var(--ink-secondary);">${escHtml(pz.subtitle)}</p>
+          </div>
+          <div class="xq-puzzle-strip">
+            ${XQ.PUZZLES.map(
+              (item, idx) =>
+                `<button type="button" class="btn-mini ${idx === (x.puzzleIdx || 0) ? "active-equip" : ""}" data-pz-idx="${idx}" style="justify-content:center; ${idx === (x.puzzleIdx || 0) ? "background:var(--accent-jade);color:#fff;" : ""}">Thế ${idx + 1}</button>`
+            ).join("")}
           </div>
         `
-            : `<button type="button" class="btn-primary" id="xq-reset">Giải lại thế cờ</button>`
+            : x.mode === "ai"
+            ? `
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; font-size:0.9rem;">
+            <span><strong>Đỏ:</strong> ${escHtml(state.user.name)}</span>
+            <span><strong>Đen:</strong> Máy (Kỳ hữu tự động)</span>
+          </div>
+        `
+            : `
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; font-size:0.9rem;">
+            <span><strong>Đỏ:</strong> ${escHtml(x.hostName || state.user.name)}</span>
+            <span><strong>Đen:</strong> ${escHtml(x.guestName || "Chờ bạn cờ...")}</span>
+          </div>
+        `
+        }
+
+        <div class="xq-board-wrap" id="xq-board-mount">
+          ${XQ.renderBoardSvg({
+            board: x.board,
+            selected: x.selected,
+            legalTargets,
+            lastMove: x.lastMove
+          })}
+        </div>
+
+        <p id="xq-status-line" style="font-weight:700; color:${x.solved ? "var(--accent-jade)" : "var(--accent-terracotta)"};">${escHtml(x.status)}</p>
+
+        <div class="btn-row">
+          ${
+            x.mode === "puzzle"
+              ? `<button type="button" class="btn-secondary" id="xq-btn-hint">Gợi ý nước đi</button>`
+              : x.mode === "ai" && x.prevBoard
+              ? `<button type="button" class="btn-secondary" id="xq-btn-undo">Đi lại 1 nước</button>`
+              : ""
+          }
+          <button type="button" class="btn-primary" id="xq-btn-reset">${x.mode === "puzzle" ? "Xếp lại thế cờ" : "Ván 9×10 mới"}</button>
+        </div>
+
+        ${
+          x.mode === "async" && x.inviteUrl
+            ? `
+          <div class="surface-panel warm">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+              <strong>Ván treo Cờ tướng 9×10 (${escHtml(x.matchId)})</strong>
+              <span class="real-peer-pill">${x.turn === myControllableSide ? "Đến lượt bác" : "Chờ nước đi bạn cờ"}</span>
+            </div>
+            ${renderSocialShareKitHtml({
+              prefix: "xq-share",
+              copyLinkBtnId: "xq-copy-link",
+              shareUrl: x.inviteUrl,
+              postText: `${state.user.name} mời bạn đánh ván Cờ tướng 9×10 trực tuyến trên Tuổi Bạc (không cần cài tài khoản). Bấm vào link để cầm quân đi nước tiếp theo:\n${x.inviteUrl}`
+            })}
+          </div>
+        `
+            : ""
         }
       </div>
     `;
 
-    const moveBtn = document.getElementById("xq-move-1");
-    if (moveBtn) {
-      moveBtn.addEventListener("click", () => {
-        if (state.xiangqi.step === 0) {
-          state.xiangqi.step = 1;
-          state.xiangqi.status = "Tuyệt! Tướng Đen buộc phải ăn Xe sang lộ 4. Mời bác đi nước 2 chiếu hết!";
+    container.querySelectorAll("[data-xq-mode]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const nextMode = btn.dataset.xqMode;
+        x.mode = nextMode;
+        x.selected = null;
+        x.lastMove = null;
+        x.prevBoard = null;
+        x.solved = false;
+        if (nextMode === "puzzle") {
+          const curPz = XQ.PUZZLES[(x.puzzleIdx || 0) % XQ.PUZZLES.length];
+          x.board = XQ.buildBoardFromList(curPz.pieces);
+          x.turn = "red";
+          x.puzzleStep = 0;
+          x.status = "Đỏ đi tiên: Chạm vào quân Đỏ rồi chạm ô chấm xanh để chiếu Tướng.";
+        } else if (nextMode === "ai") {
+          x.board = XQ.createInitialBoard();
+          x.turn = "red";
+          x.status = "Ván 9×10 chuẩn (32 quân) đấu với Máy — mời bác cầm quân Đỏ đi tiên.";
         } else {
-          state.xiangqi.step = 2;
-          state.xiangqi.solved = true;
-          state.xiangqi.status = "Chiếu bí! Pháo Đỏ có Tốt Đỏ làm ngòi, Tướng Đen hết đường chạy!";
-          addXu(6, "Giải xong thế cờ tướng");
+          x.matchId = "";
+          ensureXiangqiAsyncMatch();
         }
         saveState();
         renderGames();
       });
-    }
+    });
 
-    const hintBtn = document.getElementById("xq-hint");
+    container.querySelectorAll("[data-pz-idx]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        x.puzzleIdx = Number(btn.dataset.pzIdx);
+        const nextPz = XQ.PUZZLES[x.puzzleIdx];
+        x.board = XQ.buildBoardFromList(nextPz.pieces);
+        x.turn = "red";
+        x.puzzleStep = 0;
+        x.solved = false;
+        x.selected = null;
+        x.lastMove = null;
+        x.status = `Đang giải ${nextPz.name} — mời bác chọn quân Đỏ.`;
+        saveState();
+        renderGames();
+      });
+    });
+
+    container.querySelectorAll(".xq-square").forEach((sq) => {
+      sq.addEventListener("click", () => {
+        if (!canInteract) return;
+        const r = Number(sq.dataset.r);
+        const c = Number(sq.dataset.c);
+        const tappedPiece = x.board[r][c];
+
+        // Check if tapping a valid destination of currently selected piece
+        if (x.selected) {
+          const chosenMove = legalTargets.find((m) => m.tr === r && m.tc === c);
+          if (chosenMove) {
+            executeUserXiangqiMove(chosenMove);
+            return;
+          }
+        }
+
+        // Otherwise select own piece
+        if (tappedPiece && tappedPiece.side === myControllableSide) {
+          const moves = XQ.getLegalMovesForSquare(x.board, r, c);
+          x.selected = { r, c };
+          const pLabel = XQ.PIECE_LABELS[tappedPiece.type] || tappedPiece.type;
+          x.status =
+            moves.length > 0
+              ? `Đã chọn quân ${pLabel} — có ${moves.length} nước đi hợp lệ (chấm xanh).`
+              : `Quân ${pLabel} này hiện đang bị cản hoặc giữ Tướng, mời chọn quân khác.`;
+          renderGames();
+        }
+      });
+    });
+
+    const hintBtn = document.getElementById("xq-btn-hint");
     if (hintBtn) {
       hintBtn.addEventListener("click", () => {
-        showToast(state.xiangqi.step === 0 ? "Dùng Xe Đỏ chém Sĩ để kéo Tướng Đen sang lộ 4." : "Đưa Pháo Đỏ sang cột của Tướng Đen, mượn Tốt làm ngòi!");
+        const hintMv = x.puzzleStep === 0 ? pz.hintMove1 : pz.hintMove2;
+        if (hintMv && x.board[hintMv.fr] && x.board[hintMv.fr][hintMv.fc]) {
+          x.selected = { r: hintMv.fr, c: hintMv.fc };
+        }
+        const msg = x.puzzleStep === 0 ? pz.hint1 : pz.hint2;
+        x.status = msg;
+        showToast(msg);
+        renderGames();
       });
     }
 
-    const resetBtn = document.getElementById("xq-reset");
-    if (resetBtn) {
-      resetBtn.addEventListener("click", () => {
-        state.xiangqi = { step: 0, solved: false, status: "Đỏ đi tiên: Hãy chọn quân Xe Đỏ để chiếu tướng ở nước 1." };
-        saveState();
-        renderGames();
+    const undoBtn = document.getElementById("xq-btn-undo");
+    if (undoBtn) {
+      undoBtn.addEventListener("click", () => {
+        if (x.prevBoard) {
+          x.board = XQ.cloneBoard(x.prevBoard);
+          x.prevBoard = null;
+          x.turn = "red";
+          x.solved = false;
+          x.selected = null;
+          x.status = "Đã hoàn lại 1 nước cờ — mời bác đi lại thong thả.";
+          saveState();
+          renderGames();
+        }
+      });
+    }
+
+    document.getElementById("xq-btn-reset").addEventListener("click", () => {
+      x.selected = null;
+      x.lastMove = null;
+      x.prevBoard = null;
+      x.solved = false;
+      if (x.mode === "puzzle") {
+        x.board = XQ.buildBoardFromList(pz.pieces);
+        x.turn = "red";
+        x.puzzleStep = 0;
+        x.status = "Đã xếp lại thế cờ — Đỏ đi tiên.";
+      } else if (x.mode === "ai") {
+        x.board = XQ.createInitialBoard();
+        x.turn = "red";
+        x.status = "Đã xếp ván Cờ tướng 9×10 mới (32 quân).";
+      } else {
+        x.matchId = "";
+        ensureXiangqiAsyncMatch();
+      }
+      saveState();
+      renderGames();
+    });
+
+    if (x.mode === "async" && x.inviteUrl) {
+      bindSocialShareKit({
+        prefix: "xq-share",
+        copyLinkBtnId: "xq-copy-link",
+        shareUrl: x.inviteUrl,
+        postText: `${state.user.name} mời bạn đánh ván Cờ tướng 9×10 trực tuyến trên Tuổi Bạc (không cần cài tài khoản). Bấm vào link để cầm quân đi nước tiếp theo:\n${x.inviteUrl}`
       });
     }
   }
 
-  // ==================== MODULE 6: POETRY & FLOWERS ====================
+  function executeUserXiangqiMove(mv) {
+    const x = state.xiangqi;
+    const moveDesc = XQ.formatMoveLabel(x.board, mv);
+    x.prevBoard = XQ.cloneBoard(x.board);
+    x.board = XQ.applyMoveClone(x.board, mv);
+    x.lastMove = mv;
+    x.selected = null;
+
+    const mySide = x.mode === "async" ? x.mySide || "red" : "red";
+    const enemySide = mySide === "red" ? "black" : "red";
+    const enemyMoves = XQ.getAllLegalMoves(x.board, enemySide);
+    const enemyChecked = XQ.isInCheck(x.board, enemySide);
+
+    if (x.mode === "async") {
+      trackEvent("async_game_move");
+      x.turn = enemySide;
+      if (enemyMoves.length === 0) {
+        x.solved = true;
+        x.status = `Chiếu bí! ${state.user.name} đã giành chiến thắng ván Cờ tướng 9×10!`;
+        addXu(8, "Thắng ván treo Cờ tướng 9×10");
+      } else {
+        x.status = `${moveDesc}${enemyChecked ? " (Chiếu Tướng!)" : ""} — đang chờ đối thủ đi tiếp.`;
+        addXu(2, "Đi nước Cờ tướng ván treo");
+      }
+      if (RT && x.matchId) {
+        const existing = RT.getMatch(x.matchId) || {};
+        RT.publishMatchState({
+          matchId: x.matchId,
+          kind: "xiangqi",
+          hostId: existing.hostId || RT.getClientId(),
+          hostName: x.hostName || `${state.user.name} · ${getUserAge()}t`,
+          guestId: mySide === "black" ? RT.getClientId() : existing.guestId || "",
+          guestName: mySide === "black" ? `${state.user.name} · ${getUserAge()}t` : x.guestName || "",
+          turn: x.turn,
+          statusText: `${state.user.name} vừa đi ${moveDesc}${enemyChecked ? " (Chiếu Tướng!)" : ""}`,
+          payload: { board: x.board, lastMove: mv, solved: x.solved },
+          moveCount: (existing.moveCount || 0) + 1
+        });
+      }
+      saveState();
+      renderGames();
+      return;
+    }
+
+    if (enemyMoves.length === 0) {
+      x.solved = true;
+      const newlyUnlocked = unlockTitleFrame("ky-thu", "Kỳ Thủ Đầu Xuân");
+      x.status = newlyUnlocked
+        ? "Chiếu bí xuất sắc! Bác đã mở khóa khung danh hiệu 3D 'Kỳ Thủ Đầu Xuân' gắn lên nhân vật!"
+        : "Chiếu bí đẹp mắt! Tướng Đen đã hết đường chạy!";
+      addXu(6, "Giải thắng Cờ tướng 9×10");
+      saveState();
+      renderGames();
+      return;
+    }
+
+    x.turn = "black";
+    x.puzzleStep = (x.puzzleStep || 0) + 1;
+    x.status = `${moveDesc}${enemyChecked ? " — Chiếu Tướng!" : ""}. Máy đang đỡ nước cờ...`;
+    saveState();
+    renderGames();
+
+    setTimeout(() => {
+      if (state.route !== "games" || activeGameTab !== "cotuong") return;
+      const aiMv = XQ.pickAiMove(x.board, "black", x.mode === "puzzle");
+      if (!aiMv) {
+        x.solved = true;
+        x.status = "Đối phương hết nước đi — bác đã thắng ván này!";
+        saveState();
+        renderGames();
+        return;
+      }
+      const aiDesc = XQ.formatMoveLabel(x.board, aiMv);
+      x.board = XQ.applyMoveClone(x.board, aiMv);
+      x.lastMove = aiMv;
+      x.turn = "red";
+      const redMoves = XQ.getAllLegalMoves(x.board, "red");
+      const redChecked = XQ.isInCheck(x.board, "red");
+      if (redMoves.length === 0) {
+        x.solved = true;
+        x.status = `Máy vừa đi ${aiDesc} — Đỏ hết nước đi. Bác bấm Xếp lại để thử lại nhé!`;
+      } else {
+        x.status = `Máy đỡ: ${aiDesc}${redChecked ? " (Chiếu Tướng!)" : ""}. Đến lượt bác cầm quân Đỏ!`;
+      }
+      saveState();
+      renderGames();
+    }, 650);
+  }
+
+  // ==================== MODULE 6: POETRY, DAN TRANH ZITHER & 3D BADGE UNLOCK ====================
+  function playDanTranhIntro() {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    try {
+      const ctx = new AudioCtx();
+      const now = ctx.currentTime;
+      // Vietnamese pentatonic scale (Hò - Xự - Xang - Xê - Cống): C5, D5, F5, G5, A5, C6
+      const notes = [523.25, 587.33, 698.46, 783.99, 880.0, 1046.5];
+      notes.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const t0 = now + idx * 0.16;
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(freq, t0);
+        gain.gain.setValueAtTime(0.14, t0);
+        gain.gain.exponentialRampToValueAtTime(0.0008, t0 + 1.15);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(t0);
+        osc.stop(t0 + 1.2);
+      });
+    } catch (e) {}
+  }
+
+  function evaluatePoemMeter(rawLines, style) {
+    const lines = rawLines.map((l) => l.trim()).filter(Boolean);
+    if (lines.length < 2) {
+      return "Bài thơ nên có ít nhất 2 câu để nhịp ngâm ngân vang hơn.";
+    }
+    const counts = lines.map((l) => l.split(/\s+/).filter(Boolean).length);
+    if (style === "luc-bat") {
+      const okPairs = lines.every((_, i) => (i % 2 === 0 ? counts[i] === 6 : counts[i] === 8));
+      return okPairs
+        ? `Chuẩn nhịp Lục Bát truyền thống (${counts.join(" - ")} chữ) — rất êm tai!`
+        : `Số chữ từng câu đang là (${counts.join(" - ")} chữ). Lục bát chuẩn thường theo nhịp 6 - 8 chữ, nhưng bác vẫn có thể đăng tự nhiên!`;
+    }
+    if (style === "bon-chu") {
+      const ok4 = counts.every((n) => n === 4 || n === 5);
+      return ok4
+        ? `Nhịp thơ ngắn gọn (${counts.join(" - ")} chữ), rất hợp ngâm đồng dao!`
+        : `Số chữ từng câu: (${counts.join(" - ")} chữ) — sẵn sàng đăng lên chiếu thơ.`;
+    }
+    return `Bài thơ gồm ${lines.length} câu (${counts.join(" - ")} chữ) — lời thơ chân thành, ấm áp.`;
+  }
+
+  function getMergedPoemsList() {
+    const shared = RT ? RT.getSharedPoems() : [];
+    const seen = new Set();
+    const out = [];
+    shared.concat(state.poems).forEach((p) => {
+      if (p && p.id && !seen.has(p.id)) {
+        seen.add(p.id);
+        out.push(p);
+      }
+    });
+    return out;
+  }
+
   function renderPoetry() {
+    const allPoems = getMergedPoemsList();
+    const activeFrame = getTitleFrame(state.user.titleFrameId);
+
     els.main.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <h1>Ngâm thơ & Tặng hoa</h1>
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+        <h1>Ngâm thơ &amp; Tặng hoa</h1>
         <span class="badge-tag amber num">Còn ${state.user.flowersLeft}/3 hoa hôm nay</span>
       </div>
-      <p class="lead-copy">Mỗi ngày bác có 3 bông hoa quý để tặng người ngâm thơ hay. Cuối tuần bình chọn danh hiệu Nhà thơ lãng mạn.</p>
+      <p class="lead-copy">Tự sáng tác hoặc đọc thơ bằng giọng nói, nghe ngâm thơ cùng tiếng đàn tranh và nhận khung danh hiệu <strong>Thi Hữu Tao Đàn</strong> gắn trực tiếp lên nhân vật 3D.</p>
 
-      <div class="surface-panel">
-        <h3>Góp một đôi lục bát</h3>
-        <input type="text" class="input-lg" id="poem-title-in" placeholder="Tên bài thơ (ví dụ: Nhớ quê)" />
-        <textarea class="input-lg" id="poem-body-in" rows="2" style="min-height:78px;" placeholder="Gõ hoặc bấm mic đọc 2 câu thơ..."></textarea>
-        <button type="button" class="btn-jade" id="btn-post-poem">${ico("poem")}<span>Đăng bài thơ lên sảnh (+4 Xu)</span></button>
+      <div class="surface-panel warm">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+          <span>Khung danh hiệu 3D đang đeo: <strong>${escHtml(activeFrame.name)}</strong></span>
+          <button type="button" class="btn-mini" id="btn-go-frame-preview">${ico("award", "ico-sm")}<span>Xem trên 3D</span></button>
+        </div>
       </div>
 
-      ${state.poems
-        .map(
-          (p, idx) => `
+      <div class="surface-panel">
+        <h3>Sáng tác &amp; Đăng bài thơ mới</h3>
+        <div class="setup-inline-fields">
+          <label class="field-label" style="flex:1.3;">
+            Tên bài thơ
+            <input type="text" class="input-lg" id="poem-title-in" placeholder="Ví dụ: Hương trà sớm mai" />
+          </label>
+          <label class="field-label" style="flex:1;">
+            Thể thơ
+            <select class="select-lg" id="poem-style-in">
+              <option value="luc-bat">Lục bát (6–8)</option>
+              <option value="bon-chu">Bốn / Năm chữ</option>
+              <option value="tu-do">Thơ tự do</option>
+            </select>
+          </label>
+        </div>
+        <textarea class="textarea-lg" id="poem-body-in" rows="3" placeholder="Gõ từng câu thơ xuống dòng, hoặc bấm Đọc thơ bằng giọng..."></textarea>
+        <div id="poem-meter-feedback" style="font-size:0.88rem; color:var(--accent-jade); font-weight:600;" hidden></div>
+        <div class="btn-row">
+          <button type="button" class="btn-secondary" id="btn-mic-poem">${ico("mic")}<span>Đọc thơ bằng giọng</span></button>
+          <button type="button" class="btn-secondary" id="btn-check-meter">Kiểm tra nhịp thơ</button>
+        </div>
+        <button type="button" class="btn-jade" id="btn-post-poem">${ico("poem")}<span>Đăng bài thơ &amp; Mở danh hiệu Thi Hữu (+4 Xu)</span></button>
+      </div>
+
+      ${allPoems
+        .map((p, idx) => {
+          const alreadyGifted = (state.user.giftedPoemIds || []).includes(p.id);
+          return `
         <article class="surface-panel">
           <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
             <div>
@@ -3201,48 +4135,109 @@
             </div>
             <span class="badge-tag jade num">${p.flowers} hoa</span>
           </div>
-          <div style="font-family:var(--font-serif); line-height:1.65; background:var(--bg-paper); padding:10px 12px; border-radius:12px; border:1px solid var(--border-subtle);">
-            ${p.lines.map((l) => `<div>${escHtml(l)}</div>`).join("")}
+          <div style="font-family:var(--font-serif); line-height:1.7; background:var(--bg-paper); padding:10px 14px; border-radius:12px; border:1px solid var(--border-subtle);">
+            ${(p.lines || []).map((l) => `<div>${escHtml(l)}</div>`).join("")}
           </div>
           <div class="btn-row">
-            <button type="button" class="btn-secondary listen-poem-btn" data-idx="${idx}">${ico("speaker")}<span>Nghe ngâm thơ</span></button>
-            <button type="button" class="btn-primary gift-flower-btn" data-idx="${idx}" ${state.user.flowersLeft <= 0 ? "disabled" : ""}>${ico("flower")}<span>Tặng 1 bông hoa</span></button>
+            <button type="button" class="btn-secondary listen-poem-btn" data-idx="${idx}">${ico("speaker")}<span>Ngâm cùng đàn tranh</span></button>
+            <button type="button" class="btn-primary gift-flower-btn" data-idx="${idx}" ${state.user.flowersLeft <= 0 || alreadyGifted ? "disabled" : ""}>
+              ${ico("flower")}
+              <span>${alreadyGifted ? "Đã tặng hoa" : "Tặng 1 bông hoa"}</span>
+            </button>
           </div>
         </article>
-      `
-        )
+      `;
+        })
         .join("")}
     `;
 
+    document.getElementById("btn-go-frame-preview").addEventListener("click", () => navigate("profile"));
+
+    const bodyEl = document.getElementById("poem-body-in");
+    const styleEl = document.getElementById("poem-style-in");
+    const meterEl = document.getElementById("poem-meter-feedback");
+
+    document.getElementById("btn-check-meter").addEventListener("click", () => {
+      const raw = bodyEl.value.trim() || "Sớm mai ấm chén trà sen\nGặp người tri kỷ thân quen một nhà";
+      if (!bodyEl.value.trim()) bodyEl.value = raw;
+      meterEl.hidden = false;
+      meterEl.textContent = evaluatePoemMeter(raw.split("\n"), styleEl.value);
+    });
+
+    document.getElementById("btn-mic-poem").addEventListener("click", () => {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) {
+        bodyEl.value = "Sớm mai ấm chén trà sen,\nGặp người tri kỷ thân quen một nhà.";
+        meterEl.hidden = false;
+        meterEl.textContent = evaluatePoemMeter(bodyEl.value.split("\n"), styleEl.value);
+        showToast("Đã điền câu lục bát mẫu để bác thử đăng & ngâm thơ!");
+        return;
+      }
+      showToast("Mời bác đọc 2 câu thơ vào micro...");
+      const rec = new SR();
+      rec.lang = "vi-VN";
+      rec.onresult = (ev) => {
+        const spoken = ev.results[0][0].transcript.trim();
+        const words = spoken.split(/\s+/);
+        bodyEl.value = words.length > 7 ? words.slice(0, 6).join(" ") + ",\n" + words.slice(6).join(" ") + "." : spoken;
+        meterEl.hidden = false;
+        meterEl.textContent = evaluatePoemMeter(bodyEl.value.split("\n"), styleEl.value);
+      };
+      rec.onerror = () => {
+        bodyEl.value = "Sớm mai ấm chén trà sen,\nGặp người tri kỷ thân quen một nhà.";
+        showToast("Chưa thu được micro — đã điền câu thơ mẫu để bác sửa thử.");
+      };
+      try {
+        rec.start();
+      } catch (e) {}
+    });
+
     document.getElementById("btn-post-poem").addEventListener("click", () => {
-      const title = document.getElementById("poem-title-in").value.trim() || "Tâm sự tuổi bạc";
-      const body = document.getElementById("poem-body-in").value.trim() || "Chiều nay gió mát bên thềm,\nNgâm câu lục bát êm đềm tuổi xuân.";
-      state.poems.unshift({
-        id: "p-" + Date.now(),
-        author: "Tự sáng tác",
+      const title = document.getElementById("poem-title-in").value.trim() || "Hương trà tri kỷ";
+      const body = bodyEl.value.trim() || "Chiều nay gió mát bên thềm,\nNgâm câu lục bát êm đềm tuổi xuân.";
+      const safety = cleanAndApplyDictionary(title + " " + body);
+      if (safety.blocked) {
+        showToast("Vì an toàn, không đăng số điện thoại, số tài khoản hoặc đường link lên Chiếu thơ.");
+        return;
+      }
+      const newPoem = {
+        id: "p-" + Date.now() + "-" + Math.random().toString(36).slice(2, 5),
+        author: styleEl.value === "luc-bat" ? "Thơ Lục bát mới" : "Tự sáng tác",
         title,
-        lines: body.split("\n"),
+        lines: body.split("\n").map((l) => l.trim()).filter(Boolean),
         flowers: 1,
-        reciter: `${state.user.name} (${getProvince(state.user.provinceId).short})`
-      });
-      addXu(4, "Đăng bài thơ mới");
+        reciter: `${state.user.name} · ${getUserAge()}t (${getProvince(state.user.provinceId).short})`
+      };
+      state.poems.unshift(newPoem);
+      if (RT) RT.publishPoem(newPoem);
+      trackEvent("poem_posted");
+      const unlockedNow = unlockTitleFrame("thi-huu", "Thi Hữu Tao Đàn");
+      state.user.titleFrameId = "thi-huu";
+      addXu(4, unlockedNow ? "Đăng thơ & nhận khung 3D Thi Hữu Tao Đàn!" : "Đăng bài thơ mới lên chiếu thơ");
       saveState();
       renderPoetry();
     });
 
     els.main.querySelectorAll(".listen-poem-btn").forEach((b) => {
       b.addEventListener("click", () => {
-        const p = state.poems[Number(b.dataset.idx)];
-        speak(`${p.title}. ${p.lines.join(", ")}`);
+        const p = allPoems[Number(b.dataset.idx)];
+        if (!p) return;
+        playDanTranhIntro();
+        setTimeout(() => {
+          speak(`${p.title}. Tác giả ${p.reciter}. ${p.lines.join(". ")}`, { announceToast: true });
+        }, 420);
       });
     });
 
     els.main.querySelectorAll(".gift-flower-btn").forEach((b) => {
       b.addEventListener("click", () => {
         if (state.user.flowersLeft <= 0) return;
-        const p = state.poems[Number(b.dataset.idx)];
+        const p = allPoems[Number(b.dataset.idx)];
+        if (!p || (state.user.giftedPoemIds || []).includes(p.id)) return;
         p.flowers += 1;
         state.user.flowersLeft -= 1;
+        state.user.giftedPoemIds.push(p.id);
+        if (RT) RT.publishPoem(p);
         addXu(2, `Tặng hoa cho ${p.reciter}`);
         saveState();
         renderPoetry();
@@ -3655,6 +4650,21 @@
     `;
   }
 
+  function renderTitleFrameSampleSvg(frame) {
+    const col = frame.color || "#3A2A20";
+    return `
+      <span class="sample-thumb" aria-hidden="true">
+        <svg viewBox="0 0 56 56" width="56" height="56">
+          <rect x="1" y="1" width="54" height="54" rx="12" fill="#FBF5E8" stroke="#D5C4AA" stroke-width="1.4"/>
+          <rect x="7" y="16" width="42" height="24" rx="10" fill="${col}" stroke="#E6B44C" stroke-width="2"/>
+          <circle cx="17" cy="28" r="5" fill="#F7D674"/>
+          <line x1="26" y1="25.5" x2="43" y2="25.5" stroke="#FFFDF7" stroke-width="2.4" stroke-linecap="round"/>
+          <line x1="26" y1="31" x2="38" y2="31" stroke="#FFE6A8" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </span>
+    `;
+  }
+
   function renderProfile() {
     const pron = getUserPronoun();
     const hon = getUserHonorific();
@@ -3664,20 +4674,23 @@
     const activeOutfitId = (profilePreviewDraft && profilePreviewDraft.outfitId) || state.user.outfitId;
     const activeAccId = (profilePreviewDraft && profilePreviewDraft.accessoryId) || state.user.accessoryId || "glasses";
     const activeItemId = (profilePreviewDraft && profilePreviewDraft.itemId) || state.user.itemId;
+    const activeFrameId = (profilePreviewDraft && profilePreviewDraft.titleFrameId) || state.user.titleFrameId || "tri-am";
 
     const activeOutfit = getOutfit(activeOutfitId);
     const activeAcc = D.ACCESSORIES.find((a) => a.id === activeAccId) || D.ACCESSORIES[0];
     const activeItem = getTableItem(activeItemId);
+    const activeFrame = getTitleFrame(activeFrameId);
     const isPreviewingDraft =
       activeOutfitId !== state.user.outfitId ||
       activeAccId !== (state.user.accessoryId || "glasses") ||
-      activeItemId !== state.user.itemId;
+      activeItemId !== state.user.itemId ||
+      activeFrameId !== (state.user.titleFrameId || "tri-am");
 
     els.main.innerHTML = `
       <h1>Hồ sơ & Đồ bày bàn trà</h1>
-      <p class="lead-copy">Dùng Xu kiếm được từ Điểm danh và Đố vui để chọn áo mới và vật phẩm đặt trên bàn trà (không bán xu bằng tiền).</p>
+      <p class="lead-copy">Dùng Xu kiếm được từ Điểm danh, Cờ tướng và Ngâm thơ để chọn áo mới, vật phẩm bàn trà và khung danh hiệu 3D (không bán xu bằng tiền).</p>
 
-      <!-- Khung 3D / 2.5D xem trực tiếp sự thay đổi trang phục, phụ kiện và đồ bày bàn trà -->
+      <!-- Khung 3D / 2.5D xem trực tiếp sự thay đổi trang phục, phụ kiện, đồ bày bàn trà và khung danh hiệu -->
       <div class="surface-panel warm" id="profile-live-card">
         <div class="tearoom-controls-row">
           <span class="stage-badge" id="profile-render-badge">${isPreviewingDraft ? "Đang xem thử mẫu" : "Mẫu đang dùng"}</span>
@@ -3692,6 +4705,7 @@
         <div class="profile-equipped-strip">
           <span>Áo: <strong>${escHtml(activeOutfit.name)}</strong></span>
           <span>Phụ kiện: <strong>${escHtml(activeAcc.name)}</strong></span>
+          <span>Khung 3D: <strong>${escHtml(activeFrame.name)}</strong></span>
           <span>Trên bàn: <strong>${escHtml(activeItem.name)}</strong></span>
         </div>
 
@@ -3831,6 +4845,44 @@
           }).join("")}
         </div>
       </div>
+
+      <!-- 4. Khung danh hiệu gắn lên nhân vật 3D -->
+      <div class="surface-panel">
+        <h3>4. Khung danh hiệu gắn lên nhân vật 3D (Huy hiệu áo &amp; Thẻ tên)</h3>
+        <div class="catalog-stack">
+          ${D.TITLE_FRAMES.map((fr) => {
+            const unlockedFrames = state.user.unlockedTitleFrames || ["none", "tri-am"];
+            const owned = unlockedFrames.includes(fr.id);
+            const equipped = (state.user.titleFrameId || "tri-am") === fr.id;
+            const previewing = activeFrameId === fr.id && !equipped;
+            return `
+              <div class="catalog-sample-card ${equipped ? "is-equipped" : previewing ? "is-previewing" : ""}">
+                <div class="catalog-sample-top">
+                  ${renderTitleFrameSampleSvg(fr)}
+                  <div class="catalog-sample-info">
+                    <strong>${escHtml(fr.name)}</strong>
+                    <small>${escHtml(fr.desc || "")}</small>
+                  </div>
+                </div>
+                <div class="catalog-sample-actions">
+                  ${
+                    !owned
+                      ? `<button type="button" class="btn-mini preview-frame-btn" data-id="${fr.id}">${previewing ? "Đang xem thử" : "Xem thử"}</button>`
+                      : ""
+                  }
+                  <button type="button" class="btn-mini equip-frame-btn ${equipped ? "active-equip" : ""}" data-id="${fr.id}">
+                    ${equipped ? "Đang gắn" : owned ? "Gắn lên 3D" : `Đổi (${fr.cost} Xu)`}
+                  </button>
+                </div>
+              </div>
+            `;
+          }).join("")}
+        </div>
+      </div>
+
+      <div class="surface-panel">
+        <button type="button" class="btn-secondary" id="btn-profile-open-privacy">${ico("shield")}<span>Xem Chỉ số sinh hoạt &amp; Quyền riêng tư dữ liệu</span></button>
+      </div>
     `;
 
     // Mount live 3D / 2.5D showcase
@@ -3851,6 +4903,7 @@
           userGender: hon === "Chị" ? "female" : "male",
           userOutfitColor: activeOutfit.color,
           userAccessory: activeAcc.id,
+          userTitleFrame: activeFrame.id,
           userItem: activeItem.id,
           itemLabel: activeItem.name,
           itemColor: activeItem.color
@@ -3931,6 +4984,13 @@
         scrollShowcaseIntoView();
       });
     });
+    els.main.querySelectorAll(".preview-frame-btn").forEach((b) => {
+      b.addEventListener("click", () => {
+        profilePreviewDraft = Object.assign({}, profilePreviewDraft || {}, { titleFrameId: b.dataset.id });
+        renderProfile();
+        scrollShowcaseIntoView();
+      });
+    });
 
     els.main.querySelectorAll(".equip-outfit-btn").forEach((b) => {
       b.addEventListener("click", () => {
@@ -4006,6 +5066,35 @@
         scrollShowcaseIntoView();
       });
     });
+
+    els.main.querySelectorAll(".equip-frame-btn").forEach((b) => {
+      b.addEventListener("click", () => {
+        const fr = getTitleFrame(b.dataset.id);
+        if (!Array.isArray(state.user.unlockedTitleFrames)) {
+          state.user.unlockedTitleFrames = ["none", "tri-am"];
+        }
+        if (!state.user.unlockedTitleFrames.includes(fr.id)) {
+          if (state.user.xu < fr.cost) {
+            profilePreviewDraft = Object.assign({}, profilePreviewDraft || {}, { titleFrameId: fr.id });
+            showToast(`Chưa đủ ${fr.cost} Xu — đã gắn thử khung "${fr.name}" lên nhân vật 3D!`);
+            renderProfile();
+            scrollShowcaseIntoView();
+            return;
+          }
+          state.user.xu -= fr.cost;
+          state.user.unlockedTitleFrames.push(fr.id);
+        }
+        state.user.titleFrameId = fr.id;
+        if (profilePreviewDraft) delete profilePreviewDraft.titleFrameId;
+        saveState();
+        updateGlobalChrome();
+        showToast(`Đã gắn khung danh hiệu 3D: ${fr.name}`);
+        renderProfile();
+        scrollShowcaseIntoView();
+      });
+    });
+
+    document.getElementById("btn-profile-open-privacy").addEventListener("click", () => navigate("privacy"));
   }
 
   // ==================== MODULE 10: HEALTH ASSISTANT & FAMILY VIEW ====================
@@ -4167,6 +5256,172 @@
     });
   }
 
+  // ==================== MODULE 11: ANALYTICS METRICS & DECREE 13/2023/NĐ-CP PRIVACY CENTER ====================
+  function renderPrivacyAndMetrics() {
+    const a = state.analytics || {};
+    const quickCount = a.tea_msg_quick_0token || 0;
+    const voiceTextCount = a.tea_msg_voice_or_text || 0;
+    const totalMsgs = quickCount + voiceTextCount;
+    const zeroTokenPct = totalMsgs > 0 ? Math.round((quickCount / totalMsgs) * 100) : 100;
+    const st = RT ? RT.getStatus() : { connected: false, providerName: "Cục bộ", totalOtherPeers: 0, clientId: "local" };
+
+    els.main.innerHTML = `
+      <h1>Chỉ số sinh hoạt &amp; Quyền riêng tư</h1>
+      <p class="lead-copy">Theo dõi 7 chỉ số vận hành cốt lõi (tối ưu 0-token) và toàn quyền kiểm soát dữ liệu cá nhân theo Nghị định 13/2023/NĐ-CP.</p>
+
+      <div class="surface-panel ${st.connected ? "jade" : "warm"}">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+          <strong>Máy chủ Thời gian thực: ${st.connected ? "Đang trực tuyến" : "Đang nối..."}</strong>
+          <span class="badge-tag num">${escHtml(st.providerName)}</span>
+        </div>
+        <p style="font-size:0.88rem;">Số điện thoại thật khác đang mở cùng lúc: <strong class="num">${st.totalOtherPeers}</strong> thiết bị.</p>
+        <div class="btn-row">
+          <button type="button" class="btn-secondary" id="btn-open-rt-modal">${ico("wifi")}<span>Cấu hình Realtime / Supabase</span></button>
+          <button type="button" class="btn-secondary" id="btn-privacy-pwa">${ico("download")}<span>Đặt ra màn hình chính</span></button>
+        </div>
+      </div>
+
+      <div class="surface-panel">
+        <h3>Bảng đo 7 chỉ số sản phẩm &amp; Tiết kiệm Token</h3>
+        <div class="metrics-stat-list">
+          <div class="metrics-stat-row">
+            <span>Tỷ lệ dùng nút gợi ý nhanh (0 tốn Token AI)</span>
+            <strong class="num" style="color:var(--accent-jade);">${zeroTokenPct}% (${quickCount}/${totalMsgs} câu)</strong>
+          </div>
+          <div class="metrics-stat-row">
+            <span>Cụm từ tự học trong Sổ từ điển (<code>phonetic_dictionary</code>)</span>
+            <strong class="num">${state.phoneticDict.length} cặp từ</strong>
+          </div>
+          <div class="metrics-stat-row">
+            <span>1. Phiên mở ứng dụng (<code>session_start</code>)</span>
+            <strong class="num">${a.session_start || 1} lần</strong>
+          </div>
+          <div class="metrics-stat-row">
+            <span>2. Lượt Điểm danh bình an (<code>morning_checkin</code>)</span>
+            <strong class="num">${a.morning_checkin_done || 0} lần · Chuỗi ${state.user.streakDays} ngày</strong>
+          </div>
+          <div class="metrics-stat-row">
+            <span>3. Lượt vào Bàn trà &amp; Đàm đạo báo sáng</span>
+            <strong class="num">${a.tea_table_joined || 0} bàn · Đọc ${a.news_article_read || 0} tin</strong>
+          </div>
+          <div class="metrics-stat-row">
+            <span>4. Trợ lý tự gợi chuyện sau 60 giây im lặng</span>
+            <strong class="num">${a.idle_prompts_triggered || 0} lần rót trà gợi chuyện</strong>
+          </div>
+          <div class="metrics-stat-row">
+            <span>5. Nước đi Ván treo &amp; Bài thơ mới đăng</span>
+            <strong class="num">${a.async_game_move || 0} nước · ${a.poem_posted || 0} bài thơ</strong>
+          </div>
+          <div class="metrics-stat-row">
+            <span>6. Lượt tạo đường dẫn &amp; mã QR mời bạn</span>
+            <strong class="num">${a.share_link_created || 0} lượt chia sẻ</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="surface-panel">
+        <h3>Quyền riêng tư dữ liệu (Nghị định 13/2023/NĐ-CP)</h3>
+        <p style="font-size:0.88rem; color:var(--ink-secondary);">Quán Trà Tuổi Bạc không thu thập danh bạ, không ghi âm ngầm (micro chỉ bật khi chính tay bấm nút), và không dùng dữ liệu sức khỏe để quảng cáo thuốc.</p>
+
+        <div class="consent-toggle-card">
+          <strong>1. Báo tin Điểm danh sáng cho con cái</strong>
+          <small style="color:var(--ink-secondary);">Chỉ gửi trạng thái khỏe khoắn / bình thường, không theo dõi vị trí GPS.</small>
+          <button type="button" class="btn-${state.privacy.consentFamilyCheckin ? "jade" : "secondary"}" id="btn-toggle-consent-family">
+            ${state.privacy.consentFamilyCheckin ? "Đang bật: Cho phép báo tin bình an" : "Đang tắt: Chỉ lưu trên máy riêng"}
+          </button>
+        </div>
+
+        <div class="consent-toggle-card">
+          <strong>2. Hiện tên &amp; nhân vật 3D cho người thật cùng bàn</strong>
+          <small style="color:var(--ink-secondary);">Giúp bạn đồng niên nhìn thấy nhau trong bàn trà thời gian thực.</small>
+          <button type="button" class="btn-${state.privacy.consentRealtimePresence ? "jade" : "secondary"}" id="btn-toggle-consent-rt">
+            ${state.privacy.consentRealtimePresence ? "Đang bật: Tham gia bàn trà trực tuyến" : "Đang tắt: Ẩn hiện diện trực tuyến"}
+          </button>
+        </div>
+
+        <div class="consent-toggle-card">
+          <strong>3. Tự học sửa lỗi phát âm tiếng Việt trên máy</strong>
+          <small style="color:var(--ink-secondary);">Lưu cặp từ sửa sai vào sổ từ điển để lần sau không tốn phí xử lý.</small>
+          <button type="button" class="btn-${state.privacy.consentVoiceDict ? "jade" : "secondary"}" id="btn-toggle-consent-dict">
+            ${state.privacy.consentVoiceDict ? "Đang bật: Tự học từ điển" : "Đang tắt: Không lưu từ mới"}
+          </button>
+        </div>
+
+        <div class="btn-row">
+          <button type="button" class="btn-secondary" id="btn-export-personal-json">${ico("download")}<span>Tải dữ liệu cá nhân (.json)</span></button>
+          <button type="button" class="btn-danger" id="btn-wipe-personal-data">Xóa toàn bộ dữ liệu</button>
+        </div>
+      </div>
+    `;
+
+    document.getElementById("btn-open-rt-modal").addEventListener("click", openRealtimeStatusModal);
+    document.getElementById("btn-privacy-pwa").addEventListener("click", openPwaInstallGuide);
+
+    document.getElementById("btn-toggle-consent-family").addEventListener("click", () => {
+      state.privacy.consentFamilyCheckin = !state.privacy.consentFamilyCheckin;
+      saveState();
+      renderPrivacyAndMetrics();
+    });
+    document.getElementById("btn-toggle-consent-rt").addEventListener("click", () => {
+      state.privacy.consentRealtimePresence = !state.privacy.consentRealtimePresence;
+      if (!state.privacy.consentRealtimePresence && RT) {
+        RT.leaveTableChannel();
+      }
+      saveState();
+      renderPrivacyAndMetrics();
+    });
+    document.getElementById("btn-toggle-consent-dict").addEventListener("click", () => {
+      state.privacy.consentVoiceDict = !state.privacy.consentVoiceDict;
+      saveState();
+      renderPrivacyAndMetrics();
+    });
+
+    document.getElementById("btn-export-personal-json").addEventListener("click", () => {
+      const exportPayload = {
+        exportedAt: new Date().toISOString(),
+        user: state.user,
+        privacy: state.privacy,
+        analytics: state.analytics,
+        phoneticDictCount: state.phoneticDict.length
+      };
+      const blob = new Blob([JSON.stringify(exportPayload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const aTag = document.createElement("a");
+      aTag.href = url;
+      aTag.download = "du-lieu-ca-nhan-tuoi-bac.json";
+      document.body.appendChild(aTag);
+      aTag.click();
+      document.body.removeChild(aTag);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      showToast("Đã tải bản sao dữ liệu cá nhân (.json) về máy.");
+    });
+
+    document.getElementById("btn-wipe-personal-data").addEventListener("click", () => {
+      openDialog(
+        "Xác nhận xóa sạch dữ liệu cá nhân",
+        `
+        <div class="surface-panel danger">
+          <p style="font-weight:700;">Thao tác này sẽ xóa toàn bộ hồ sơ xưng hô, lịch sử điểm danh, từ điển tự học trên trình duyệt này và gỡ hiện diện trên phòng chung.</p>
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn-danger" id="btn-confirm-wipe-now">Đồng ý xóa vĩnh viễn</button>
+          <button type="button" class="btn-secondary" id="btn-cancel-wipe">Hủy bỏ</button>
+        </div>
+        `
+      );
+      document.getElementById("btn-cancel-wipe").addEventListener("click", closeDialog);
+      document.getElementById("btn-confirm-wipe-now").addEventListener("click", () => {
+        if (RT) RT.wipeMyCloudData();
+        localStorage.removeItem(STORAGE_KEY);
+        state = createDefaultState();
+        pendingQueue = [];
+        closeDialog();
+        showToast("Đã xóa toàn bộ dữ liệu cá nhân về trạng thái trắng ban đầu.");
+        navigate("home");
+      });
+    });
+  }
+
   // ==================== ROUTER & GLOBAL TIMERS ====================
   function render() {
     updateGlobalChrome();
@@ -4207,6 +5462,9 @@
       case "family":
         renderFamilyView();
         break;
+      case "privacy":
+        renderPrivacyAndMetrics();
+        break;
       default:
         renderHome();
     }
@@ -4231,22 +5489,151 @@
     });
   }
 
+  // 1-second session & 60-second Tea Table silence watchdog
   setInterval(() => {
     sessionSeconds += 1;
-    const mm = String(Math.floor(sessionSeconds / 60)).padStart(2, "0");
-    const ss = String(sessionSeconds % 60).padStart(2, "0");
-    if (els.stripTimer) {
-      els.stripTimer.textContent = `${mm}:${ss}`;
-    }
     if (sessionSeconds >= 1200 && !eyeCareShownThisCycle) {
       showEyeRestModal();
     }
+
+    if (state.route === "tearoom" && state.teaRoom.subView === "table") {
+      const idleSec = Math.floor((Date.now() - lastTableActivityAt) / 1000);
+      const idleStatusEl = document.getElementById("idle-assistant-status");
+      if (idleStatusEl && idleSec >= 10 && idleSec < 60) {
+        const room = getCurrentRoom();
+        idleStatusEl.textContent = `${room.hostName || "Chị Trà (Trợ lý)"} giữ ấm trà · Tự gợi chuyện mới sau ${60 - idleSec}s`;
+      }
+      if (idleSec >= 60) {
+        triggerIdleAssistantPrompt();
+      }
+    }
   }, 1000);
+
+  // Realtime cross-device synchronization bindings
+  if (RT) {
+    RT.on("status", () => {
+      updateGlobalChrome();
+      if (state.route === "privacy") renderPrivacyAndMetrics();
+    });
+
+    let presenceDebounceId = null;
+    RT.on("presence", () => {
+      updateGlobalChrome();
+      clearTimeout(presenceDebounceId);
+      presenceDebounceId = setTimeout(() => {
+        if (state.route !== "tearoom") return;
+        if (state.teaRoom.subView === "table") {
+          const baseTable = getCurrentTable();
+          const newKey = RT.getPeersAtTable(baseTable.id)
+            .map((p) => p.clientId)
+            .sort()
+            .join(",");
+          if (newKey !== lastRenderedPeerKey) {
+            const draftVal = (document.getElementById("tea-text-input") || {}).value || "";
+            renderTeaRoomTableView(getCurrentRoom());
+            const nextIn = document.getElementById("tea-text-input");
+            if (nextIn && draftVal) nextIn.value = draftVal;
+          }
+        } else {
+          const room = getCurrentRoom();
+          const newLobbyKey = computeRoomLobbyPeerKey(room);
+          if (newLobbyKey !== lastRenderedLobbyPeerKey) {
+            renderTeaRoomLobby(room);
+          }
+        }
+      }, 160);
+    });
+
+    RT.on("chat", (pkt) => {
+      if (state.route !== "tearoom" || state.teaRoom.subView !== "table") return;
+      const baseTable = getCurrentTable();
+      const cleanCurr = String(baseTable.id || "").replace(/[^a-zA-Z0-9_-]/g, "_");
+      if (pkt.tableKey !== cleanCurr) return;
+      const table = getTableWithRealPeers(baseTable);
+      const seatIdx = table.members.findIndex((m) => m.clientId && m.clientId === pkt.clientId);
+      if (pkt.ritual === "pour" && window.TeaRoomScene) {
+        window.TeaRoomScene.triggerTeaService();
+      }
+      pushTableMessage(pkt.speaker, pkt.text, seatIdx >= 0 ? seatIdx : 0);
+    });
+
+    RT.on("tableLog", (pkt) => {
+      if (state.route !== "tearoom" || state.teaRoom.subView !== "table") return;
+      const baseTable = getCurrentTable();
+      const cleanCurr = String(baseTable.id || "").replace(/[^a-zA-Z0-9_-]/g, "_");
+      if (pkt.tableKey !== cleanCurr || !Array.isArray(pkt.lines) || pkt.lines.length === 0) return;
+      // Hydrate recent real messages if we just joined this table fresh
+      if (state.teaRoom.log.length <= (baseTable.initialLog ? baseTable.initialLog.length : 2)) {
+        state.teaRoom.log = pkt.lines.slice(-10);
+        saveState();
+        updateTeaBoardDom();
+      }
+    });
+
+    let checkinDebounceId = null;
+    RT.on("checkins", () => {
+      clearTimeout(checkinDebounceId);
+      checkinDebounceId = setTimeout(() => {
+        if (state.route === "checkin") renderCheckin();
+      }, 160);
+    });
+
+    let poemDebounceId = null;
+    RT.on("poems", () => {
+      clearTimeout(poemDebounceId);
+      poemDebounceId = setTimeout(() => {
+        if (state.route === "poetry") renderPoetry();
+      }, 160);
+    });
+
+    RT.on("match", (m) => {
+      if (!m || !m.matchId) return;
+      const myCid = RT.getClientId();
+      if (m.kind === "oaq" && state.oaq.matchId === m.matchId) {
+        state.oaq.mode = "async";
+        state.oaq.myRole = m.hostId === myCid ? "host" : "guest";
+        state.oaq.hostName = m.hostName || "Chủ bàn";
+        state.oaq.guestName =
+          m.guestName || (state.oaq.myRole === "guest" ? `${state.user.name} · ${getUserAge()}t` : "Đang chờ bạn cờ...");
+        if (m.payload && Array.isArray(m.payload.cells)) {
+          state.oaq.cells = m.payload.cells.slice();
+          state.oaq.scoreP = m.payload.scoreHost || 0;
+          state.oaq.scoreAI = m.payload.scoreGuest || 0;
+        }
+        state.oaq.turn = m.turn || "host";
+        state.oaq.statusText = m.statusText || "Đã đồng bộ nước đi ván treo!";
+        saveState();
+        if (state.route === "games" && activeGameTab === "oaq") renderGames();
+      } else if (m.kind === "xiangqi" && state.xiangqi.matchId === m.matchId) {
+        state.xiangqi.mode = "async";
+        state.xiangqi.mySide = m.hostId === myCid ? "red" : "black";
+        state.xiangqi.hostName = m.hostName || "Chủ bàn (Đỏ)";
+        state.xiangqi.guestName =
+          m.guestName || (state.xiangqi.mySide === "black" ? `${state.user.name} · ${getUserAge()}t` : "Đang chờ kỳ hữu...");
+        if (m.payload && Array.isArray(m.payload.board)) {
+          state.xiangqi.board = XQ.cloneBoard(m.payload.board);
+          state.xiangqi.lastMove = m.payload.lastMove || null;
+          state.xiangqi.solved = Boolean(m.payload.solved);
+        }
+        state.xiangqi.turn = m.turn || "red";
+        state.xiangqi.status =
+          m.statusText ||
+          (state.xiangqi.turn === state.xiangqi.mySide
+            ? `Đến lượt bác cầm quân ${state.xiangqi.mySide === "red" ? "Đỏ" : "Đen"}!`
+            : "Đang chờ bạn cờ đi nước tiếp theo...");
+        saveState();
+        if (state.route === "games" && activeGameTab === "cotuong") renderGames();
+      }
+    });
+  }
 
   // Event bindings
   els.btnBack.addEventListener("click", () => navigate("home"));
   els.btnProfile.addEventListener("click", () => navigate("profile"));
   els.dialogClose.addEventListener("click", closeDialog);
+  if (els.stripRtBtn) {
+    els.stripRtBtn.addEventListener("click", openRealtimeStatusModal);
+  }
 
   els.btnFont.addEventListener("click", () => {
     state.settings.xlFont = !state.settings.xlFont;
@@ -4294,11 +5681,24 @@
       if (box && box.scrollIntoView) box.scrollIntoView({ behavior: "smooth", block: "center" });
     });
   }
+  if (els.simIdle60) {
+    els.simIdle60.addEventListener("click", () => {
+      if (state.route !== "tearoom" || state.teaRoom.subView !== "table") {
+        state.route = "tearoom";
+        state.teaRoom.subView = "table";
+        render();
+      }
+      triggerIdleAssistantPrompt();
+    });
+  }
   if (els.simEye) {
     els.simEye.addEventListener("click", () => {
       sessionSeconds = 1200;
       showEyeRestModal();
     });
+  }
+  if (els.simPrivacy) {
+    els.simPrivacy.addEventListener("click", () => navigate("privacy"));
   }
   if (els.simFamily) {
     els.simFamily.addEventListener("click", () => navigate("family"));
@@ -4315,5 +5715,6 @@
   }
 
   applyUrlDeepLinkIfPresent();
+  if (RT) RT.start();
   render();
 })();

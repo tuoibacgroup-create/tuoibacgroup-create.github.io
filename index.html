@@ -5,15 +5,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="referrer" content="no-referrer" />
   <meta name="theme-color" content="#F6EFE2" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Tuổi Bạc" />
   <title>Tuổi Bạc — Quán Trà Sinh Hoạt Người Cao Tuổi</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Merriweather:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
   <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.3/dist/mqtt.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
   <script src="data.js" defer></script>
   <script src="tearoom3d.js" defer></script>
+  <script src="xiangqi.js" defer></script>
+  <script src="realtime.js" defer></script>
   <script src="app.js" defer></script>
 </head>
 <body>
@@ -128,20 +138,44 @@
       <path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6S2 12 2 12z" />
       <circle cx="12" cy="12" r="2.8" />
     </symbol>
+    <symbol id="ico-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 4v11M7.5 11.5L12 16l4.5-4.5" />
+      <path d="M4 19h16" />
+    </symbol>
+    <symbol id="ico-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 3l8 3.5v5.5c0 5-3.4 8.2-8 9.8-4.6-1.6-8-4.8-8-9.8V6.5L12 3z" />
+      <path d="M9 12l2 2 4-4" />
+    </symbol>
+    <symbol id="ico-wifi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M5 12.5a10 10 0 0 1 14 0" />
+      <path d="M8.5 15.8a5 5 0 0 1 7 0" />
+      <path d="M2 9.2a15 15 0 0 1 20 0" />
+      <circle cx="12" cy="19" r="1.2" fill="currentColor" />
+    </symbol>
+    <symbol id="ico-award" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="9" r="5.5" />
+      <path d="M9 14l-1.5 7 4.5-2.5L16.5 21 15 14" />
+    </symbol>
+    <symbol id="ico-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M20 11a8 8 0 0 0-14.5-4.5L4 8M4 4v4h4" />
+      <path d="M4 13a8 8 0 0 0 14.5 4.5L20 16M20 20v-4h-4" />
+    </symbol>
   </svg>
 
   <!-- Desktop / Testing Helper Bar (hidden on narrow mobile viewports) -->
   <aside class="desktop-sim-bar" aria-label="Bảng điều khiển mô phỏng trên máy tính">
     <div class="sim-bar-brand">
       <strong>Mô phỏng Tuổi Bạc</strong>
-      <span>Khung điện thoại 480px (Mobile-First PWA)</span>
+      <span>Khung điện thoại 480px (Mobile-First PWA + Realtime)</span>
     </div>
     <div class="sim-bar-controls">
-      <button type="button" class="sim-chip" id="sim-toggle-render">Đồ họa: 3D Low-poly</button>
+      <button type="button" class="sim-chip" id="sim-toggle-render">Đồ họa: Không gian 3D</button>
       <button type="button" class="sim-chip" id="sim-toggle-font">Cỡ chữ: 20px</button>
       <button type="button" class="sim-chip" id="sim-open-dict">Sổ từ điển tự học (8)</button>
       <button type="button" class="sim-chip" id="sim-voice-sample">Thử giọng nói mẫu</button>
+      <button type="button" class="sim-chip" id="sim-trigger-idle60">Thử Trợ lý gợi chuyện 60s</button>
       <button type="button" class="sim-chip" id="sim-trigger-eyecare">Thử nhắc nghỉ mắt 20 phút</button>
+      <button type="button" class="sim-chip" id="sim-open-privacy">Chỉ số &amp; Quyền riêng tư</button>
       <button type="button" class="sim-chip" id="sim-open-family">Góc nhìn Con cái</button>
       <button type="button" class="sim-chip" id="sim-reset-demo">Đặt lại dữ liệu mẫu</button>
     </div>
@@ -186,14 +220,14 @@
         </span>
       </button>
       <div class="strip-counters">
+        <button type="button" class="rt-pill" id="btn-realtime-status" title="Trạng thái kết nối phòng chung thời gian thực">
+          <span class="rt-dot" id="strip-rt-dot"></span>
+          <span id="strip-rt-label">Trực tuyến</span>
+        </button>
         <span class="coin-pill" title="Xu sinh hoạt">
           <svg class="ico ico-sm"><use href="#ico-coin" /></svg>
           <span class="num" id="strip-xu">35</span>
           <span>Xu</span>
-        </span>
-        <span class="timer-pill" title="Thời gian sinh hoạt phiên này">
-          <svg class="ico ico-sm"><use href="#ico-eye" /></svg>
-          <span class="num" id="strip-timer">00:00</span>
         </span>
       </div>
     </div>

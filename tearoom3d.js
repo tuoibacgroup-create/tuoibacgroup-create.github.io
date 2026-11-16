@@ -567,6 +567,35 @@ window.TeaRoomScene = (function () {
 
     g.add(headGroup);
 
+    // 3D Honor Badge Medallion & Carved Base Ring for Title Frame (Khung danh hiệu 3D)
+    const frameId = (member && member.titleFrameId) || "none";
+    const frameColors = {
+      "tri-am": 0x2e7d63,
+      "thi-huu": 0xc84b38,
+      "ky-thu": 0xd49a35,
+      "giu-lua": 0xf0b23a
+    };
+    if (frameColors[frameId]) {
+      const fHex = frameColors[frameId];
+      const badgeGoldMat = new THREE.MeshStandardMaterial({ color: 0xe6b44c, roughness: 0.32, metalness: 0.68 });
+      const badgeCoreMat = new THREE.MeshStandardMaterial({ color: fHex, roughness: 0.38, metalness: 0.28 });
+
+      // Pinned chest honor rosette on left tunic lapel
+      const medalRim = new THREE.Mesh(new THREE.CylinderGeometry(0.052, 0.052, 0.018, 18), badgeGoldMat);
+      medalRim.rotation.x = Math.PI / 2;
+      medalRim.position.set(-0.088, 0.96, 0.195);
+      const medalCore = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.036, 0.022, 16), badgeCoreMat);
+      medalCore.rotation.x = Math.PI / 2;
+      medalCore.position.set(-0.088, 0.96, 0.197);
+      g.add(medalRim, medalCore);
+
+      // Subtle inlaid honor ring around chair base
+      const honorRing = new THREE.Mesh(new THREE.TorusGeometry(0.49, 0.022, 10, 36), badgeCoreMat);
+      honorRing.rotation.x = Math.PI / 2;
+      honorRing.position.y = 0.032;
+      g.add(honorRing);
+    }
+
     // Warm speaker glow ring on floor
     const ringMat = new THREE.MeshBasicMaterial({
       color: 0xf4a836,
@@ -1188,6 +1217,7 @@ window.TeaRoomScene = (function () {
         name: config.userName,
         province: config.userProvince,
         hat: config.userAccessory || "none",
+        titleFrameId: config.userTitleFrame || "none",
         badge: "Bạn"
       },
       angIdx: 4,
@@ -1220,6 +1250,8 @@ window.TeaRoomScene = (function () {
         idx,
         name: m.name,
         badge: m.badge || (slot.isUser ? "Bạn" : "Đang nghe"),
+        titleFrameId: m.titleFrameId || "none",
+        isRealPeer: Boolean(m.isRealPeer),
         isUser: slot.isUser,
         group: built.group,
         head: built.head,
@@ -1263,7 +1295,8 @@ window.TeaRoomScene = (function () {
     const userMember = {
       name: config.userName || "Anh Tám Vườn",
       gender: config.userGender || "male",
-      hat: config.userAccessory || "glasses"
+      hat: config.userAccessory || "glasses",
+      titleFrameId: config.userTitleFrame || "none"
     };
     const built = makeLowPolySenior(
       userMember,
@@ -1282,6 +1315,7 @@ window.TeaRoomScene = (function () {
       {
         idx: 0,
         name: `${config.userName || "Anh Tám Vườn"} · ${config.userAge || 65}t`,
+        titleFrameId: config.userTitleFrame || "none",
         badge: "Bạn",
         isUser: true,
         group: built.group,
@@ -1390,6 +1424,23 @@ window.TeaRoomScene = (function () {
     tagsLayerEl.innerHTML = html;
   }
 
+  const FRAME_SHORT_LABELS = {
+    "tri-am": "Tri Âm",
+    "thi-huu": "Thi Hữu",
+    "ky-thu": "Kỳ Thủ",
+    "giu-lua": "Giữ Lửa"
+  };
+
+  function formatSeatTagHtml(opts) {
+    const fId = opts.titleFrameId || "none";
+    const fShort = FRAME_SHORT_LABELS[fId] || "";
+    const prefix = fShort ? `<em class="tag-frame-pill">${fShort}</em> ` : "";
+    const liveDot = opts.isRealPeer ? `<i class="tag-live-dot" aria-hidden="true"></i>` : "";
+    const frameCls = fId !== "none" ? `has-frame frame-${fId}` : "";
+    const spkCls = opts.isActive ? "active-speaker" : "";
+    return `<span class="seat-status-tag ${spkCls} ${frameCls}" style="left:${opts.sx.toFixed(0)}px;top:${opts.sy.toFixed(0)}px">${liveDot}${prefix}${opts.label}</span>`;
+  }
+
   function updateTagOverlays3D() {
     if (!tagsLayerEl || !camera || !canvasEl) return;
     const width = canvasEl.clientWidth;
@@ -1401,12 +1452,19 @@ window.TeaRoomScene = (function () {
       s.head.getWorldPosition(v);
       v.y += 0.44;
       v.project(camera);
-      const sx = Math.max(48, Math.min(width - 48, (v.x * 0.5 + 0.5) * width));
+      const sx = Math.max(82, Math.min(width - 82, (v.x * 0.5 + 0.5) * width));
       const sy = Math.max(28, Math.min(height - 8, (-v.y * 0.5 + 0.5) * height));
       const isActive = i === activeSeatIdx;
       const shortName = s.isUser ? "Bạn" : s.name;
       const label = isActive ? `${shortName} · Nói` : s.badge === "Mời trà" ? `${shortName} · Trà` : shortName;
-      html += `<span class="seat-status-tag ${isActive ? "active-speaker" : ""}" style="left:${sx.toFixed(0)}px;top:${sy.toFixed(0)}px">${label}</span>`;
+      html += formatSeatTagHtml({
+        sx,
+        sy,
+        isActive,
+        label,
+        titleFrameId: s.titleFrameId,
+        isRealPeer: s.isRealPeer
+      });
     });
 
     tagsLayerEl.innerHTML = html;
@@ -1605,6 +1663,7 @@ window.TeaRoomScene = (function () {
       member: {
         name: currentConfig.userName,
         outfitColor: currentConfig.userOutfitColor,
+        titleFrameId: currentConfig.userTitleFrame || "none",
         badge: "Bạn"
       },
       coordIdx: 4,
@@ -1661,9 +1720,16 @@ window.TeaRoomScene = (function () {
 
       const shortName = slot.isUser ? "Bạn" : m.name;
       const label = isActive ? `${shortName} · Nói` : m.badge === "Mời trà" ? `${shortName} · Trà` : shortName;
-      const sx = Math.max(48, Math.min(w - 48, p.x));
+      const sx = Math.max(82, Math.min(w - 82, p.x));
       const sy = Math.max(28, p.y - 32);
-      tagHtml += `<span class="seat-status-tag ${isActive ? "active-speaker" : ""}" style="left:${sx.toFixed(0)}px;top:${sy.toFixed(0)}px">${label}</span>`;
+      tagHtml += formatSeatTagHtml({
+        sx,
+        sy,
+        isActive,
+        label,
+        titleFrameId: m.titleFrameId,
+        isRealPeer: m.isRealPeer
+      });
     });
 
     if (tagsLayerEl) {
@@ -1682,9 +1748,16 @@ window.TeaRoomScene = (function () {
       seatObjects[0].head.getWorldPosition(v);
       v.y += 0.44;
       v.project(camera);
-      const sx = Math.max(66, Math.min(width - 66, (v.x * 0.5 + 0.5) * width));
+      const sx = Math.max(76, Math.min(width - 76, (v.x * 0.5 + 0.5) * width));
       const sy = Math.max(28, Math.min(height - 10, (-v.y * 0.5 + 0.5) * height));
-      html += `<span class="seat-status-tag active-speaker" style="left:${sx.toFixed(0)}px;top:${sy.toFixed(0)}px">${seatObjects[0].name}</span>`;
+      html += formatSeatTagHtml({
+        sx,
+        sy,
+        isActive: true,
+        label: seatObjects[0].name,
+        titleFrameId: seatObjects[0].titleFrameId,
+        isRealPeer: false
+      });
     }
 
     if (profileItemAnchor) {
@@ -1790,7 +1863,14 @@ window.TeaRoomScene = (function () {
 
     if (tagsLayerEl) {
       tagsLayerEl.innerHTML =
-        `<span class="seat-status-tag active-speaker" style="left:${px.toFixed(0)}px;top:${Math.max(28, py - 54).toFixed(0)}px">${currentConfig.userName || "Anh Tám Vườn"} · ${currentConfig.userAge || 65}t</span>` +
+        formatSeatTagHtml({
+          sx: px,
+          sy: Math.max(28, py - 54),
+          isActive: true,
+          label: `${currentConfig.userName || "Anh Tám Vườn"} · ${currentConfig.userAge || 65}t`,
+          titleFrameId: currentConfig.userTitleFrame || "none",
+          isRealPeer: false
+        }) +
         `<span class="seat-status-tag" style="left:${tx.toFixed(0)}px;top:${Math.max(28, ty - 42).toFixed(0)}px">${currentConfig.itemLabel || "Đồ bày bàn trà"}</span>`;
     }
   }
