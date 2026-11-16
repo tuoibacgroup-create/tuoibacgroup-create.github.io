@@ -579,8 +579,26 @@ window.TuoiBacData = (function () {
       ]
     },
     {
+      topic: "Kinh tế & Giá cả",
+      keywords: ["giá dầu", "dầu thô", "xăng", "giá vàng", "vàng", "lương hưu", "giá cả", "thị trường", "xuất khẩu", "nông sản"],
+      replies: [
+        "Giá xăng dầu hạ nhiệt thì cước vận chuyển rau quả hàng hóa cũng đỡ tăng {ten} nhỉ.",
+        "Sáng nào uống trà tôi cũng điểm qua mục giá dầu, giá vàng trên báo sáng.",
+        "Ở {tinh} chỗ tôi bà con tiểu thương cũng mừng khi giá xăng dầu ổn định."
+      ]
+    },
+    {
+      topic: "Thế giới",
+      keywords: ["thế giới", "quốc tế", "châu á", "châu âu", "trung đông", "hội nghị", "ngoại giao", "hòa bình", "thương mại"],
+      replies: [
+        "Đọc tin thế giới để thấy trong nước mình yên bình, ổn định là quý nhất {ten} ạ.",
+        "Tình hình quốc tế êm ấm thì giao thương xuất khẩu hàng Việt mình càng thuận lợi.",
+        "Tôi cũng hay theo dõi mục Thế giới mỗi sáng rồi vào bàn đàm đạo cùng {ten}."
+      ]
+    },
+    {
       topic: "Tờ báo sáng",
-      keywords: ["báo", "tin", "lương hưu", "dự báo", "mẹo", "đọc báo"],
+      keywords: ["báo", "tin", "dự báo", "mẹo", "đọc báo"],
       replies: [
         "Tin trên Tờ báo sáng nay ngắn gọn mà dễ hiểu quá {ten} nhỉ.",
         "Mỗi sáng vừa uống trà vừa nghe đọc tin tốt lành thấy phấn khởi.",
@@ -618,39 +636,268 @@ window.TuoiBacData = (function () {
     }
   ];
 
-  // "Tờ Báo Sáng Quán Trà" đã duyệt + Hàng chờ RSS cho Admin duyệt 1 chạm
+  // Chuyên mục & Từ khóa gợi ý nhanh trên Tờ Báo Sáng
+  const NEWS_CATEGORIES = [
+    { id: "all", label: "Tất cả" },
+    { id: "kinh-te", label: "Kinh tế & Giá cả" },
+    { id: "the-gioi", label: "Thế giới" },
+    { id: "thoi-tiet", label: "Thời tiết" },
+    { id: "suc-khoe", label: "Sức khỏe" },
+    { id: "doi-song", label: "Đời sống" },
+    { id: "van-hoa", label: "Thể thao & Ký ức" }
+  ];
+
+  const NEWS_HOT_KEYWORDS = [
+    "Giá dầu",
+    "Thế giới",
+    "Giá vàng",
+    "Lương hưu",
+    "Thời tiết",
+    "Huyết áp",
+    "Đội tuyển VN",
+    "Bao cấp"
+  ];
+
+  // "Tờ Báo Sáng Quán Trà" theo chuyên mục — bấm vào tin là ghép thẳng vào Bàn Đàm Đạo của những người đang đọc tin đó
   const MORNING_ARTICLES = [
     {
+      id: "art-gia-dau-1",
+      category: "kinh-te",
+      tag: "Kinh tế · Giá dầu",
+      title: "Giá dầu thế giới hạ nhiệt tuần thứ hai liên tiếp, cước vận tải hàng hóa giảm áp lực",
+      source: "Theo Báo Tin Tức & TTXVN · 06:15 sáng nay",
+      body: "Giá dầu thô Brent sáng nay lùi về quanh mốc 73 USD/thùng nhờ nguồn cung dồi dào và tồn kho nhiên liệu tăng. Các doanh nghiệp vận tải đường bộ và ghe tàu chở nông sản kỳ vọng đợt điều hành giá xăng dầu tới trong nước sẽ tiếp tục giảm nhẹ, giúp giữ ổn định giá thực phẩm ngoài chợ.",
+      detailPoints: [
+        "Dầu thô Brent giảm khoảng 1,8% so với đầu tuần trước, giao dịch quanh ngưỡng 73 USD/thùng.",
+        "Chi phí xăng dầu chiếm 30–35% giá thành vận tải hàng rau củ, thủy sản từ miền Tây và Tây Nguyên đi các tỉnh.",
+        "Dự báo kỳ điều hành trong nước tuần này có dư địa giảm nhẹ, hỗ trợ bình ổn giá tiêu dùng cuối năm."
+      ],
+      readerIds: ["minh", "tu", "phat", "quynh"],
+      discussionLog: [
+        { speaker: "Anh Minh · 71 tuổi (Hải Phòng)", text: "Giá dầu thô hạ hai tuần liền thế này thì cước xe chở hàng với tàu biển đỡ căng hẳn các anh chị nhỉ." },
+        { speaker: "Anh Phát · 66 tuổi (Cần Thơ)", text: "Dưới Cần Thơ ghe chở lúa với trái cây lên thành phố mong tin xăng dầu giảm từng ngày đấy Anh Minh ạ." }
+      ],
+      quickReplies: [
+        "Giá xăng dầu êm thì mớ rau cân cá ngoài chợ cũng đỡ tăng giá {ten} nhỉ.",
+        "Sáng nào uống trà tôi cũng mở xem tin giá dầu với kinh tế đầu tiên.",
+        "Ở {tinh} chỗ tôi bà con làm vườn, chạy xe tải nhỏ mừng lắm khi dầu hạ."
+      ],
+      topicKeyword: "Kinh tế & Giá cả"
+    },
+    {
+      id: "art-the-gioi-1",
+      category: "the-gioi",
+      tag: "Thế giới · Tiêu điểm",
+      title: "Thế giới sáng nay: Các nước châu Á đẩy mạnh kết nối đường sắt và thương mại nông sản xanh",
+      source: "Theo Báo Nhân Dân Quốc tế · 06:30 sáng nay",
+      body: "Hội nghị hợp tác kinh tế khu vực châu Á vừa thống nhất rút ngắn thủ tục thông quan cho hàng nông sản tươi và mở rộng tuyến vận tải đường sắt liên vận. Việt Nam được đánh giá là điểm sáng cung ứng gạo chất lượng cao, cà phê và trái cây nhiệt đới sang thị trường Đông Bắc Á và châu Âu.",
+      detailPoints: [
+        "Thời gian thông quan hàng trái cây và thủy sản qua cửa khẩu đường sắt giảm gần một nửa.",
+        "Gạo thơm và cà phê Việt Nam tiếp tục giữ giá tốt tại thị trường Nhật Bản, châu Âu.",
+        "Xu hướng chuyển đổi năng lượng sạch và giao thông công cộng tăng mạnh tại các đô thị lớn trên thế giới."
+      ],
+      readerIds: ["vinh", "dung", "hai"],
+      discussionLog: [
+        { speaker: "Anh Vĩnh · 74 tuổi (Nghệ An)", text: "Đọc tin thế giới thấy hàng nông sản Việt mình đi khắp châu Âu, Nhật Bản mà tự hào quá các anh chị ạ." },
+        { speaker: "Anh Hải · 68 tuổi (TP. Huế)", text: "Thế giới nhiều biến động mà trong nước mình giữ được hòa bình, xuất khẩu đều đặn là quý nhất Anh Vĩnh nhỉ." }
+      ],
+      quickReplies: [
+        "Đúng là đất nước mình yên bình, làm ăn giao thương ngày càng khởi sắc {ten} ạ.",
+        "Nghe tin hạt gạo, hạt cà phê quê mình được thế giới chuộng mà mừng cho bà con.",
+        "Tôi thích ngồi bàn trà đàm đạo thời sự thế giới nhẹ nhàng như thế này."
+      ],
+      topicKeyword: "Thế giới"
+    },
+    {
+      id: "art-the-gioi-2",
+      category: "the-gioi",
+      tag: "Thế giới · Năng lượng",
+      title: "OPEC+ và các nước tiêu thụ dầu lớn bàn kịch bản giữ ổn định nguồn cung năng lượng mùa đông",
+      source: "Theo VnExpress Quốc tế · 06:45 sáng nay",
+      body: "Trước mùa đông tại Bắc bán cầu, các quốc gia xuất khẩu dầu mỏ và các nền kinh tế lớn đang đàm phán duy trì sản lượng hợp lý nhằm tránh biến động sốc về giá dầu và khí đốt, giúp kinh tế toàn cầu phục hồi vững hơn.",
+      detailPoints: [
+        "Dự trữ khí đốt và dầu sưởi tại châu Âu, Đông Bắc Á hiện đạt trên 90% công suất trước mùa lạnh.",
+        "Giá dầu ổn định quanh vùng 70–75 USD/thùng được xem là mức cân bằng cho cả nước xuất khẩu lẫn nước nhập khẩu.",
+        "Năng lượng mặt trời và điện gió tiếp tục san sẻ áp lực tiêu thụ nhiên liệu hóa thạch."
+      ],
+      readerIds: ["minh", "hung-ccb", "tu"],
+      discussionLog: [
+        { speaker: "Anh Cường · 73 tuổi (Quảng Trị)", text: "Mùa đông bên xứ lạnh họ lo dự trữ dầu sưởi với khí đốt kỹ lắm, ảnh hưởng cả giá dầu toàn cầu." },
+        { speaker: "Anh Tư · 65 tuổi (An Giang)", text: "Các nước ngồi lại giữ giá dầu ổn định thì kinh tế thế giới đỡ chao đảo Anh Cường nhỉ." }
+      ],
+      quickReplies: [
+        "Thời buổi hội nhập, chuyện giá dầu bên ngoài tác động tới tận bữa cơm nhà mình {ten} ạ.",
+        "Cứ đối thoại ôn hòa để giữ ổn định năng lượng là tốt cho tất cả các nước.",
+        "Ở {tinh} anh em hưu trí tụi tôi sáng nào cũng bàn chuyện thế giới với giá dầu."
+      ],
+      topicKeyword: "Thế giới"
+    },
+    {
+      id: "art-gia-vang-1",
+      category: "kinh-te",
+      tag: "Kinh tế · Giá vàng & Lãi suất",
+      title: "Giá vàng nhẫn đi ngang theo đà thế giới, lãi suất tiết kiệm kỳ hạn 6–12 tháng nhích nhẹ",
+      source: "Theo Báo Đầu Tư · 07:00 sáng nay",
+      body: "Sáng nay giá vàng nhẫn tròn trơn trong nước biến động hẹp sau nhịp điều chỉnh của giá vàng quốc tế. Trong khi đó, một số ngân hàng thương mại điều chỉnh tăng 0,2%/năm lãi suất tiền gửi tiết kiệm kỳ hạn 6 đến 12 tháng, phù hợp với người nghỉ hưu gửi tích lũy an toàn.",
+      detailPoints: [
+        "Chênh lệch mua - bán vàng nhẫn thu hẹp hơn so với tuần trước; chuyên gia khuyên không nên mua đuổi theo tin đồn.",
+        "Lãi suất tiết kiệm kỳ hạn 12 tháng tại nhiều ngân hàng dao động quanh mức 5,2% – 5,8%/năm.",
+        "Người cao tuổi gửi tiết kiệm nên chọn ngân hàng uy tín và tuyệt đối cảnh giác trước lời mời đầu tư lãi cao trên mạng."
+      ],
+      readerIds: ["quynh", "lan", "mai"],
+      discussionLog: [
+        { speaker: "Anh Quỳnh · 70 tuổi (Phú Thọ)", text: "Tuổi nghỉ hưu tụi mình có đồng tích lũy cứ gửi tiết kiệm ngân hàng nhà nước là yên tâm ngủ ngon nhất." },
+        { speaker: "Chị Lan · 68 tuổi (Hà Nội)", text: "Chuẩn đấy Anh Quỳnh ạ, mua vàng lúc lên xuống thất thường đau đầu lắm, lại sợ hàng trôi nổi." }
+      ],
+      quickReplies: [
+        "Tôi cũng đồng ý với {ten}, tuổi mình cứ an toàn chắc chắn là trên hết.",
+        "Ai gọi điện rủ đầu tư lãi suất cao trên mạng là tôi cúp máy ngay {ten} ạ.",
+        "Sáng đọc điểm tin giá vàng, lãi suất ngắn gọn thế này rất tiện theo dõi."
+      ],
+      topicKeyword: "Kinh tế & Giá cả"
+    },
+    {
+      id: "art-luong-huu-1",
+      category: "doi-song",
+      tag: "Đời sống · Lương hưu & BHYT",
+      title: "Chi trả lương hưu đầu tháng thuận tiện và mở rộng cấp thuốc BHYT 2 tháng cho bệnh mạn tính ổn định",
+      source: "Theo Báo Lao Động & BHXH Việt Nam · 06:50 sáng nay",
+      body: "Nhiều bệnh viện tuyến quận, tỉnh đang áp dụng kê đơn thuốc ngoại trú tối đa 60 ngày cho người bệnh huyết áp, tiểu đường đã điều trị ổn định, giúp người lớn tuổi đỡ vất vả đi lại xếp hàng mỗi tháng. Việc nhận lương hưu vẫn duy trì song song cả qua tài khoản lẫn điểm chi trả tiền mặt tại phường xã.",
+      detailPoints: [
+        "Bệnh nhân mạn tính có chỉ số huyết áp, đường huyết ổn định được bác sĩ xem xét hẹn tái khám 2 tháng/lần.",
+        "Người cao tuổi không rành rút thẻ ATM vẫn được nhận lương hưu tiền mặt tại bưu điện hoặc tận nhà nếu đi lại khó khăn.",
+        "Thẻ BHYT đã tích hợp trên căn cước gắn chip, đi khám chỉ cần mang 1 thẻ duy nhất."
+      ],
+      readerIds: ["quynh", "lien", "binh"],
+      discussionLog: [
+        { speaker: "Chị Liên · 62 tuổi (TP. HCM)", text: "Cấp thuốc huyết áp ổn định 2 tháng một lần đỡ cho người lớn tuổi đi xếp hàng sáng sớm biết bao nhiêu." },
+        { speaker: "Anh Quỳnh · 70 tuổi (Phú Thọ)", text: "Đi khám giờ chỉ mang mỗi thẻ căn cước gắn chip là xong thủ tục BHYT, gọn hơn xưa nhiều Chị Liên nhỉ." }
+      ],
+      quickReplies: [
+        "Chính sách cấp thuốc 2 tháng này thiết thực quá {ten} ạ, đỡ cảnh chờ đợi.",
+        "Ở {tinh} bệnh viện chỗ tôi cũng làm thủ tục bằng căn cước nhanh lắm.",
+        "Mừng nhất là vẫn giữ cả điểm phát lương hưu tiền mặt cho ai ngại dùng thẻ."
+      ],
+      topicKeyword: "Tờ báo sáng"
+    },
+    {
       id: "art-1",
+      category: "thoi-tiet",
       tag: "Thời tiết & Nông lịch",
-      title: "Hôm nay 27 tháng 10 âm lịch: Bắc Bộ se lạnh sớm, Nam Bộ nắng dịu",
-      source: "Theo Trung tâm Dự báo Khí tượng Thủy văn",
+      title: "Hôm nay 27 tháng 10 âm lịch: Bắc Bộ se lạnh sớm, Nam Bộ nắng dịu thuận lợi tập dưỡng sinh",
+      source: "Theo Trung tâm Dự báo Khí tượng Thủy văn · 06:00 sáng nay",
       body: "Miền Bắc sáng sớm se lạnh 19–22 độ, trưa hửng nắng nhẹ thuận lợi đi bộ dưỡng sinh. Miền Trung và Tây Nguyên tạnh ráo. Nam Bộ sáng mát, chiều có thể có mưa rào thoáng qua.",
+      detailPoints: [
+        "Bắc Bộ sáng sớm có sương nhẹ, nên quàng khăn ấm cổ khi ra sân tập trước 6 giờ.",
+        "Trung Bộ nắng ráo 25–29 độ, rất đẹp để phơi chăn màn và chăm sóc cây cảnh.",
+        "Nam Bộ và miền Tây gió mát buổi sáng, chiều tối đề phòng mưa dông cục bộ."
+      ],
+      readerIds: ["lan", "hoa", "sau"],
+      discussionLog: [
+        { speaker: "Chị Lan · 68 tuổi (Hà Nội)", text: "Ngoài Hà Nội sáng nay ra sân tập dưỡng sinh gió heo may mát lạnh thích lắm các anh chị ạ." },
+        { speaker: "Anh Sáu · 72 tuổi (Vĩnh Long)", text: "Trong Vĩnh Long sáng nay nắng dịu, tôi mới tưới mấy giò lan xong là vào bàn trà ngay." }
+      ],
+      quickReplies: [
+        "Ngoài {tinh} chỗ tôi sáng nay thời tiết cũng dễ chịu lắm {ten} ạ.",
+        "Trời chuyển mùa se lạnh {ten} đi tập sớm nhớ quàng khăn giữ ấm cổ nhé.",
+        "Thời tiết này pha ấm trà nóng ngồi đọc báo đàm đạo là hợp nhất."
+      ],
       topicKeyword: "Thời tiết"
     },
     {
-      id: "art-2",
-      tag: "Tin tích cực Đời sống",
-      title: "Nhiều xã phường mở lớp dân vũ và câu lạc bộ cờ tướng miễn phí sáng sớm",
-      source: "Theo Báo Nhân Dân (Mục Đời sống)",
-      body: "Phong trào rèn luyện thân thể cho người cao tuổi tiếp tục lan tỏa. Các nhà văn hóa phường bố trí thêm ghế nghỉ, nước trà miễn phí và hướng dẫn viên dưỡng sinh vào khung giờ 6h30–7h30 mỗi ngày.",
+      id: "art-4",
+      category: "suc-khoe",
+      tag: "Sức khỏe · Huyết áp & Giấc ngủ",
+      title: "Ba thói quen nhỏ trước giờ ngủ giúp người trên 60 tuổi ổn định huyết áp và ngủ sâu giấc",
+      source: "Theo Báo Sức khỏe & Đời sống · 06:20 sáng nay",
+      body: "Ngâm chân nước ấm pha gừng 10 phút lúc 20h30, tắt màn hình điện thoại trước khi lên giường 30 phút và uống một ngụm nước ấm nhỏ buổi sáng trước khi rời giường giúp tuần hoàn máu êm dịu và giảm trằn trọc ban đêm.",
+      detailPoints: [
+        "Nước ngâm chân chỉ nên ấm vừa phải (khoảng 38–40 độ), đặc biệt lưu ý thử nhiệt độ kỹ nếu có bệnh tiểu đường.",
+        "Khi thức dậy buổi sáng nên nằm vận động cổ chân tay 1–2 phút rồi mới ngồi dậy từ từ để tránh choáng huyết áp.",
+        "Tránh uống trà đặc sau 4 giờ chiều để đêm dễ đi vào giấc ngủ."
+      ],
+      readerIds: ["nga", "lien", "binh"],
+      discussionLog: [
+        { speaker: "Chị Nga · 61 tuổi (Lâm Đồng)", text: "Mẹo nằm xoay cổ chân 1 phút trên giường trước khi ngồi dậy buổi sáng rất hay, hết hẳn bị choáng." },
+        { speaker: "Chị Bình · 60 tuổi (Cần Thơ)", text: "Từ ngày tôi cữ trà đặc buổi chiều chuyển sang uống nước ấm là tối ngủ ngon tới sáng luôn Chị Nga ạ." }
+      ],
+      quickReplies: [
+        "Thói quen ngồi dậy từ từ buổi sáng quan trọng lắm, cảm ơn {ten} đã nhắc.",
+        "Tối nào tôi cũng ngâm chân nước ấm mười phút thấy êm lưng dễ ngủ hẳn.",
+        "Ở tuổi mình cứ ăn ngủ điều độ, tập nhẹ đều đặn là quý hơn thuốc bổ {ten} nhỉ."
+      ],
       topicKeyword: "Sức khỏe"
+    },
+    {
+      id: "art-2",
+      category: "doi-song",
+      tag: "Đời sống · Cộng đồng",
+      title: "Nhiều xã phường mở lớp dân vũ và câu lạc bộ cờ tướng miễn phí sáng sớm",
+      source: "Theo Báo Nhân Dân (Mục Đời sống) · 07:10 sáng nay",
+      body: "Phong trào rèn luyện thân thể cho người lớn tuổi tiếp tục lan tỏa. Các nhà văn hóa phường bố trí thêm ghế nghỉ, nước trà miễn phí và hướng dẫn viên dưỡng sinh vào khung giờ 6h00–7h30 mỗi ngày.",
+      detailPoints: [
+        "Hơn 400 câu lạc bộ liên thế hệ tự giúp nhau mới được thành lập tại các khu dân cư trong quý này.",
+        "Kết hợp tập dưỡng sinh, đánh cờ tướng và phổ biến kiến thức phòng tránh lừa đảo qua điện thoại.",
+        "Tạo không gian gặp gỡ trực tiếp kết hợp giao lưu trực tuyến khi trời mưa lạnh."
+      ],
+      readerIds: ["hoa", "thanh", "dung"],
+      discussionLog: [
+        { speaker: "Chị Hoa · 63 tuổi (Đà Nẵng)", text: "Nhà văn hóa phường tôi sáng nào cũng rộn ràng tiếng nhạc dân vũ, hôm nào mưa thì lên Quán trà online gặp nhau." }
+      ],
+      quickReplies: [
+        "Có hội có thuyền tập chung buổi sáng tinh thần trẻ ra mấy tuổi {ten} ạ.",
+        "Ở {tinh} khu phố tôi cũng có bàn cờ tướng dưới gốc cây vui lắm.",
+        "Hôm nào nắng thì ra sân phường, hôm nào mưa rét thì ngồi bàn trà này gặp {ten}."
+      ],
+      topicKeyword: "Sức khỏe"
+    },
+    {
+      id: "art-the-thao-1",
+      category: "van-hoa",
+      tag: "Thể thao · Đội tuyển VN",
+      title: "Đội tuyển bóng đá Việt Nam hội quân rèn thể lực, chuẩn bị loạt trận giao hữu quốc tế trên sân nhà",
+      source: "Theo Báo Thanh Niên Thể thao · 07:15 sáng nay",
+      body: "Đội tuyển Việt Nam đã bắt đầu đợt tập trung mới với sự kết hợp giữa các trụ cột giàu kinh nghiệm và lứa cầu thủ trẻ giàu khát vọng. Người hâm mộ cả nước chờ đón lối chơi phối hợp nhỏ đẹp mắt trong trận giao hữu cuối tuần này.",
+      detailPoints: [
+        "Trận đấu diễn ra lúc 19h30 thứ Bảy tuần này, truyền hình trực tiếp miễn phí trên các kênh sóng quốc gia.",
+        "Nhiều cầu thủ trẻ U23 được trao cơ hội thử sức bên cạnh các đàn anh kỳ cựu.",
+        "Giá vé vào sân hợp lý để các gia đình nhiều thế hệ cùng đi cổ vũ."
+      ],
+      readerIds: ["dung", "phat", "minh"],
+      discussionLog: [
+        { speaker: "Anh Dũng · 67 tuổi (Bắc Ninh)", text: "Cuối tuần có đội tuyển Việt Nam đá là tôi lại pha ấm trà đặc xem cùng thằng cháu nội." },
+        { speaker: "Anh Phát · 66 tuổi (Cần Thơ)", text: "Xem các cháu cầu thủ trẻ bây giờ chạy khỏe và phối hợp tự tin lắm Anh Dũng ạ." }
+      ],
+      quickReplies: [
+        "Hôm tới đội tuyển đá, anh em mình vừa xem vừa lên bàn trà bình luận nhé {ten}.",
+        "Ở nhà tôi cứ có bóng đá Việt Nam là cả ông lẫn cháu hò reo rôm rả.",
+        "Mong lứa cầu thủ trẻ giữ được đôi chân khỏe và tinh thần thi đấu hết mình."
+      ],
+      topicKeyword: "Trò chơi & Cờ"
     },
     {
       id: "art-3",
-      tag: "Ngày này năm xưa",
+      category: "van-hoa",
+      tag: "Ký ức xưa · Văn hóa",
       title: "Nhớ chiếc phích nước Rạng Đông và ấm trà tích ủ rơm thập niên 80",
-      source: "Chuyên mục Ký ức Tuổi Bạc",
-      body: "Ngày ấy mỗi nhà có một chiếc phích vỏ sắt sơn hoa mẫu đơn hoặc giỏ tích đan tre giữ ấm ấm nước chè xanh suốt cả ngày. Khách đến chơi nhà chỉ cần rót một chén chè đặc là râm ran chuyện cả buổi.",
+      source: "Chuyên mục Ký ức Tuổi Bạc · 06:00 sáng nay",
+      body: "Ngày ấy mỗi nhà có một chiếc phích vỏ sắt sơn hoa mẫu đơn hoặc giỏ tích đan tre giữ ấm nước chè xanh suốt cả ngày. Khách đến chơi nhà chỉ cần rót một bát nước chè tươi nóng hổi là râm ran chuyện mùa màng, con cái suốt cả buổi.",
+      detailPoints: [
+        "Chiếc phích Rạng Đông vỏ thiếc in hoa hồng, hoa mẫu đơn từng là món quà mừng cưới quý giá một thời.",
+        "Giỏ tích lót bông gòn hoặc rơm nếp giữ cho ấm chè xanh nóng từ sáng sớm tới chiều tối.",
+        "Nếp văn hóa 'miếng trầu, chén trà mở đầu câu chuyện' vẫn giữ vẹn nguyên giá trị gắn kết tình người."
+      ],
+      readerIds: ["mai", "vinh", "bay"],
+      discussionLog: [
+        { speaker: "Chị Mai · 70 tuổi (Thanh Hóa)", text: "Đọc bài này tự nhiên nhớ cái giỏ tích đan mây lót vải hoa ngày xưa mẹ tôi hay ủ ấm nước vối quá." },
+        { speaker: "Anh Bảy · 66 tuổi (Đồng Tháp)", text: "Hồi đó vật chất thiếu thốn mà hàng xóm tối lửa tắt đèn chạy sang rót chén trà ấm tình biết bao Chị Mai nhỉ." }
+      ],
+      quickReplies: [
+        "Nhắc chuyện chiếc phích hoa mẫu đơn làm tôi bồi hồi nhớ thời trẻ quá {ten} ạ.",
+        "Ở {tinh} quê tôi ngày xưa nhà nào có chiếc giỏ tích ủ chè xanh là quý lắm.",
+        "Thời bao cấp tuy vất vả mà tình làng nghĩa xóm đầm ấm không quên được."
+      ],
       topicKeyword: "Kỷ niệm bao cấp"
-    },
-    {
-      id: "art-4",
-      tag: "Mẹo sức khỏe & Nhà vườn",
-      title: "Ba thói quen nhỏ trước giờ ngủ giúp ông bà ngủ sâu giấc hơn",
-      source: "Theo Báo Sức khỏe & Đời sống",
-      body: "Ngâm chân nước ấm pha gừng 10 phút lúc 20h30, tắt màn hình điện thoại trước khi lên giường 30 phút và giữ phòng thoáng giúp giảm trằn trọc ban đêm ở người trên 60 tuổi.",
-      topicKeyword: "Sức khỏe"
     }
   ];
 
@@ -872,6 +1119,8 @@ window.TuoiBacData = (function () {
     FILLER_WORDS,
     REPLY_MATRIX,
     VOICE_SAMPLES,
+    NEWS_CATEGORIES,
+    NEWS_HOT_KEYWORDS,
     MORNING_ARTICLES,
     RSS_DRAFTS,
     QUIZ_QUESTIONS,

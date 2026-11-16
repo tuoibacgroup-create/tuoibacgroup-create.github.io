@@ -1,5 +1,5 @@
 (function () {
-  const STORAGE_KEY = "tuoi_bac_sim_v2";
+  const STORAGE_KEY = "tuoi_bac_sim_v3";
   const D = window.TuoiBacData;
 
   function createDefaultState() {
@@ -45,12 +45,16 @@
         tableIdx: 0,
         log: D.ROOM_TEMPLATES[0].tables[0].initialLog.slice(),
         lastSentAt: 0,
-        activeNewspaperRef: null
+        activeNewspaperRef: null,
+        articleTable: null
       },
       newspaper: {
         articles: D.MORNING_ARTICLES.map((a) => Object.assign({}, a)),
         drafts: D.RSS_DRAFTS.map((r) => Object.assign({}, r)),
-        adminOpen: false
+        adminOpen: false,
+        selectedCategory: "all",
+        searchQuery: "",
+        liveItems: []
       },
       quiz: {
         idx: 0,
@@ -874,6 +878,14 @@
       if (tinh && D.PROVINCES.some((p) => p.id === tinh)) {
         state.user.provinceId = tinh;
       }
+      const tin = params.get("tin");
+      if (tin) {
+        const foundArt = (state.newspaper.articles || []).find((a) => a.id === tin);
+        if (foundArt) {
+          joinArticleDiscussionTable(foundArt, true);
+          return;
+        }
+      }
       const phong = params.get("phong");
       const ban = Number(params.get("ban"));
       if (phong) {
@@ -1207,8 +1219,144 @@
   }
 
   function getCurrentTable() {
+    if (state.teaRoom.articleTable) {
+      return state.teaRoom.articleTable;
+    }
     const room = getCurrentRoom();
     return room.tables[state.teaRoom.tableIdx] || room.tables[0];
+  }
+
+  function stripVnAccents(str) {
+    return String(str || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/đ/g, "d")
+      .replace(/Đ/g, "D")
+      .toLowerCase();
+  }
+
+  function getReadersForArticle(art) {
+    if (Array.isArray(art.readerIds) && art.readerIds.length > 0) {
+      const list = art.readerIds
+        .map((rid) => D.SENIOR_DIRECTORY.find((s) => s.id === rid))
+        .filter(Boolean)
+        .map((s) => Object.assign({}, s, { habits: (s.habits || []).slice() }));
+      if (list.length > 0) return list;
+    }
+    let h = 0;
+    const key = String(art.id || art.title || "news");
+    for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) % 997;
+    const picked = [];
+    for (let k = 0; k < 3; k++) {
+      const s = D.SENIOR_DIRECTORY[(h + k * 5) % D.SENIOR_DIRECTORY.length];
+      if (s && !picked.some((p) => p.id === s.id)) {
+        picked.push(Object.assign({}, s, { habits: (s.habits || []).slice() }));
+      }
+    }
+    return picked;
+  }
+
+  function joinArticleDiscussionTable(art, silentNav) {
+    const readers = getReadersForArticle(art);
+    const r0 = readers[0] || D.SENIOR_DIRECTORY[0];
+    const r1 = readers[1] || D.SENIOR_DIRECTORY[1];
+    const defaultLog = [
+      {
+        speaker: `${r0.name} · ${r0.age} tuổi (${r0.province})`,
+        text: `Tôi vừa đọc tin "${art.title.slice(0, 72)}${art.title.length > 72 ? "..." : ""}", mời các anh chị vào đàm đạo cùng nhé.`
+      },
+      {
+        speaker: `${r1.name} · ${r1.age} tuổi (${r1.province})`,
+        text: `Chủ đề "${art.tag || "Điểm báo"}" sáng nay thiết thực quá, ngồi nhấp chén trà bàn chuyện này rất hợp ý.`
+      }
+    ];
+    const customLog =
+      Array.isArray(art.discussionLog) && art.discussionLog.length > 0
+        ? art.discussionLog.map((x) => Object.assign({}, x))
+        : defaultLog;
+
+    state.teaRoom.roomId = "phong-tra";
+    state.teaRoom.subView = "table";
+    state.teaRoom.activeNewspaperRef = Object.assign({}, art);
+    state.teaRoom.articleTable = {
+      id: `ban-bao-${art.id}`,
+      shortLabel: "B.Báo",
+      name: `Bàn Đàm Đạo: ${art.tag || "Điểm Báo"}`,
+      topic: art.title,
+      isArticleTable: true,
+      article: Object.assign({}, art),
+      tags: ["doc-bao", "uong-tra"],
+      members: readers,
+      initialLog: customLog,
+      quickReplies: Array.isArray(art.quickReplies) ? art.quickReplies.slice() : null
+    };
+    state.teaRoom.log = customLog.slice();
+    pendingQueue = [];
+    saveState();
+
+    if (!silentNav) {
+      showToast(`Đã vào bàn đàm đạo cùng ${readers.length} anh chị đang đọc tin này!`);
+      navigate("tearoom");
+    }
+  }
+
+  function openArticleDetailModal(art) {
+    const readers = getReadersForArticle(art);
+    const pointsHtml =
+      Array.isArray(art.detailPoints) && art.detailPoints.length > 0
+        ? `
+        <div class="surface-panel warm" style="gap:6px;">
+          <strong>Điểm chính của bản tin:</strong>
+          ${art.detailPoints.map((pt) => `<div style="font-size:0.92rem;">• ${escHtml(pt)}</div>`).join("")}
+        </div>
+      `
+        : "";
+
+    openDialog(
+      art.tag || "Chi tiết bản tin",
+      `
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <h3 style="font-family:var(--font-serif); line-height:1.38;">${escHtml(art.title)}</h3>
+        <small style="color:var(--ink-secondary); font-weight:600;">${escHtml(art.source)}</small>
+        <p style="font-size:0.98rem; line-height:1.6;">${escHtml(art.body)}</p>
+        ${pointsHtml}
+        <div class="surface-panel" style="padding:12px;">
+          <strong>Đang cùng đọc tin này (${readers.length} anh chị):</strong>
+          <div class="member-pill-list">
+            ${readers
+              .map(
+                (m) => `
+              <div class="member-chip-btn" style="cursor:default;">
+                ${renderSeniorAvatarSvg(m)}
+                <span class="member-chip-meta">
+                  <span class="member-chip-top">
+                    <strong>${escHtml(m.name)} <span class="member-age-inline">· ${m.age} tuổi</span></strong>
+                    <span class="member-chip-prov">${escHtml(m.province)}</span>
+                  </span>
+                  <small>${escHtml((m.habits || []).slice(0, 2).map(getHabitLabel).join(" · "))}</small>
+                </span>
+              </div>
+            `
+              )
+              .join("")}
+          </div>
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn-secondary" id="modal-read-art-btn">${ico("speaker")}<span>Nghe đọc tin</span></button>
+          <button type="button" class="btn-primary" id="modal-join-art-btn">${ico("tea")}<span>Vào bàn đàm đạo (${readers.length})</span></button>
+        </div>
+      </div>
+      `
+    );
+
+    document.getElementById("modal-read-art-btn").addEventListener("click", () => {
+      const extra = Array.isArray(art.detailPoints) ? " " + art.detailPoints.join(" ") : "";
+      speak(`${art.title}. ${art.body}${extra}`, { announceToast: true });
+    });
+    document.getElementById("modal-join-art-btn").addEventListener("click", () => {
+      closeDialog();
+      joinArticleDiscussionTable(art, false);
+    });
   }
 
   function scoreTableMatch(table) {
@@ -1260,6 +1408,8 @@
     const room = getCurrentRoom();
     const safeIdx = Math.max(0, Math.min(room.tables.length - 1, idx));
     const table = room.tables[safeIdx];
+    state.teaRoom.articleTable = null;
+    state.teaRoom.activeNewspaperRef = null;
     state.teaRoom.tableIdx = safeIdx;
     state.teaRoom.subView = "table";
     state.teaRoom.log = table.initialLog.slice();
@@ -1276,9 +1426,23 @@
     const lastLog = state.teaRoom.log[state.teaRoom.log.length - 1];
     const speakerName = lastLog ? lastLog.speaker.split("(")[0].split("·")[0].trim() : table.members[0].name;
 
+    if (
+      table.isArticleTable &&
+      Array.isArray(table.quickReplies) &&
+      table.quickReplies.length >= 3 &&
+      state.teaRoom.log.length <= (table.initialLog ? table.initialLog.length + 1 : 3)
+    ) {
+      return table.quickReplies.slice(0, 3).map((tpl) =>
+        tpl.replace(/\{ten\}/g, speakerName).replace(/\{tinh\}/g, userProv)
+      );
+    }
+
     let chosen = state.replyTemplates.find((group) =>
       group.keywords.some((kw) => low.includes(kw.toLowerCase()))
     );
+    if (!chosen && table.isArticleTable && table.article && table.article.topicKeyword) {
+      chosen = state.replyTemplates.find((g) => g.topic === table.article.topicKeyword);
+    }
     if (!chosen) {
       chosen = state.replyTemplates[state.replyTemplates.length - 1];
     }
@@ -1405,7 +1569,8 @@
   }
 
   function openSeniorProfileDialog(member, tableIdx, room) {
-    const tbl = room.tables[tableIdx];
+    const isArtTbl = Boolean(state.teaRoom.articleTable && state.teaRoom.subView === "table");
+    const tbl = isArtTbl ? state.teaRoom.articleTable : room.tables[tableIdx];
     const userHabits = state.user.habits || [];
     const sameProv = member.provinceId === state.user.provinceId;
     openDialog(
@@ -1423,16 +1588,16 @@
             .join("")}
         </div>
       </div>
-      <p style="font-size:0.88rem;">Đang ngồi tại: <strong>${escHtml(tbl.name)}</strong> (${escHtml(room.shortName)})</p>
+      <p style="font-size:0.88rem;">Đang ngồi tại: <strong>${escHtml(tbl.name)}</strong> (${escHtml(isArtTbl ? "Bàn Đàm Đạo Báo Sáng" : room.shortName)})</p>
       <button type="button" class="btn-primary" id="btn-join-senior-table">
         ${ico("tea")}
-        <span>Ngồi cùng bàn với ${escHtml(member.name)}</span>
+        <span>${isArtTbl ? `Tiếp tục đàm đạo cùng ${escHtml(member.name)}` : `Ngồi cùng bàn với ${escHtml(member.name)}`}</span>
       </button>
       `
     );
     document.getElementById("btn-join-senior-table").addEventListener("click", () => {
       closeDialog();
-      joinTable(tableIdx);
+      if (!isArtTbl) joinTable(tableIdx);
     });
   }
 
@@ -1717,10 +1882,28 @@
       <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
         <div>
           <h1>${escHtml(table.name)}</h1>
-          <small style="color:var(--ink-secondary);">${escHtml(room.name)} · ${escHtml(table.topic)}</small>
+          <small style="color:var(--ink-secondary);">${escHtml(table.isArticleTable ? "Bàn trà ghép theo chủ đề báo sáng" : `${room.name} · ${table.topic}`)}</small>
         </div>
         <button type="button" class="btn-mini" id="btn-back-lobby">Xem toàn phòng</button>
       </div>
+
+      ${
+        table.isArticleTable && table.article
+          ? `
+        <div class="article-topic-banner" id="article-topic-banner">
+          <div class="article-topic-head">
+            <span class="badge-tag amber">Đang cùng đọc & đàm đạo</span>
+            <small>${escHtml(table.article.source || "")}</small>
+          </div>
+          <strong class="article-topic-title">${escHtml(table.article.title)}</strong>
+          <div class="btn-row">
+            <button type="button" class="btn-mini" id="btn-reopen-article-detail">Xem lại bài báo</button>
+            <button type="button" class="btn-mini" id="btn-pick-another-article">Chọn tin báo khác</button>
+          </div>
+        </div>
+      `
+          : ""
+      }
 
       <!-- Người đang ngồi cùng bàn -->
       <div class="surface-panel" style="padding:12px;">
@@ -1816,10 +1999,21 @@
     if (coolLeft > 0) startCooldownTicker();
 
     document.getElementById("btn-back-lobby").addEventListener("click", () => {
+      state.teaRoom.articleTable = null;
+      state.teaRoom.activeNewspaperRef = null;
       state.teaRoom.subView = "lobby";
       saveState();
       renderTeaRoom();
     });
+
+    const reopenArtBtn = document.getElementById("btn-reopen-article-detail");
+    if (reopenArtBtn && table.article) {
+      reopenArtBtn.addEventListener("click", () => openArticleDetailModal(table.article));
+    }
+    const pickOtherArtBtn = document.getElementById("btn-pick-another-article");
+    if (pickOtherArtBtn) {
+      pickOtherArtBtn.addEventListener("click", () => navigate("newspaper"));
+    }
 
     els.main.querySelectorAll(".member-chip-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -1831,7 +2025,10 @@
     document.getElementById("btn-snap-tea").addEventListener("click", () => {
       const currLine = state.teaRoom.log[state.teaRoom.log.length - 1];
       const baseShare = getPublicBaseUrl();
-      const shareUrl = `${baseShare}?phong=${encodeURIComponent(room.id)}&ban=${state.teaRoom.tableIdx + 1}`;
+      const shareUrl =
+        table.isArticleTable && table.article
+          ? `${baseShare}?tin=${encodeURIComponent(table.article.id)}`
+          : `${baseShare}?phong=${encodeURIComponent(room.id)}&ban=${state.teaRoom.tableIdx + 1}`;
       const peerNames = table.members.map((m) => m.name).join(", ");
       const postText = `${state.user.name} (${getUserAge()} tuổi) đang ngồi uống trà tại ${table.name} (${room.name}) cùng ${peerNames}. Mời các anh chị bấm vào link dưới đây để vào ngồi chung bàn trò chuyện (không cần tài khoản):\n${shareUrl}`;
       const png = window.TeaRoomScene.exportPostcardPng({
@@ -2131,24 +2328,188 @@
     );
   }
 
-  // ==================== MODULE 3: VINTAGE NEWSPAPER & RSS ADMIN ====================
+  // ==================== MODULE 3: VINTAGE NEWSPAPER, CATEGORY/SEARCH & DISCUSSION TABLES ====================
+  let newsLiveSearching = false;
+
+  function buildSynthesizedKeywordArticles(rawQuery) {
+    const q = String(rawQuery || "").trim();
+    return [
+      {
+        id: "art-custom-" + stripVnAccents(q).replace(/[^a-z0-9]+/g, "-"),
+        category: "doi-song",
+        tag: `Điểm tin theo từ khóa · ${q}`,
+        title: `Tổng hợp tin mới sáng nay về chủ đề "${q}": góc nhìn thiết thực cho đời sống gia đình`,
+        source: "Điểm báo tổng hợp từ nguồn chính thống · Vừa cập nhật",
+        body: `Chủ đề "${q}" đang được nhiều độc giả quan tâm theo dõi trong bản tin sáng nay. Các chuyên gia khuyến nghị theo dõi thông tin từ các cơ quan báo chí chính thống và cùng trao đổi kinh nghiệm thực tế phù hợp với sinh hoạt hằng ngày.`,
+        detailPoints: [
+          `Cập nhật diễn biến chính xoay quanh "${q}" từ các đầu báo lớn trong nước.`,
+          "Phân tích tác động thiết thực tới chi tiêu sinh hoạt, sức khỏe và đời sống hưu trí.",
+          "Mời vào bàn trà để nghe góc nhìn thực tế từ các anh chị đang cùng quan tâm chủ đề này."
+        ],
+        quickReplies: [
+          `Tôi sáng nay cũng vừa tìm đọc tin về "${q}" giống {ten}.`,
+          `Chủ đề "${q}" này bàn cùng mọi người ở {tinh} và các tỉnh rất thú vị {ten} nhỉ.`,
+          "Mình cứ chọn lọc thông tin từ báo chính thống rồi trao đổi nhẹ nhàng là chuẩn nhất."
+        ],
+        topicKeyword: "Tờ báo sáng"
+      }
+    ];
+  }
+
+  async function fetchLiveKeywordArticles(query) {
+    const cleanQ = String(query || "").trim();
+    if (!cleanQ) return;
+    newsLiveSearching = true;
+    renderNewspaper();
+
+    try {
+      const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(cleanQ)}&hl=vi&gl=VN&ceid=VN:vi`;
+      const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 4000);
+      const res = await fetch(apiUrl, { signal: ctrl.signal });
+      clearTimeout(timer);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && Array.isArray(data.items) && data.items.length > 0) {
+          state.newspaper.liveItems = data.items.slice(0, 4).map((it, idx) => {
+            const rawTitle = String(it.title || "").replace(/\s*-\s*[^-]+$/, "").trim() || `Tin mới về ${cleanQ}`;
+            const plainDesc = String(it.description || "")
+              .replace(/<[^>]+>/g, " ")
+              .replace(/&nbsp;/g, " ")
+              .replace(/\s+/g, " ")
+              .trim();
+            return {
+              id: `live-${idx}-${stripVnAccents(cleanQ).replace(/[^a-z0-9]+/g, "-")}`,
+              category: "all",
+              tag: `Tin tìm kiếm · ${cleanQ}`,
+              title: rawTitle,
+              source: `${it.author || "Điểm báo trực tuyến"} · Hôm nay`,
+              body:
+                plainDesc.length > 40 && plainDesc !== rawTitle
+                  ? plainDesc.slice(0, 260)
+                  : `Bản tin thời sự cập nhật về "${cleanQ}". Chạm vào bài báo hoặc bấm nút Vào bàn đàm đạo bên dưới để cùng trò chuyện với những người đang quan tâm tin này.`,
+              detailPoints: [
+                `Tin tìm theo từ khóa "${cleanQ}" trên Tờ Báo Sáng.`,
+                "Nội dung tóm lược chữ to dễ theo dõi để cùng bình luận bên ấm trà."
+              ],
+              quickReplies: [
+                `Tin "${rawTitle.slice(0, 48)}..." này đáng chú ý thật {ten} nhỉ.`,
+                `Tôi ở {tinh} cũng đang theo dõi thêm tin tức về "${cleanQ}".`,
+                "Ngồi bàn trà nghe mọi người phân tích thêm thấy rõ vấn đề hơn hẳn."
+              ],
+              topicKeyword: "Tờ báo sáng"
+            };
+          });
+          newsLiveSearching = false;
+          saveState();
+          renderNewspaper();
+          return;
+        }
+      }
+    } catch (e) {
+      // Fall back to synthesized summary when offline or rate-limited
+    }
+
+    state.newspaper.liveItems = buildSynthesizedKeywordArticles(cleanQ);
+    newsLiveSearching = false;
+    saveState();
+    renderNewspaper();
+  }
+
+  function getFilteredNewspaperArticles() {
+    const cat = state.newspaper.selectedCategory || "all";
+    const qNorm = stripVnAccents(state.newspaper.searchQuery || "").trim();
+    const list = (state.newspaper.articles || []).filter((art) => {
+      if (cat !== "all" && art.category && art.category !== cat) return false;
+      if (!qNorm) return true;
+      const hay = stripVnAccents(
+        `${art.tag || ""} ${art.title || ""} ${art.body || ""} ${(art.detailPoints || []).join(" ")}`
+      );
+      return hay.includes(qNorm);
+    });
+    if (list.length > 0) return list;
+    if (qNorm && Array.isArray(state.newspaper.liveItems) && state.newspaper.liveItems.length > 0) {
+      return state.newspaper.liveItems;
+    }
+    return list;
+  }
+
   function renderNewspaper() {
+    const pron = getUserPronoun();
+    const selectedCat = state.newspaper.selectedCategory || "all";
+    const searchQ = state.newspaper.searchQuery || "";
+    const hasFilter = selectedCat !== "all" || Boolean(searchQ.trim());
+    const visibleArticles = getFilteredNewspaperArticles();
+
     els.main.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
         <h1>Tờ Báo Sáng</h1>
         <button type="button" class="btn-mini" id="btn-toggle-rss-admin">${state.newspaper.adminOpen ? "Đóng góc Admin RSS" : `Duyệt RSS (${state.newspaper.drafts.length})`}</button>
       </div>
-      <p class="lead-copy">Báo giấy xưa dễ đọc chữ to. Chạm "Đem ra bàn trà" để mời các bác cùng bàn thảo luận.</p>
+      <p class="lead-copy">Chọn chuyên mục hoặc tìm chủ đề (${pron} gõ hoặc chạm gợi ý như <strong>Giá dầu, Thế giới...</strong>), rồi ấn vào tin để ngồi đàm đạo cùng những người đang đọc tin đó.</p>
+
+      <!-- Khung tìm kiếm & Gợi ý từ khóa nóng + Chuyên mục -->
+      <div class="surface-panel" style="gap:10px;">
+        <div class="news-search-row">
+          <input
+            type="search"
+            class="input-lg"
+            id="news-search-input"
+            value="${escHtml(searchQ)}"
+            placeholder="Gõ chủ đề: giá dầu, thế giới, giá vàng..."
+          />
+          <button type="button" class="btn-primary btn-inline" id="btn-news-search">Tìm tin</button>
+        </div>
+
+        <div>
+          <div class="news-sub-label">Từ khóa gợi ý đang bàn sôi nổi:</div>
+          <div class="news-keyword-strip">
+            ${(D.NEWS_HOT_KEYWORDS || []).map((kw) => {
+              const isAct = stripVnAccents(searchQ) === stripVnAccents(kw);
+              return `<button type="button" class="news-kw-chip ${isAct ? "selected" : ""}" data-news-kw="${escHtml(kw)}">${escHtml(kw)}</button>`;
+            }).join("")}
+          </div>
+        </div>
+
+        <div>
+          <div class="news-sub-label">Chuyên mục báo:</div>
+          <div class="room-tabs-scroll">
+            ${(D.NEWS_CATEGORIES || []).map((c) => {
+              const cnt =
+                c.id === "all"
+                  ? state.newspaper.articles.length
+                  : state.newspaper.articles.filter((a) => a.category === c.id).length;
+              return `
+                <button type="button" class="room-tab-btn ${selectedCat === c.id ? "active" : ""}" data-news-cat="${c.id}">
+                  <span>${escHtml(c.label)} (${cnt})</span>
+                </button>
+              `;
+            }).join("")}
+          </div>
+        </div>
+
+        ${
+          hasFilter
+            ? `
+          <div class="news-filter-bar">
+            <span>Đang hiển thị <strong>${visibleArticles.length}</strong> bản tin phù hợp${searchQ ? ` với "${escHtml(searchQ)}"` : ""}</span>
+            <button type="button" class="btn-mini" id="btn-clear-news-filter">Xem tất cả (${state.newspaper.articles.length})</button>
+          </div>
+        `
+            : ""
+        }
+      </div>
 
       ${
         state.newspaper.adminOpen
           ? `
         <div class="surface-panel warm">
           <h3>Góc Admin duyệt RSS 1 chạm (Hậu trường buổi sáng)</h3>
-          <p style="font-size:0.84rem;">Hệ thống tự kéo RSS báo chính thống, lọc tin tích cực lưu nháp. Admin chỉ bấm duyệt 1 chạm để đăng lên Tờ Báo Sáng:</p>
+          <p style="font-size:0.88rem;">Hệ thống tự kéo RSS báo chính thống, lọc tin tích cực lưu nháp. Admin chỉ bấm duyệt 1 chạm để đăng lên Tờ Báo Sáng:</p>
           ${
             state.newspaper.drafts.length === 0
-              ? `<p style="font-size:0.86rem; font-weight:700;">Đã duyệt hết bản nháp RSS sáng nay.</p>`
+              ? `<p style="font-size:0.88rem; font-weight:700;">Đã duyệt hết bản nháp RSS sáng nay.</p>`
               : state.newspaper.drafts
                   .map(
                     (dr, i) => `
@@ -2172,29 +2533,117 @@
         <div class="broadsheet-masthead">
           <h2>BÁO SÁNG QUÁN TRÀ TUỔI BẠC</h2>
           <div class="broadsheet-meta">
-            <span>Số ra sáng hôm nay</span>
-            <span>Bản chữ to rõ nét · Nguồn chính thống</span>
+            <span>Số ra sáng hôm nay (${visibleArticles.length} tin)</span>
+            <span>Ấn vào tin để cùng ngồi đàm đạo</span>
           </div>
         </div>
 
-        ${state.newspaper.articles
-          .map(
-            (art, idx) => `
-          <section class="news-article">
-            <div><span class="badge-tag">${escHtml(art.tag)}</span></div>
-            <h3>${escHtml(art.title)}</h3>
-            <div class="news-source">${escHtml(art.source)}</div>
-            <p class="news-body">${escHtml(art.body)}</p>
-            <div class="btn-row">
-              <button type="button" class="btn-secondary read-news-btn" data-idx="${idx}">${ico("speaker")}<span>Nghe đọc báo</span></button>
-              <button type="button" class="btn-primary bring-tea-btn" data-idx="${idx}">${ico("tea")}<span>Đem ra bàn trà</span></button>
+        ${
+          newsLiveSearching
+            ? `<div class="surface-panel warm"><p style="font-weight:700;">Đang tìm bản tin mới nhất về "${escHtml(searchQ)}"...</p></div>`
+            : visibleArticles.length === 0
+              ? `
+            <div class="surface-panel warm">
+              <p>Chưa có sẵn tin trong mục này cho từ khóa <strong>"${escHtml(searchQ)}"</strong>.</p>
+              <button type="button" class="btn-primary" id="btn-fetch-live-news">Tìm tin thời sự trực tuyến về "${escHtml(searchQ)}"</button>
             </div>
-          </section>
-        `
-          )
-          .join("")}
+          `
+              : visibleArticles
+                  .map((art, idx) => {
+                    const readers = getReadersForArticle(art);
+                    const readerSummary = readers.map((r) => `${r.name} (${r.age}t)`).join(", ");
+                    return `
+                  <section class="news-article" data-art-idx="${idx}">
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+                      <span class="badge-tag">${escHtml(art.tag)}</span>
+                      <span class="news-reader-count">${readers.length} người đang đọc</span>
+                    </div>
+
+                    <button type="button" class="news-open-detail-btn" data-open-idx="${idx}">
+                      <h3>${escHtml(art.title)}</h3>
+                      <span class="news-source">${escHtml(art.source)}</span>
+                      <span class="news-body">${escHtml(art.body)}</span>
+                      <span class="news-read-more-hint">Chạm vào bản tin để xem các điểm chính & danh sách người đọc →</span>
+                    </button>
+
+                    <div class="news-readers-strip">
+                      <div class="news-readers-avatars">
+                        ${readers.slice(0, 3).map((r) => renderSeniorAvatarSvg(r)).join("")}
+                      </div>
+                      <div class="news-readers-text">
+                        <strong>Đang đọc & bàn tin này:</strong> ${escHtml(readerSummary)}
+                      </div>
+                    </div>
+
+                    <div class="btn-row">
+                      <button type="button" class="btn-secondary read-news-btn" data-idx="${idx}">${ico("speaker")}<span>Nghe đọc báo</span></button>
+                      <button type="button" class="btn-primary bring-tea-btn" data-idx="${idx}">${ico("tea")}<span>Cùng đàm đạo (${readers.length})</span></button>
+                    </div>
+                  </section>
+                `;
+                  })
+                  .join("")
+        }
       </article>
     `;
+
+    const runSearch = (rawVal) => {
+      const q = String(rawVal || "").trim();
+      state.newspaper.searchQuery = q;
+      state.newspaper.liveItems = [];
+      saveState();
+      const matched = getFilteredNewspaperArticles();
+      if (q && matched.length === 0) {
+        fetchLiveKeywordArticles(q);
+      } else {
+        renderNewspaper();
+      }
+    };
+
+    const searchInput = document.getElementById("news-search-input");
+    document.getElementById("btn-news-search").addEventListener("click", () => {
+      runSearch(searchInput.value);
+    });
+    searchInput.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter") {
+        ev.preventDefault();
+        runSearch(searchInput.value);
+      }
+    });
+
+    els.main.querySelectorAll("[data-news-kw]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const kw = btn.dataset.newsKw;
+        const already = stripVnAccents(state.newspaper.searchQuery) === stripVnAccents(kw);
+        state.newspaper.selectedCategory = "all";
+        runSearch(already ? "" : kw);
+      });
+    });
+
+    els.main.querySelectorAll("[data-news-cat]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        state.newspaper.selectedCategory = btn.dataset.newsCat;
+        state.newspaper.liveItems = [];
+        saveState();
+        renderNewspaper();
+      });
+    });
+
+    const clearBtn = document.getElementById("btn-clear-news-filter");
+    if (clearBtn) {
+      clearBtn.addEventListener("click", () => {
+        state.newspaper.selectedCategory = "all";
+        state.newspaper.searchQuery = "";
+        state.newspaper.liveItems = [];
+        saveState();
+        renderNewspaper();
+      });
+    }
+
+    const fetchLiveBtn = document.getElementById("btn-fetch-live-news");
+    if (fetchLiveBtn) {
+      fetchLiveBtn.addEventListener("click", () => fetchLiveKeywordArticles(searchQ));
+    }
 
     document.getElementById("btn-toggle-rss-admin").addEventListener("click", () => {
       state.newspaper.adminOpen = !state.newspaper.adminOpen;
@@ -2208,6 +2657,7 @@
         const [approved] = state.newspaper.drafts.splice(idx, 1);
         if (approved) {
           approved.tag = approved.tag.replace(" (RSS nháp)", "");
+          approved.category = approved.category || "doi-song";
           state.newspaper.articles.unshift(approved);
           saveState();
           showToast("Đã duyệt tin RSS lên trang nhất Tờ Báo Sáng!");
@@ -2216,25 +2666,24 @@
       });
     });
 
+    els.main.querySelectorAll(".news-open-detail-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const art = visibleArticles[Number(btn.dataset.openIdx)];
+        if (art) openArticleDetailModal(art);
+      });
+    });
+
     els.main.querySelectorAll(".read-news-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
-        const art = state.newspaper.articles[Number(btn.dataset.idx)];
-        speak(`${art.title}. ${art.body}`);
+        const art = visibleArticles[Number(btn.dataset.idx)];
+        if (art) speak(`${art.title}. ${art.body}`, { announceToast: true });
       });
     });
 
     els.main.querySelectorAll(".bring-tea-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
-        const art = state.newspaper.articles[Number(btn.dataset.idx)];
-        const provShort = getProvince(state.user.provinceId).short;
-        const table = getCurrentTable();
-        state.teaRoom.subView = "table";
-        pushTableMessage(
-          `${state.user.name} (${provShort})`,
-          `Mời cả bàn đọc tin báo sáng nay: "${art.title}"`,
-          Math.min(4, table.members.length)
-        );
-        navigate("tearoom");
+        const art = visibleArticles[Number(btn.dataset.idx)];
+        if (art) joinArticleDiscussionTable(art, false);
       });
     });
   }
