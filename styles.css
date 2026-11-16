@@ -1696,3 +1696,39 @@ p {
   border-color: var(--accent-jade);
   color: #FFFFFF;
 }
+
+/* Social Share Kit alongside QR Codes (Direct URL + Pre-written Post Text) */
+.share-kit-box {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.share-url-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.share-url-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.88rem;
+  background-color: #FFFDF9;
+}
+
+.share-post-area {
+  width: 100%;
+  min-height: 96px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-strong);
+  background-color: #FFFDF9;
+  color: var(--ink-primary);
+  font-family: inherit;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  resize: vertical;
+}

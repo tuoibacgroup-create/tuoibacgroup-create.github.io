@@ -759,7 +759,112 @@
     ) {
       return window.location.origin + window.location.pathname.replace(/index\.html$/i, "");
     }
-    return "https://tuoibac.vn/";
+    return "https://tuoibacgroup-create.github.io/";
+  }
+
+  function copyTextSafe(text, successMsg) {
+    const str = String(text || "");
+    const fallbackCopy = () => {
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = str;
+        ta.setAttribute("readonly", "");
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      } catch (e) {
+        // Ignore fallback error
+      }
+    };
+
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+      navigator.clipboard.writeText(str).catch(fallbackCopy);
+    } else {
+      fallbackCopy();
+    }
+    showToast(successMsg || "Đã sao chép vào bộ nhớ tạm!");
+  }
+
+  function makeStandaloneQrDataUrl(url, caption) {
+    const c = document.createElement("canvas");
+    c.width = 360;
+    c.height = 410;
+    const ctx = c.getContext("2d");
+    ctx.fillStyle = "#FBF5E8";
+    ctx.fillRect(0, 0, 360, 410);
+    ctx.strokeStyle = "#B83B2A";
+    ctx.lineWidth = 4;
+    ctx.strokeRect(10, 10, 340, 390);
+    if (window.TeaRoomScene && typeof window.TeaRoomScene.drawQrToCanvas === "function") {
+      window.TeaRoomScene.drawQrToCanvas(ctx, url, 55, 28, 250);
+    }
+    ctx.fillStyle = "#231A14";
+    ctx.font = "bold 17px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(caption || "Quét mã QR để mở trên điện thoại", 180, 316);
+    ctx.fillStyle = "#B83B2A";
+    ctx.font = "15px sans-serif";
+    const shortU = url.replace(/^https?:\/\//, "");
+    ctx.fillText(shortU.length > 38 ? shortU.slice(0, 36) + "..." : shortU, 180, 348);
+    ctx.fillStyle = "#5A4638";
+    ctx.font = "14px sans-serif";
+    ctx.fillText("Không cần tài khoản — Chạm là vào ngay", 180, 376);
+    return c.toDataURL("image/png");
+  }
+
+  function renderSocialShareKitHtml(opts) {
+    const prefix = opts.prefix || "share";
+    const copyLinkBtnId = opts.copyLinkBtnId || `${prefix}-btn-copy-url`;
+    return `
+      <div class="share-kit-box">
+        <div class="field-label">
+          <span>Đường dẫn trực tiếp (gửi nhanh qua tin nhắn):</span>
+          <div class="share-url-row">
+            <input type="text" class="input-lg share-url-input" id="${prefix}-url-in" readonly value="${escHtml(opts.shareUrl)}" />
+            <button type="button" class="btn-secondary btn-inline" id="${copyLinkBtnId}">Chép link</button>
+          </div>
+        </div>
+
+        <div class="field-label">
+          <span>Nội dung bài đăng / lời mời soạn sẵn (Zalo, Facebook, Messenger):</span>
+          <textarea class="textarea-lg share-post-area" id="${prefix}-post-in" rows="3">${escHtml(opts.postText)}</textarea>
+          <button type="button" class="btn-jade" id="${prefix}-btn-copy-post">
+            ${ico("share")}
+            <span>Chép cả lời mời + link (Dán lên MXH)</span>
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  function bindSocialShareKit(opts) {
+    const prefix = opts.prefix || "share";
+    const copyLinkBtnId = opts.copyLinkBtnId || `${prefix}-btn-copy-url`;
+    const urlIn = document.getElementById(`${prefix}-url-in`);
+    const postIn = document.getElementById(`${prefix}-post-in`);
+    const copyUrlBtn = document.getElementById(copyLinkBtnId);
+    const copyPostBtn = document.getElementById(`${prefix}-btn-copy-post`);
+
+    if (urlIn) {
+      urlIn.addEventListener("click", () => {
+        urlIn.select();
+        copyTextSafe(urlIn.value, "Đã sao chép đường dẫn!");
+      });
+    }
+    if (copyUrlBtn) {
+      copyUrlBtn.addEventListener("click", () => {
+        copyTextSafe(urlIn ? urlIn.value : opts.shareUrl, "Đã sao chép đường dẫn để gửi bạn bè!");
+      });
+    }
+    if (copyPostBtn) {
+      copyPostBtn.addEventListener("click", () => {
+        const fullPost = postIn ? postIn.value : opts.postText;
+        copyTextSafe(fullPost, "Đã sao chép lời mời kèm link — dán ngay lên Zalo / Facebook!");
+      });
+    }
   }
 
   function applyUrlDeepLinkIfPresent() {
@@ -968,34 +1073,47 @@
     if (shareBtn) {
       shareBtn.addEventListener("click", () => {
         const dataUrl = drawGreetingCardDataUrl(myProv.short, state.user.mood);
+        const baseShare = getPublicBaseUrl();
+        const checkinUrl = `${baseShare}?tinh=${encodeURIComponent(state.user.provinceId)}`;
+        const checkinPost = `Sáng nay ${state.user.name} (${getUserAge()} tuổi, ${myProv.short}) đã điểm danh bình an tại Quán Trà Tuổi Bạc — trạng thái: ${state.user.mood}. Chúc cả nhà và hội đồng niên ngày mới nhiều sức khỏe!\nMời vào quán trà cùng tôi tại: ${checkinUrl}`;
+
         openDialog(
-          "Thiệp chúc buổi sáng gửi Zalo",
+          "Chia sẻ Thiệp & Mã QR buổi sáng",
           `
           <img src="${dataUrl}" alt="Thiệp điểm danh Tuổi Bạc" style="width:100%; border-radius:12px; border:1px solid #D5C4AA;" />
-          <p style="font-size:0.86rem;">Bác có thể chia sẻ trực tiếp qua Zalo hoặc lưu ảnh vào điện thoại để gửi vào nhóm Hội đồng niên.</p>
           <div class="btn-row">
-            <a class="btn-primary" href="${dataUrl}" download="thiep-tuoi-bac.png" style="text-decoration:none;">Lưu ảnh</a>
-            <button type="button" class="btn-jade" id="btn-web-share-card">Gửi Zalo ngay</button>
+            <a class="btn-primary" href="${dataUrl}" download="thiep-tuoi-bac.png" style="text-decoration:none;">Lưu ảnh QR</a>
+            <button type="button" class="btn-jade" id="btn-web-share-card">${ico("share")}<span>Chia sẻ nhanh</span></button>
           </div>
+          ${renderSocialShareKitHtml({
+            prefix: "checkin-share",
+            shareUrl: checkinUrl,
+            postText: checkinPost
+          })}
           `
         );
+        bindSocialShareKit({
+          prefix: "checkin-share",
+          shareUrl: checkinUrl,
+          postText: checkinPost
+        });
         document.getElementById("btn-web-share-card").addEventListener("click", async () => {
+          const postEl = document.getElementById("checkin-share-post-in");
+          const currentText = postEl ? postEl.value : checkinPost;
           if (navigator.share) {
             try {
               await navigator.share({
                 title: "Lời chúc buổi sáng từ Tuổi Bạc",
-                text: `${state.user.name} (${myProv.short}) đã điểm danh bình an hôm nay và chúc các bác ngày mới vui khỏe!`
+                text: currentText,
+                url: checkinUrl
               });
-              showToast("Đã mở bảng chia sẻ Zalo!");
+              showToast("Đã mở bảng chia sẻ lên mạng xã hội!");
               return;
             } catch (err) {
               // Fall back to clipboard
             }
           }
-          if (navigator.clipboard) {
-            navigator.clipboard.writeText(`${state.user.name} (${myProv.short}) chúc cả nhà ngày mới bình an tại Tuổi Bạc!`).catch(() => {});
-          }
-          showToast("Đã sao chép lời chúc để bác dán vào nhóm Zalo.");
+          copyTextSafe(currentText, "Đã sao chép lời chúc kèm link để dán lên Zalo / Facebook!");
         });
       });
     }
@@ -1714,7 +1832,8 @@
       const currLine = state.teaRoom.log[state.teaRoom.log.length - 1];
       const baseShare = getPublicBaseUrl();
       const shareUrl = `${baseShare}?phong=${encodeURIComponent(room.id)}&ban=${state.teaRoom.tableIdx + 1}`;
-      const displayUrl = shareUrl.replace(/^https?:\/\//, "");
+      const peerNames = table.members.map((m) => m.name).join(", ");
+      const postText = `${state.user.name} (${getUserAge()} tuổi) đang ngồi uống trà tại ${table.name} (${room.name}) cùng ${peerNames}. Mời các anh chị bấm vào link dưới đây để vào ngồi chung bàn trò chuyện (không cần tài khoản):\n${shareUrl}`;
       const png = window.TeaRoomScene.exportPostcardPng({
         userName: state.user.name,
         userAge: getUserAge(),
@@ -1726,24 +1845,33 @@
         shareUrl
       });
       openDialog(
-        "Check-in bàn trà gửi Zalo",
+        "Check-in bàn trà (Ảnh QR + Link MXH)",
         `<img src="${png}" alt="Ảnh Check-in bàn trà Tuổi Bạc" style="width:100%; border-radius:12px; border:1px solid #D5C4AA;" />
          <div class="btn-row">
-           <a class="btn-primary" href="${png}" download="checkin-ban-tra-tuoi-bac.png" style="text-decoration:none;">Lưu ảnh</a>
-           <button type="button" class="btn-jade" id="btn-share-table-zalo">${ico("share")}<span>Gửi Zalo</span></button>
+           <a class="btn-primary" href="${png}" download="checkin-ban-tra-tuoi-bac.png" style="text-decoration:none;">Lưu ảnh QR</a>
+           <button type="button" class="btn-jade" id="btn-share-table-zalo">${ico("share")}<span>Chia sẻ nhanh</span></button>
          </div>
-         <button type="button" class="btn-secondary" id="btn-copy-table-link">Sao chép link: ${escHtml(displayUrl)}</button>`
+         ${renderSocialShareKitHtml({
+           prefix: "table-share",
+           copyLinkBtnId: "btn-copy-table-link",
+           shareUrl,
+           postText
+         })}`
       );
-      document.getElementById("btn-copy-table-link").addEventListener("click", () => {
-        if (navigator.clipboard) navigator.clipboard.writeText(shareUrl).catch(() => {});
-        showToast("Đã sao chép link bàn trà để gửi bạn bè!");
+      bindSocialShareKit({
+        prefix: "table-share",
+        copyLinkBtnId: "btn-copy-table-link",
+        shareUrl,
+        postText
       });
       document.getElementById("btn-share-table-zalo").addEventListener("click", async () => {
+        const postEl = document.getElementById("table-share-post-in");
+        const currentText = postEl ? postEl.value : postText;
         if (navigator.share) {
           try {
             await navigator.share({
               title: `Check-in ${table.name} — Tuổi Bạc`,
-              text: `${state.user.name} đang ngồi cùng các bác tại ${table.name} (${room.name}). Mời bác vào ngồi chung bàn:`,
+              text: currentText,
               url: shareUrl
             });
             return;
@@ -1751,8 +1879,7 @@
             // Fall back to clipboard
           }
         }
-        if (navigator.clipboard) navigator.clipboard.writeText(shareUrl).catch(() => {});
-        showToast("Đã sao chép lời mời và link bàn trà gửi Zalo.");
+        copyTextSafe(currentText, "Đã sao chép lời mời và link bàn trà để dán lên Zalo / Facebook!");
       });
     });
 
@@ -2344,7 +2471,7 @@
 
         <div style="display:flex; justify-content:space-between; font-weight:700;">
           <span>${escHtml(state.user.name)}: <span class="num">${o.scoreP}</span> quân</span>
-          <span>${o.mode === "ai" ? "Máy (Đối thủ tự động)" : "Bác Minh (Hải Phòng)"}: <span class="num">${o.scoreAI}</span> quân</span>
+          <span>${o.mode === "ai" ? "Máy (Đối thủ tự động)" : "Anh Minh · 71t (Hải Phòng)"}: <span class="num">${o.scoreAI}</span> quân</span>
         </div>
 
         <div class="oaq-board" role="group" aria-label="Bàn cờ Ô ăn quan">
@@ -2399,8 +2526,13 @@
             ? `
           <div class="surface-panel warm">
             <strong>Ván treo đang chờ lượt bạn cờ</strong>
-            <p style="font-size:0.84rem;">Đã lưu nước đi. Gửi lời nhắc "Đến lượt bác" qua Zalo cho Bác Minh:</p>
-            <button type="button" class="btn-primary" id="oaq-copy-zalo">${ico("share")}<span>Gửi nhắc lượt qua Zalo</span></button>
+            <p style="font-size:0.88rem;">Đã lưu nước đi. Gửi mã QR hoặc tin nhắn nhắc lượt cho Anh Minh:</p>
+            ${renderSocialShareKitHtml({
+              prefix: "oaq-share",
+              copyLinkBtnId: "oaq-copy-zalo",
+              shareUrl: o.zaloInviteUrl,
+              postText: `${state.user.name} vừa đi 1 nước trong ván Ô ăn quan cùng Anh Minh. Mời bấm vào link này để đi tiếp lượt của mình nhé:\n${o.zaloInviteUrl}`
+            })}
           </div>
         `
             : ""
@@ -2425,8 +2557,8 @@
 
       if (state.oaq.mode === "async") {
         state.oaq.turn = "ai";
-        state.oaq.statusText = "Bác đã đi xong lượt. Ván treo đang chờ đối thủ phản hồi.";
-        state.oaq.zaloInviteUrl = "https://tuoibac.vn/van-treo/8492";
+        state.oaq.statusText = `Đã đi xong lượt. Ván treo đang chờ đối thủ phản hồi.`;
+        state.oaq.zaloInviteUrl = `${getPublicBaseUrl()}?phong=phong-co&ban=2`;
         saveState();
         addXu(3, "Đi nước cờ ván treo");
         renderGames();
@@ -2474,10 +2606,12 @@
       renderGames();
     });
 
-    const copyBtn = document.getElementById("oaq-copy-zalo");
-    if (copyBtn) {
-      copyBtn.addEventListener("click", () => {
-        showToast("Đã sao chép lời mời ván treo gửi qua Zalo!");
+    if (o.mode === "async" && o.zaloInviteUrl) {
+      bindSocialShareKit({
+        prefix: "oaq-share",
+        copyLinkBtnId: "oaq-copy-zalo",
+        shareUrl: o.zaloInviteUrl,
+        postText: `${state.user.name} vừa đi 1 nước trong ván Ô ăn quan cùng Anh Minh. Mời bấm vào link này để đi tiếp lượt của mình nhé:\n${o.zaloInviteUrl}`
       });
     }
 
@@ -3537,14 +3671,17 @@
   function renderFamilyView() {
     const prov = getProvince(state.user.provinceId);
     const days = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
-    const shareLink = `https://tuoibac.vn/vao-ban/${state.user.provinceId}?ten=${encodeURIComponent(state.user.name)}`;
+    const baseShare = getPublicBaseUrl();
+    const shareLink = `${baseShare}?tinh=${encodeURIComponent(state.user.provinceId)}&phong=phong-tra`;
+    const qrImg = makeStandaloneQrDataUrl(shareLink, `Mở quán trà cho ${state.user.name}`);
+    const familyPost = `Con gửi bố/mẹ đường dẫn vào Quán Trà Tuổi Bạc (chữ to, có đọc báo sáng và bàn trà đồng hương ${prov.short}). Bố/mẹ chỉ cần chạm vào đường dẫn dưới đây là vào thẳng, không cần tạo tài khoản hay nhớ mật khẩu:\n${shareLink}`;
 
     els.main.innerHTML = `
       <h1>Góc Con Cái (30–50 tuổi)</h1>
       <p class="lead-copy">Màn hình mô phỏng góc nhìn của con cái đi làm xa: theo dõi nhẹ nhàng, không làm bố mẹ có cảm giác bị giám sát.</p>
 
       <div class="surface-panel jade">
-        <h3>Trạng thái của ${escHtml(state.user.name)} (${escHtml(prov.short)})</h3>
+        <h3>Trạng thái của ${escHtml(state.user.name)} · ${getUserAge()} tuổi (${escHtml(prov.short)})</h3>
         <p style="font-weight:700;">${state.user.checkedInToday ? `Sáng nay đã điểm danh: ${escHtml(state.user.mood)}` : "Sáng nay chưa điểm danh — nhắc nhẹ (không báo động)"}</p>
         <div style="display:grid; grid-template-columns:repeat(7, 1fr); gap:6px; text-align:center;">
           ${days
@@ -3561,18 +3698,23 @@
       </div>
 
       <div class="surface-panel">
-        <h3>Link vào thẳng quán trà cho bố mẹ</h3>
-        <p style="font-size:0.84rem;">Bố mẹ chỉ cần chạm link trên Zalo là mở ngay trang chủ chữ to, không phải đăng ký mật khẩu.</p>
-        <input type="text" class="input-lg" readonly value="${escHtml(shareLink)}" />
-        <button type="button" class="btn-primary" id="btn-copy-family-link">${ico("share")}<span>Sao chép link gửi Zalo cho bố mẹ</span></button>
+        <h3>Mã QR & Tin nhắn gửi sẵn cho bố mẹ</h3>
+        <p style="font-size:0.88rem; color:var(--ink-secondary);">Đưa mã QR này cho bố mẹ quét bằng Zalo hoặc sao chép tin nhắn mẫu bên dưới gửi qua Zalo / Messenger:</p>
+        <img src="${qrImg}" alt="Mã QR vào quán trà cho bố mẹ" style="width:100%; max-width:280px; margin:0 auto; display:block; border-radius:12px; border:1px solid #D5C4AA;" />
+        ${renderSocialShareKitHtml({
+          prefix: "family-share",
+          copyLinkBtnId: "btn-copy-family-link",
+          shareUrl: shareLink,
+          postText: familyPost
+        })}
       </div>
     `;
 
-    document.getElementById("btn-copy-family-link").addEventListener("click", () => {
-      if (navigator.clipboard) {
-        navigator.clipboard.writeText(shareLink).catch(() => {});
-      }
-      showToast("Đã sao chép đường link cài đặt sẵn gửi qua Zalo!");
+    bindSocialShareKit({
+      prefix: "family-share",
+      copyLinkBtnId: "btn-copy-family-link",
+      shareUrl: shareLink,
+      postText: familyPost
     });
   }
 
