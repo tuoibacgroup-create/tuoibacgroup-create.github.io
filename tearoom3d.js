@@ -19,6 +19,12 @@ window.TeaRoomScene = (function () {
   let hostServingTimer = 0;
   let steamParticles = [];
   let activeSeatIdx = 0;
+  let activeStickerPop = null; // { seatIdx, label, bg, color, expiresAt }
+  let overviewWideLevel = "wide"; // "wide" | "ultrawide"
+  let overviewAzimuth = 0;
+  let isDraggingOverview = false;
+  let dragStartX = 0;
+  let dragStartAzimuth = 0;
   let currentConfig = null;
   let onFallbackCallback = null;
 
@@ -574,7 +580,8 @@ window.TeaRoomScene = (function () {
       "thi-huu": 0xc84b38,
       "ky-thu": 0xd49a35,
       "giu-lua": 0xf0b23a,
-      "dong-ngu": 0x6b8f4e
+      "dong-ngu": 0x6b8f4e,
+      "cay-cao": 0xf5c242
     };
     if (frameColors[frameId]) {
       const fHex = frameColors[frameId];
@@ -829,7 +836,7 @@ window.TeaRoomScene = (function () {
     sun.shadow.mapSize.height = 1024;
     sun.shadow.camera.near = 1;
     sun.shadow.camera.far = 24;
-    const d = isOverview ? 7.5 : 4.5;
+    const d = isOverview ? 10.5 : 4.5;
     sun.shadow.camera.left = -d;
     sun.shadow.camera.right = d;
     sun.shadow.camera.top = d;
@@ -837,17 +844,19 @@ window.TeaRoomScene = (function () {
     sun.shadow.bias = -0.0008;
     scene.add(sun);
 
-    const fill = new THREE.DirectionalLight(0xfff2de, 0.45);
-    fill.position.set(4.5, 4.2, 6.2);
+    const fill = new THREE.DirectionalLight(0xfff2de, 0.48);
+    fill.position.set(5.5, 5.2, 7.2);
     scene.add(fill);
 
-    const lanternLight = new THREE.PointLight(0xffb85c, 0.75, 11);
-    lanternLight.position.set(0, 3.1, 0);
+    const lanternLight = new THREE.PointLight(0xffb85c, 0.78, 15);
+    lanternLight.position.set(0, 3.4, 0);
     scene.add(lanternLight);
 
-    // Warm honey-wood plank floor
+    // Warm honey-wood plank floor (expanded wide for 5-bay panoramic tea hall)
+    const floorW = isOverview ? 38 : 24;
+    const floorD = isOverview ? 28 : 20;
     const floor = new THREE.Mesh(
-      new THREE.PlaneGeometry(24, 20),
+      new THREE.PlaneGeometry(floorW, floorD),
       new THREE.MeshStandardMaterial({
         map: getWoodFloorTex(theme.floorHex),
         roughness: 0.72,
@@ -859,70 +868,122 @@ window.TeaRoomScene = (function () {
     scene.add(floor);
 
     // Back wall with wooden wainscoting (ốp gỗ chân tường)
-    const wallZ = isOverview ? -5.3 : -3.85;
+    const wallZ = isOverview ? -6.35 : -3.85;
     const backWall = new THREE.Mesh(
-      new THREE.PlaneGeometry(24, 7.5),
+      new THREE.PlaneGeometry(floorW, 8.2),
       new THREE.MeshStandardMaterial({ color: wallColor, roughness: 0.88 })
     );
-    backWall.position.set(0, 3.75, wallZ);
+    backWall.position.set(0, 4.1, wallZ);
     backWall.receiveShadow = true;
     scene.add(backWall);
 
     const wainscot = new THREE.Mesh(
-      new THREE.BoxGeometry(24, 0.98, 0.08),
+      new THREE.BoxGeometry(floorW, 1.05, 0.08),
       new THREE.MeshStandardMaterial({ color: 0x8b5d3b, roughness: 0.68 })
     );
-    wainscot.position.set(0, 0.49, wallZ + 0.04);
+    wainscot.position.set(0, 0.52, wallZ + 0.04);
     scene.add(wainscot);
 
     const chairRail = new THREE.Mesh(
-      new THREE.BoxGeometry(24, 0.08, 0.12),
+      new THREE.BoxGeometry(floorW, 0.09, 0.12),
       new THREE.MeshStandardMaterial({ color: 0x5d3920, roughness: 0.55 })
     );
-    chairRail.position.set(0, 1.0, wallZ + 0.06);
+    chairRail.position.set(0, 1.06, wallZ + 0.06);
     scene.add(chairRail);
 
-    // Sunlit wooden lattice window with green bamboo outside (framed completely inside camera!)
-    const winX = isOverview ? -3.1 : -2.05;
-    const winY = isOverview ? 2.35 : 1.78;
-    const winW = isOverview ? 2.5 : 1.95;
-    const winH = isOverview ? 1.55 : 1.24;
+    // Sunlit wooden lattice windows with green bamboo outside
+    const windowXs = isOverview ? [-4.45, 4.45] : [-2.05];
+    const winY = isOverview ? 2.48 : 1.78;
+    const winW = isOverview ? 2.55 : 1.95;
+    const winH = isOverview ? 1.58 : 1.24;
     const frameMat = new THREE.MeshStandardMaterial({ color: 0x623c22, roughness: 0.55 });
-
-    const winOuter = new THREE.Mesh(new THREE.BoxGeometry(winW + 0.18, winH + 0.18, 0.1), frameMat);
-    winOuter.position.set(winX, winY, wallZ + 0.06);
-    scene.add(winOuter);
-
-    const winSky = new THREE.Mesh(
-      new THREE.PlaneGeometry(winW, winH),
-      new THREE.MeshBasicMaterial({ color: 0xe6f5f0 })
-    );
-    winSky.position.set(winX, winY, wallZ + 0.12);
-    scene.add(winSky);
-
-    // Green bamboo stalks outside window
     const bambooMat = new THREE.MeshBasicMaterial({ color: 0x4b8b5b });
-    [-0.55, -0.18, 0.32].forEach((bx, bi) => {
-      const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.035, winH * 0.92, 8), bambooMat);
-      stalk.position.set(winX + bx, winY - 0.02, wallZ + 0.13);
-      stalk.rotation.z = (bi - 1) * 0.09;
-      scene.add(stalk);
 
-      const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), new THREE.MeshBasicMaterial({ color: 0x64a86e }));
-      leaf.scale.set(1.4, 0.55, 0.3);
-      leaf.position.set(winX + bx + 0.12, winY + 0.22 - bi * 0.15, wallZ + 0.135);
-      scene.add(leaf);
+    windowXs.forEach((winX) => {
+      const winOuter = new THREE.Mesh(new THREE.BoxGeometry(winW + 0.18, winH + 0.18, 0.1), frameMat);
+      winOuter.position.set(winX, winY, wallZ + 0.06);
+      scene.add(winOuter);
+
+      const winSky = new THREE.Mesh(
+        new THREE.PlaneGeometry(winW, winH),
+        new THREE.MeshBasicMaterial({ color: 0xe6f5f0 })
+      );
+      winSky.position.set(winX, winY, wallZ + 0.12);
+      scene.add(winSky);
+
+      [-0.55, -0.15, 0.34].forEach((bx, bi) => {
+        const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.035, winH * 0.92, 8), bambooMat);
+        stalk.position.set(winX + bx, winY - 0.02, wallZ + 0.13);
+        stalk.rotation.z = (bi - 1) * 0.09;
+        scene.add(stalk);
+
+        const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), new THREE.MeshBasicMaterial({ color: 0x64a86e }));
+        leaf.scale.set(1.4, 0.55, 0.3);
+        leaf.position.set(winX + bx + 0.12, winY + 0.22 - bi * 0.15, wallZ + 0.135);
+        scene.add(leaf);
+      });
+
+      [-winW * 0.18, winW * 0.18].forEach((mx) => {
+        const barV = new THREE.Mesh(new THREE.BoxGeometry(0.045, winH, 0.04), frameMat);
+        barV.position.set(winX + mx, winY, wallZ + 0.15);
+        scene.add(barV);
+      });
+      const barH = new THREE.Mesh(new THREE.BoxGeometry(winW, 0.045, 0.04), frameMat);
+      barH.position.set(winX, winY, wallZ + 0.15);
+      scene.add(barH);
     });
 
-    // Lattice mullions (chấn song gỗ)
-    [-winW * 0.18, winW * 0.18].forEach((mx) => {
-      const barV = new THREE.Mesh(new THREE.BoxGeometry(0.045, winH, 0.04), frameMat);
-      barV.position.set(winX + mx, winY, wallZ + 0.15);
-      scene.add(barV);
-    });
-    const barH = new THREE.Mesh(new THREE.BoxGeometry(winW, 0.045, 0.04), frameMat);
-    barH.position.set(winX, winY, wallZ + 0.15);
-    scene.add(barH);
+    if (isOverview) {
+      // 5-bay Vietnamese ironwood pillars (cột gỗ lim nhà 5 gian) + lanterns + garden veranda
+      const pillarMat = new THREE.MeshStandardMaterial({ color: 0x52311b, roughness: 0.52 });
+      [-8.4, -2.85, 2.85, 8.4].forEach((px) => {
+        const col = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.2, 5.6, 16), pillarMat);
+        col.position.set(px, 2.8, wallZ + 0.32);
+        col.castShadow = true;
+        scene.add(col);
+      });
+
+      [-5.2, 5.2].forEach((lx) => {
+        const lant = makeSilkLantern(0xffc86b);
+        lant.scale.set(0.98, 0.98, 0.98);
+        lant.position.set(lx, 3.55, -1.6);
+        scene.add(lant);
+      });
+
+      // Side bonsai trees along the left & right verandas
+      [-7.75, 7.75].forEach((bx) => {
+        [-1.3, 2.4].forEach((bz) => {
+          const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.32, 0.46, 14), pillarMat);
+          stand.position.set(bx, 0.23, bz);
+          scene.add(stand);
+          const tree = makeTableItemMesh("bonsai-mini");
+          tree.scale.set(1.9, 1.9, 1.9);
+          tree.position.set(bx, 0.46, bz);
+          scene.add(tree);
+        });
+      });
+
+      // Carved Tea Counter at the back center for Chị Trà
+      const counter = new THREE.Mesh(
+        new THREE.BoxGeometry(3.1, 0.86, 0.68),
+        new THREE.MeshStandardMaterial({ color: 0x6b4125, roughness: 0.5 })
+      );
+      counter.position.set(0, 0.43, -5.25);
+      counter.castShadow = true;
+      scene.add(counter);
+      const counterPot = makeDetailedTeapot(0xa44528);
+      counterPot.position.set(-0.45, 0.87, -5.25);
+      scene.add(counterPot);
+
+      // Front Bát Tràng brick courtyard veranda border
+      const veranda = new THREE.Mesh(
+        new THREE.BoxGeometry(26, 0.06, 1.25),
+        new THREE.MeshStandardMaterial({ color: 0xa85239, roughness: 0.78 })
+      );
+      veranda.position.set(0, 0.03, 5.85);
+      veranda.receiveShadow = true;
+      scene.add(veranda);
+    }
 
     // Hanging Vietnamese Calligraphy Scroll on back wall
     const scrollX = isOverview ? 0 : 0.96;
@@ -942,34 +1003,50 @@ window.TeaRoomScene = (function () {
     scene.add(dowelTop, dowelBot);
   }
 
+  function applyOverviewCameraPose() {
+    if (!camera) return;
+    const isUltra = overviewWideLevel === "ultrawide";
+    camera.fov = isUltra ? 58 : 52;
+    camera.updateProjectionMatrix();
+    const dist = isUltra ? 14.2 : 11.8;
+    const camY = isUltra ? 11.4 : 9.6;
+    const cx = Math.sin(overviewAzimuth) * dist;
+    const cz = Math.cos(overviewAzimuth) * dist;
+    camera.position.set(cx, camY, cz);
+    camera.lookAt(0, 0.3, 0.55);
+  }
+
   function init3DOverview(config) {
     const theme = config.roomTheme || {};
-    camera.fov = 39;
-    camera.updateProjectionMatrix();
-    camera.position.set(0, 10.1, 9.8);
-    camera.lookAt(0, 0.25, 0.35);
+    applyOverviewCameraPose();
 
     addRoomShell(theme, true);
 
-    // Central patterned carpet runner down the hall
+    // Wide central Indochine tile medallion carpet spanning the 5-bay hall
     const hallRug = new THREE.Mesh(
-      new THREE.CircleGeometry(3.9, 48),
+      new THREE.CircleGeometry(3.4, 48),
       new THREE.MeshStandardMaterial({ map: getVietTileRugTex(), transparent: true, roughness: 0.85 })
     );
     hallRug.rotation.x = -Math.PI / 2;
-    hallRug.position.set(0, 0.015, 0.4);
+    hallRug.position.set(0, 0.014, 0.45);
     hallRug.receiveShadow = true;
     scene.add(hallRug);
 
-    const cols = [-2.55, 2.55];
-    const rows = [-2.25, 0.45, 3.1];
+    // Spacious 5-bay staggered arc layout (Gian Trái / Gian Giữa / Gian Phải) so all 6 tables & pills never overlap!
+    const tableSlots = [
+      [-5.35, -1.15],
+      [0, -2.55],
+      [5.35, -1.15],
+      [-5.05, 2.35],
+      [0, 3.35],
+      [5.05, 2.35]
+    ];
     overviewTables = [];
 
     config.tables.slice(0, 6).forEach((tbl, tIdx) => {
-      const col = tIdx % 2;
-      const row = Math.floor(tIdx / 2);
-      const tx = cols[col];
-      const tz = rows[row];
+      const slot = tableSlots[tIdx % tableSlots.length];
+      const tx = slot[0];
+      const tz = slot[1];
       const tGroup = new THREE.Group();
       tGroup.position.set(tx, 0, tz);
 
@@ -1047,8 +1124,8 @@ window.TeaRoomScene = (function () {
 
     const hostBuild = makeLowPolySenior({ name: "Chị Trà", gender: "female", outfitColor: "#D98A2B", hat: "hair-bun" }, false, null, theme.cushionHex, "hair-bun", false);
     hostGroup = hostBuild.group;
-    hostGroup.scale.set(0.72, 0.72, 0.72);
-    hostGroup.position.set(0, 0, -3.9);
+    hostGroup.scale.set(0.76, 0.76, 0.76);
+    hostGroup.position.set(0, 0, -4.15);
     hostGroup.lookAt(0, 0, 2);
     scene.add(hostGroup);
   }
@@ -1415,10 +1492,13 @@ window.TeaRoomScene = (function () {
       item.anchor.getWorldPosition(v);
       v.project(camera);
       const sx = Math.max(58, Math.min(width - 58, (v.x * 0.5 + 0.5) * width));
-      const sy = Math.max(32, Math.min(height - 10, (-v.y * 0.5 + 0.5) * height));
+      const sy = Math.max(24, Math.min(height - 10, (-v.y * 0.5 + 0.5) * height));
       const isRec = item.idx === currentConfig.recommendedIdx;
       const count = item.table.members.length;
-      const text = isRec ? `${item.table.shortLabel} · Gợi ý (${count}/5)` : `${item.table.shortLabel} · ${count}/5 chỗ`;
+      const hostMark = item.table.isHostNamed ? " · Chủ bàn" : "";
+      const text = isRec
+        ? `${item.table.shortLabel} · Gợi ý (${count}/5)`
+        : `${item.table.shortLabel}${hostMark} · ${count}/5`;
       html += `<span class="seat-status-tag ${isRec ? "active-speaker" : ""}" style="left:${sx.toFixed(0)}px;top:${sy.toFixed(0)}px">${text}</span>`;
     });
 
@@ -1430,7 +1510,8 @@ window.TeaRoomScene = (function () {
     "thi-huu": "Thi Hữu",
     "ky-thu": "Kỳ Thủ",
     "giu-lua": "Giữ Lửa",
-    "dong-ngu": "Đồng Ngũ"
+    "dong-ngu": "Đồng Ngũ",
+    "cay-cao": "Cây Cao"
   };
 
   function formatSeatTagHtml(opts) {
@@ -1467,6 +1548,10 @@ window.TeaRoomScene = (function () {
         titleFrameId: s.titleFrameId,
         isRealPeer: s.isRealPeer
       });
+      if (activeStickerPop && activeStickerPop.seatIdx === i && activeStickerPop.expiresAt > Date.now()) {
+        const popY = Math.max(26, sy - 30);
+        html += `<span class="seat-sticker-pop" style="left:${sx.toFixed(0)}px;top:${popY.toFixed(0)}px;background:${activeStickerPop.bg};color:${activeStickerPop.color};border-color:${activeStickerPop.color}">${activeStickerPop.label}</span>`;
+      }
     });
 
     tagsLayerEl.innerHTML = html;
@@ -1499,19 +1584,25 @@ window.TeaRoomScene = (function () {
     ctx.fillStyle = "rgba(184, 59, 42, 0.1)";
     ctx.fillRect(w * 0.44, h * 0.16, w * 0.12, h * 0.84);
 
-    const cols = [w * 0.25, w * 0.75];
-    const rows = [h * 0.29, h * 0.56, h * 0.83];
+    const slots2D = [
+      [w * 0.17, h * 0.44],
+      [w * 0.5, h * 0.32],
+      [w * 0.83, h * 0.44],
+      [w * 0.19, h * 0.78],
+      [w * 0.5, h * 0.86],
+      [w * 0.81, h * 0.78]
+    ];
     let tagHtml = "";
 
     currentConfig.tables.slice(0, 6).forEach((tbl, tIdx) => {
-      const cx = cols[tIdx % 2];
-      const cy = rows[Math.floor(tIdx / 2)];
+      const cx = slots2D[tIdx % slots2D.length][0];
+      const cy = slots2D[tIdx % slots2D.length][1];
       const isRec = tIdx === currentConfig.recommendedIdx;
 
       // Patterned rug halo
       ctx.fillStyle = "#F7EFE0";
       ctx.beginPath();
-      ctx.ellipse(cx, cy + 5, 48, 25, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx, cy + 4, 42, 22, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.strokeStyle = isRec ? "#F4A836" : "#2E5E4E";
       ctx.lineWidth = isRec ? 3.5 : 1.5;
@@ -1519,44 +1610,45 @@ window.TeaRoomScene = (function () {
 
       ctx.fillStyle = "rgba(35, 26, 20, 0.16)";
       ctx.beginPath();
-      ctx.ellipse(cx, cy + 9, 35, 17, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx, cy + 8, 31, 15, 0, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = "#7D492A";
       ctx.beginPath();
-      ctx.ellipse(cx, cy, 34, 17, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx, cy, 30, 15, 0, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.fillStyle = isRec ? "#FFCF5C" : "#B84A2E";
       ctx.beginPath();
-      ctx.arc(cx, cy - 3, 6, 0, Math.PI * 2);
+      ctx.arc(cx, cy - 3, 5.5, 0, Math.PI * 2);
       ctx.fill();
 
       const offsets = [
-        { dx: -38, dy: -4 },
-        { dx: 38, dy: -4 },
-        { dx: -26, dy: 20 },
-        { dx: 26, dy: 20 }
+        { dx: -33, dy: -3 },
+        { dx: 33, dy: -3 },
+        { dx: -22, dy: 18 },
+        { dx: 22, dy: 18 }
       ];
       tbl.members.slice(0, 4).forEach((m, idx) => {
         const o = offsets[idx];
         ctx.fillStyle = m.outfitColor || "#2E5E4E";
         ctx.beginPath();
-        ctx.arc(cx + o.dx, cy + o.dy, 8, 0, Math.PI * 2);
+        ctx.arc(cx + o.dx, cy + o.dy, 7, 0, Math.PI * 2);
         ctx.fill();
         ctx.fillStyle = "#F4CFB4";
         ctx.beginPath();
-        ctx.arc(cx + o.dx, cy + o.dy - 6, 5.5, 0, Math.PI * 2);
+        ctx.arc(cx + o.dx, cy + o.dy - 5.5, 5, 0, Math.PI * 2);
         ctx.fill();
         ctx.fillStyle = "#E6E1D8";
         ctx.beginPath();
-        ctx.arc(cx + o.dx, cy + o.dy - 7.5, 5.2, Math.PI, 0);
+        ctx.arc(cx + o.dx, cy + o.dy - 7, 4.8, Math.PI, 0);
         ctx.fill();
       });
 
       const count = tbl.members.length;
-      const text = isRec ? `${tbl.shortLabel} · Gợi ý (${count}/5)` : `${tbl.shortLabel} · ${count}/5 chỗ`;
-      tagHtml += `<span class="seat-status-tag ${isRec ? "active-speaker" : ""}" style="left:${cx.toFixed(0)}px;top:${Math.max(28, cy - 22).toFixed(0)}px">${text}</span>`;
+      const hostMark = tbl.isHostNamed ? " · Chủ bàn" : "";
+      const text = isRec ? `${tbl.shortLabel} · Gợi ý` : `${tbl.shortLabel}${hostMark} · ${count}/5`;
+      tagHtml += `<span class="seat-status-tag ${isRec ? "active-speaker" : ""}" style="left:${cx.toFixed(0)}px;top:${Math.max(24, cy - 22).toFixed(0)}px">${text}</span>`;
     });
 
     if (tagsLayerEl) {
@@ -1732,6 +1824,10 @@ window.TeaRoomScene = (function () {
         titleFrameId: m.titleFrameId,
         isRealPeer: m.isRealPeer
       });
+      if (activeStickerPop && activeStickerPop.seatIdx === idx && activeStickerPop.expiresAt > Date.now()) {
+        const popY = Math.max(26, sy - 30);
+        tagHtml += `<span class="seat-sticker-pop" style="left:${sx.toFixed(0)}px;top:${popY.toFixed(0)}px;background:${activeStickerPop.bg};color:${activeStickerPop.color};border-color:${activeStickerPop.color}">${activeStickerPop.label}</span>`;
+      }
     });
 
     if (tagsLayerEl) {
@@ -1965,8 +2061,52 @@ window.TeaRoomScene = (function () {
       }
     }
 
+    if (canvasEl && config && config.viewMode === "overview") {
+      canvasEl.style.cursor = "grab";
+      canvasEl.onpointerdown = (ev) => {
+        isDraggingOverview = true;
+        dragStartX = ev.clientX;
+        dragStartAzimuth = overviewAzimuth;
+        canvasEl.style.cursor = "grabbing";
+      };
+      window.onpointermove = (ev) => {
+        if (!isDraggingOverview) return;
+        const dx = ev.clientX - dragStartX;
+        overviewAzimuth = Math.max(-0.48, Math.min(0.48, dragStartAzimuth - dx * 0.0045));
+        applyOverviewCameraPose();
+      };
+      window.onpointerup = () => {
+        if (isDraggingOverview) {
+          isDraggingOverview = false;
+          if (canvasEl) canvasEl.style.cursor = "grab";
+        }
+      };
+    }
+
     lastFrame = 0;
     animId = requestAnimationFrame(loop);
+  }
+
+  function toggleOverviewWide() {
+    overviewWideLevel = overviewWideLevel === "ultrawide" ? "wide" : "ultrawide";
+    overviewAzimuth = 0;
+    applyOverviewCameraPose();
+    return overviewWideLevel;
+  }
+
+  function getOverviewWideLevel() {
+    return overviewWideLevel;
+  }
+
+  function showSeatSticker(seatIdx, label, bg, color) {
+    activeSeatIdx = seatIdx;
+    activeStickerPop = {
+      seatIdx,
+      label: label || "Mời trà!",
+      bg: bg || "#FFF6DE",
+      color: color || "#9E6412",
+      expiresAt: Date.now() + 4800
+    };
   }
 
   function setSpeaker(idx) {
@@ -2137,6 +2277,9 @@ window.TeaRoomScene = (function () {
     dispose: dispose3D,
     setSpeaker,
     setSeatBadge,
+    showSeatSticker,
+    toggleOverviewWide,
+    getOverviewWideLevel,
     triggerTeaService,
     getActiveMode,
     drawQrToCanvas,

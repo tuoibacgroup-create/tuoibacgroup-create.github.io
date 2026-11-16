@@ -6,7 +6,8 @@
       return "";
     }
   })();
-  const STORAGE_KEY = URL_SLOT ? `tuoi_bac_sim_v6_${URL_SLOT}` : "tuoi_bac_sim_v6";
+  const STORAGE_KEY = URL_SLOT ? `tuoi_bac_sim_v7_${URL_SLOT}` : "tuoi_bac_sim_v7";
+  const VAULT_BACKUP_KEY = `${STORAGE_KEY}_vault_bak`;
   const D = window.TuoiBacData;
   const XQ = window.TuoiBacXiangqi;
   const RT = window.TuoiBacRealtime;
@@ -68,6 +69,7 @@
         accessoryId: "glasses",
         titleFrameId: "tri-am",
         xu: 35,
+        seniorityPoints: 28,
         flowersLeft: 3,
         giftedPoemIds: [],
         checkedInToday: false,
@@ -181,9 +183,29 @@
       },
       zen: {
         spaceIdx: 0,
-        incenseLit: false,
-        lanternsReleased: 18
+        incenseLit: true,
+        incenseCount: 14,
+        muyuCount: 0,
+        bellCount: 0,
+        lanternsReleased: 18,
+        peaceCardIdx: 0,
+        prayers: [
+          {
+            id: "seed-p1",
+            userName: "Chị Lan · 68t",
+            province: "Hà Nội",
+            prayerText: "Cầu chúc đại gia đình bình an, các con đi làm xa mạnh khỏe thuận hòa."
+          },
+          {
+            id: "seed-p2",
+            userName: "Anh Minh · 71t",
+            province: "Hải Phòng",
+            prayerText: "Tưởng nhớ đồng đội năm xưa, chúc anh em Sư đoàn 25 luôn dẻo dai."
+          }
+        ]
       },
+      memberLogs: [],
+      customTables: {},
       health: {
         medMorning: false,
         bpReadings: ["Sáng nay: 128/80 mmHg", "Hôm qua: 130/82 mmHg"],
@@ -242,10 +264,20 @@
   };
 
   function loadState() {
+    let raw = null;
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return createDefaultState();
-      const parsed = JSON.parse(raw);
+      raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(VAULT_BACKUP_KEY);
+    } catch (e) {}
+    if (!raw) return createDefaultState();
+    try {
+      let parsed = null;
+      try {
+        parsed = JSON.parse(raw);
+      } catch (errPrimary) {
+        const fallbackRaw = localStorage.getItem(VAULT_BACKUP_KEY);
+        if (!fallbackRaw) return createDefaultState();
+        parsed = JSON.parse(fallbackRaw);
+      }
       const def = createDefaultState();
       const merged = Object.assign({}, def, parsed, {
         auth: Object.assign({}, def.auth, parsed.auth || {}),
@@ -260,8 +292,15 @@
         xiangqi: Object.assign({}, def.xiangqi, parsed.xiangqi || {}),
         watch: Object.assign({}, def.watch, parsed.watch || {}),
         zen: Object.assign({}, def.zen, parsed.zen || {}),
-        health: Object.assign({}, def.health, parsed.health || {})
+        health: Object.assign({}, def.health, parsed.health || {}),
+        customTables: Object.assign({}, def.customTables, parsed.customTables || {})
       });
+      if (!Array.isArray(merged.memberLogs)) {
+        merged.memberLogs = [];
+      }
+      if (!Array.isArray(merged.zen.prayers) || merged.zen.prayers.length === 0) {
+        merged.zen.prayers = def.zen.prayers;
+      }
       if (!Array.isArray(merged.social.groups) || merged.social.groups.length === 0) {
         merged.social.groups = def.social.groups;
       }
@@ -295,10 +334,178 @@
     }
   }
 
+  function getSeniorityProgress() {
+    const tiers = D.SENIORITY_TIERS || [];
+    const pts = Number(state.user.seniorityPoints) || 28;
+    const isReg = Boolean(state.auth && state.auth.isRegistered);
+    if (!isReg) {
+      const guestTier = tiers[0];
+      const potentialPts = pts + 30;
+      let unlockedIfReg = tiers[1] || guestTier;
+      tiers.forEach((t) => {
+        if (t.level >= 1 && potentialPts >= t.minPoints) unlockedIfReg = t;
+      });
+      return {
+        current: guestTier,
+        next: unlockedIfReg,
+        points: pts,
+        percent: Math.min(92, Math.round((pts / 65) * 100)),
+        isGuest: true
+      };
+    }
+    let current = tiers[1] || tiers[0];
+    let next = null;
+    for (let i = 1; i < tiers.length; i++) {
+      if (pts >= tiers[i].minPoints) {
+        current = tiers[i];
+        next = tiers[i + 1] || null;
+      }
+    }
+    const pct = next
+      ? Math.min(100, Math.max(8, Math.round(((pts - current.minPoints) / (next.minPoints - current.minPoints)) * 100)))
+      : 100;
+    return { current, next, points: pts, percent: pct, isGuest: false };
+  }
+
+  function awardSeniorityPoints(delta, actionKey, category, detail) {
+    state.user.seniorityPoints = (Number(state.user.seniorityPoints) || 28) + (Number(delta) || 0);
+    const prog = getSeniorityProgress();
+    if (!prog.isGuest && prog.current && prog.current.frameUnlock && prog.current.frameUnlock !== "none") {
+      unlockTitleFrame(prog.current.frameUnlock, prog.current.name);
+    }
+    if (actionKey) {
+      logMemberBehavior(actionKey, category || "sinh-hoat", detail || "");
+    } else {
+      saveState();
+    }
+  }
+
+  function logMemberBehavior(action, category, detail) {
+    if (!Array.isArray(state.memberLogs)) state.memberLogs = [];
+    const prog = getSeniorityProgress();
+    const now = new Date();
+    const code =
+      state.auth && state.auth.isRegistered && state.auth.memberCode
+        ? state.auth.memberCode
+        : `KH-${String(RT ? RT.getClientId() : "local").slice(-4).toUpperCase()}`;
+    const entry = {
+      id: `ml_${code}_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`,
+      ts: now.getTime(),
+      hour: now.getHours(),
+      memberCode: code,
+      userName: state.user.name,
+      age: getUserAge(),
+      province: getProvince(state.user.provinceId).short,
+      seniorityTier: prog.current ? prog.current.name : "Khách Ghé Hiên Trà",
+      action: action || "interaction",
+      category: category || "sinh-hoat",
+      detail: String(detail || "").slice(0, 140)
+    };
+    state.memberLogs.unshift(entry);
+    if (state.memberLogs.length > 120) {
+      state.memberLogs = state.memberLogs.slice(0, 120);
+    }
+    saveState();
+    if (RT && typeof RT.publishMemberLog === "function") {
+      RT.publishMemberLog(entry, state.memberLogs.slice(0, 10));
+    }
+  }
+
+  function getAllMemberLogsMerged() {
+    const byId = {};
+    (D.SEED_MEMBER_LOGS || []).forEach((item) => {
+      byId[item.id] = item;
+    });
+    (state.memberLogs || []).forEach((item) => {
+      byId[item.id] = item;
+    });
+    if (RT && typeof RT.getMemberLogs === "function") {
+      RT.getMemberLogs().forEach((item) => {
+        byId[item.id] = item;
+      });
+    }
+    return Object.values(byId).sort((a, b) => (b.ts || 0) - (a.ts || 0));
+  }
+
+  function synthesizeMemberAiInsights() {
+    const allLogs = getAllMemberLogsMerged();
+    const byMember = {};
+    allLogs.forEach((l) => {
+      const k = l.memberCode || l.userName;
+      if (!byMember[k]) {
+        byMember[k] = {
+          memberCode: l.memberCode || k,
+          userName: l.userName || "Hội viên",
+          age: l.age || 65,
+          province: l.province || "Việt Nam",
+          seniorityTier: l.seniorityTier || "Khách Ghé Hiên Trà",
+          logs: [],
+          catCounts: {},
+          hours: []
+        };
+      }
+      byMember[k].logs.push(l);
+      if (l.category) byMember[k].catCounts[l.category] = (byMember[k].catCounts[l.category] || 0) + 1;
+      if (typeof l.hour === "number") byMember[k].hours.push(l.hour);
+    });
+
+    const catLabels = {
+      "dong-ngu": "Đồng đội & Hội nhóm",
+      "co-tuong": "Cờ Tướng & Cờ Thế",
+      "doc-bao": "Đọc Báo Thời Sự",
+      "chua-online": "Viếng Chùa An Lạc",
+      "tho-ca": "Ngâm Thơ Lục Bát",
+      "giao-luu": "Trà Đàm & Gửi Sticker",
+      "diem-danh": "Điểm Danh Sáng",
+      "sinh-hoat": "Sinh Hoạt Chung"
+    };
+
+    return Object.values(byMember).map((m) => {
+      const sortedCats = Object.entries(m.catCounts)
+        .sort((a, b) => b[1] - a[1])
+        .map(([cid]) => catLabels[cid] || cid);
+      const topInterests = sortedCats.slice(0, 2).join(" · ") || "Thưởng trà buổi sáng";
+      const avgHour = m.hours.length > 0 ? Math.round(m.hours.reduce((s, x) => s + x, 0) / m.hours.length) : 7;
+      const timePersona =
+        avgHour <= 8 ? `Hay dậy sớm (${avgHour}h sáng)` : avgHour <= 14 ? `Sinh hoạt ban trưa (${avgHour}h)` : `Thư giãn chiều tối (${avgHour}h)`;
+      const aiRecommendation = m.catCounts["co-tuong"]
+        ? "AI gợi ý: Mời giải Cờ Thế mới & ghép vào Phòng Cờ cùng kỳ hữu đồng niên."
+        : m.catCounts["chua-online"]
+        ? "AI gợi ý: Mở lời chúc Thẻ An Lạc buổi sáng & mời nghe thơ tĩnh tâm."
+        : m.catCounts["dong-ngu"]
+        ? "AI gợi ý: Ưu tiên thông báo khi đồng đội cùng đơn vị bật đèn Online."
+        : "AI gợi ý: Ghép vào bàn trà đồng hương ấm cúng và điểm báo sáng chữ to.";
+      return {
+        memberCode: m.memberCode,
+        userName: m.userName,
+        age: m.age,
+        province: m.province,
+        seniorityTier: m.seniorityTier,
+        totalActions: m.logs.length,
+        topInterests,
+        timePersona,
+        aiRecommendation,
+        latestDetail: m.logs[0] ? m.logs[0].detail : ""
+      };
+    });
+  }
+
   function trackEvent(eventName) {
     if (!state.analytics) state.analytics = {};
     state.analytics[eventName] = (state.analytics[eventName] || 0) + 1;
-    saveState();
+    const mapActionMeta = {
+      morning_checkin_done: [5, "diem-danh", "Điểm danh bình an buổi sáng"],
+      tea_table_joined: [3, "giao-luu", "Ngồi vào bàn trà trò chuyện"],
+      news_article_read: [3, "doc-bao", "Đọc bản tin trên Tờ Báo Sáng"],
+      async_game_move: [4, "co-tuong", "Đi nước cờ giao lưu"],
+      poem_posted: [6, "tho-ca", "Sáng tác / ngâm thơ lục bát"]
+    };
+    if (mapActionMeta[eventName]) {
+      const [pts, cat, det] = mapActionMeta[eventName];
+      awardSeniorityPoints(pts, eventName, cat, det);
+    } else {
+      saveState();
+    }
   }
 
   function getTitleFrame(id) {
@@ -342,7 +549,9 @@
 
   function saveState() {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      const serialized = JSON.stringify(state);
+      localStorage.setItem(STORAGE_KEY, serialized);
+      localStorage.setItem(VAULT_BACKUP_KEY, serialized);
     } catch (e) {
       // Ignore quota issue
     }
@@ -734,10 +943,16 @@
     }
   }
 
+  let templeAnimId = null;
+
   function navigate(route) {
     stopSpeaking();
     clearInterval(quizTimerId);
     clearInterval(cooldownTickId);
+    if (templeAnimId) {
+      cancelAnimationFrame(templeAnimId);
+      templeAnimId = null;
+    }
     if ((state.route === "tearoom" || state.route === "profile") && route !== state.route) {
       window.TeaRoomScene.dispose();
     }
@@ -925,34 +1140,51 @@
               <small>Đại đội 1K2 · D3 · Sư đoàn 25, lập đơn vị riêng &amp; xem bạn Đang Online (${countOnlineFriendsNow()} người)</small>
             </span>
           </button>
+
+          <button type="button" class="home-main-btn is-temple" data-go="zen">
+            <span class="home-main-icon">${ico("lotus", "ico-lg")}</span>
+            <span class="home-main-text">
+              <strong>6. Viếng Chùa &amp; Chánh Điện Online</strong>
+              <small>Ngồi bồ đoàn tĩnh tâm, dâng hương, gõ mõ, thỉnh chuông &amp; rút Thẻ An Lạc (0 thu phí)</small>
+            </span>
+          </button>
         </div>
 
+        ${(function () {
+          const prog = getSeniorityProgress();
+          return `
         <div class="passcard-banner ${state.auth.isRegistered ? "verified" : ""}" id="home-passcard-banner">
           <div class="passcard-head">
-            <strong>${
-              state.auth.isRegistered
-                ? `Thẻ Hội Viên đã mở (${escHtml(state.auth.memberCode)})`
-                : "Thẻ Hội Viên 10 Giây (Không mật khẩu rắc rối)"
-            }</strong>
-            <span class="member-code-chip">${state.auth.isRegistered ? escHtml(state.auth.phoneMasked || state.auth.memberCode) : "Đang vào tự do"}</span>
+            <strong>${escHtml(prog.current.name)}</strong>
+            <span class="member-code-chip">${
+              state.auth.isRegistered ? `Thẻ ${escHtml(state.auth.memberCode)} · ${prog.points} điểm` : `${prog.points} điểm tích lũy`
+            }</span>
           </div>
-          <p style="font-size:0.88rem; color:var(--ink-secondary);">
-            ${
-              state.auth.isRegistered
-                ? `Đã lưu an toàn ${state.social.friends.length} bạn tâm giao & ${state.social.joinedGroupIds.length} đơn vị/hội nhóm khi đổi điện thoại.`
-                : "Đọc báo, Điểm danh, Đánh cờ không cần đăng ký. Chỉ khi Kết bạn hoặc Lập Đơn vị mới cần cấp Thẻ bằng SĐT + 4 số dễ nhớ."
-            }
-          </p>
+          <div class="seniority-progress-wrap">
+            <div class="seniority-progress-track">
+              <div class="seniority-progress-fill" style="width:${prog.percent}%"></div>
+            </div>
+            <small style="font-size:0.88rem; color:var(--ink-secondary);">
+              ${
+                prog.isGuest
+                  ? `Đang ở bậc <strong>Khách Ghé Hiên Trà</strong>. Mở Thẻ Hội Viên 10 giây nhận ngay <strong>+30 điểm &amp; +15 Xu</strong>, lên thẳng <strong>${escHtml(prog.next.name)}</strong> và lưu dữ liệu đa lớp!`
+                  : prog.next
+                  ? `Còn <strong class="num">${prog.next.minPoints - prog.points}</strong> điểm thâm niên để thăng lên <strong>${escHtml(prog.next.name)}</strong> · Đã sao lưu đa lớp.`
+                  : "Đã đạt bậc cao quý nhất Cây Cao Bóng Cả (Lâu Năm)!"
+              }
+            </small>
+          </div>
           <div class="btn-row">
             <button type="button" class="btn-${state.auth.isRegistered ? "jade" : "primary"}" id="btn-home-open-auth">
               ${ico("card")}
-              <span>${state.auth.isRegistered ? "Xem Ảnh Thẻ QR / Đổi máy" : "Cấp Thẻ / Đăng nhập (10 giây)"}</span>
+              <span>${state.auth.isRegistered ? "Thẻ QR & Bậc Thâm Niên" : "Đăng nhập nhận Bậc Mộc Mạc"}</span>
             </button>
             <button type="button" class="btn-secondary" id="btn-home-open-friends">
               <span>Bạn Online (${countOnlineFriendsNow()})</span>
             </button>
           </div>
-        </div>
+        </div>`;
+        })()}
 
         ${
           !state.user.profileConfigured
@@ -1955,18 +2187,223 @@
     };
   }
 
+  function applyCustomTableMeta(baseTable) {
+    if (!baseTable) return baseTable;
+    const cleanKey = String(baseTable.id || "").replace(/[^a-zA-Z0-9_-]/g, "_");
+    const remoteMap = RT && typeof RT.getAllTableCustomMeta === "function" ? RT.getAllTableCustomMeta() : {};
+    const custom = remoteMap[cleanKey] || (state.customTables && state.customTables[cleanKey]) || null;
+    if (!custom || !custom.customName) return baseTable;
+    return Object.assign({}, baseTable, {
+      name: custom.customName,
+      customShortTitle: custom.customShortTitle || custom.customName.replace(/^Bàn\s*\d+\s*[:·-]?\s*/i, "").slice(0, 12),
+      topic: custom.customTopic || baseTable.topic,
+      hostOwnerName: custom.hostName || "",
+      hostOwnerCode: custom.hostCode || "",
+      isHostNamed: true
+    });
+  }
+
   function getTableWithRealPeers(baseTable) {
     if (!baseTable) return baseTable;
+    const withCustom = applyCustomTableMeta(baseTable);
     const realPeers = RT ? RT.getPeersAtTable(baseTable.id) : [];
-    if (realPeers.length === 0) return baseTable;
+    if (realPeers.length === 0) return withCustom;
     const mergedMembers = realPeers
       .map((p) => Object.assign({}, p, { isRealPeer: true }))
-      .concat(baseTable.members)
+      .concat(withCustom.members)
       .slice(0, 4);
-    return Object.assign({}, baseTable, {
+    return Object.assign({}, withCustom, {
       members: mergedMembers,
       realPeerCount: realPeers.length
     });
+  }
+
+  function openHostCustomTableModal(room, defaultTableIdx) {
+    const safeIdx = Math.max(0, Math.min(room.tables.length - 1, Number(defaultTableIdx) || 0));
+    const curTbl = getTableWithRealPeers(room.tables[safeIdx]);
+    openDialog(
+      "Đặt Tên Bàn Trà Đàm Đạo (Chủ Bàn)",
+      `
+      <div class="surface-panel warm">
+        <strong>Chủ bàn tự đặt chủ đề để mời bạn hợp ý vào đàm đạo</strong>
+        <p style="font-size:0.88rem;">Tên bàn và chủ đề mới sẽ hiện ngay trên Sảnh Toàn Cảnh và đồng bộ sang điện thoại các thành viên khác.</p>
+      </div>
+
+      <label class="field-label">
+        Chọn bàn muốn làm Chủ bàn (${escHtml(room.shortName)})
+        <select class="select-lg" id="host-tbl-idx-in">
+          ${room.tables
+            .map((t, i) => {
+              const eff = getTableWithRealPeers(t);
+              return `<option value="${i}" ${i === safeIdx ? "selected" : ""}>Bàn ${i + 1} — ${escHtml(eff.name)}</option>`;
+            })
+            .join("")}
+        </select>
+      </label>
+
+      <label class="field-label">
+        Tên bàn trà đàm đạo (hiển thị nổi bật)
+        <input type="text" class="input-lg" id="host-tbl-name-in" maxlength="48" value="${escHtml(
+          curTbl.isHostNamed ? curTbl.name : `Bàn ${safeIdx + 1}: Đàm đạo cùng ${state.user.name}`
+        )}" placeholder="VD: Bàn Anh Sơn: Chuyện Cờ Tàn & Trà Thái" />
+      </label>
+
+      <label class="field-label">
+        Chủ đề mời gọi dưới tên bàn
+        <input type="text" class="input-lg" id="host-tbl-topic-in" maxlength="68" value="${escHtml(
+          curTbl.topic || "Uống trà sáng, bàn chuyện thời sự & sức khỏe"
+        )}" />
+      </label>
+
+      <label class="field-label">
+        Lời chào mở đầu của Chủ bàn trên Bảng lời bàn trà
+        <input type="text" class="input-lg" id="host-tbl-welcome-in" maxlength="100" value="Mời các anh chị ghé bàn dùng chén trà nóng và cùng đàm đạo chủ đề hôm nay nhé!" />
+      </label>
+
+      <button type="button" class="btn-primary" id="btn-save-host-table">
+        ${ico("tea")}
+        <span>Lưu Tên Bàn &amp; Ngồi Vào Làm Chủ Bàn</span>
+      </button>
+      `
+    );
+
+    document.getElementById("btn-save-host-table").addEventListener("click", () => {
+      const pickedIdx = Number(document.getElementById("host-tbl-idx-in").value) || 0;
+      const rawTitle = (document.getElementById("host-tbl-name-in").value || "").trim();
+      const rawTopic = (document.getElementById("host-tbl-topic-in").value || "").trim();
+      const welcomeLine = (document.getElementById("host-tbl-welcome-in").value || "").trim();
+      if (!rawTitle) {
+        showToast("Vui lòng nhập tên bàn đàm đạo.");
+        return;
+      }
+      const targetBase = room.tables[pickedIdx];
+      const cleanKey = String(targetBase.id || "").replace(/[^a-zA-Z0-9_-]/g, "_");
+      const formattedName = /^Bàn\s*\d+/i.test(rawTitle) ? rawTitle : `Bàn ${pickedIdx + 1}: ${rawTitle}`;
+      const shortTitle = rawTitle.replace(/^Bàn\s*\d+\s*[:·-]?\s*/i, "").slice(0, 12);
+      const metaObj = {
+        tableKey: cleanKey,
+        roomId: room.id,
+        tableIdx: pickedIdx,
+        customName: formattedName,
+        customShortTitle: shortTitle,
+        customTopic: rawTopic || targetBase.topic,
+        hostName: `${state.user.name} · ${getUserAge()}t`,
+        hostCode: (state.auth && state.auth.memberCode) || (RT ? RT.getClientId() : "")
+      };
+      if (!state.customTables) state.customTables = {};
+      state.customTables[cleanKey] = metaObj;
+      if (RT && typeof RT.publishTableCustomMeta === "function") {
+        RT.publishTableCustomMeta(cleanKey, metaObj);
+      }
+      awardSeniorityPoints(8, "table_hosted", "giao-luu", `Đặt tên bàn đàm đạo: "${formattedName}"`);
+      closeDialog();
+      joinTable(pickedIdx);
+      if (welcomeLine) {
+        sendUserTeaMessage(welcomeLine, { source: "quick" });
+      }
+      showToast(`Đã mở "${formattedName}" — bác đang là Chủ bàn!`);
+    });
+  }
+
+  function renderStickerArtSvg(stk) {
+    const c = (stk && stk.color) || "#B83B2A";
+    const bg = (stk && stk.bg) || "#FFF6DE";
+    let inner = "";
+    switch (stk && stk.kind) {
+      case "tea":
+        inner = `<path d="M9 17h14v5a7 7 0 0 1-14 0v-5z" fill="${c}"/><path d="M23 18h2.5a2.5 2.5 0 0 1 0 5H23" fill="none" stroke="${c}" stroke-width="2"/><path d="M13 13q-1-3 1-5M18 13q1-3-1-5" fill="none" stroke="${c}" stroke-width="1.8" stroke-linecap="round"/>`;
+        break;
+      case "thumb":
+        inner = `<path d="M13 25H9v-9h4v9zm2-9l3.2-6.5A2 2 0 0 1 21 11v4h4.5a2 2 0 0 1 1.9 2.6l-2 6A2 2 0 0 1 23.5 25H15v-9z" fill="${c}"/>`;
+        break;
+      case "lotus":
+        inner = `<path d="M18 9c2.5 4 3.5 7.5 0 12-3.5-4.5-2.5-8 0-12z" fill="${c}"/><path d="M18 21c-4-1-7-4-7-8 3.5.5 6 3 7 8zm0 0c4-1 7-4 7-8-3.5.5-6 3-7 8z" fill="${c}" opacity="0.78"/><path d="M10 24c4 2 12 2 16 0" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round"/>`;
+        break;
+      case "smile":
+        inner = `<circle cx="18" cy="18" r="9.5" fill="none" stroke="${c}" stroke-width="2.2"/><path d="M13.5 16q1-1.8 2.2 0M20.3 16q1-1.8 2.2 0" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round"/><path d="M13.2 20.2q4.8 4.5 9.6 0" fill="none" stroke="${c}" stroke-width="2.2" stroke-linecap="round"/>`;
+        break;
+      case "chess":
+        inner = `<circle cx="18" cy="18" r="9.5" fill="#FFFDF7" stroke="${c}" stroke-width="2.2"/><path d="M13.5 14.5h9M18 12v12M13.5 21.5h9" stroke="${c}" stroke-width="2" stroke-linecap="round"/>`;
+        break;
+      case "star":
+        inner = `<polygon points="18,8.5 20.8,14.4 27.2,15.3 22.5,19.8 23.6,26.2 18,23.1 12.4,26.2 13.5,19.8 8.8,15.3 15.2,14.4" fill="${c}"/>`;
+        break;
+      case "heart":
+        inner = `<path d="M18 26.2s-8.5-5.2-8.5-11A4.8 4.8 0 0 1 18 12a4.8 4.8 0 0 1 8.5 3.2c0 5.8-8.5 11-8.5 11z" fill="${c}"/>`;
+        break;
+      default:
+        inner = `<path d="M18 9a6 6 0 0 1 6 6v4l2 2.5H10L12 19v-4a6 6 0 0 1 6-6z" fill="${c}"/><circle cx="18" cy="24.5" r="2" fill="${c}"/>`;
+    }
+    return `<span class="sticker-art-badge" style="background:${escHtml(bg)}"><svg viewBox="0 0 36 36" width="32" height="32" aria-hidden="true">${inner}</svg></span>`;
+  }
+
+  function formatTeaLineRichHtml(entry, isCurrent) {
+    if (!entry) return "";
+    const foundStk =
+      (entry.stickerId && (D.TEA_STICKERS || []).find((s) => s.id === entry.stickerId)) ||
+      (D.TEA_STICKERS || []).find((s) => entry.text === s.fullText);
+    if (foundStk) {
+      return `<span style="color:var(--accent-terracotta);font-weight:700;">${escHtml(entry.speaker)}:</span> <span class="tea-sticker-inline-card" style="background:${escHtml(foundStk.bg)};color:${escHtml(foundStk.color)};border-color:${escHtml(foundStk.color)}">${renderStickerArtSvg(foundStk)}<span>${escHtml(foundStk.shortLabel)}</span></span>`;
+    }
+    if (isCurrent) {
+      return `<span style="color:var(--accent-terracotta);">${escHtml(entry.speaker)}:</span> "${escHtml(entry.text)}"`;
+    }
+    return `${escHtml(entry.speaker)}: "${escHtml(entry.text)}"`;
+  }
+
+  function sendUserTeaSticker(stk) {
+    if (!stk) return;
+    if (getCooldownRemaining() > 0) {
+      showToast("Bác đợi vài giây nhịp nhấp trà rồi gửi tiếp nhé!");
+      return;
+    }
+    const provShort = getProvince(state.user.provinceId).short;
+    const baseTable = getCurrentTable();
+    const table = getTableWithRealPeers(baseTable);
+    const userSeatIdx = Math.min(4, table.members.length);
+    const speakerLabel = `${state.user.name} · ${getUserAge()} tuổi (${provShort})`;
+    state.teaRoom.lastSentAt = Date.now();
+    lastTableActivityAt = Date.now();
+
+    if (stk.ritual === "pour" && window.TeaRoomScene) {
+      window.TeaRoomScene.triggerTeaService();
+    }
+    if (window.TeaRoomScene && typeof window.TeaRoomScene.showSeatSticker === "function") {
+      window.TeaRoomScene.showSeatSticker(userSeatIdx, stk.shortLabel, stk.bg, stk.color);
+    }
+    playWoodPieceClack(false);
+    trackEvent("tea_msg_quick_0token");
+    awardSeniorityPoints(2, "tea_sticker", "giao-luu", `Gửi Sticker "${stk.shortLabel}" tại ${table.name}`);
+
+    pushTableMessage(speakerLabel, stk.fullText, userSeatIdx, stk.id);
+
+    if (RT) {
+      const nextSlice = state.teaRoom.log
+        .concat([{ speaker: speakerLabel, text: stk.fullText, stickerId: stk.id }])
+        .slice(-8);
+      RT.sendTableMessage(baseTable.id, speakerLabel, stk.fullText, stk.ritual || null, nextSlice, {
+        stickerId: stk.id,
+        stickerLabel: stk.shortLabel
+      });
+    }
+
+    const realPeersHere = RT ? RT.getPeersAtTable(baseTable.id) : [];
+    if (realPeersHere.length === 0 && table.members.length > 0) {
+      const peerIdx = Math.floor(Math.random() * table.members.length);
+      const peer = table.members[peerIdx];
+      const replyPool = D.TEA_STICKERS || [];
+      const replyStk = replyPool[(peerIdx + 2) % replyPool.length];
+      setTimeout(() => {
+        if (state.route === "tearoom" && state.teaRoom.subView === "table" && replyStk) {
+          if (window.TeaRoomScene && typeof window.TeaRoomScene.showSeatSticker === "function") {
+            window.TeaRoomScene.showSeatSticker(peerIdx, replyStk.shortLabel, replyStk.bg, replyStk.color);
+          }
+          pushTableMessage(`${peer.name} · ${peer.age} tuổi (${peer.province})`, replyStk.fullText, peerIdx, replyStk.id);
+        }
+      }, 4200);
+    }
+
+    startCooldownTicker();
   }
 
   function joinTable(idx) {
@@ -2051,18 +2488,22 @@
     );
   }
 
-  function pushTableMessage(speaker, text, seatIdx) {
+  function pushTableMessage(speaker, text, seatIdx, stickerId) {
     const trimmed = String(text || "").trim();
     const safeText = trimmed.length > 120 ? trimmed.slice(0, 117).trim() + "..." : trimmed;
     lastTableActivityAt = Date.now();
-    pendingQueue.push({ speaker, text: safeText, seatIdx });
+    pendingQueue.push({ speaker, text: safeText, seatIdx, stickerId: stickerId || null });
     processQueueStep();
   }
 
   function processQueueStep() {
     if (teaQueueTimerId || pendingQueue.length === 0) return;
     const nextItem = pendingQueue.shift();
-    state.teaRoom.log.push({ speaker: nextItem.speaker, text: nextItem.text });
+    state.teaRoom.log.push({
+      speaker: nextItem.speaker,
+      text: nextItem.text,
+      stickerId: nextItem.stickerId || null
+    });
     if (state.teaRoom.log.length > 30) {
       state.teaRoom.log = state.teaRoom.log.slice(-30);
     }
@@ -2136,7 +2577,7 @@
       }
       const left = getCooldownRemaining();
       const cdEl = document.getElementById("tea-cooldown-note");
-      const btns = els.main.querySelectorAll(".reply-btn");
+      const btns = els.main.querySelectorAll(".reply-btn, .sticker-btn");
       if (left > 0) {
         if (cdEl) {
           cdEl.hidden = false;
@@ -2162,11 +2603,11 @@
     const curr = log[log.length - 1];
 
     if (prevEl) {
-      prevEl.textContent = prev ? `${prev.speaker}: "${prev.text}"` : "";
+      prevEl.innerHTML = prev ? formatTeaLineRichHtml(prev, false) : "";
       prevEl.hidden = !prev;
     }
     if (currEl && curr) {
-      currEl.innerHTML = `<span style="color:var(--accent-terracotta);">${escHtml(curr.speaker)}:</span> "${escHtml(curr.text)}"`;
+      currEl.innerHTML = formatTeaLineRichHtml(curr, true);
     }
     if (els.simDict) {
       els.simDict.textContent = `Sổ từ điển tự học (${state.phoneticDict.length})`;
@@ -2445,15 +2886,25 @@
         </button>
       </div>
 
-      <!-- Toàn cảnh 3D / 2.5D 6 bàn trong phòng -->
-      <div class="tearoom-controls-row">
-        <span class="stage-badge" id="render-mode-badge">${state.settings.preferredRender === "3d" ? "Toàn cảnh 3D" : "Toàn cảnh 2.5D"}</span>
-        <button type="button" class="stage-badge-btn" id="btn-toggle-render-local">Đổi 3D / 2.5D</button>
+      <!-- Toàn cảnh 3D / 2.5D góc rộng 5 gian (3 cột x 2 hàng, kéo ngang xoay sảnh) -->
+      <div class="tearoom-controls-row" style="flex-wrap:wrap;">
+        <span class="stage-badge" id="render-mode-badge">${
+          state.settings.preferredRender === "3d" ? "Toàn cảnh 5 Gian Góc Rộng" : "Toàn cảnh 2.5D Góc Rộng"
+        }</span>
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+          <button type="button" class="stage-badge-btn" id="btn-toggle-overview-wide">Góc siêu rộng</button>
+          <button type="button" class="stage-badge-btn" id="btn-toggle-render-local">Đổi 3D / 2.5D</button>
+        </div>
       </div>
-      <div class="tearoom-stage" id="tearoom-stage">
+      <div class="tearoom-stage is-overview" id="tearoom-stage" title="Kéo ngang trên hình để lia góc nhìn khắp sảnh trà 5 gian">
         <canvas class="tearoom-canvas" id="tearoom-canvas"></canvas>
         <div class="avatar-tags-layer" id="avatar-tags-layer"></div>
       </div>
+
+      <button type="button" class="btn-secondary" id="btn-lobby-host-rename">
+        ${ico("tea")}
+        <span>+ Đặt Tên Bàn Trà Đàm Đạo Riêng (Làm Chủ Bàn)</span>
+      </button>
 
       <!-- Danh sách 6 bàn & người đang ngồi -->
       <div class="section-block">
@@ -2466,6 +2917,11 @@
               <div>
                 <h3>${escHtml(item.table.name)}</h3>
                 <small style="color:var(--ink-secondary);">${escHtml(item.table.topic)}</small>
+                ${
+                  item.table.hostOwnerName
+                    ? `<div style="margin-top:4px;"><span class="host-owner-pill">Chủ bàn: ${escHtml(item.table.hostOwnerName)}</span></div>`
+                    : ""
+                }
               </div>
               <div style="display:flex; gap:6px; align-items:center;">
                 ${item.table.realPeerCount ? `<span class="real-peer-pill num">${item.table.realPeerCount} người thật</span>` : ""}
@@ -2504,6 +2960,25 @@
 
     bindRoomSwitcherEvents();
     mountRoomSceneView("overview", room, room.tables[0], best.idx);
+
+    const wideBtn = document.getElementById("btn-toggle-overview-wide");
+    if (wideBtn && window.TeaRoomScene && typeof window.TeaRoomScene.toggleOverviewWide === "function") {
+      const syncWideLabel = () => {
+        const lv = window.TeaRoomScene.getOverviewWideLevel();
+        wideBtn.textContent = lv === "ultrawide" ? "Về góc rộng vừa" : "Góc siêu rộng";
+      };
+      syncWideLabel();
+      wideBtn.addEventListener("click", () => {
+        const nextLv = window.TeaRoomScene.toggleOverviewWide();
+        syncWideLabel();
+        showToast(nextLv === "ultrawide" ? "Đã mở Góc Siêu Rộng toàn cảnh sảnh 5 gian & sân vườn!" : "Đã về Góc Rộng tiêu chuẩn.");
+      });
+    }
+
+    const lobbyHostBtn = document.getElementById("btn-lobby-host-rename");
+    if (lobbyHostBtn) {
+      lobbyHostBtn.addEventListener("click", () => openHostCustomTableModal(room, best.idx));
+    }
 
     const playFull9x10Btn = document.getElementById("btn-lobby-play-full9x10");
     if (playFull9x10Btn) {
@@ -2574,8 +3049,14 @@
         <div>
           <h1>${escHtml(table.name)}</h1>
           <small style="color:var(--ink-secondary);">${escHtml(table.isArticleTable ? "Bàn trà ghép theo chủ đề báo sáng" : `${room.name} · ${table.topic}`)}</small>
+          ${
+            table.hostOwnerName
+              ? `<div style="margin-top:4px;"><span class="host-owner-pill">Chủ bàn: ${escHtml(table.hostOwnerName)}</span></div>`
+              : ""
+          }
         </div>
         <div style="display:flex; gap:6px; flex-wrap:wrap;">
+          ${!table.isArticleTable ? `<button type="button" class="btn-mini" id="btn-rename-this-table">Đặt tên bàn (Chủ bàn)</button>` : ""}
           ${!table.isArticleTable ? `<button type="button" class="btn-mini" id="btn-switch-table-fast">${ico("refresh", "ico-sm")}<span>Đổi bàn khác</span></button>` : ""}
           <button type="button" class="btn-mini" id="btn-back-lobby">Xem toàn phòng</button>
         </div>
@@ -2665,16 +3146,36 @@
       <div class="tea-board" aria-live="polite">
         <div class="tea-board-head">
           <strong>Bảng lời bàn trà (Nhịp nhấp trà 5 giây)</strong>
-          <span>Độ dài tối đa 25 chữ</span>
+          <span>Hỗ trợ Sticker &amp; Giọng nói</span>
         </div>
         <div class="tea-board-lines">
-          <div class="tea-line-prev" id="tea-line-prev" ${prev ? "" : "hidden"}>${prev ? `${escHtml(prev.speaker)}: "${escHtml(prev.text)}"` : ""}</div>
-          <div class="tea-line-curr" id="tea-line-curr">${curr ? `<span style="color:var(--accent-terracotta);">${escHtml(curr.speaker)}:</span> "${escHtml(curr.text)}"` : ""}</div>
+          <div class="tea-line-prev" id="tea-line-prev" ${prev ? "" : "hidden"}>${prev ? formatTeaLineRichHtml(prev, false) : ""}</div>
+          <div class="tea-line-curr" id="tea-line-curr">${curr ? formatTeaLineRichHtml(curr, true) : ""}</div>
         </div>
         <div class="tea-board-actions">
           <button type="button" class="btn-mini" id="btn-view-log">Xem lại 10 câu trước</button>
           <button type="button" class="btn-mini" id="btn-listen-board">${ico("speaker", "ico-sm")}<span>Nghe câu mới</span></button>
           <button type="button" class="btn-mini report" id="btn-report-table">${ico("flag", "ico-sm")}<span>Báo cáo</span></button>
+        </div>
+      </div>
+
+      <!-- Khay Gửi Sticker Nhanh 1-Chạm (Đỡ phải gõ chữ) -->
+      <div class="surface-panel warm" id="tea-sticker-tray">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+          <h3>Gửi Sticker nhanh (1 chạm — khỏi cần gõ chữ)</h3>
+          <span class="badge-tag amber">0 tốn Token</span>
+        </div>
+        <div class="sticker-grid" role="group" aria-label="Bộ Sticker Quán Trà 1 chạm">
+          ${(D.TEA_STICKERS || [])
+            .map(
+              (stk) => `
+              <button type="button" class="sticker-btn" data-sticker-id="${escHtml(stk.id)}" ${coolLeft > 0 ? "disabled" : ""}>
+                ${renderStickerArtSvg(stk)}
+                <span>${escHtml(stk.shortLabel)}</span>
+              </button>
+            `
+            )
+            .join("")}
         </div>
       </div>
 
@@ -2727,6 +3228,16 @@
     if (switchFastBtn) {
       switchFastBtn.addEventListener("click", switchNextTableFast);
     }
+    const renameTblBtn = document.getElementById("btn-rename-this-table");
+    if (renameTblBtn) {
+      renameTblBtn.addEventListener("click", () => openHostCustomTableModal(room, state.teaRoom.tableIdx));
+    }
+    els.main.querySelectorAll("[data-sticker-id]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const stk = (D.TEA_STICKERS || []).find((s) => s.id === btn.dataset.stickerId);
+        if (stk) sendUserTeaSticker(stk);
+      });
+    });
 
     document.getElementById("btn-ask-host-icebreak").addEventListener("click", triggerIdleAssistantPrompt);
 
@@ -4764,11 +5275,269 @@
     }
   }
 
+  function playWoodenFishSound() {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    try {
+      const ctx = new AudioCtx();
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc2.type = "triangle";
+      osc.frequency.setValueAtTime(510, now);
+      osc.frequency.exponentialRampToValueAtTime(340, now + 0.09);
+      osc2.frequency.setValueAtTime(765, now);
+      osc2.frequency.exponentialRampToValueAtTime(510, now + 0.07);
+      gain.gain.setValueAtTime(0.32, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+      osc.connect(gain);
+      osc2.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc2.start(now);
+      osc.stop(now + 0.15);
+      osc2.stop(now + 0.15);
+    } catch (e) {}
+  }
+
+  let templeWaveRipples = [];
+  let templeFloatingPops = [];
+
+  function triggerTempleVisualWave(colorHex, popText) {
+    templeWaveRipples.push({ r: 16, alpha: 0.92, color: colorHex || "#F6C367" });
+    if (popText) {
+      templeFloatingPops.push({ y: 0, alpha: 1, text: popText });
+    }
+  }
+
+  function getMergedTemplePrayers() {
+    const byId = {};
+    (state.zen.prayers || []).forEach((p) => {
+      byId[p.id] = p;
+    });
+    if (RT && typeof RT.getTemplePrayers === "function") {
+      RT.getTemplePrayers().forEach((p) => {
+        byId[p.id] = p;
+      });
+    }
+    return Object.values(byId).slice(0, 8);
+  }
+
+  function mountTempleSanctuaryCanvas() {
+    const canvas = document.getElementById("temple-sanctuary-canvas");
+    if (!canvas) return;
+    if (templeAnimId) cancelAnimationFrame(templeAnimId);
+
+    const smokePuffs = Array.from({ length: 14 }, (_, i) => ({
+      phase: i * 0.65,
+      drift: (i % 3 - 1) * 6
+    }));
+
+    const drawFrame = (now) => {
+      if (state.route !== "zen") return;
+      templeAnimId = requestAnimationFrame(drawFrame);
+      const rect = canvas.parentElement.getBoundingClientRect();
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const w = Math.max(300, Math.round(rect.width || 360));
+      const h = Math.max(230, Math.round(rect.height || 290));
+      if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
+        canvas.width = Math.round(w * dpr);
+        canvas.height = Math.round(h * dpr);
+      }
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      // Warm dark sandalwood & golden sanctuary backdrop
+      const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
+      bgGrad.addColorStop(0, "#2A1B12");
+      bgGrad.addColorStop(0.62, "#3D2719");
+      bgGrad.addColorStop(1, "#523522");
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, w, h);
+
+      // Wooden sanctuary pillars (cột gỗ sơn son thếp vàng)
+      ctx.fillStyle = "#6E281D";
+      ctx.fillRect(w * 0.06, 0, 16, h * 0.76);
+      ctx.fillRect(w * 0.94 - 16, 0, 16, h * 0.76);
+      ctx.fillStyle = "#D9A441";
+      ctx.fillRect(w * 0.06, h * 0.16, 16, 4);
+      ctx.fillRect(w * 0.94 - 16, h * 0.16, 16, 4);
+
+      const cx = w * 0.5;
+
+      // Serene Golden Mandala Halo & Meditating Silhouette at Tam Bảo
+      const haloPulse = 44 + Math.sin(now * 0.0022) * 3.5;
+      const haloGrad = ctx.createRadialGradient(cx, h * 0.25, 8, cx, h * 0.25, haloPulse + 22);
+      haloGrad.addColorStop(0, "rgba(255, 229, 148, 0.95)");
+      haloGrad.addColorStop(0.55, "rgba(235, 178, 72, 0.38)");
+      haloGrad.addColorStop(1, "rgba(235, 178, 72, 0)");
+      ctx.fillStyle = haloGrad;
+      ctx.beginPath();
+      ctx.arc(cx, h * 0.25, haloPulse + 22, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Expanding sound-wave ripples from Chuông / Mõ
+      templeWaveRipples.forEach((wv) => {
+        wv.r += 2.2;
+        wv.alpha *= 0.96;
+        ctx.strokeStyle = wv.color;
+        ctx.globalAlpha = Math.max(0, wv.alpha);
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.arc(cx, h * 0.28, wv.r, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      });
+      templeWaveRipples = templeWaveRipples.filter((wv) => wv.alpha > 0.05);
+
+      // Golden Lotus Throne & Serene Statue Silhouette
+      ctx.fillStyle = "#E8B954";
+      ctx.beginPath();
+      ctx.ellipse(cx, h * 0.34, 28, 8, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(cx, h * 0.21, 9.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(cx - 20, h * 0.34);
+      ctx.quadraticCurveTo(cx, h * 0.2, cx + 20, h * 0.34);
+      ctx.closePath();
+      ctx.fill();
+
+      // Carved Altar Table + Pair of Lotus Lamps + Bronze Incense Burner (Lư hương đồng)
+      ctx.fillStyle = "#6B3D22";
+      ctx.fillRect(cx - w * 0.3, h * 0.38, w * 0.6, 18);
+      ctx.strokeStyle = "#D9A441";
+      ctx.lineWidth = 1.6;
+      ctx.strokeRect(cx - w * 0.3, h * 0.38, w * 0.6, 18);
+
+      // Left Bell (Đại Hồng Chung) & Right Wooden Fish (Mõ gỗ) icons on altar
+      ctx.fillStyle = "#C8963E";
+      ctx.beginPath();
+      ctx.arc(cx - w * 0.22, h * 0.35, 9, Math.PI, 0);
+      ctx.fillRect(cx - w * 0.22 - 9, h * 0.35, 18, 8);
+      ctx.fill();
+
+      ctx.fillStyle = "#A45B2A";
+      ctx.beginPath();
+      ctx.ellipse(cx + w * 0.22, h * 0.36, 11, 8, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Central Bronze Incense Urn + Glowing Incense Sticks + Rising Sandalwood Smoke
+      ctx.fillStyle = "#B88635";
+      ctx.fillRect(cx - 14, h * 0.33, 28, 12);
+      const sticks = Math.min(5, Math.max(1, state.zen.incenseLit ? 3 : 1));
+      for (let s = 0; s < sticks; s++) {
+        const sx = cx + (s - (sticks - 1) / 2) * 5;
+        ctx.strokeStyle = "#A8382B";
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.moveTo(sx, h * 0.33);
+        ctx.lineTo(sx, h * 0.26);
+        ctx.stroke();
+        ctx.fillStyle = "#FF6B3D";
+        ctx.beginPath();
+        ctx.arc(sx, h * 0.26, 1.8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      if (state.zen.incenseLit) {
+        smokePuffs.forEach((sp) => {
+          const t = ((now * 0.00055 + sp.phase) % 1);
+          const py = h * 0.25 - t * (h * 0.21);
+          const px = cx + Math.sin(now * 0.0018 + sp.phase * 2) * (8 + t * 12) + sp.drift * t;
+          ctx.fillStyle = `rgba(248, 240, 225, ${(1 - t) * 0.34})`;
+          ctx.beginPath();
+          ctx.arc(px, py, 3 + t * 8, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      }
+
+      // Sanctuary Mat Floor & Shared Lotus Meditation Cushions (Hàng chiếu Bồ Đoàn ngồi chung)
+      ctx.fillStyle = "#462D1D";
+      ctx.fillRect(0, h * 0.56, w, h * 0.44);
+      ctx.strokeStyle = "rgba(217, 164, 65, 0.28)";
+      ctx.beginPath();
+      ctx.moveTo(0, h * 0.56);
+      ctx.lineTo(w, h * 0.56);
+      ctx.stroke();
+
+      const livePeers = RT ? RT.getOnlinePeers().slice(0, 2) : [];
+      const fallbackElders = (D.SENIOR_DIRECTORY || []).slice(0, 4);
+      const seatedList = [
+        { name: "Bạn", outfitColor: getOutfit(state.user.outfitId).color, isMe: true }
+      ]
+        .concat(livePeers.map((lp) => ({ name: lp.name, outfitColor: lp.outfitColor || "#2E5E4E", isReal: true })))
+        .concat(fallbackElders)
+        .slice(0, 5);
+
+      const cushionXs = [w * 0.15, w * 0.32, w * 0.5, w * 0.68, w * 0.85];
+      const cushionYs = [h * 0.77, h * 0.82, h * 0.74, h * 0.82, h * 0.77];
+
+      seatedList.forEach((person, idx) => {
+        const bx = cushionXs[idx];
+        const by = cushionYs[idx];
+        // Woven lotus bồ đoàn cushion
+        ctx.fillStyle = idx === 0 ? "#C88A28" : "#8C4A27";
+        ctx.beginPath();
+        ctx.ellipse(bx, by + 11, 22, 9, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "#F5D78E";
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+
+        // Seated elder back/shoulders facing the altar
+        ctx.fillStyle = person.outfitColor || "#5C4033";
+        ctx.beginPath();
+        ctx.roundRect(bx - 12, by - 9, 24, 20, 8);
+        ctx.fill();
+        ctx.fillStyle = "#E6E1D8";
+        ctx.beginPath();
+        ctx.arc(bx, by - 16, 9, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Crisp nameplate pill below cushion
+        const shortLbl = person.isMe ? "Bạn (Tĩnh tâm)" : String(person.name || "").slice(0, 11);
+        ctx.font = "bold 11px sans-serif";
+        const tw = ctx.measureText(shortLbl).width + 12;
+        ctx.fillStyle = person.isMe ? "rgba(184, 59, 42, 0.92)" : "rgba(28, 20, 14, 0.85)";
+        ctx.beginPath();
+        ctx.roundRect(bx - tw / 2, by + 18, tw, 18, 9);
+        ctx.fill();
+        ctx.fillStyle = "#FFFDF7";
+        ctx.textAlign = "center";
+        ctx.fillText(shortLbl, bx, by + 31);
+        ctx.textAlign = "start";
+      });
+
+      // Floating "+1 Tâm An" / Ritual feedback pops
+      templeFloatingPops.forEach((fp) => {
+        fp.y += 0.9;
+        fp.alpha *= 0.96;
+        ctx.fillStyle = `rgba(255, 232, 162, ${Math.max(0, fp.alpha)})`;
+        ctx.font = "bold 15px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(fp.text, cx, h * 0.48 - fp.y);
+        ctx.textAlign = "start";
+      });
+      templeFloatingPops = templeFloatingPops.filter((fp) => fp.alpha > 0.06);
+    };
+
+    templeAnimId = requestAnimationFrame(drawFrame);
+  }
+
   function renderZen() {
-    const sp = D.ZEN_SPACES[state.zen.spaceIdx];
+    const sp = D.ZEN_SPACES[state.zen.spaceIdx] || D.ZEN_SPACES[0];
+    const cards = D.TEMPLE_PEACE_CARDS || [];
+    const curCard = cards[(state.zen.peaceCardIdx || 0) % cards.length];
+    const prayers = getMergedTemplePrayers();
+
     els.main.innerHTML = `
-      <h1>Góc tĩnh tâm</h1>
-      <p class="lead-copy">Hoàn toàn miễn phí, không thu tiền cúng dường. Tôn trọng đa tín ngưỡng với nguồn nội dung từ cơ sở đối tác thật.</p>
+      <h1>Viếng Chùa &amp; Chánh Điện Online</h1>
+      <p class="lead-copy">Không gian tĩnh tâm chung cho hội viên: ngồi bồ đoàn, dâng hương trầm, gõ mõ, thỉnh đại hồng chung và rút Thẻ An Lạc đầu ngày (100% miễn phí, không thu tiền cúng dường).</p>
 
       <div class="tab-bar">
         ${D.ZEN_SPACES.map(
@@ -4776,22 +5545,87 @@
         ).join("")}
       </div>
 
-      <div class="zen-stage">
-        <div class="zen-ripple" id="zen-bell-ring">${ico("bell", "ico-lg")}</div>
-        <h2 style="color:#F6E3B4;">${escHtml(sp.name)}</h2>
-        <small style="color:#C9D6CE;">${escHtml(sp.partner)}</small>
-        <p style="font-family:var(--font-serif); font-size:0.95rem; line-height:1.55;">"${escHtml(sp.quote)}"</p>
-        <div style="font-size:0.84rem; color:#F6C367;">
-          Hôm nay đã có <strong class="num">${state.zen.lanternsReleased}</strong> ngọn hoa đăng cầu bình an
-        </div>
+      <div class="temple-sanctuary-wrap">
+        <canvas class="temple-canvas" id="temple-sanctuary-canvas"></canvas>
       </div>
 
-      <div class="btn-row">
-        <button type="button" class="btn-primary" id="btn-ring-bell">${ico("bell")}<span>Thỉnh chuông an yên</span></button>
-        <button type="button" class="btn-jade" id="btn-lantern">${ico("lotus")}<span>Thả hoa đăng miễn phí</span></button>
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; font-size:0.9rem;">
+        <span>Hương trầm hôm nay: <strong class="num">${state.zen.incenseCount || 14}</strong> nén</span>
+        <span>Nhịp mõ tĩnh tâm: <strong class="num" id="zen-muyu-counter">${state.zen.muyuCount || 0}</strong> · Hoa đăng: <strong class="num">${state.zen.lanternsReleased}</strong></span>
       </div>
-      <button type="button" class="btn-secondary" id="btn-zen-listen">${ico("speaker")}<span>Nghe lời dạy bình an hôm nay</span></button>
+
+      <!-- 4 Nghi thức Chánh Điện 1 chạm -->
+      <div class="temple-ritual-grid" role="group" aria-label="Nghi thức Chánh Điện Online">
+        <button type="button" class="btn-primary" id="btn-temple-incense">
+          ${ico("lotus")}
+          <span>Dâng hương cầu an</span>
+        </button>
+        <button type="button" class="btn-jade" id="btn-temple-muyu">
+          <span>Gõ mõ tĩnh tâm (+1)</span>
+        </button>
+        <button type="button" class="btn-secondary" id="btn-ring-bell">
+          ${ico("bell")}
+          <span>Thỉnh đại hồng chung</span>
+        </button>
+        <button type="button" class="btn-secondary" id="btn-draw-peace-card">
+          ${ico("award")}
+          <span>Rút Thẻ An Lạc mới</span>
+        </button>
+      </div>
+
+      <!-- Thẻ An Lạc Đầu Ngày (Không bói toán mê tín, chỉ lời khuyên thiện lành) -->
+      ${
+        curCard
+          ? `
+        <div class="peace-card-slip" id="peace-card-box">
+          <div class="passcard-head">
+            <strong style="color:#7A3E12;">${escHtml(curCard.code)}</strong>
+            <span class="badge-tag amber">Thẻ Thiện Lành</span>
+          </div>
+          <div class="peace-card-verse">${escHtml(curCard.verse)}</div>
+          <p style="font-size:0.92rem; color:var(--ink-primary);">${escHtml(curCard.advice)}</p>
+          <button type="button" class="btn-secondary" id="btn-zen-listen">${ico("speaker")}<span>Nghe đọc lời Thẻ An Lạc</span></button>
+        </div>
+      `
+          : ""
+      }
+
+      <!-- Gửi lời cầu bình an & Sổ Nguyện Ước Chung Thời Gian Thực -->
+      <div class="surface-panel">
+        <h3>Gửi lời cầu bình an lên Chánh Điện (1 chạm)</h3>
+        <div class="reply-stack">
+          ${(D.TEMPLE_PRAYER_PRESETS || [])
+            .map(
+              (pr, i) =>
+                `<button type="button" class="reply-btn" data-prayer-preset="${escHtml(pr)}">${i + 1}. "${escHtml(pr)}"</button>`
+            )
+            .join("")}
+        </div>
+        <div style="display:flex; gap:8px;">
+          <input type="text" class="input-lg" id="temple-prayer-in" placeholder="Hoặc viết lời cầu chúc riêng cho gia đình..." style="flex:1;" />
+          <button type="button" class="btn-jade btn-inline" id="btn-send-prayer">Dâng lời chúc</button>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:8px; margin-top:4px;">
+          <strong>Lời nguyện cầu bình an vừa gửi lên Chánh Điện:</strong>
+          ${prayers
+            .map(
+              (item) => `
+              <div class="bulletin-item">
+                <div style="display:flex; justify-content:space-between; gap:8px; font-size:0.88rem; color:var(--accent-jade); font-weight:700;">
+                  <span>${escHtml(item.userName)}</span>
+                  <span>${escHtml(item.province || "")}</span>
+                </div>
+                <p>${escHtml(item.prayerText)}</p>
+              </div>
+            `
+            )
+            .join("")}
+        </div>
+      </div>
     `;
+
+    mountTempleSanctuaryCanvas();
 
     els.main.querySelectorAll("[data-zen]").forEach((b) => {
       b.addEventListener("click", () => {
@@ -4801,26 +5635,88 @@
       });
     });
 
-    document.getElementById("btn-ring-bell").addEventListener("click", () => {
-      playTempleBell();
-      const ring = document.getElementById("zen-bell-ring");
-      if (ring) {
-        ring.classList.add("ringing");
-        setTimeout(() => ring.classList.remove("ringing"), 700);
+    const submitPrayer = (text) => {
+      const clean = String(text || "").trim();
+      if (!clean) return;
+      state.zen.incenseLit = true;
+      state.zen.incenseCount = (state.zen.incenseCount || 14) + 1;
+      state.zen.lanternsReleased = (state.zen.lanternsReleased || 18) + 1;
+      const pObj = {
+        id: `pr_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        memberCode: (state.auth && state.auth.memberCode) || "",
+        userName: `${state.user.name} · ${getUserAge()}t`,
+        province: getProvince(state.user.provinceId).short,
+        ritualKind: "incense",
+        prayerText: clean
+      };
+      if (!Array.isArray(state.zen.prayers)) state.zen.prayers = [];
+      state.zen.prayers.unshift(pObj);
+      state.zen.prayers = state.zen.prayers.slice(0, 12);
+      if (RT && typeof RT.publishTempleRitual === "function") {
+        RT.publishTempleRitual(pObj);
       }
-      showToast("Tiếng chuông vang nhẹ mang lại phút giây thư thái.");
+      awardSeniorityPoints(3, "temple_incense", "chua-online", `Dâng hương & cầu an: "${clean.slice(0, 50)}"`);
+      triggerTempleVisualWave("#FFD166", "Đã dâng nén hương tâm thành");
+      showToast("Đã dâng hương và gửi lời cầu bình an lên Chánh Điện!");
+      renderZen();
+    };
+
+    document.getElementById("btn-temple-incense").addEventListener("click", () => {
+      const presets = D.TEMPLE_PRAYER_PRESETS || [];
+      submitPrayer(presets[(state.zen.incenseCount || 0) % Math.max(1, presets.length)] || sp.quote);
     });
 
-    document.getElementById("btn-lantern").addEventListener("click", () => {
-      state.zen.lanternsReleased += 1;
-      saveState();
-      showToast("Đã thả hoa đăng cầu bình an cho gia đình (Miễn phí).");
+    document.getElementById("btn-temple-muyu").addEventListener("click", () => {
+      playWoodenFishSound();
+      state.zen.muyuCount = (state.zen.muyuCount || 0) + 1;
+      const cntEl = document.getElementById("zen-muyu-counter");
+      if (cntEl) cntEl.textContent = String(state.zen.muyuCount);
+      triggerTempleVisualWave("#E8B954", "+1 Nhịp Mõ Tâm An");
+      awardSeniorityPoints(1, "temple_muyu", "chua-online", `Gõ mõ tĩnh tâm (${state.zen.muyuCount} nhịp)`);
+    });
+
+    document.getElementById("btn-ring-bell").addEventListener("click", () => {
+      playTempleBell();
+      state.zen.bellCount = (state.zen.bellCount || 0) + 1;
+      triggerTempleVisualWave("#FFE599", "Tiếng chuông Chánh Điện ngân vang");
+      if (RT && typeof RT.publishTempleRitual === "function") {
+        RT.publishTempleRitual({
+          userName: state.user.name,
+          ritualKind: "bell"
+        });
+      }
+      awardSeniorityPoints(2, "temple_bell", "chua-online", "Thỉnh Đại Hồng Chung cầu an");
+      showToast("Tiếng đại hồng chung ngân vang mang lại phút giây thư thái.");
+    });
+
+    document.getElementById("btn-draw-peace-card").addEventListener("click", () => {
+      playWoodenFishSound();
+      state.zen.peaceCardIdx = ((state.zen.peaceCardIdx || 0) + 1) % Math.max(1, cards.length);
+      const nextCard = cards[state.zen.peaceCardIdx];
+      awardSeniorityPoints(3, "temple_peace_card", "chua-online", `Rút ${nextCard ? nextCard.code : "Thẻ An Lạc"}`);
+      showToast(`Đã rút ${nextCard ? nextCard.code : "Thẻ An Lạc mới"}!`);
       renderZen();
     });
 
-    document.getElementById("btn-zen-listen").addEventListener("click", () => {
-      speak(sp.quote);
+    els.main.querySelectorAll("[data-prayer-preset]").forEach((b) => {
+      b.addEventListener("click", () => submitPrayer(b.dataset.prayerPreset));
     });
+
+    document.getElementById("btn-send-prayer").addEventListener("click", () => {
+      const inp = document.getElementById("temple-prayer-in");
+      if (!inp.value.trim()) {
+        showToast("Mời bác nhập lời chúc hoặc chạm 1 trong 4 câu mẫu bên trên.");
+        return;
+      }
+      submitPrayer(inp.value);
+    });
+
+    const listenBtn = document.getElementById("btn-zen-listen");
+    if (listenBtn && curCard) {
+      listenBtn.addEventListener("click", () => {
+        speak(`${curCard.code}. ${curCard.verse}. Lời nhắn gửi: ${curCard.advice}`);
+      });
+    }
   }
 
   // ==================== MODULE 9: LEADERBOARD & PROFILE ====================
@@ -5668,6 +6564,8 @@
   }
 
   // ==================== MODULE 11: ANALYTICS METRICS & DECREE 13/2023/NĐ-CP PRIVACY CENTER ====================
+  let activePrivacySubTab = "ai-logs";
+
   function renderPrivacyAndMetrics() {
     const a = state.analytics || {};
     const quickCount = a.tea_msg_quick_0token || 0;
@@ -5675,10 +6573,78 @@
     const totalMsgs = quickCount + voiceTextCount;
     const zeroTokenPct = totalMsgs > 0 ? Math.round((quickCount / totalMsgs) * 100) : 100;
     const st = RT ? RT.getStatus() : { connected: false, providerName: "Cục bộ", totalOtherPeers: 0, clientId: "local" };
+    const allMemberLogs = getAllMemberLogsMerged();
+    const aiPersonas = synthesizeMemberAiInsights();
 
     els.main.innerHTML = `
-      <h1>Chỉ số sinh hoạt &amp; Quyền riêng tư</h1>
-      <p class="lead-copy">Theo dõi 7 chỉ số vận hành cốt lõi (tối ưu 0-token) và toàn quyền kiểm soát dữ liệu cá nhân theo Nghị định 13/2023/NĐ-CP.</p>
+      <h1>Lưu Trữ · AI Tracking &amp; Quyền Riêng Tư</h1>
+      <p class="lead-copy">Hệ thống lưu trữ cẩn thận 3 lớp (Máy chính + Bản sao dự phòng + Đám mây) kèm phân tích AI từ Log hành vi để thấu hiểu nhu cầu từng hội viên.</p>
+
+      <div class="xq-top-switch" role="tablist" aria-label="Chọn Bảng AI Log Thành Viên hoặc Quyền Riêng Tư">
+        <button type="button" class="xq-top-btn ${activePrivacySubTab === "ai-logs" ? "active" : ""}" id="btn-priv-tab-ai">AI Hiểu Thành Viên &amp; Kho Log (${allMemberLogs.length})</button>
+        <button type="button" class="xq-top-btn ${activePrivacySubTab === "privacy" ? "active" : ""}" id="btn-priv-tab-gdpr">Chỉ Số 0-Token &amp; Quyền Riêng Tư</button>
+      </div>
+
+      ${
+        activePrivacySubTab === "ai-logs"
+          ? `
+        <div class="surface-panel jade">
+          <div class="passcard-head">
+            <strong>Trạng thái Kho Lưu Trữ 3 Lớp Cẩn Thận</strong>
+            <span class="online-status-pill"><span class="online-dot-live"></span>An toàn 100%</span>
+          </div>
+          <p style="font-size:0.88rem;">1. Bộ nhớ chính (<code>${escHtml(STORAGE_KEY)}</code>) · 2. Bản sao chống lỗi (<code>_vault_bak</code>) · 3. Đồng bộ đám mây (${escHtml(st.providerName)}).</p>
+          <div class="btn-row">
+            <button type="button" class="btn-primary" id="btn-export-ai-logs-json">${ico("download")}<span>Xuất Kho Log AI (.json)</span></button>
+            <button type="button" class="btn-secondary" id="btn-export-ai-logs-csv"><span>Xuất Bảng CSV</span></button>
+          </div>
+        </div>
+
+        <div class="surface-panel">
+          <h3>Chân dung AI Thấu Hiểu Từng Thành Viên (${aiPersonas.length} hồ sơ)</h3>
+          <p style="font-size:0.88rem; color:var(--ink-secondary);">Tổng hợp tự động từ giờ giấc mở máy, chuyên mục báo hay đọc, bàn trà, ván cờ và nghi thức tĩnh tâm:</p>
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            ${aiPersonas
+              .map(
+                (p) => `
+              <div class="ai-persona-card">
+                <div class="passcard-head">
+                  <strong>${escHtml(p.userName)} · ${p.age}t (${escHtml(p.province)})</strong>
+                  <span class="member-code-chip">${escHtml(p.memberCode)} · ${p.totalActions} hoạt động</span>
+                </div>
+                <small style="font-size:0.88rem; color:#6B4208; font-weight:700;">Bậc danh hiệu: ${escHtml(p.seniorityTier)}</small>
+                <div style="font-size:0.9rem;"><strong>Nhịp sinh hoạt &amp; Mối quan tâm:</strong> ${escHtml(p.timePersona)} · ${escHtml(p.topInterests)}</div>
+                <div style="font-size:0.88rem; color:var(--accent-jade); font-weight:700;">${escHtml(p.aiRecommendation)}</div>
+              </div>
+            `
+              )
+              .join("")}
+          </div>
+        </div>
+
+        <div class="surface-panel">
+          <h3>Nhật ký Log Hành Vi Toàn Thành Viên Mới Nhất (${allMemberLogs.length})</h3>
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            ${allMemberLogs
+              .slice(0, 18)
+              .map((l) => {
+                const d = new Date(l.ts || Date.now());
+                const hm = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+                return `
+                  <div class="member-log-item">
+                    <div style="display:flex; justify-content:space-between; gap:8px; font-weight:700;">
+                      <span>[${hm}] ${escHtml(l.userName)} (${escHtml(l.memberCode)})</span>
+                      <span style="color:var(--accent-terracotta);">${escHtml(l.action)}</span>
+                    </div>
+                    <span>${escHtml(l.detail)}</span>
+                  </div>
+                `;
+              })
+              .join("")}
+          </div>
+        </div>
+      `
+          : `
 
       <div class="surface-panel ${st.connected ? "jade" : "warm"}">
         <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
@@ -5763,7 +6729,81 @@
           <button type="button" class="btn-danger" id="btn-wipe-personal-data">Xóa toàn bộ dữ liệu</button>
         </div>
       </div>
+      `
+      }
     `;
+
+    document.getElementById("btn-priv-tab-ai").addEventListener("click", () => {
+      activePrivacySubTab = "ai-logs";
+      renderPrivacyAndMetrics();
+    });
+    document.getElementById("btn-priv-tab-gdpr").addEventListener("click", () => {
+      activePrivacySubTab = "privacy";
+      renderPrivacyAndMetrics();
+    });
+
+    const expAiJson = document.getElementById("btn-export-ai-logs-json");
+    if (expAiJson) {
+      expAiJson.addEventListener("click", () => {
+        const blob = new Blob(
+          [
+            JSON.stringify(
+              {
+                exportedAt: new Date().toISOString(),
+                aiMemberPersonas: aiPersonas,
+                memberActivityLogs: allMemberLogs
+              },
+              null,
+              2
+            )
+          ],
+          { type: "application/json" }
+        );
+        const url = URL.createObjectURL(blob);
+        const aTag = document.createElement("a");
+        aTag.href = url;
+        aTag.download = "kho-luu-tru-ai-logs-tuoi-bac.json";
+        document.body.appendChild(aTag);
+        aTag.click();
+        document.body.removeChild(aTag);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        showToast("Đã xuất toàn bộ Hồ sơ AI & Log thành viên (.json)!");
+      });
+    }
+
+    const expAiCsv = document.getElementById("btn-export-ai-logs-csv");
+    if (expAiCsv) {
+      expAiCsv.addEventListener("click", () => {
+        const header = "ThoiGian,MaThanhVien,HoTen,Tuoi,Tinh,BacThamNien,HanhDong,ChuyenMuc,ChiTiet\n";
+        const rowsCsv = allMemberLogs
+          .map((l) =>
+            [
+              new Date(l.ts || Date.now()).toISOString(),
+              l.memberCode,
+              `"${String(l.userName || "").replace(/"/g, '""')}"`,
+              l.age,
+              `"${String(l.province || "").replace(/"/g, '""')}"`,
+              `"${String(l.seniorityTier || "").replace(/"/g, '""')}"`,
+              l.action,
+              l.category,
+              `"${String(l.detail || "").replace(/"/g, '""')}"`
+            ].join(",")
+          )
+          .join("\n");
+        const blob = new Blob(["\uFEFF" + header + rowsCsv], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const aTag = document.createElement("a");
+        aTag.href = url;
+        aTag.download = "bang-log-thanh-vien-tuoi-bac.csv";
+        document.body.appendChild(aTag);
+        aTag.click();
+        document.body.removeChild(aTag);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        showToast("Đã tải bảng CSV Log hành vi tất cả thành viên!");
+      });
+    }
+
+    if (activePrivacySubTab !== "privacy") return;
 
     document.getElementById("btn-open-rt-modal").addEventListener("click", openRealtimeStatusModal);
     document.getElementById("btn-privacy-pwa").addEventListener("click", openPwaInstallGuide);
@@ -5923,6 +6963,8 @@
       titleFrameId: state.user.titleFrameId,
       unlockedTitleFrames: (state.user.unlockedTitleFrames || []).slice(),
       xu: state.user.xu,
+      seniorityPoints: state.user.seniorityPoints || 28,
+      memberLogs: (state.memberLogs || []).slice(0, 35),
       joinedGroupIds: (state.social.joinedGroupIds || []).slice(),
       friends: (state.social.friends || []).slice()
     };
@@ -5961,6 +7003,17 @@
     }
     if (typeof snap.xu === "number" && snap.xu > state.user.xu) {
       state.user.xu = snap.xu;
+    }
+    if (typeof snap.seniorityPoints === "number" && snap.seniorityPoints > (state.user.seniorityPoints || 0)) {
+      state.user.seniorityPoints = snap.seniorityPoints;
+    }
+    if (Array.isArray(snap.memberLogs)) {
+      const existingIds = new Set((state.memberLogs || []).map((x) => x.id));
+      snap.memberLogs.forEach((ml) => {
+        if (ml && ml.id && !existingIds.has(ml.id)) {
+          state.memberLogs.push(ml);
+        }
+      });
     }
     if (snap.primaryUnitLabel) {
       state.auth.primaryUnitLabel = snap.primaryUnitLabel;
@@ -6254,6 +7307,35 @@
     return c.toDataURL("image/png");
   }
 
+  function renderSeniorityLadderHtml() {
+    const prog = getSeniorityProgress();
+    const tiers = D.SENIORITY_TIERS || [];
+    return `
+      <div class="surface-panel">
+        <div class="passcard-head">
+          <strong>Thang Danh Hiệu Thâm Niên (Mộc Mạc → Lâu Năm)</strong>
+          <span class="member-code-chip">${prog.points} điểm gắn bó</span>
+        </div>
+        <div class="seniority-ladder">
+          ${tiers
+            .map((t) => {
+              const isCurr = prog.current && prog.current.id === t.id;
+              return `
+              <div class="seniority-tier-row ${isCurr ? "current" : ""}">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
+                  <strong style="color:${escHtml(t.color)};">${escHtml(t.name)}</strong>
+                  <span class="badge-tag ${isCurr ? "amber" : ""}">${isCurr ? "Đang đạt" : `${t.minPoints}+ điểm`}</span>
+                </div>
+                <span style="color:var(--ink-secondary);">${escHtml(t.perk)}</span>
+              </div>
+            `;
+            })
+            .join("")}
+        </div>
+      </div>
+    `;
+  }
+
   function openMemberAuthModal(opts) {
     const options = opts || {};
     const isReg = Boolean(state.auth && state.auth.isRegistered && state.auth.memberCode);
@@ -6262,15 +7344,16 @@
     if (isReg && !options.forceSwitchAccount) {
       const cardPng = drawMemberPasscardPng();
       const friendInviteUrl = `${getPublicBaseUrl()}?ketban=${encodeURIComponent(state.auth.memberCode)}`;
+      const prog = getSeniorityProgress();
       openDialog(
         `Thẻ Hội Viên: ${state.auth.memberCode}`,
         `
         <div class="surface-panel jade">
           <div class="passcard-head">
             <strong>${escHtml(state.user.name)} · ${getUserAge()} tuổi</strong>
-            <span class="member-code-chip">Mã: ${escHtml(state.auth.memberCode)}</span>
+            <span class="member-code-chip">${escHtml(prog.current.shortBadge)} · ${escHtml(state.auth.memberCode)}</span>
           </div>
-          <p style="font-size:0.88rem;">SĐT đã mã hóa chống lộ: <strong>${escHtml(state.auth.phoneMasked)}</strong>. Khi đổi sang điện thoại mới, chỉ cần nhập lại SĐT + 4 số hoặc quét tấm ảnh Thẻ dưới đây là lấy lại đủ Bạn bè & Đơn vị.</p>
+          <p style="font-size:0.88rem;">Đang ở <strong>${escHtml(prog.current.name)} (${prog.points} điểm)</strong> · SĐT mã hóa: <strong>${escHtml(state.auth.phoneMasked)}</strong>. Hồ sơ & lịch sử được sao lưu cẩn thận 3 lớp.</p>
         </div>
 
         <img src="${cardPng}" alt="Ảnh Thẻ Hội Viên QR Tuổi Bạc" style="width:100%; border-radius:12px; border:1px solid var(--border-strong);" />
@@ -6284,6 +7367,8 @@
             <span>${state.auth.passkeyEnabled ? "Đã bật Vân tay / FaceID" : "Bật mở bằng Vân tay"}</span>
           </button>
         </div>
+
+        ${renderSeniorityLadderHtml()}
 
         <div class="surface-panel">
           <strong>Gửi mã kết bạn cho đồng đội (${escHtml(state.auth.memberCode)})</strong>
@@ -6382,8 +7467,10 @@
 
       <button type="button" class="btn-primary" id="btn-submit-senior-auth">
         ${ico("card")}
-        <span>Mở Thẻ Hội Viên / Đăng Nhập Ngay</span>
+        <span>Mở Thẻ Nhận +30 Điểm Thâm Niên &amp; +15 Xu</span>
       </button>
+
+      ${renderSeniorityLadderHtml()}
 
       <details class="surface-panel" style="padding:10px 12px;">
         <summary style="font-weight:700; cursor:pointer; min-height:44px; display:flex; align-items:center;">Cách 2: Khôi phục từ Mã QR Thẻ Hội Viên đã lưu</summary>
@@ -6452,8 +7539,11 @@
         if (cloudSnap) {
           // Existing account recovered on a second phone!
           applyCloudAccountSnapshot(cloudSnap);
+          logMemberBehavior("account_recovered", "sinh-hoat", `Khôi phục Thẻ ${state.auth.memberCode} trên máy mới`);
         } else {
           applyUserIdentity(chosenHon, nameVal, ageVal, state.user.provinceId);
+          state.user.xu += 15;
+          awardSeniorityPoints(30, "member_card_created", "sinh-hoat", `Mở Thẻ Hội Viên ${memCode} — thăng Bậc Bạn Trà Mộc Mạc`);
         }
 
         state.auth.recoveryToken = encodeRecoveryToken({
@@ -7546,7 +8636,41 @@
       if (pkt.ritual === "pour" && window.TeaRoomScene) {
         window.TeaRoomScene.triggerTeaService();
       }
-      pushTableMessage(pkt.speaker, pkt.text, seatIdx >= 0 ? seatIdx : 0);
+      if (pkt.stickerId && window.TeaRoomScene && typeof window.TeaRoomScene.showSeatSticker === "function") {
+        const foundStk = (D.TEA_STICKERS || []).find((s) => s.id === pkt.stickerId);
+        if (foundStk) {
+          window.TeaRoomScene.showSeatSticker(seatIdx >= 0 ? seatIdx : 0, foundStk.shortLabel, foundStk.bg, foundStk.color);
+        }
+      }
+      pushTableMessage(pkt.speaker, pkt.text, seatIdx >= 0 ? seatIdx : 0, pkt.stickerId || null);
+    });
+
+    RT.on("tableMeta", () => {
+      if (state.route === "tearoom") {
+        const activeTag = document.activeElement && document.activeElement.tagName;
+        if (activeTag !== "INPUT" && activeTag !== "TEXTAREA") {
+          renderTeaRoom();
+        }
+      }
+    });
+
+    RT.on("temple", (pkt) => {
+      if (!pkt || pkt.clientId === RT.getClientId()) return;
+      if (state.route === "zen") {
+        triggerTempleVisualWave("#FFD166", pkt.prayerText ? `${pkt.userName} vừa dâng hương` : `${pkt.userName} vừa thỉnh chuông`);
+        if (pkt.prayerText) {
+          const activeTag = document.activeElement && document.activeElement.tagName;
+          if (activeTag !== "INPUT" && activeTag !== "TEXTAREA") {
+            renderZen();
+          }
+        }
+      }
+    });
+
+    RT.on("memberLogs", () => {
+      if (state.route === "privacy" && activePrivacySubTab === "ai-logs") {
+        renderPrivacyAndMetrics();
+      }
     });
 
     RT.on("tableLog", (pkt) => {
@@ -7684,6 +8808,10 @@
   const simOpenGroups = document.getElementById("sim-open-groups");
   if (simOpenGroups) {
     simOpenGroups.addEventListener("click", () => navigate("groups"));
+  }
+  const simOpenTemple = document.getElementById("sim-open-temple");
+  if (simOpenTemple) {
+    simOpenTemple.addEventListener("click", () => navigate("zen"));
   }
 
   els.btnFont.addEventListener("click", () => {

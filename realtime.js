@@ -35,6 +35,9 @@ window.TuoiBacRealtime = (function () {
   const checkinsToday = {};   // { [clientId]: { clientId, name, age, provinceId, provinceShort, mood, ts } }
   const matchesById = {};     // { [matchId]: matchObj }
   const sharedPoems = {};     // { [poemId]: poemObj }
+  const memberLogsById = {};  // { [logId]: logEntry }
+  const customTablesByKey = {}; // { [tableKey]: customMetaObj }
+  const templePrayersById = {}; // { [id]: prayerObj }
   const seenMsgIds = new Set();
 
   const listeners = {
@@ -43,6 +46,9 @@ window.TuoiBacRealtime = (function () {
     online: [],
     groups: [],
     friends: [],
+    memberLogs: [],
+    tableMeta: [],
+    temple: [],
     chat: [],
     tableLog: [],
     checkins: [],
@@ -215,6 +221,20 @@ window.TuoiBacRealtime = (function () {
           } catch (e) {}
         });
       }
+    } else if (kind === "memberLog") {
+      if (!payload.id) return;
+      memberLogsById[payload.id] = payload;
+      emit("memberLogs", getMemberLogs());
+    } else if (kind === "tableMeta") {
+      if (!payload.tableKey) return;
+      customTablesByKey[payload.tableKey] = payload;
+      emit("tableMeta", customTablesByKey);
+    } else if (kind === "temple") {
+      if (!payload.id) return;
+      if (payload.prayerText) {
+        templePrayersById[payload.id] = payload;
+      }
+      emit("temple", payload);
     }
   }
 
@@ -348,6 +368,9 @@ window.TuoiBacRealtime = (function () {
       mqttClient.subscribe(`${TOPIC_ROOT}/directory/+`, { qos: 0 });
       mqttClient.subscribe(`${TOPIC_ROOT}/checkins/${dayKey}/+`, { qos: 0 });
       mqttClient.subscribe(`${TOPIC_ROOT}/poems/+`, { qos: 0 });
+      mqttClient.subscribe(`${TOPIC_ROOT}/tablemeta/+`, { qos: 0 });
+      mqttClient.subscribe(`${TOPIC_ROOT}/temple/+`, { qos: 0 });
+      mqttClient.subscribe(`${TOPIC_ROOT}/memberlogs/+`, { qos: 0 });
       if (myMemberCode) {
         mqttClient.subscribe(`${TOPIC_ROOT}/friends/${myMemberCode}/+`, { qos: 1 });
       }
@@ -449,6 +472,26 @@ window.TuoiBacRealtime = (function () {
         if (!str) return;
         try {
           handleIncomingPacket("poem", JSON.parse(str));
+        } catch (e) {}
+      } else if (parts[0] === "tablemeta" && parts[1]) {
+        if (!str) return;
+        try {
+          handleIncomingPacket("tableMeta", JSON.parse(str));
+        } catch (e) {}
+      } else if (parts[0] === "temple" && parts[1]) {
+        if (!str) return;
+        try {
+          handleIncomingPacket("temple", JSON.parse(str));
+        } catch (e) {}
+      } else if (parts[0] === "memberlogs" && parts[1]) {
+        if (!str) return;
+        try {
+          const arr = JSON.parse(str);
+          if (Array.isArray(arr)) {
+            arr.forEach((entry) => handleIncomingPacket("memberLog", entry));
+          } else {
+            handleIncomingPacket("memberLog", arr);
+          }
         } catch (e) {}
       }
     });
@@ -567,7 +610,7 @@ window.TuoiBacRealtime = (function () {
     emit("presence", getPresenceSnapshot());
   }
 
-  function sendTableMessage(tableKey, speaker, text, ritual, recentLogSlice) {
+  function sendTableMessage(tableKey, speaker, text, ritual, recentLogSlice, extraMeta) {
     const cleanKey = String(tableKey || activeTableKey || "phong-tra-ban-1").replace(/[^a-zA-Z0-9_-]/g, "_");
     const msg = {
       msgId: `${clientId}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
@@ -576,6 +619,8 @@ window.TuoiBacRealtime = (function () {
       speaker,
       text,
       ritual: ritual || null,
+      stickerId: (extraMeta && extraMeta.stickerId) || null,
+      stickerLabel: (extraMeta && extraMeta.stickerLabel) || null,
       ts: Date.now()
     };
     seenMsgIds.add(msg.msgId);
@@ -1037,6 +1082,121 @@ window.TuoiBacRealtime = (function () {
     return matchesById[matchId] || null;
   }
 
+  function publishMemberLog(entry, recentMemberSlice) {
+    if (!entry || !entry.id) return;
+    const pkt = Object.assign({}, entry, {
+      clientId,
+      ts: entry.ts || Date.now()
+    });
+    memberLogsById[pkt.id] = pkt;
+    const ownerKey = String(pkt.memberCode || clientId).replace(/[^a-zA-Z0-9_-]/g, "_");
+    if (mqttClient && connected) {
+      const slicePayload = Array.isArray(recentMemberSlice) ? recentMemberSlice.slice(0, 12) : [pkt];
+      mqttClient.publish(`${TOPIC_ROOT}/memberlogs/${ownerKey}`, JSON.stringify(slicePayload), { qos: 0, retain: true });
+    }
+    if (sbChannel && connected) {
+      sbChannel.send({ type: "broadcast", event: "tb_event", payload: { kind: "memberLog", data: pkt } });
+      if (sbClient) {
+        sbClient
+          .from("member_activity_logs")
+          .insert({
+            id: pkt.id,
+            member_code: pkt.memberCode || clientId,
+            client_id: clientId,
+            user_name: pkt.userName || "",
+            age: pkt.age || 65,
+            province: pkt.province || "",
+            seniority_tier: pkt.seniorityTier || "",
+            action: pkt.action || "view",
+            category: pkt.category || "",
+            detail: pkt.detail || "",
+            hour_of_day: typeof pkt.hour === "number" ? pkt.hour : new Date().getHours()
+          })
+          .then(() => {})
+          .catch(() => {});
+      }
+    }
+    postLocalBroadcast("memberLog", pkt);
+  }
+
+  function getMemberLogs() {
+    return Object.values(memberLogsById).sort((a, b) => (b.ts || 0) - (a.ts || 0));
+  }
+
+  function publishTableCustomMeta(tableKey, metaObj) {
+    const cleanKey = String(tableKey || "").replace(/[^a-zA-Z0-9_-]/g, "_");
+    if (!cleanKey || !metaObj) return;
+    const pkt = Object.assign({}, metaObj, {
+      tableKey: cleanKey,
+      updatedAt: Date.now()
+    });
+    customTablesByKey[cleanKey] = pkt;
+    if (mqttClient && connected) {
+      mqttClient.publish(`${TOPIC_ROOT}/tablemeta/${cleanKey}`, JSON.stringify(pkt), { qos: 1, retain: true });
+    }
+    if (sbChannel && connected) {
+      sbChannel.send({ type: "broadcast", event: "tb_event", payload: { kind: "tableMeta", data: pkt } });
+      if (sbClient) {
+        sbClient
+          .from("custom_tea_tables")
+          .upsert({
+            table_key: cleanKey,
+            room_id: pkt.roomId || "phong-tra",
+            table_idx: pkt.tableIdx || 0,
+            custom_name: pkt.customName || "",
+            custom_topic: pkt.customTopic || "",
+            host_name: pkt.hostName || "",
+            host_code: pkt.hostCode || ""
+          })
+          .then(() => {})
+          .catch(() => {});
+      }
+    }
+    postLocalBroadcast("tableMeta", pkt);
+  }
+
+  function getAllTableCustomMeta() {
+    return Object.assign({}, customTablesByKey);
+  }
+
+  function publishTempleRitual(ritualObj) {
+    if (!ritualObj) return;
+    const id = ritualObj.id || `tmp_${clientId}_${Date.now()}`;
+    const pkt = Object.assign({}, ritualObj, { id, clientId, ts: Date.now() });
+    if (pkt.prayerText) {
+      templePrayersById[id] = pkt;
+    }
+    const slotKey = pkt.prayerText ? `prayer_${String(pkt.memberCode || clientId).replace(/[^a-zA-Z0-9_-]/g, "_")}` : "live_bell";
+    if (mqttClient && connected) {
+      mqttClient.publish(`${TOPIC_ROOT}/temple/${slotKey}`, JSON.stringify(pkt), {
+        qos: 0,
+        retain: Boolean(pkt.prayerText)
+      });
+    }
+    if (sbChannel && connected) {
+      sbChannel.send({ type: "broadcast", event: "tb_event", payload: { kind: "temple", data: pkt } });
+      if (sbClient && pkt.prayerText) {
+        sbClient
+          .from("temple_prayers")
+          .upsert({
+            id,
+            member_code: pkt.memberCode || "",
+            user_name: pkt.userName || "",
+            province: pkt.province || "",
+            ritual_kind: pkt.ritualKind || "incense",
+            prayer_text: pkt.prayerText
+          })
+          .then(() => {})
+          .catch(() => {});
+      }
+    }
+    postLocalBroadcast("temple", pkt);
+  }
+
+  function getTemplePrayers() {
+    return Object.values(templePrayersById).sort((a, b) => (b.ts || 0) - (a.ts || 0));
+  }
+
   function getSharedPoems() {
     return Object.values(sharedPoems).sort((a, b) => (b.ts || 0) - (a.ts || 0));
   }
@@ -1084,6 +1244,12 @@ window.TuoiBacRealtime = (function () {
     getMatch,
     publishPoem,
     getSharedPoems,
+    publishMemberLog,
+    getMemberLogs,
+    publishTableCustomMeta,
+    getAllTableCustomMeta,
+    publishTempleRitual,
+    getTemplePrayers,
     wipeMyCloudData
   };
 })();

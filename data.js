@@ -121,6 +121,15 @@ window.TuoiBacData = (function () {
       color: "#435B35",
       rimHex: 0x6b8f4e,
       cost: 0
+    },
+    {
+      id: "cay-cao",
+      name: "Cây Cao Bóng Cả",
+      shortTag: "Cây Cao",
+      desc: "Khung sơn mài thếp vàng dành cho hội viên gắn bó lâu năm tại Quán Trà",
+      color: "#9E6412",
+      rimHex: 0xf5c242,
+      cost: 0
     }
   ];
 
@@ -1304,19 +1313,225 @@ window.TuoiBacData = (function () {
     }
   ];
 
+  // Hệ thống 6 Tầng Danh Hiệu Thâm Niên (từ Mộc Mạc đến Lâu Năm) khuyến khích đăng nhập lưu Thẻ
+  const SENIORITY_TIERS = [
+    {
+      level: 0,
+      id: "khach-ghe",
+      name: "Khách Ghé Hiên Trà",
+      shortBadge: "Khách Ghé",
+      minPoints: 0,
+      requiresCard: false,
+      color: "#7A6A58",
+      bgSoft: "#F3EDE2",
+      frameUnlock: "none",
+      perk: "Đang lưu tạm trên máy này — Mở Thẻ Hội Viên 10 giây nhận ngay +30 Điểm Thâm Niên & +15 Xu, thăng lên Bậc 1!"
+    },
+    {
+      level: 1,
+      id: "moc-mac",
+      name: "Bậc 1 · Bạn Trà Mộc Mạc",
+      shortBadge: "Mộc Mạc",
+      minPoints: 20,
+      requiresCard: true,
+      color: "#6E4A35",
+      bgSoft: "#F7EDE2",
+      frameUnlock: "tri-am",
+      perk: "Thẻ Gỗ Mộc giữ trọn Bạn bè & Đơn vị khi đổi máy · Được đặt tên bàn đàm đạo riêng"
+    },
+    {
+      level: 2,
+      id: "quen-thuoc",
+      name: "Bậc 2 · Trà Hữu Quen Thuộc",
+      shortBadge: "Quen Thuộc",
+      minPoints: 65,
+      requiresCard: true,
+      color: "#2F5D7C",
+      bgSoft: "#E8F1F7",
+      frameUnlock: "tri-am",
+      perk: "Khung Gốm Men Lam · Ưu tiên hiện bàn đàm đạo của chủ bàn lên đầu sảnh"
+    },
+    {
+      level: 3,
+      id: "tri-ky",
+      name: "Bậc 3 · Tri Kỷ Sớm Hôm",
+      shortBadge: "Tri Kỷ",
+      minPoints: 130,
+      requiresCard: true,
+      color: "#2E6B56",
+      bgSoft: "#E6F4EE",
+      frameUnlock: "thi-huu",
+      perk: "Khung Ngọc Bích Tri Kỷ · Mở khóa bộ Sticker đặc biệt & Bồ đoàn hàng đầu Chánh Điện"
+    },
+    {
+      level: 4,
+      id: "truong-lao",
+      name: "Bậc 4 · Trưởng Lão Giữ Lửa",
+      shortBadge: "Trưởng Lão",
+      minPoints: 240,
+      requiresCard: true,
+      color: "#8A4224",
+      bgSoft: "#FBECE6",
+      frameUnlock: "giu-lua",
+      perk: "Khung Gỗ Trắc Khảm Đồng · Vinh danh Ban Liên Lạc gương mẫu của cộng đồng"
+    },
+    {
+      level: 5,
+      id: "cay-cao",
+      name: "Bậc 5 · Cây Cao Bóng Cả (Lâu Năm)",
+      shortBadge: "Lâu Năm",
+      minPoints: 380,
+      requiresCard: true,
+      color: "#9E6412",
+      bgSoft: "#FFF6DE",
+      frameUnlock: "cay-cao",
+      perk: "Khung Sơn Mài Thếếp Vàng 3D · Bậc danh hiệu cao quý nhất của Quán Trà Tuổi Bạc"
+    }
+  ];
+
+  // Bộ 8 Sticker Quán Trà cỡ lớn — Chạm 1 lần gửi ngay khỏi cần gõ chữ
+  const TEA_STICKERS = [
+    {
+      id: "stk-moi-tra",
+      shortLabel: "Mời chén trà!",
+      fullText: "[Sticker: Mời cả bàn chén trà sen nóng ấm lòng!]",
+      color: "#2E6B56",
+      bg: "#E7F5EE",
+      kind: "tea",
+      ritual: "pour"
+    },
+    {
+      id: "stk-hay-qua",
+      shortLabel: "Hay quá bác ơi!",
+      fullText: "[Sticker: Câu chuyện bác kể chí lý và hay quá!]",
+      color: "#B83B2A",
+      bg: "#FDECE8",
+      kind: "thumb",
+      ritual: ""
+    },
+    {
+      id: "stk-suc-khoe",
+      shortLabel: "Chúc luôn khỏe!",
+      fullText: "[Sticker: Chúc các anh chị ngày mới dồi dào sức khỏe!]",
+      color: "#9E6412",
+      bg: "#FFF6DE",
+      kind: "lotus",
+      ritual: ""
+    },
+    {
+      id: "stk-cuoi-vui",
+      shortLabel: "Vui quá xá!",
+      fullText: "[Sticker: Nghe chuyện bàn mình cười tươi trẻ ra mười tuổi!]",
+      color: "#C45B1C",
+      bg: "#FEF0E4",
+      kind: "smile",
+      ritual: ""
+    },
+    {
+      id: "stk-hen-co",
+      shortLabel: "Làm ván cờ nhé!",
+      fullText: "[Sticker: Uống xong tuần trà mình bày bàn Cờ Tướng 9×10 nhé!]",
+      color: "#6B3F24",
+      bg: "#F6ECE2",
+      kind: "chess",
+      ritual: ""
+    },
+    {
+      id: "stk-dong-doi",
+      shortLabel: "Chào đồng đội!",
+      fullText: "[Sticker: Bắt tay đồng đội năm xưa — chúc luôn vững vàng!]",
+      color: "#3E5634",
+      bg: "#EAF2E4",
+      kind: "star",
+      ritual: ""
+    },
+    {
+      id: "stk-am-tinh",
+      shortLabel: "Ấm tình tri kỷ",
+      fullText: "[Sticker: Gửi tặng tấm lòng trân quý tới cả bàn trà!]",
+      color: "#A62B38",
+      bg: "#FCEAEF",
+      kind: "heart",
+      ritual: ""
+    },
+    {
+      id: "stk-tam-an",
+      shortLabel: "Tâm an vạn lành",
+      fullText: "[Sticker: Tâm tĩnh lặng như mặt hồ thu, chúc cả nhà bình an!]",
+      color: "#524678",
+      bg: "#EFEQF9",
+      kind: "bell",
+      ritual: ""
+    }
+  ];
+
+  // Viếng Chùa & Chánh Điện Online (Lấy cảm hứng từ kentjuno/chanh-dien-online & DoanDuyThanh71/chua-online-live)
+  // 100% hướng thiện, tĩnh tâm, KHÔNG mê tín hù dọa, KHÔNG thu tiền cúng dường
+  const TEMPLE_PRAYER_PRESETS = [
+    "Cầu chúc đại gia đình bình an, con cháu đi làm xa mạnh khỏe thuận hòa.",
+    "Nguyện tâm trí sáng suốt, tuổi già nhẹ nhàng an vui bên bạn hiền.",
+    "Tưởng nhớ và tri ân các đồng đội năm xưa, cầu quốc thái dân an.",
+    "Chúc mọi người trong Quán Trà ngủ ngon giấc, dẻo dai mỗi sớm mai."
+  ];
+
+  const TEMPLE_PEACE_CARDS = [
+    {
+      code: "An Lạc Số 01 · Tâm Như Nước Tĩnh",
+      verse: "Mặt hồ không gợn sóng, trăng sáng tự hiện hình.\nLòng buông điều lo nghĩ, tuổi hạc hưởng thanh bình.",
+      advice: "Hôm nay bác hãy dành 15 phút đi bộ thong thả dưới nắng sớm và uống một ấm trà nhạt, tinh thần sẽ rất khoan khoái."
+    },
+    {
+      code: "An Lạc Số 02 · Gia Đạo Thuận Hòa",
+      verse: "Cây xanh nhờ rễ vững, nhà ấm bởi lời hiền.\nMột câu khen con cháu, vui suốt cả tuần liền.",
+      advice: "Một cuộc điện thoại ngắn hoặc tấm thiệp điểm danh gửi con cháu hôm nay sẽ mang lại niềm vui ấm áp cho cả hai thế hệ."
+    },
+    {
+      code: "An Lạc Số 03 · Tri Âm Gặp Gỡ",
+      verse: "Trà thơm chờ bạn quý, cờ bày đợi người thân.\nChuyện xưa ôn đôi chút, nhẹ bớt vạn phong trần.",
+      advice: "Ngày đẹp để bác ghé bàn trà hỏi thăm đồng đội cũ hoặc thử giải một thế cờ tàn rèn luyện trí nhớ."
+    },
+    {
+      code: "An Lạc Số 04 · Dưỡng Thân Như Chăm Cây",
+      verse: "Tỉa cành khi sương sớm, tưới nước lúc chiều êm.\nGiữ hơi thở đều đặn, giấc ngủ tự nhiên mềm.",
+      advice: "Tối nay bác thử ngâm chân nước ấm trước khi ngủ 30 phút và nghe vài câu thơ lục bát dịu nhẹ nhé."
+    },
+    {
+      code: "An Lạc Số 05 · Biết Đủ Là Giàu Có",
+      verse: "Bữa cơm rau đạm bạc, tiếng cười rộn hiên nhà.\nKhông hơn thua vội vã, mỗi bước nở sen hoa.",
+      advice: "Giữ nhịp sống chậm rãi, ăn uống thanh đạm và mỉm cười với hàng xóm láng giềng là phương thuốc quý nhất."
+    },
+    {
+      code: "An Lạc Số 06 · Phúc Ấm Lưu Dài",
+      verse: "Trồng thêm nhành hoa quý, gieo một lời động viên.\nHương lành bay theo gió, phúc đức ở quanh hiên.",
+      advice: "Hôm nay bác gửi một Sticker chúc sức khỏe hoặc tặng hoa cho bài thơ của bạn đồng niên sẽ kết thêm duyên lành."
+    }
+  ];
+
+  // Dữ liệu Log hành vi khởi tạo của cộng đồng để AI Tracking phân tích chân dung thành viên
+  const SEED_MEMBER_LOGS = [
+    { id: "seed-1", ts: Date.now() - 7200000, hour: 6, memberCode: "TB-102", userName: "Anh Minh", age: 71, province: "Hải Phòng", seniorityTier: "Bậc 4 · Trưởng Lão", action: "unit_joined", category: "dong-ngu", detail: "Điểm danh Ban liên lạc Đại đội 1K2 · D3 · Sư đoàn 25" },
+    { id: "seed-2", ts: Date.now() - 6800000, hour: 6, memberCode: "TB-102", userName: "Anh Minh", age: 71, province: "Hải Phòng", seniorityTier: "Bậc 4 · Trưởng Lão", action: "xiangqi_play", category: "co-tuong", detail: "Giải thành công Thế 4: Thiết Môn Thuyên (Quất Trung Bí)" },
+    { id: "seed-3", ts: Date.now() - 6500000, hour: 6, memberCode: "TB-102", userName: "Anh Minh", age: 71, province: "Hải Phòng", seniorityTier: "Bậc 4 · Trưởng Lão", action: "news_read", category: "doc-bao", detail: "Đọc tin Lương hưu & Thời sự sáng nay" },
+    { id: "seed-4", ts: Date.now() - 5400000, hour: 6, memberCode: "TB-101", userName: "Chị Lan", age: 68, province: "Hà Nội", seniorityTier: "Bậc 5 · Cây Cao Bóng Cả", action: "temple_incense", category: "chua-online", detail: "Dâng hương cầu bình an & rút Thẻ An Lạc Số 02 tại Chánh Điện" },
+    { id: "seed-5", ts: Date.now() - 5100000, hour: 7, memberCode: "TB-101", userName: "Chị Lan", age: 68, province: "Hà Nội", seniorityTier: "Bậc 5 · Cây Cao Bóng Cả", action: "poem_posted", category: "tho-ca", detail: "Ngâm bài thơ Lục bát Hương Trà Sáng Sớm" },
+    { id: "seed-6", ts: Date.now() - 4600000, hour: 7, memberCode: "TB-101", userName: "Chị Lan", age: 68, province: "Hà Nội", seniorityTier: "Bậc 5 · Cây Cao Bóng Cả", action: "tea_sticker", category: "giao-luu", detail: "Gửi Sticker 'Mời chén trà!' tại Bàn 1 Trà Sen" },
+    { id: "seed-7", ts: Date.now() - 3900000, hour: 7, memberCode: "TB-109", userName: "Anh Vĩnh", age: 74, province: "Nghệ An", seniorityTier: "Bậc 4 · Trưởng Lão", action: "table_hosted", category: "dong-ngu", detail: "Đặt tên bàn đàm đạo: 'Ôn chuyện Trường Sơn & Miền Nam 75'" },
+    { id: "seed-8", ts: Date.now() - 3200000, hour: 8, memberCode: "TB-113", userName: "Chị Liên", age: 62, province: "TP. HCM", seniorityTier: "Bậc 2 · Quen Thuộc", action: "temple_muyu", category: "chua-online", detail: "Gõ mõ tĩnh tâm 18 nhịp tại Chánh Điện Online" }
+  ];
+
   // Bảng phân định rõ tính năng nào Mở Cửa Tự Do vs tính năng nào Cần Thẻ Hội Viên
   const AUTH_TIER_GUIDE = {
     freeFeatures: [
       "Điểm danh bình an buổi sáng & xem bản đồ đèn sáng 34 tỉnh thành",
       "Đọc Tờ Báo Sáng chữ to, nghe Đọc to tiếng Việt, giải Đố vui",
       "Đánh Cờ Tướng 9×10 (32 quân) với Máy & Giải 6 thế Cờ Thế cổ phổ",
-      "Ghé ngồi thử Bàn trà công cộng, Nghe thơ & Góc tĩnh tâm"
+      "Viếng Chùa Chánh Điện Online (gõ mõ, dâng hương, rút Thẻ An Lạc) & ghé thử Bàn trà"
     ],
     memberFeatures: [
-      "Lập hoặc Gia nhập Đơn vị Đồng ngũ (như Đại đội 1K2 · D3 · Sư đoàn 25) & giữ bảng quân số",
+      "Thăng 5 Bậc Danh Hiệu Thâm Niên (từ Bạn Trà Mộc Mạc → Cây Cao Bóng Cả lâu năm) + nhận 15 Xu",
+      "Lập hoặc Gia nhập Đơn vị Đồng ngũ (như Đại đội 1K2 · D3 · Sư đoàn 25) & Đặt tên Bàn trà riêng",
       "Kết bạn tâm giao & thấy đèn xanh Bạn bè Đang Online ở bàn trà nào để sang ngồi cùng",
-      "Đổi điện thoại mới hoặc lỡ xóa trình duyệt vẫn lấy lại 100% Bạn bè, Đơn vị, Xu & Khung 3D",
-      "Cấp ảnh Thẻ Hội Viên QR cất vào máy — quét lại 1 chạm không cần nhớ mật khẩu phức tạp"
+      "Lưu trữ đám mây đa lớp & Ảnh Thẻ QR — đổi điện thoại mới khôi phục 100% dữ liệu trong 1 chạm"
     ]
   };
 
@@ -1326,6 +1541,11 @@ window.TuoiBacData = (function () {
     TABLE_ITEMS,
     ACCESSORIES,
     TITLE_FRAMES,
+    SENIORITY_TIERS,
+    TEA_STICKERS,
+    TEMPLE_PRAYER_PRESETS,
+    TEMPLE_PEACE_CARDS,
+    SEED_MEMBER_LOGS,
     IDLE_ICEBREAKERS,
     HABIT_TAGS,
     SENIOR_DIRECTORY,
