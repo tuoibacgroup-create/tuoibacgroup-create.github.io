@@ -130,6 +130,24 @@ window.TuoiBacData = (function () {
       color: "#9E6412",
       rimHex: 0xf5c242,
       cost: 0
+    },
+    {
+      id: "tam-an",
+      name: "Cư Sĩ Tâm An",
+      shortTag: "Tâm An",
+      desc: "Khung sen tịnh tiến mở khi đạt Hạng III cây Chánh Điện & Tâm An (đi chùa, thắp nhang, gõ mõ)",
+      color: "#682642",
+      rimHex: 0xd98fa8,
+      cost: 0
+    },
+    {
+      id: "kien-tuong",
+      name: "Kiện Tướng Dân Gian",
+      shortTag: "Kiện Tướng",
+      desc: "Khung ngọc chạm vàng mở khi thắng từ 3 ván Ô ăn quan / Cờ tướng thật hoặc đạt Hạng III Dân Gian",
+      color: "#1A3E6C",
+      rimHex: 0xffd97d,
+      cost: 0
     }
   ];
 

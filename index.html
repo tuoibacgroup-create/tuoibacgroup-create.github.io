@@ -18,19 +18,19 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Merriweather:ital,wght@0,400;0,700;1,400&display=swap"
     rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20261117g" />
+  <link rel="stylesheet" href="styles.css?v=20261117h" />
   <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.3/dist/mqtt.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
-  <script src="data.js?v=20261117g" defer></script>
-  <script src="progression.js?v=20261117g" defer></script>
-  <script src="telemetry.js?v=20261117g" defer></script>
-  <script src="tearoom3d.js?v=20261117g" defer></script>
-  <script src="temple3d.js?v=20261117g" defer></script>
-  <script src="xiangqi.js?v=20261117g" defer></script>
-  <script src="realtime.js?v=20261117g" defer></script>
-  <script src="app.js?v=20261117g" defer></script>
+  <script src="data.js?v=20261117h" defer></script>
+  <script src="progression.js?v=20261117h" defer></script>
+  <script src="telemetry.js?v=20261117h" defer></script>
+  <script src="tearoom3d.js?v=20261117h" defer></script>
+  <script src="temple3d.js?v=20261117h" defer></script>
+  <script src="xiangqi.js?v=20261117h" defer></script>
+  <script src="realtime.js?v=20261117h" defer></script>
+  <script src="app.js?v=20261117h" defer></script>
 </head>
 
 <body>
@@ -306,6 +306,26 @@
 
     <!-- Main Dynamic View -->
     <main class="app-main" id="app-main" tabindex="-1"></main>
+
+    <!-- Bottom Sticky Navigation Bar (4 Primary Destinations for Seniors) -->
+    <nav class="bottom-nav" id="bottom-nav" aria-label="Điều hướng chính Quán Trà">
+      <button type="button" class="bottom-nav-btn active" data-bnav="home" aria-current="page">
+        <svg class="ico ico-sm"><use href="#ico-sun" /></svg>
+        <span>Sảnh chính</span>
+      </button>
+      <button type="button" class="bottom-nav-btn" data-bnav="tearoom">
+        <svg class="ico ico-sm"><use href="#ico-tea" /></svg>
+        <span>Quán trà</span>
+      </button>
+      <button type="button" class="bottom-nav-btn" data-bnav="games">
+        <svg class="ico ico-sm"><use href="#ico-xiangqi" /></svg>
+        <span>Đánh cờ</span>
+      </button>
+      <button type="button" class="bottom-nav-btn" data-bnav="profile">
+        <svg class="ico ico-sm"><use href="#ico-user" /></svg>
+        <span>Cá nhân</span>
+      </button>
+    </nav>
   </div>
 
   <!-- Global Accessible Dialog Overlay (Eye rest, Logs, Report, Card Preview, Dictionary) -->

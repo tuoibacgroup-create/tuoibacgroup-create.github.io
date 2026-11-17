@@ -208,7 +208,7 @@ button {
     border: 1px solid var(--border-strong);
     border-radius: 26px;
     box-shadow: 0 18px 42px rgba(35, 26, 20, 0.16);
-    overflow: hidden;
+    overflow-x: clip;
   }
 }
 
@@ -419,7 +419,7 @@ button {
 /* Main Content Area */
 .app-main {
   flex: 1;
-  padding: 16px 14px 68px;
+  padding: 16px 14px 28px;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -1493,7 +1493,7 @@ p {
 
 .toast-banner {
   position: fixed;
-  bottom: 18px;
+  bottom: 84px;
   left: 50%;
   transform: translateX(-50%);
   width: min(92vw, 440px);
@@ -2199,6 +2199,16 @@ p {
 .seat-status-tag.frame-giu-lua {
   background-color: rgba(110, 62, 14, 0.94);
   border-color: #FFE083;
+  color: #FFFDF7;
+}
+.seat-status-tag.frame-tam-an {
+  background-color: rgba(104, 38, 66, 0.94);
+  border-color: #F7C6D7;
+  color: #FFFDF7;
+}
+.seat-status-tag.frame-kien-tuong {
+  background-color: rgba(26, 62, 108, 0.94);
+  border-color: #FFD97D;
   color: #FFFDF7;
 }
 
@@ -3127,4 +3137,199 @@ p {
   justify-content: space-between;
   align-items: center;
   gap: 6px;
+}
+
+/* ==================== STICKY 4-TAB BOTTOM NAVIGATION ==================== */
+.bottom-nav {
+  position: sticky;
+  bottom: 0;
+  z-index: 42;
+  margin-top: auto;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
+  background-color: #F6F1E8;
+  border-top: 1px solid var(--border-subtle);
+  box-shadow: 0 -4px 14px rgba(35, 26, 20, 0.08);
+}
+
+.bottom-nav-btn {
+  min-height: 58px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 6px 4px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background-color: transparent;
+  color: var(--ink-secondary);
+  font-family: inherit;
+  font-size: clamp(14px, 0.72rem, 16px);
+  font-weight: 600;
+  line-height: 1.15;
+  cursor: pointer;
+}
+
+.bottom-nav-btn.active {
+  background-color: var(--accent-jade);
+  color: #FFFFFF;
+  border-color: var(--accent-jade);
+  font-weight: 700;
+}
+
+/* ==================== STREAMLINED SENIOR HOME, PROFILE & ACCORDION LAYOUT ==================== */
+.home-hero-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.home-core-card {
+  min-height: 98px;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid var(--border-subtle);
+  background-color: var(--bg-card);
+  color: var(--ink-primary);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 6px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.home-core-card strong {
+  font-size: 0.96rem;
+  line-height: 1.25;
+}
+
+.home-core-card small {
+  font-size: 0.8rem;
+  color: var(--ink-secondary);
+  line-height: 1.3;
+}
+
+.home-core-card.is-primary {
+  background-color: #B53E2A;
+  border-color: #962E1D;
+  color: #FFFFFF;
+}
+
+.home-core-card.is-primary small {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.home-core-card.is-jade {
+  background-color: #215745;
+  border-color: #194536;
+  color: #FFFFFF;
+}
+
+.home-core-card.is-jade small {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.home-core-card.is-wood {
+  background-color: #FFF7EC;
+  border-color: #C79C68;
+}
+
+.home-utility-links {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.home-utility-links button {
+  flex: 1 1 140px;
+}
+
+.tb-details {
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  background-color: var(--bg-card);
+  padding: 4px 12px 10px;
+}
+
+.tb-details > summary {
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--ink-primary);
+  cursor: pointer;
+  list-style: none;
+}
+
+.tb-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.tb-details-hint {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--accent-jade);
+}
+
+.wardrobe-cat-bar {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.wardrobe-cat-btn {
+  min-height: 56px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  background-color: var(--bg-card);
+  color: var(--ink-primary);
+  font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.wardrobe-cat-btn.active {
+  background-color: var(--accent-jade);
+  color: #FFFFFF;
+  border-color: var(--accent-jade);
+  font-weight: 700;
+}
+
+.game-stats-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background-color: #FFF9EE;
+  border: 1px solid var(--border-subtle);
+  font-size: 0.88rem;
+}
+
+.forfeit-warning-box {
+  padding: 12px;
+  border-radius: 12px;
+  background-color: #FDF2EE;
+  border: 1px solid #C84B38;
+  color: var(--ink-primary);
+  line-height: 1.45;
+}
+
+@media (max-width: 340px) {
+  .home-hero-grid-4,
+  .wardrobe-cat-bar {
+    grid-template-columns: 1fr;
+  }
 }

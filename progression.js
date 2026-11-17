@@ -240,7 +240,7 @@ window.TuoiBacProgression = (function () {
       baseA: 1.3,
       baseB: 3.2,
       formulaNote: "M(k) = ceil(1.3·k^2.15 + 3.2·(1.38^(k-1) - 1))",
-      howToEarn: "Rải quân Ô ăn quan (+2), trả lời đúng câu Đố vui (+4), hoàn thành 5 câu (+6)",
+      howToEarn: "Rải quân Ô ăn quan (+2), thắng ván Ô ăn quan (+8), thắng/giải Cờ tướng (+6 đến +14), Đố vui (+4)",
       tiers: [
         "Người Chơi Vui Vẻ",
         "Tay Rải Sỏi Khéo",

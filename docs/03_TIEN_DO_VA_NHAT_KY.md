@@ -29,6 +29,15 @@
 
 ## 2. Nhật Ký Phiên Bản Kỹ Thuật (Append-Only Engineering Log)
 
+### [2026-11-17] — Bảo Vệ Ván Cờ Đang Đánh, Khung Danh Hiệu Chùa & Thắng Cờ, Tối Giản Bố Cục Người Cao Tuổi (`?v=20261117h`)
+- **Tệp cập nhật:** `app.js`, `data.js`, `progression.js`, `tearoom3d.js`, `styles.css`, `index.html` (`?v=20261117h`), `sw.js` (`tuoibac-pwa-v20`), `ARCHITECTURE.md`, `docs/02_SO_DO_DU_LIEU_VA_API_NOI_BO.md`, `docs/03_TIEN_DO_VA_NHAT_KY.md`, `docs/04_CAM_NANG_FIX_BUG_VA_KIEM_THU.md`.
+- **Chi tiết 4 hạng mục triển khai & 2 mẫu đối chiếu thiết kế 2.5D:**
+  1. **Cảnh báo & Tính THUA khi rời ván Ô ăn quan / Cờ tướng đang đánh dở (`app.js`, `styles.css`):** Theo dõi `inProgress`, `forfeitedPendingReload` và thống kê `user.gameStats` (`oaqWins`, `oaqLosses`, `xiangqiWins`, `xiangqiLosses`, `winStreak`, `bestWinStreak`); hiển thị hộp thoại xác nhận to rõ (`Ở lại đánh tiếp` / `Chấp nhận THUA & Rời đi`) khi chuyển mục, đổi tab/chế độ, xếp lại bàn, bấm Quay lại (`popstate`) hoặc tải lại/đóng trang (`beforeunload` + `pagehide` xử lý tiếp trong `loadState()`), ngoại trừ chế độ Giải Cờ Thế (`mode === "puzzle"`).
+  2. **Mở rộng Cây & Khung Danh Hiệu Chánh Điện + Thắng Ván Cờ (`data.js`, `progression.js`, `tearoom3d.js`, `styles.css`, `app.js`):** Bổ sung 2 khung danh hiệu 3D/Thẻ tên `"tam-an"` (*Cư Sĩ Tâm An* — mở ở Hạng III cây `temple_zen`) và `"kien-tuong"` (*Kiện Tướng Dân Gian* — mở khi thắng `>= 3` ván hoặc Hạng III `folk_games`).
+  3. **Ẩn công thức toán & thu gọn cài đặt/cây danh hiệu (`app.js`):** Bỏ hộp `.math-formula-box` và chuỗi `formulaNote` khỏi giao diện `Bảng Vinh Danh` (`renderLeaderboard()`); chỉ mở sẵn Giai đoạn hiện tại của người chơi, gộp các giai đoạn khác và 8 bậc `I..VIII` vào thẻ `<details>` bấm mở khi cần; tách phần sửa Tên · Tuổi ra tab riêng trong `Cá Nhân` thay vì bày ra Trang Chủ.
+  4. **Đại rà soát bố cục thân thiện người cao tuổi với Thanh Điều Hướng Đáy 4 Mục (`index.html`, `styles.css`, `app.js`):** Gắn thanh `.bottom-nav` cố định đáy (`Sảnh chính` · `Quán trà` · `Đánh cờ` · `Cá nhân`), tái cấu trúc `Trang Chủ` thành 3 vùng không trùng lặp (Thẻ tóm tắt, 4 Việc Chính, 6 Góc Phụ + 2 nút tiện ích), chia `Cá Nhân` thành 2 tab (`Tủ Trang Phục & Đồ Bày` chọn theo 4 nhóm ngay dưới sân khấu thử đồ vs `Đổi Tên · Tuổi & Thẻ QR`), và thu gọn danh sách bạn cùng bàn + 2 tab giao tiếp tại bàn trà.
+  5. **Bộ 2 ảnh mẫu đối chiếu nâng cấp Quán Trà sang 2.5D (`so_sanh_2_phuong_an_25d.md`):** Hoàn thiện 2 bản mẫu trực quan giữ đúng 5 ghế/trang phục hiện tại của ứng dụng (Phương án 1: *Full 2.5D Isometric kiểu Thiên Long Bát Bộ* và Phương án 2: *Hybrid Phòng 3D + Nhân vật 2.5D Sprite*) để Chủ dự án duyệt trước khi chỉnh mã dựng hình `tearoom3d.js`.
+
 ### [2026-11-17] — Kiểm Thử Toàn Diện 16 Màn Hình & Vá Triệt Để 8 Lỗi Tiềm Ẩn (`?v=20261117g`)
 - **Tệp cập nhật:** `app.js`, `temple3d.js`, `styles.css`, `index.html` (`?v=20261117g`), `sw.js` (`tuoibac-pwa-v19`), `ARCHITECTURE.md`, `docs/02_SO_DO_DU_LIEU_VA_API_NOI_BO.md`, `docs/03_TIEN_DO_VA_NHAT_KY.md`, `docs/04_CAM_NANG_FIX_BUG_VA_KIEM_THU.md`.
 - **8 lỗi thực tế đã phát hiện và xử lý dứt điểm:**

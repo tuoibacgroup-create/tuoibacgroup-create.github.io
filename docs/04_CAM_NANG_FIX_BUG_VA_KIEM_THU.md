@@ -44,6 +44,9 @@ Tài liệu này giúp bất kỳ AI Agent nào khi nhận báo lỗi từ Chủ
     - Không bao giờ dùng `userCushionIdx || 2` hay `userCushionIdx || 7` vì vị trí Chiếu số 1 có chỉ số `0` (falsy trong JavaScript); luôn kiểm tra `typeof x === "number" && Number.isFinite(x)`.
     - Khi F5 hoặc chuyển tab/màn hình giữa lúc Máy Ô Ăn Quan đang chờ đi (`turn = "ai"`), `loadState()` và `cancelOrCommitOaqAnimation(true)` bắt buộc chốt nước đi và trả lượt về `"host"`.
     - Khi cập nhật danh sách sớ cầu an, người online hoặc đổi chỗ chiếu tại Chánh Điện, gọi `TempleScene3D.updateConfig(...)` và chỉ thay HTML vùng danh sách thay vì gọi `renderZen()` làm mất khói hương và sóng âm đang chạy trên `<canvas>`.
+11. **Bảo vệ ván cờ đang đánh dở (Ô ăn quan & Cờ tướng `9×10`) khi thoát/tải lại/Quay lại:**
+    - Chỉ các ván thật (`oaq.inProgress` hoặc `xiangqi.inProgress` với `mode !== "puzzle"`) mới bật cảnh báo xác nhận qua `confirmMatchExitOrStay(...)`, `popstate` và `beforeunload`/`pagehide` (Giải Cờ thế `mode === "puzzle"` luôn đổi thế tự do không tính thua).
+    - Nếu người chơi bấm F5 hoặc đóng tab khi `forfeitedPendingReload` đã đánh dấu, lần tải lại kế tiếp trong `loadState()` sẽ cộng `+1` vào `gameStats.oaqLosses` / `gameStats.xiangqiLosses` và đặt lại bàn cờ sạch; nếu người chơi chọn *"Ở lại"* trên hộp thoại trình duyệt, bộ đếm `1500ms` tự hủy cờ `forfeitedPendingReload` để không phạt nhầm.
 
 ---
 

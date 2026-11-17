@@ -605,7 +605,9 @@ window.TeaRoomScene = (function () {
       "ky-thu": 0xd49a35,
       "giu-lua": 0xf0b23a,
       "dong-ngu": 0x6b8f4e,
-      "cay-cao": 0xf5c242
+      "cay-cao": 0xf5c242,
+      "tam-an": 0xd98fa8,
+      "kien-tuong": 0xffd97d
     };
     if (frameColors[frameId]) {
       const fHex = frameColors[frameId];
@@ -1535,7 +1537,9 @@ window.TeaRoomScene = (function () {
     "ky-thu": "Kỳ Thủ",
     "giu-lua": "Giữ Lửa",
     "dong-ngu": "Đồng Ngũ",
-    "cay-cao": "Cây Cao"
+    "cay-cao": "Cây Cao",
+    "tam-an": "Tâm An",
+    "kien-tuong": "Kiện Tướng"
   };
 
   function formatSeatTagHtml(opts) {

@@ -54,7 +54,10 @@ state = {
     unlockedItems: [],
     unlockedAccessories: [],
     unlockedTitleFrames: [],
-    unlockedTitles: []
+    unlockedTitles: [],
+    daysHistory: [],
+    habits: [],
+    gameStats: { oaqWins: 0, oaqLosses: 0, xiangqiWins: 0, xiangqiLosses: 0, winStreak: 0, bestWinStreak: 0 }
   },
 
   social: {
@@ -90,7 +93,9 @@ state = {
     prevBoard: null,
     moveLog: [],
     matchId: "",
-    mySide: "red"
+    mySide: "red",
+    inProgress: false,
+    forfeitedPendingReload: false
   },
 
   zen: {
@@ -115,7 +120,7 @@ state = {
   replyTemplates: [],             // Ma trận mẫu câu gợi ý nhanh 0-Token theo chủ đề
   newspaper: { articles: [], drafts: [], adminOpen: false, selectedCategory: "all", searchQuery: "", liveItems: [] },
   quiz: { idx: 0, score: 0, selectedOpt: null, finished: false, timeLeft: 25 },
-  oaq: { cells: [], scoreP: 0, scoreAI: 0, turn: "host", mode: "ai", matchId: "", zaloInviteUrl: "" },
+  oaq: { cells: [], scoreP: 0, scoreAI: 0, turn: "host", mode: "ai", matchId: "", zaloInviteUrl: "", inProgress: false, forfeitedPendingReload: false },
   poems: [],                      // Danh sách bài thơ lục bát & số hoa được tặng
   watch: { channelIdx: 0, votes: [], votedIdx: null, reactions: {}, clipAnswered: null },
   memberLogs: [],                 // Bộ đệm tóm tắt hoạt động gần nhất trong state

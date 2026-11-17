@@ -93,7 +93,15 @@
         unlockedTitleFrames: ["none", "tri-am"],
         unlockedTitles: ["Thành viên Chăm Điểm Danh"],
         daysHistory: [true, true, true, true, true, true, false],
-        habits: ["uong-tra", "doc-bao", "co-tuong"]
+        habits: ["uong-tra", "doc-bao", "co-tuong"],
+        gameStats: {
+          oaqWins: 0,
+          oaqLosses: 0,
+          xiangqiWins: 0,
+          xiangqiLosses: 0,
+          winStreak: 0,
+          bestWinStreak: 0
+        }
       },
       settings: {
         xlFont: false,
@@ -162,7 +170,9 @@
         hostName: "",
         guestName: "",
         statusText: "Chọn một ô của bác (hàng dưới) để rải quân.",
-        zaloInviteUrl: ""
+        zaloInviteUrl: "",
+        inProgress: false,
+        forfeitedPendingReload: false
       },
       xiangqi: {
         mode: "ai",
@@ -183,7 +193,9 @@
         hostName: "",
         guestName: "",
         inviteUrl: "",
-        status: "Bàn chuẩn 9×10 (32 quân) — Bác cầm quân Đỏ đi tiên: chạm quân Đỏ rồi chạm chấm xanh để đi."
+        status: "Bàn chuẩn 9×10 (32 quân) — Bác cầm quân Đỏ đi tiên: chạm quân Đỏ rồi chạm chấm xanh để đi.",
+        inProgress: false,
+        forfeitedPendingReload: false
       },
       poems: D.POEMS.map((p) => Object.assign({}, p)),
       watch: {
@@ -234,6 +246,8 @@
     };
   }
 
+  let pendingReloadForfeitNotice = "";
+  let matchHistoryGuardArmed = false;
   let state = loadState();
   let sessionSeconds = 0;
   let eyeCareShownThisCycle = false;
@@ -248,6 +262,9 @@
   let activeGameTab = "oaq";
   let activeLeaderTab = "Cay32";
   let activeRankProvinceFilter = "all";
+  let activeProfileMainTab = "wardrobe";
+  let activeWardrobeCat = "outfits";
+  let activeTeaInputTab = "quick";
   let lastTableActivityAt = Date.now();
   let idlePromptRotIdx = 0;
   let deferredPwaPrompt = null;
@@ -339,6 +356,43 @@
         merged.user.unlockedTitleFrames = def.user.unlockedTitleFrames;
       }
       merged.user.skillPoints = Object.assign({}, def.user.skillPoints, (parsed.user && parsed.user.skillPoints) || {});
+      merged.user.gameStats = Object.assign({}, def.user.gameStats, (parsed.user && parsed.user.gameStats) || {});
+      merged.oaq.inProgress = Boolean(merged.oaq.inProgress);
+      merged.oaq.forfeitedPendingReload = Boolean(merged.oaq.forfeitedPendingReload);
+      merged.xiangqi.inProgress = Boolean(merged.xiangqi.inProgress);
+      merged.xiangqi.forfeitedPendingReload = Boolean(merged.xiangqi.forfeitedPendingReload);
+
+      const forfeitNotes = [];
+      if (merged.oaq.forfeitedPendingReload) {
+        const keepOaqMode = merged.oaq.mode === "async" ? "async" : "ai";
+        merged.user.gameStats.oaqLosses = (Number(merged.user.gameStats.oaqLosses) || 0) + 1;
+        merged.user.gameStats.winStreak = 0;
+        merged.oaq = Object.assign({}, def.oaq, {
+          mode: keepOaqMode,
+          statusText: "Ván trước đã bị tính THUA do tải lại trang giữa ván. Mời chọn ô đi ván mới."
+        });
+        forfeitNotes.push("Ô ăn quan");
+      }
+      if (merged.xiangqi.forfeitedPendingReload) {
+        const keepXqMode = merged.xiangqi.mode || "ai";
+        const keepXqLevel = merged.xiangqi.aiLevel || "club";
+        const keepPzIdx = merged.xiangqi.puzzleIdx || 0;
+        const keepSolvedIds = Array.isArray(merged.xiangqi.solvedPuzzleIds) ? merged.xiangqi.solvedPuzzleIds : [];
+        merged.user.gameStats.xiangqiLosses = (Number(merged.user.gameStats.xiangqiLosses) || 0) + 1;
+        merged.user.gameStats.winStreak = 0;
+        merged.xiangqi = Object.assign({}, def.xiangqi, {
+          mode: keepXqMode === "puzzle" ? "ai" : keepXqMode,
+          aiLevel: keepXqLevel,
+          puzzleIdx: keepPzIdx,
+          solvedPuzzleIds: keepSolvedIds,
+          board: XQ ? XQ.createInitialBoard() : null,
+          status: "Ván trước đã bị tính THUA do tải lại trang giữa ván. Mời bác đánh ván mới!"
+        });
+        forfeitNotes.push("Cờ tướng");
+      }
+      if (forfeitNotes.length > 0) {
+        pendingReloadForfeitNotice = `Đã tính THUA (+1 trận thua) vì rời/tải lại trang giữa ván ${forfeitNotes.join(" & ")}.`;
+      }
       merged.zen.userCushionIdx =
         typeof merged.zen.userCushionIdx === "number" && Number.isFinite(merged.zen.userCushionIdx)
           ? Math.max(0, Math.min(19, Math.floor(merged.zen.userCushionIdx)))
@@ -436,6 +490,15 @@
     };
   }
 
+  function checkGameWinMilestones() {
+    if (!state.user.gameStats) return;
+    const gs = state.user.gameStats;
+    const totalWins = (Number(gs.oaqWins) || 0) + (Number(gs.xiangqiWins) || 0);
+    if (totalWins >= 3) {
+      unlockTitleFrame("kien-tuong", "Kiện Tướng Dân Gian");
+    }
+  }
+
   function awardSkillPoints(treeId, deltaPts) {
     if (!treeId || !PROG) return;
     if (!state.user.skillPoints) state.user.skillPoints = {};
@@ -451,6 +514,12 @@
       if (!state.user.unlockedTitles.includes(badgeTitle)) {
         state.user.unlockedTitles.unshift(badgeTitle);
       }
+    }
+    if (treeId === "temple_zen" && nextRank >= 3) {
+      unlockTitleFrame("tam-an", "Cư Sĩ Tâm An");
+    }
+    if (treeId === "folk_games" && nextRank >= 3) {
+      unlockTitleFrame("kien-tuong", "Kiện Tướng Dân Gian");
     }
   }
 
@@ -1074,6 +1143,26 @@
     els.btnBack.hidden = isHome;
     els.brandCompact.hidden = !isHome;
 
+    const bnavTarget =
+      state.route === "home"
+        ? "home"
+        : state.route === "tearoom"
+        ? "tearoom"
+        : state.route === "games" || state.route === "xiangqi"
+        ? "games"
+        : state.route === "profile" || state.route === "leaderboard"
+        ? "profile"
+        : "";
+    document.querySelectorAll("[data-bnav]").forEach((btn) => {
+      const isAct = btn.dataset.bnav === bnavTarget;
+      btn.classList.toggle("active", isAct);
+      if (isAct) {
+        btn.setAttribute("aria-current", "page");
+      } else {
+        btn.removeAttribute("aria-current");
+      }
+    });
+
     if (els.simRender) {
       const activeMode = state.settings.autoFallbacked ? "2.5D (Tự hạ)" : state.settings.preferredRender === "3d" ? "Không gian 3D" : "2.5D Tĩnh";
       els.simRender.textContent = `Đồ họa: ${activeMode}`;
@@ -1088,7 +1177,160 @@
     }
   }
 
-  function navigate(route) {
+  function getActiveForfeitableMatch() {
+    const o = state.oaq;
+    const isOaqEnded = o && o.cells[5] === 0 && o.cells[11] === 0;
+    if (o && o.inProgress && !isOaqEnded) {
+      return {
+        kind: "oaq",
+        label: o.mode === "async" ? "ván Ô ăn quan treo qua link" : "ván Ô ăn quan với Máy"
+      };
+    }
+    const x = state.xiangqi;
+    if (x && x.mode !== "puzzle" && x.inProgress && !x.solved && Array.isArray(x.moveLog) && x.moveLog.length > 0) {
+      return {
+        kind: "xiangqi",
+        label:
+          x.mode === "async"
+            ? "ván Cờ tướng qua link"
+            : x.mode === "local2p"
+            ? "ván Cờ tướng 2 người"
+            : "ván Cờ tướng với Máy"
+      };
+    }
+    return null;
+  }
+
+  function isCurrentlyInsideMatchContext(active) {
+    if (!active) return false;
+    if (active.kind === "oaq") {
+      return state.route === "games" && activeGameTab === "oaq";
+    }
+    if (active.kind === "xiangqi") {
+      if (state.route === "xiangqi") return true;
+      if (state.route === "games" && activeGameTab === "cotuong") return true;
+      if (state.route === "tearoom" && state.teaRoom.subView === "table" && getCurrentRoom().id === "phong-co") return true;
+    }
+    return false;
+  }
+
+  function armBrowserBackMatchGuard(kind) {
+    if (matchHistoryGuardArmed) return;
+    try {
+      if (window.history && typeof window.history.pushState === "function") {
+        window.history.pushState({ tuoibacGuard: kind }, "");
+        matchHistoryGuardArmed = true;
+      }
+    } catch (e) {}
+  }
+
+  function resetXiangqiMatchState(nextMode) {
+    if (!XQ) return;
+    const x = state.xiangqi;
+    x.mode = nextMode;
+    x.selected = null;
+    x.lastMove = null;
+    x.hintMove = null;
+    x.prevBoard = null;
+    x.solved = false;
+    x.inProgress = false;
+    x.forfeitedPendingReload = false;
+    x.moveLog = [];
+    if (nextMode === "puzzle") {
+      const curPz = XQ.PUZZLES[(x.puzzleIdx || 0) % XQ.PUZZLES.length];
+      x.board = XQ.buildBoardFromList(curPz.pieces);
+      x.turn = "red";
+      x.puzzleStep = 0;
+      x.status = `${curPz.name} — Đỏ đi tiên: chạm quân Đỏ rồi chạm chấm xanh để chiếu Tướng.`;
+    } else if (nextMode === "ai") {
+      x.board = XQ.createInitialBoard();
+      x.turn = "red";
+      x.status = `Ván thật 9×10 (32 quân) đấu với Máy (${x.aiLevel === "club" ? "Mức CLB" : "Mức Thư giãn"}) — Bác cầm Đỏ đi tiên!`;
+    } else if (nextMode === "local2p") {
+      x.board = XQ.createInitialBoard();
+      x.turn = "red";
+      x.status = "Đánh 2 người chung máy (32 quân) — Bên Đỏ đi trước, chạm quân để đi.";
+    } else {
+      x.matchId = "";
+      ensureXiangqiAsyncMatch();
+    }
+    saveState();
+  }
+
+  function forfeitActiveMatchAsLoss(kind) {
+    if (!state.user.gameStats) {
+      state.user.gameStats = createDefaultState().user.gameStats;
+    }
+    if (kind === "oaq" && state.oaq.inProgress) {
+      cancelOrCommitOaqAnimation(false);
+      state.user.gameStats.oaqLosses = (Number(state.user.gameStats.oaqLosses) || 0) + 1;
+      state.user.gameStats.winStreak = 0;
+      const keepMode = state.oaq.mode === "async" ? "async" : "ai";
+      state.oaq = Object.assign({}, createDefaultState().oaq, {
+        mode: keepMode,
+        statusText: "Ván trước đã tính THUA do rời ván giữa chừng. Mời chọn ô đi ván mới."
+      });
+      if (keepMode === "async") ensureOaqAsyncMatch();
+      matchHistoryGuardArmed = false;
+      logMemberBehavior("oaq_forfeit", "dan-gian", "Thoát giữa ván Ô ăn quan (tính Thua)", {
+        eventType: "game_forfeit",
+        module: "games",
+        gameKind: "oaq"
+      });
+      saveState();
+      updateGlobalChrome();
+      return "Đã kết thúc và tính THUA (+1 trận thua) ván Ô ăn quan.";
+    }
+    if (kind === "xiangqi" && state.xiangqi.inProgress) {
+      state.user.gameStats.xiangqiLosses = (Number(state.user.gameStats.xiangqiLosses) || 0) + 1;
+      state.user.gameStats.winStreak = 0;
+      const keepMode = state.xiangqi.mode === "puzzle" ? "ai" : state.xiangqi.mode || "ai";
+      resetXiangqiMatchState(keepMode);
+      state.xiangqi.status = "Ván trước đã tính THUA do thoát giữa chừng. Mời bác đánh ván mới!";
+      matchHistoryGuardArmed = false;
+      logMemberBehavior("xiangqi_forfeit", "co-tuong", "Thoát giữa ván Cờ tướng (tính Thua)", {
+        eventType: "game_forfeit",
+        module: "xiangqi",
+        gameKind: "xiangqi"
+      });
+      saveState();
+      updateGlobalChrome();
+      return "Đã kết thúc và tính THUA (+1 trận thua) ván Cờ tướng.";
+    }
+    return "";
+  }
+
+  function confirmMatchExitOrStay(onProceed, actionDesc) {
+    const active = getActiveForfeitableMatch();
+    if (!active || !isCurrentlyInsideMatchContext(active)) {
+      onProceed();
+      return;
+    }
+    openDialog(
+      "Cảnh báo đang dở ván cờ",
+      `
+      <div class="forfeit-warning-box">
+        <p>Bác đang đánh dở <strong>${escHtml(active.label)}</strong>.</p>
+        <p style="margin-top:6px;">Nếu <strong>${escHtml(actionDesc || "thoát ra ngoài")}</strong> ngay lúc này, ván hiện tại sẽ tự động kết thúc và tính là <strong>THUA (+1 trận thua)</strong>.</p>
+      </div>
+      <div class="btn-row" style="margin-top:14px;">
+        <button type="button" class="btn-jade" id="btn-stay-in-match">Ở lại đánh tiếp ván này</button>
+        <button type="button" class="btn-danger" id="btn-forfeit-and-leave">Chấp nhận THUA &amp; Rời đi</button>
+      </div>
+      `
+    );
+    document.getElementById("btn-stay-in-match").addEventListener("click", () => {
+      closeDialog();
+    });
+    document.getElementById("btn-forfeit-and-leave").addEventListener("click", () => {
+      const msg = forfeitActiveMatchAsLoss(active.kind);
+      closeDialog();
+      if (msg) showToast(msg);
+      onProceed();
+    });
+  }
+
+  function executeNavigate(route) {
     stopSpeaking();
     clearInterval(quizTimerId);
     clearInterval(cooldownTickId);
@@ -1118,6 +1360,14 @@
     syncMyGlobalOnlinePresence();
     render();
     window.scrollTo({ top: 0, behavior: "instant" });
+  }
+
+  function navigate(route) {
+    if (route === state.route) {
+      executeNavigate(route);
+      return;
+    }
+    confirmMatchExitOrStay(() => executeNavigate(route), "chuyển sang mục khác");
   }
 
   function addXu(amount, reason) {
@@ -1236,77 +1486,20 @@
   function renderHome() {
     const prov = getProvince(state.user.provinceId);
     const pron = getUserPronoun();
-    const hon = getUserHonorific();
     const age = getUserAge();
-    const baseName = state.user.baseName || state.user.name.replace(/^(Anh|Chị|Bác)\s+/i, "");
-    const isMvpMode = state.settings.homeMode === "mvp";
     const showPwaCard = !isStandalonePwa() && !state.settings.pwaBannerDismissed;
+    const prog = getSeniorityProgress();
+    const gs = state.user.gameStats || {};
+    const totalWins = (Number(gs.oaqWins) || 0) + (Number(gs.xiangqiWins) || 0);
 
     els.main.innerHTML = `
       <section class="section-block">
-        <h1>Chào ${escHtml(state.user.name)} · ${age} tuổi</h1>
-        <p class="lead-copy">Mời ${pron} chọn một việc muốn làm sáng nay. Không cần gõ phím nhiều, chạm nút lớn để bắt đầu.</p>
-
-        <!-- Công tắc thu gọn Trang Chủ về chuẩn MVP 3 nút -->
-        <div class="home-mode-switch" role="group" aria-label="Chế độ hiển thị trang chủ">
-          <button type="button" class="home-mode-btn ${isMvpMode ? "active" : ""}" id="btn-mode-mvp">Chuẩn MVP (3 nút gọn)</button>
-          <button type="button" class="home-mode-btn ${!isMvpMode ? "active" : ""}" id="btn-mode-full">Đầy đủ (Tất cả góc)</button>
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+          <h1>Chào ${escHtml(state.user.name)} · ${age}t</h1>
+          <button type="button" class="btn-mini" id="btn-home-edit-identity">${ico("user", "ico-sm")}<span>Đổi Tên · Tuổi</span></button>
         </div>
+        <p class="lead-copy">Mời ${pron} chọn một góc sinh hoạt sáng nay. Mọi chữ và nút đều làm to rõ, dễ bấm.</p>
 
-        <!-- 4 Nút lớn ưu tiên đặt ngay đầu màn hình để mở 1 chạm không phải cuộn -->
-        <div class="home-hero-list">
-          <button type="button" class="home-main-btn is-primary" data-go="checkin">
-            <span class="home-main-icon">${ico("sun", "ico-lg")}</span>
-            <span class="home-main-text">
-              <strong>${state.user.checkedInToday ? "Xem bản đồ Điểm danh bình an" : "1. Điểm danh bình an"}</strong>
-              <small>${state.user.checkedInToday ? `Tỉnh ${prov.short} đã sáng đèn hôm nay` : "Chạm 1 lần để thắp sáng tỉnh nhà & báo tin cho con"}</small>
-            </span>
-          </button>
-
-          <button type="button" class="home-main-btn is-jade" data-go="tearoom">
-            <span class="home-main-icon">${ico("tea", "ico-lg")}</span>
-            <span class="home-main-text">
-              <strong>2. Vào phòng sinh hoạt (${escHtml(getCurrentRoom().shortName)})</strong>
-              <small>${getCurrentRoom().tables.length} bàn đang mở · Ghép bàn người thật & đồng niên của ${pron}</small>
-            </span>
-          </button>
-
-          <button type="button" class="home-main-btn" data-go="newspaper">
-            <span class="home-main-icon">${ico("paper", "ico-lg")}</span>
-            <span class="home-main-text">
-              <strong>3. Đọc Tờ Báo Sáng</strong>
-              <small>${state.newspaper.articles.length} tin chọn lọc dễ đọc, tìm từ khóa & đàm đạo theo tin</small>
-            </span>
-          </button>
-
-          <button type="button" class="home-main-btn is-wood" data-go="xiangqi">
-            <span class="home-main-icon">${ico("xiangqi", "ico-lg")}</span>
-            <span class="home-main-text">
-              <strong>4. Cờ Tướng 9×10 &amp; Giải Cờ Thế</strong>
-              <small>Đánh ván thật 32 quân (Máy CLB / 2 người / Ván treo) &amp; Giải 6 thế cờ cổ phổ</small>
-            </span>
-          </button>
-
-          <button type="button" class="home-main-btn is-veteran" data-go="groups">
-            <span class="home-main-icon">${ico("users", "ico-lg")}</span>
-            <span class="home-main-text">
-              <strong>5. Hội Đồng Ngũ · CLB &amp; Kết Bạn</strong>
-              <small>Đại đội 1K2 · D3 · Sư đoàn 25, lập đơn vị riêng &amp; xem bạn Đang Online (${countOnlineFriendsNow()} người)</small>
-            </span>
-          </button>
-
-          <button type="button" class="home-main-btn is-temple" data-go="zen">
-            <span class="home-main-icon">${ico("lotus", "ico-lg")}</span>
-            <span class="home-main-text">
-              <strong>6. Chánh Điện 3D &amp; Sân Hồ Sen</strong>
-              <small>Mái chùa cổ, 10 chiếu bồ đoàn 3D, hồ sen hoa đăng &amp; cây ước nguyện treo thẻ đỏ</small>
-            </span>
-          </button>
-        </div>
-
-        ${(function () {
-          const prog = getSeniorityProgress();
-          return `
         <div class="passcard-banner ${state.auth.isRegistered ? "verified" : ""}" id="home-passcard-banner">
           <div class="passcard-head">
             <strong>${escHtml(prog.current.name)}</strong>
@@ -1316,13 +1509,11 @@
             <div class="seniority-progress-track">
               <div class="seniority-progress-fill" style="width:${prog.percent}%"></div>
             </div>
-            <small style="font-size:0.88rem; color:var(--ink-secondary);">
+            <small style="font-size:0.86rem; color:var(--ink-secondary);">
               ${
                 prog.isGuest
-                  ? `Đang ở <strong>Bậc 0 · Khách Ghé Hiên Trà</strong>. Mở Thẻ 10 giây nhận <strong>+35 XP &amp; +15 Xu</strong>, lên thẳng <strong>${escHtml(prog.next.name)}</strong> và lưu 96 danh hiệu!`
-                  : prog.next
-                  ? `Còn <strong class="num">${prog.xpNeededForNext}</strong> XP để lên <strong>${escHtml(prog.next.name)}</strong> (${escHtml(prog.current.eraName)}).`
-                  : "Đã đạt đỉnh cao Tầng 32 · Đại Thụ Trăm Năm!"
+                  ? `Mở Thẻ 10 giây để lưu tên, nhận <strong>+35 XP &amp; +15 Xu</strong>${totalWins > 0 ? ` · Đã thắng <strong class="num">${totalWins}</strong> ván` : ""}.`
+                  : `${prog.next ? `Còn <strong class="num">${prog.xpNeededForNext}</strong> XP lên ${escHtml(prog.next.name)}` : "Đã đạt đỉnh cao sinh hoạt"} · Thắng cờ: <strong class="num">${totalWins}</strong> ván`
               }
             </small>
           </div>
@@ -1331,48 +1522,12 @@
               ${ico("card")}
               <span>${state.auth.isRegistered ? "Thẻ QR Hội Viên" : "Mở Thẻ Lên Tầng 1"}</span>
             </button>
-            <button type="button" class="btn-secondary" id="btn-home-open-96titles">
+            <button type="button" class="btn-secondary" id="btn-home-open-96titles" data-go="leaderboard">
               ${ico("trophy")}
-              <span>Cây 96 Danh Hiệu</span>
+              <span>Bảng Danh Hiệu</span>
             </button>
           </div>
-        </div>`;
-        })()}
-
-        ${
-          !state.user.profileConfigured
-            ? `
-          <div class="surface-panel warm" id="initial-setup-card">
-            <h3>Điền nhanh xưng hô & tuổi ban đầu</h3>
-            <p style="font-size:0.88rem; color:var(--ink-secondary);">Để mọi người trong bàn trà xưng hô <strong>Anh / Chị</strong> đúng tuổi và gợi ý bạn đồng niên hợp ý:</p>
-            <div class="honorific-toggle-row" role="group" aria-label="Chọn cách xưng hô">
-              <button type="button" class="honorific-btn ${hon === "Anh" ? "selected" : ""}" data-hon="Anh">Xưng là Anh</button>
-              <button type="button" class="honorific-btn ${hon === "Chị" ? "selected" : ""}" data-hon="Chị">Xưng là Chị</button>
-            </div>
-            <div class="setup-inline-fields">
-              <label class="field-label" style="flex:1.2;">
-                Tên gọi
-                <input type="text" class="input-lg" id="home-setup-name" value="${escHtml(baseName)}" placeholder="Ví dụ: Minh, Lan..." />
-              </label>
-              <div class="field-label" style="flex:1;">
-                Tuổi hiện tại
-                <div class="age-stepper">
-                  <button type="button" class="age-step-btn" id="home-age-minus" aria-label="Giảm 1 tuổi">−</button>
-                  <input type="number" class="input-lg num" id="home-setup-age" min="45" max="105" value="${age}" />
-                  <button type="button" class="age-step-btn" id="home-age-plus" aria-label="Tăng 1 tuổi">+</button>
-                </div>
-              </div>
-            </div>
-            <button type="button" class="btn-primary" id="btn-save-initial-setup">Lưu thông tin xưng hô (${escHtml(hon)} ${escHtml(baseName)} · ${age} tuổi)</button>
-          </div>
-        `
-            : `
-          <div class="identity-summary-bar">
-            <span>Đang xưng hô: <strong>${escHtml(state.user.name)} · ${age} tuổi</strong> (${escHtml(prov.short)})</span>
-            <button type="button" class="btn-mini" id="btn-reopen-setup">Đổi tuổi / tên</button>
-          </div>
-        `
-        }
+        </div>
 
         ${
           showPwaCard
@@ -1381,12 +1536,12 @@
             <div class="pwa-install-top">
               <img src="icons/icon-192.png" alt="Biểu tượng ứng dụng Tuổi Bạc" class="pwa-app-icon" />
               <div>
-                <strong>Đặt Quán Trà ra màn hình chính điện thoại</strong>
-                <div style="font-size:0.88rem; color:var(--ink-secondary);">Mở 1 chạm như ứng dụng riêng, không phải tìm lại đường dẫn.</div>
+                <strong>Đặt Quán Trà ra màn hình chính</strong>
+                <div style="font-size:0.86rem; color:var(--ink-secondary);">Mở 1 chạm như ứng dụng riêng trên điện thoại.</div>
               </div>
             </div>
             <div class="btn-row">
-              <button type="button" class="btn-jade" id="btn-pwa-install">${ico("download")}<span>${deferredPwaPrompt ? "Cài ra màn hình chính ngay" : "Hướng dẫn đặt ra màn hình chính"}</span></button>
+              <button type="button" class="btn-jade" id="btn-pwa-install">${ico("download")}<span>${deferredPwaPrompt ? "Cài ra màn hình ngay" : "Hướng dẫn cài nhanh"}</span></button>
               <button type="button" class="btn-secondary" id="btn-pwa-hide">Để sau</button>
             </div>
           </div>
@@ -1395,133 +1550,100 @@
         }
       </section>
 
-      ${
-        isMvpMode
-          ? `
-        <section class="section-block">
-          <div class="surface-panel">
-            <p style="font-size:0.9rem; color:var(--ink-secondary);">Đang ở <strong>Chế độ Chuẩn MVP (3 nút gọn)</strong> dành cho người mới làm quen lần đầu.</p>
-            <button type="button" class="btn-secondary" id="btn-expand-from-mvp">Mở thêm Cờ tướng 9×10, Ngâm thơ, Đố vui &amp; Quyền riêng tư</button>
-          </div>
-        </section>
-      `
-          : `
-        <section class="section-block">
-          <h2>Khu sinh hoạt mở rộng &amp; Quản trị</h2>
-          <div class="module-grid">
-            <button type="button" class="module-tile" data-go="groups">
-              ${ico("users")}
-              <strong>Hội Đồng Ngũ &amp; Kết bạn</strong>
-              <span class="sub">Đại đội 1K2 · D3 · F25, lập hội &amp; bạn Online</span>
-            </button>
+      <section class="section-block">
+        <h2>4 Việc Chính Mỗi Ngày</h2>
+        <div class="home-hero-grid-4">
+          <button type="button" class="home-core-card is-primary" data-go="checkin">
+            <span class="home-main-icon">${ico("sun", "ico-lg")}</span>
+            <strong>${state.user.checkedInToday ? "Bản đồ Điểm danh" : "Điểm danh sáng nay"}</strong>
+            <small>${state.user.checkedInToday ? `${prov.short} đã sáng đèn` : "Báo bình an cho con cháu"}</small>
+          </button>
 
-            <button type="button" class="module-tile" data-go="xiangqi">
-              ${ico("xiangqi")}
-              <strong>Cờ tướng 9×10 &amp; Giải cờ thế</strong>
-              <span class="sub">Ván thật 32 quân &amp; 6 thế cờ giang hồ</span>
-            </button>
+          <button type="button" class="home-core-card is-jade" data-go="tearoom">
+            <span class="home-main-icon">${ico("tea", "ico-lg")}</span>
+            <strong>Vào Quán Trà 3D</strong>
+            <small>${escHtml(getCurrentRoom().shortName)} · ${getCurrentRoom().tables.length} bàn mở</small>
+          </button>
 
-            <button type="button" class="module-tile" data-go="games">
-              ${ico("board")}
-              <strong>Ô ăn quan dân gian</strong>
-              <span class="sub">Đấu với Máy hoặc Ván treo qua link</span>
-            </button>
+          <button type="button" class="home-core-card" data-go="newspaper">
+            <span class="home-main-icon">${ico("paper", "ico-lg")}</span>
+            <strong>Đọc Tờ Báo Sáng</strong>
+            <small>${state.newspaper.articles.length} tin chữ to dễ đọc</small>
+          </button>
 
-            <button type="button" class="module-tile" data-go="quiz">
-              ${ico("quiz")}
-              <strong>Đố vui hôm nay</strong>
-              <span class="sub">5 câu mỗi ngày, không phạt người chậm</span>
-            </button>
+          <button type="button" class="home-core-card is-wood" data-go="games">
+            <span class="home-main-icon">${ico("xiangqi", "ico-lg")}</span>
+            <strong>Đánh Cờ &amp; Ô Ăn Quan</strong>
+            <small>Cờ tướng 9×10 &amp; Ô ăn quan</small>
+          </button>
+        </div>
+      </section>
 
-            <button type="button" class="module-tile" data-go="poetry">
-              ${ico("poem")}
-              <strong>Ngâm thơ &amp; Tặng hoa</strong>
-              <span class="sub">Tự đăng thơ, tiếng đàn tranh &amp; danh hiệu 3D</span>
-            </button>
+      <section class="section-block">
+        <h2>Góc Sinh Hoạt Cộng Đồng</h2>
+        <div class="module-grid">
+          <button type="button" class="module-tile" data-go="groups">
+            ${ico("users")}
+            <strong>Hội Đồng Ngũ &amp; Bạn</strong>
+            <span class="sub">${countOnlineFriendsNow()} bạn đang trực tuyến</span>
+          </button>
 
-            <button type="button" class="module-tile" data-go="watch">
-              ${ico("tv")}
-              <strong>Phòng xem chung</strong>
-              <span class="sub">Dưỡng sinh 8h &amp; Hài 20h có phụ đề</span>
-            </button>
+          <button type="button" class="module-tile" data-go="zen">
+            ${ico("lotus")}
+            <strong>Chánh Điện &amp; Hồ Sen</strong>
+            <span class="sub">Thỉnh chuông, thả hoa đăng</span>
+          </button>
 
-            <button type="button" class="module-tile" data-go="zen">
-              ${ico("lotus")}
-              <strong>Góc tĩnh tâm</strong>
-              <span class="sub">Thỉnh chuông, thả hoa đăng miễn phí</span>
-            </button>
+          <button type="button" class="module-tile" data-go="poetry">
+            ${ico("poem")}
+            <strong>Ngâm thơ &amp; Tặng hoa</strong>
+            <span class="sub">Thơ lục bát &amp; đàn tranh</span>
+          </button>
 
-            <button type="button" class="module-tile" data-go="leaderboard">
-              ${ico("trophy")}
-              <strong>Bảng xếp hạng &amp; Danh hiệu</strong>
-              <span class="sub">Theo tỉnh, người mới &amp; tủ kỷ niệm</span>
-            </button>
+          <button type="button" class="module-tile" data-go="quiz">
+            ${ico("quiz")}
+            <strong>Đố vui hôm nay</strong>
+            <span class="sub">5 câu rèn trí nhớ vui</span>
+          </button>
 
-            <button type="button" class="module-tile" data-go="health">
-              ${ico("heart")}
-              <strong>Trợ lý sức khỏe</strong>
-              <span class="sub">Nhắc uống thuốc, đo huyết áp &amp; Gọi 115</span>
-            </button>
+          <button type="button" class="module-tile" data-go="watch">
+            ${ico("tv")}
+            <strong>Phòng xem chung</strong>
+            <span class="sub">Dưỡng sinh 8h &amp; Hài 20h</span>
+          </button>
 
-            <button type="button" class="module-tile" data-go="family">
-              ${ico("family")}
-              <strong>Góc Con Cái (30–50 tuổi)</strong>
-              <span class="sub">Xem lịch điểm danh &amp; tạo link cho bố mẹ</span>
-            </button>
+          <button type="button" class="module-tile" data-go="health">
+            ${ico("heart")}
+            <strong>Trợ lý sức khỏe</strong>
+            <span class="sub">Nhắc thuốc, huyết áp, 115</span>
+          </button>
+        </div>
 
-            <button type="button" class="module-tile" data-go="privacy">
-              ${ico("shield")}
-              <strong>Chỉ số &amp; Quyền riêng tư</strong>
-              <span class="sub">Đo lường 0-token, Realtime &amp; xóa dữ liệu</span>
-            </button>
-          </div>
-        </section>
-      `
-      }
+        <div class="home-utility-links">
+          <button type="button" class="btn-secondary" data-go="family">${ico("family", "ico-sm")}<span>Góc Con Cái</span></button>
+          <button type="button" class="btn-secondary" data-go="privacy">${ico("shield", "ico-sm")}<span>Riêng tư &amp; Dữ liệu</span></button>
+        </div>
+      </section>
     `;
 
     els.main.querySelectorAll("[data-go]").forEach((btn) => {
-      btn.addEventListener("click", () => navigate(btn.dataset.go));
+      btn.addEventListener("click", () => {
+        if (btn.id === "btn-home-open-96titles") {
+          activeLeaderTab = "Cay32";
+        }
+        navigate(btn.dataset.go);
+      });
     });
 
     const homeOpenAuth = document.getElementById("btn-home-open-auth");
     if (homeOpenAuth) {
       homeOpenAuth.addEventListener("click", () => openMemberAuthModal());
     }
-    const homeOpen96 = document.getElementById("btn-home-open-96titles");
-    if (homeOpen96) {
-      homeOpen96.addEventListener("click", () => {
-        activeLeaderTab = "Cay32";
-        navigate("leaderboard");
-      });
-    }
-    const homeOpenFriends = document.getElementById("btn-home-open-friends");
-    if (homeOpenFriends) {
-      homeOpenFriends.addEventListener("click", () => {
-        state.social.activeTab = "friends";
-        state.social.subView = "list";
-        navigate("groups");
-      });
-    }
-
-    document.getElementById("btn-mode-mvp").addEventListener("click", () => {
-      state.settings.homeMode = "mvp";
-      saveState();
-      showToast("Đã bật chế độ Chuẩn MVP tinh gọn 3 nút.");
-      renderHome();
-    });
-    document.getElementById("btn-mode-full").addEventListener("click", () => {
-      state.settings.homeMode = "full";
-      saveState();
-      showToast("Đã mở đầy đủ tất cả góc sinh hoạt.");
-      renderHome();
-    });
-    const expandBtn = document.getElementById("btn-expand-from-mvp");
-    if (expandBtn) {
-      expandBtn.addEventListener("click", () => {
-        state.settings.homeMode = "full";
-        saveState();
-        renderHome();
+    const editIdBtn = document.getElementById("btn-home-edit-identity");
+    if (editIdBtn) {
+      editIdBtn.addEventListener("click", () => {
+        activeProfileMainTab = "identity";
+        navigate("profile");
       });
     }
 
@@ -1531,54 +1653,6 @@
     if (pwaHideBtn) {
       pwaHideBtn.addEventListener("click", () => {
         state.settings.pwaBannerDismissed = true;
-        saveState();
-        renderHome();
-      });
-    }
-
-    let selectedHon = state.user.honorific === "Chị" ? "Chị" : "Anh";
-    const syncHomeSetupBtnLabel = () => {
-      const saveBtn = document.getElementById("btn-save-initial-setup");
-      const nameIn = document.getElementById("home-setup-name");
-      const ageIn = document.getElementById("home-setup-age");
-      if (saveBtn && nameIn && ageIn) {
-        const clean = nameIn.value.replace(/^(anh|chị|bác|cô|bà|chú)\s+/i, "").trim() || "Tám Vườn";
-        saveBtn.textContent = `Lưu thông tin xưng hô (${selectedHon} ${clean} · ${ageIn.value || 65} tuổi)`;
-      }
-    };
-
-    els.main.querySelectorAll("[data-hon]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        selectedHon = btn.dataset.hon === "Chị" ? "Chị" : "Anh";
-        els.main.querySelectorAll("[data-hon]").forEach((b) => b.classList.toggle("selected", b === btn));
-        syncHomeSetupBtnLabel();
-      });
-    });
-
-    const homeNameIn = document.getElementById("home-setup-name");
-    const homeAgeIn = document.getElementById("home-setup-age");
-    if (homeNameIn && homeAgeIn) {
-      homeNameIn.addEventListener("input", syncHomeSetupBtnLabel);
-      homeAgeIn.addEventListener("input", syncHomeSetupBtnLabel);
-      document.getElementById("home-age-minus").addEventListener("click", () => {
-        homeAgeIn.value = String(Math.max(45, (Number(homeAgeIn.value) || 65) - 1));
-        syncHomeSetupBtnLabel();
-      });
-      document.getElementById("home-age-plus").addEventListener("click", () => {
-        homeAgeIn.value = String(Math.min(105, (Number(homeAgeIn.value) || 65) + 1));
-        syncHomeSetupBtnLabel();
-      });
-      document.getElementById("btn-save-initial-setup").addEventListener("click", () => {
-        applyUserIdentity(selectedHon, homeNameIn.value, homeAgeIn.value);
-        showToast(`Đã lưu: ${state.user.name} (${state.user.age} tuổi).`);
-        renderHome();
-      });
-    }
-
-    const reopenBtn = document.getElementById("btn-reopen-setup");
-    if (reopenBtn) {
-      reopenBtn.addEventListener("click", () => {
-        state.user.profileConfigured = false;
         saveState();
         renderHome();
       });
@@ -3287,13 +3361,18 @@
           : ""
       }
 
-      <!-- Người đang ngồi cùng bàn -->
-      <div class="surface-panel" style="padding:12px;">
-        <div class="companion-head">
-          <strong>Đang ngồi cùng bàn với ${getUserPronoun()} (${table.members.length + 1}/5 chỗ)</strong>
-          <span>${table.realPeerCount ? `<span class="real-peer-pill num">${table.realPeerCount} điện thoại thật</span>` : "Chạm để xem hồ sơ"}</span>
-        </div>
-        <div class="member-pill-list">
+      <!-- Người đang ngồi cùng bàn (Thu gọn gọn gàng để không che sân khấu 3D) -->
+      <details class="tb-details">
+        <summary>
+          <span>Cùng bàn (${table.members.length + 1}/5): ${escHtml(
+            table.members
+              .map((m) => m.name.split(" ").slice(-1)[0] || m.name)
+              .slice(0, 3)
+              .join(", ")
+          )}</span>
+          <span class="tb-details-hint">${table.realPeerCount ? `${table.realPeerCount} người thật` : "Chạm xem"}</span>
+        </summary>
+        <div class="member-pill-list" style="margin-top:8px;">
           ${table.members
             .map((m, mIdx) => {
               const fObj = getTitleFrame(m.titleFrameId);
@@ -3313,7 +3392,7 @@
             })
             .join("")}
         </div>
-      </div>
+      </details>
 
       <!-- 3D / 2.5D Controls Above Stage -->
       <div class="tearoom-controls-row">
@@ -3366,26 +3445,6 @@
         </div>
       </div>
 
-      <!-- Khay Gửi Sticker Nhanh 1-Chạm (Đỡ phải gõ chữ) -->
-      <div class="surface-panel warm" id="tea-sticker-tray">
-        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
-          <h3>Gửi Sticker nhanh (1 chạm — khỏi cần gõ chữ)</h3>
-          <span class="badge-tag amber">0 tốn Token</span>
-        </div>
-        <div class="sticker-grid" role="group" aria-label="Bộ Sticker Quán Trà 1 chạm">
-          ${(D.TEA_STICKERS || [])
-            .map(
-              (stk) => `
-              <button type="button" class="sticker-btn" data-sticker-id="${escHtml(stk.id)}" ${coolLeft > 0 ? "disabled" : ""}>
-                ${renderStickerArtSvg(stk)}
-                <span>${escHtml(stk.shortLabel)}</span>
-              </button>
-            `
-            )
-            .join("")}
-        </div>
-      </div>
-
       <!-- Non-verbal Tea Rituals -->
       <div class="ritual-row">
         <button type="button" class="ritual-btn" id="btn-pour-tea">${ico("tea", "ico-sm")}<span>Rót trà mời</span></button>
@@ -3393,32 +3452,70 @@
         <button type="button" class="ritual-btn" id="btn-poem-tea">${ico("poem", "ico-sm")}<span>Đố câu ca dao</span></button>
       </div>
 
-      <!-- Quick Replies + Simple Text + 2-tap Inline Voice -->
+      <!-- Khung giao tiếp thu gọn 2 tab: Nói nhanh & Sticker vs Gõ chữ & Giọng nói -->
       <div class="surface-panel">
-        <h3>Chọn nhanh câu trả lời (0 tốn Token):</h3>
+        <div class="tab-bar" role="tablist" aria-label="Cách gửi lời chào trên bàn trà">
+          <button type="button" class="tab-btn ${activeTeaInputTab === "quick" ? "active" : ""}" id="tea-in-tab-quick">Nói nhanh &amp; Sticker</button>
+          <button type="button" class="tab-btn ${activeTeaInputTab === "compose" ? "active" : ""}" id="tea-in-tab-compose">Gõ chữ &amp; Nói giọng</button>
+        </div>
         <div class="cooldown-note" id="tea-cooldown-note" ${coolLeft > 0 ? "" : "hidden"}>Bác nhấp ngụm trà nghe các bác khác nói nhé... (${coolLeft}s)</div>
-        <div class="reply-stack" id="tea-reply-stack">
-          ${suggestions
-            .map(
-              (s, idx) =>
-                `<button type="button" class="reply-btn" data-reply="${escHtml(s)}" ${coolLeft > 0 ? "disabled" : ""}>${idx + 1}. "${escHtml(s)}"</button>`
-            )
-            .join("")}
+
+        <div id="tea-pane-quick" ${activeTeaInputTab === "quick" ? "" : "hidden"}>
+          <div class="reply-stack" id="tea-reply-stack" style="margin-bottom:10px;">
+            ${suggestions
+              .map(
+                (s, idx) =>
+                  `<button type="button" class="reply-btn" data-reply="${escHtml(s)}" ${coolLeft > 0 ? "disabled" : ""}>${idx + 1}. "${escHtml(s)}"</button>`
+              )
+              .join("")}
+          </div>
+          <div class="sticker-grid" role="group" aria-label="Bộ Sticker Quán Trà 1 chạm" id="tea-sticker-tray">
+            ${(D.TEA_STICKERS || [])
+              .map(
+                (stk) => `
+                <button type="button" class="sticker-btn" data-sticker-id="${escHtml(stk.id)}" ${coolLeft > 0 ? "disabled" : ""}>
+                  ${renderStickerArtSvg(stk)}
+                  <span>${escHtml(stk.shortLabel)}</span>
+                </button>
+              `
+              )
+              .join("")}
+          </div>
         </div>
-        <div style="display:flex; gap:8px; align-items:stretch;">
-          <input type="text" class="input-lg" id="tea-text-input" placeholder="Gõ lời muốn nói..." style="flex:1;" />
-          <button type="button" class="btn-jade btn-inline" id="btn-send-text">Gửi</button>
+
+        <div id="tea-pane-compose" ${activeTeaInputTab === "compose" ? "" : "hidden"} style="display:${activeTeaInputTab === "compose" ? "flex" : "none"}; flex-direction:column; gap:10px;">
+          <div style="display:flex; gap:8px; align-items:stretch;">
+            <input type="text" class="input-lg" id="tea-text-input" placeholder="Gõ lời muốn nói..." style="flex:1;" />
+            <button type="button" class="btn-jade btn-inline" id="btn-send-text">Gửi</button>
+          </div>
+          <button type="button" class="btn-primary" id="btn-voice-speak">
+            ${ico("mic")}
+            <span>Bấm để nói bằng giọng</span>
+          </button>
+          <div id="inline-voice-box" hidden></div>
         </div>
-        <button type="button" class="btn-primary" id="btn-voice-speak">
-          ${ico("mic")}
-          <span>Bấm để nói bằng giọng</span>
-        </button>
-        <div id="inline-voice-box" hidden></div>
       </div>
     `;
 
     bindRoomSwitcherEvents();
     mountRoomSceneView("table", room, baseTable, 0);
+
+    const teaInQuick = document.getElementById("tea-in-tab-quick");
+    const teaInCompose = document.getElementById("tea-in-tab-compose");
+    const syncTeaInputTabUi = (tab) => {
+      activeTeaInputTab = tab;
+      teaInQuick.classList.toggle("active", tab === "quick");
+      teaInCompose.classList.toggle("active", tab === "compose");
+      const pQuick = document.getElementById("tea-pane-quick");
+      const pComp = document.getElementById("tea-pane-compose");
+      if (pQuick) pQuick.hidden = tab !== "quick";
+      if (pComp) {
+        pComp.hidden = tab !== "compose";
+        pComp.style.display = tab === "compose" ? "flex" : "none";
+      }
+    };
+    if (teaInQuick) teaInQuick.addEventListener("click", () => syncTeaInputTabUi("quick"));
+    if (teaInCompose) teaInCompose.addEventListener("click", () => syncTeaInputTabUi("compose"));
 
     const inlineXqHost = document.getElementById("xq-host-container");
     if (inlineXqHost) {
@@ -3433,7 +3530,9 @@
 
     const switchFastBtn = document.getElementById("btn-switch-table-fast");
     if (switchFastBtn) {
-      switchFastBtn.addEventListener("click", switchNextTableFast);
+      switchFastBtn.addEventListener("click", () => {
+        confirmMatchExitOrStay(() => switchNextTableFast(), "đổi sang bàn cờ khác");
+      });
     }
     const renameTblBtn = document.getElementById("btn-rename-this-table");
     if (renameTblBtn) {
@@ -3449,12 +3548,14 @@
     document.getElementById("btn-ask-host-icebreak").addEventListener("click", triggerIdleAssistantPrompt);
 
     document.getElementById("btn-back-lobby").addEventListener("click", () => {
-      state.teaRoom.articleTable = null;
-      state.teaRoom.activeNewspaperRef = null;
-      state.teaRoom.subView = "lobby";
-      if (RT) RT.leaveTableChannel();
-      saveState();
-      renderTeaRoom();
+      confirmMatchExitOrStay(() => {
+        state.teaRoom.articleTable = null;
+        state.teaRoom.activeNewspaperRef = null;
+        state.teaRoom.subView = "lobby";
+        if (RT) RT.leaveTableChannel();
+        saveState();
+        renderTeaRoom();
+      }, "quay ra danh sách bàn");
     });
 
     const reopenArtBtn = document.getElementById("btn-reopen-article-detail");
@@ -4368,13 +4469,19 @@
     `;
 
     document.getElementById("tab-oaq").addEventListener("click", () => {
-      activeGameTab = "oaq";
-      renderGames();
+      if (activeGameTab === "oaq") return;
+      confirmMatchExitOrStay(() => {
+        activeGameTab = "oaq";
+        renderGames();
+      }, "chuyển sang Ô ăn quan");
     });
     document.getElementById("tab-cotuong").addEventListener("click", () => {
-      cancelOrCommitOaqAnimation(true);
-      activeGameTab = "cotuong";
-      renderGames();
+      if (activeGameTab === "cotuong") return;
+      confirmMatchExitOrStay(() => {
+        cancelOrCommitOaqAnimation(true);
+        activeGameTab = "cotuong";
+        renderGames();
+      }, "chuyển sang Cờ tướng");
     });
 
     const body = document.getElementById("game-tab-body");
@@ -4682,14 +4789,28 @@
   function finishOaqGameIfEnded() {
     if (state.oaq.cells[5] !== 0 || state.oaq.cells[11] !== 0) return false;
     state.oaq.turn = "host";
+    state.oaq.inProgress = false;
+    state.oaq.forfeitedPendingReload = false;
+    matchHistoryGuardArmed = false;
+    if (!state.user.gameStats) {
+      state.user.gameStats = createDefaultState().user.gameStats;
+    }
+    const gs = state.user.gameStats;
     const isGuest = state.oaq.mode === "async" && state.oaq.myRole === "guest";
     const myScore = isGuest ? state.oaq.scoreAI : state.oaq.scoreP;
     const oppScore = isGuest ? state.oaq.scoreP : state.oaq.scoreAI;
     if (myScore > oppScore) {
+      gs.oaqWins = (Number(gs.oaqWins) || 0) + 1;
+      gs.winStreak = (Number(gs.winStreak) || 0) + 1;
+      gs.bestWinStreak = Math.max(Number(gs.bestWinStreak) || 0, gs.winStreak);
+      awardSkillPoints("folk_games", 8);
+      checkGameWinMilestones();
       addXu(5, `Thắng ván Ô ăn quan (${myScore}–${oppScore})`);
     } else if (myScore === oppScore) {
       showToast(`Ván cờ hòa đẹp (${myScore}–${oppScore})!`);
     } else {
+      gs.oaqLosses = (Number(gs.oaqLosses) || 0) + 1;
+      gs.winStreak = 0;
       showToast(`Ván kết thúc: Đối phương ${oppScore} quân — Bác ${myScore} quân`);
     }
     return true;
@@ -4993,6 +5114,12 @@
           <button type="button" class="btn-secondary" id="oaq-mode-async" ${isAnimating ? "disabled" : ""} style="${o.mode === "async" ? "background:var(--accent-jade);color:#fff;" : ""}">Ván treo thật (Qua link)</button>
         </div>
 
+        <div class="game-stats-strip num">
+          <span>Thắng: <strong>${(state.user.gameStats && state.user.gameStats.oaqWins) || 0}</strong></span>
+          <span>Thua: <strong>${(state.user.gameStats && state.user.gameStats.oaqLosses) || 0}</strong></span>
+          <span>Chuỗi thắng: <strong>${(state.user.gameStats && state.user.gameStats.winStreak) || 0}</strong></span>
+        </div>
+
         <!-- Khay mây tre đựng sỏi đã ăn của Hàng Trên (cố định đúng 1 dòng không làm nhảy bàn cờ) -->
         <div class="oaq-score-tray">
           <div class="oaq-score-tray-head">
@@ -5158,6 +5285,9 @@
       );
       if (!timeline) return;
 
+      state.oaq.inProgress = true;
+      armBrowserBackMatchGuard("oaq");
+
       awardSeniorityPoints(2, "oaq_move", "dan-gian", `Rải quân Ô ăn quan ô số ${chosen + 1}`, {
         eventType: "folk_game",
         module: "games",
@@ -5253,21 +5383,25 @@
     if (btnR) btnR.addEventListener("click", () => doPlayerDir(1));
 
     document.getElementById("oaq-mode-ai").addEventListener("click", () => {
-      if (oaqAnimState) return;
-      state.oaq.mode = "ai";
-      state.oaq.turn = "host";
-      state.oaq.statusText = "Đang đấu với Máy (luôn ghi rõ là Máy).";
-      saveState();
-      refreshOaqTabIfActive();
+      if (oaqAnimState || state.oaq.mode === "ai") return;
+      confirmMatchExitOrStay(() => {
+        state.oaq.mode = "ai";
+        state.oaq.turn = "host";
+        state.oaq.statusText = "Đang đấu với Máy (luôn ghi rõ là Máy).";
+        saveState();
+        refreshOaqTabIfActive();
+      }, "đổi sang chế độ Đấu với Máy");
     });
 
     document.getElementById("oaq-mode-async").addEventListener("click", () => {
-      if (oaqAnimState) return;
-      state.oaq.mode = "async";
-      ensureOaqAsyncMatch();
-      state.oaq.statusText = "Chế độ Ván treo thật: gửi link bên dưới cho điện thoại thứ 2 để đánh trực tiếp.";
-      saveState();
-      refreshOaqTabIfActive();
+      if (oaqAnimState || state.oaq.mode === "async") return;
+      confirmMatchExitOrStay(() => {
+        state.oaq.mode = "async";
+        ensureOaqAsyncMatch();
+        state.oaq.statusText = "Chế độ Ván treo thật: gửi link bên dưới cho điện thoại thứ 2 để đánh trực tiếp.";
+        saveState();
+        refreshOaqTabIfActive();
+      }, "đổi sang chế độ Ván treo qua link");
     });
 
     if (o.mode === "async" && o.zaloInviteUrl) {
@@ -5280,12 +5414,14 @@
     }
 
     document.getElementById("oaq-reset").addEventListener("click", () => {
-      cancelOrCommitOaqAnimation(false);
-      const keepMode = state.oaq.mode;
-      state.oaq = Object.assign({}, createDefaultState().oaq, { mode: keepMode });
-      if (keepMode === "async") ensureOaqAsyncMatch();
-      saveState();
-      refreshOaqTabIfActive();
+      confirmMatchExitOrStay(() => {
+        cancelOrCommitOaqAnimation(false);
+        const keepMode = state.oaq.mode;
+        state.oaq = Object.assign({}, createDefaultState().oaq, { mode: keepMode });
+        if (keepMode === "async") ensureOaqAsyncMatch();
+        saveState();
+        refreshOaqTabIfActive();
+      }, "xếp lại bàn cờ mới");
     });
   }
 
@@ -5324,34 +5460,7 @@
   }
 
   function switchXiangqiMode(nextMode) {
-    if (!XQ) return;
-    const x = state.xiangqi;
-    x.mode = nextMode;
-    x.selected = null;
-    x.lastMove = null;
-    x.hintMove = null;
-    x.prevBoard = null;
-    x.solved = false;
-    x.moveLog = [];
-    if (nextMode === "puzzle") {
-      const curPz = XQ.PUZZLES[(x.puzzleIdx || 0) % XQ.PUZZLES.length];
-      x.board = XQ.buildBoardFromList(curPz.pieces);
-      x.turn = "red";
-      x.puzzleStep = 0;
-      x.status = `${curPz.name} — Đỏ đi tiên: chạm quân Đỏ rồi chạm chấm xanh để chiếu Tướng.`;
-    } else if (nextMode === "ai") {
-      x.board = XQ.createInitialBoard();
-      x.turn = "red";
-      x.status = `Ván thật 9×10 (32 quân) đấu với Máy (${x.aiLevel === "club" ? "Mức CLB" : "Mức Thư giãn"}) — Bác cầm Đỏ đi tiên!`;
-    } else if (nextMode === "local2p") {
-      x.board = XQ.createInitialBoard();
-      x.turn = "red";
-      x.status = "Đánh 2 người chung máy (32 quân) — Bên Đỏ đi trước, chạm quân để đi.";
-    } else {
-      x.matchId = "";
-      ensureXiangqiAsyncMatch();
-    }
-    saveState();
+    resetXiangqiMatchState(nextMode);
   }
 
   function ensureXiangqiBoardInitialized() {
@@ -5410,8 +5519,10 @@
       <div id="xq-host-container"></div>
     `;
     document.getElementById("btn-xq-goto-oaq").addEventListener("click", () => {
-      activeGameTab = "oaq";
-      navigate("games");
+      confirmMatchExitOrStay(() => {
+        activeGameTab = "oaq";
+        executeNavigate("games");
+      }, "chuyển sang Ô ăn quan");
     });
     renderXiangqiTab(document.getElementById("xq-host-container"));
   }
@@ -5444,6 +5555,12 @@
         <div class="xq-top-switch" role="tablist" aria-label="Chọn Đánh ván thật hoặc Giải cờ thế">
           <button type="button" class="xq-top-btn ${isPlayGameTab ? "active" : ""}" id="xq-top-play">Đánh ván thật (32 quân)</button>
           <button type="button" class="xq-top-btn ${!isPlayGameTab ? "active" : ""}" id="xq-top-puzzle">Giải Cờ thế (${solvedCount}/${XQ.PUZZLES.length} thế)</button>
+        </div>
+
+        <div class="game-stats-strip num">
+          <span>Thắng: <strong>${(state.user.gameStats && state.user.gameStats.xiangqiWins) || 0}</strong></span>
+          <span>Thua: <strong>${(state.user.gameStats && state.user.gameStats.xiangqiLosses) || 0}</strong></span>
+          <span>Chuỗi thắng: <strong>${(state.user.gameStats && state.user.gameStats.winStreak) || 0}</strong></span>
         </div>
 
         ${
@@ -5570,26 +5687,24 @@
     });
     container.querySelector("#xq-top-puzzle").addEventListener("click", () => {
       if (x.mode !== "puzzle") {
-        switchXiangqiMode("puzzle");
-        refreshXiangqiHosts();
+        confirmMatchExitOrStay(() => {
+          switchXiangqiMode("puzzle");
+          refreshXiangqiHosts();
+        }, "chuyển sang Giải Cờ thế");
       }
     });
 
     container.querySelectorAll("[data-xq-play]").forEach((btn) => {
       btn.addEventListener("click", () => {
         const key = btn.dataset.xqPlay;
-        if (key === "ai-club") {
-          x.aiLevel = "club";
-          switchXiangqiMode("ai");
-        } else if (key === "ai-easy") {
-          x.aiLevel = "easy";
-          switchXiangqiMode("ai");
-        } else if (key === "local2p") {
-          switchXiangqiMode("local2p");
-        } else {
-          switchXiangqiMode("async");
-        }
-        refreshXiangqiHosts();
+        const targetMode = key === "ai-club" || key === "ai-easy" ? "ai" : key === "local2p" ? "local2p" : "async";
+        const targetLevel = key === "ai-easy" ? "easy" : "club";
+        if (x.mode === targetMode && (targetMode !== "ai" || x.aiLevel === targetLevel)) return;
+        confirmMatchExitOrStay(() => {
+          if (targetMode === "ai") x.aiLevel = targetLevel;
+          switchXiangqiMode(targetMode);
+          refreshXiangqiHosts();
+        }, "đổi chế độ đối thủ mới");
       });
     });
 
@@ -5696,8 +5811,15 @@
     }
 
     container.querySelector("#xq-btn-reset").addEventListener("click", () => {
-      switchXiangqiMode(x.mode);
-      refreshXiangqiHosts();
+      if (x.mode === "puzzle") {
+        switchXiangqiMode("puzzle");
+        refreshXiangqiHosts();
+        return;
+      }
+      confirmMatchExitOrStay(() => {
+        switchXiangqiMode(x.mode);
+        refreshXiangqiHosts();
+      }, "xếp lại bàn cờ mới");
     });
 
     if (x.mode === "async" && x.inviteUrl) {
@@ -5729,11 +5851,23 @@
     const enemyMoves = XQ.getAllLegalMoves(x.board, enemySide);
     const enemyChecked = XQ.isInCheck(x.board, enemySide);
 
+    if (!state.user.gameStats) state.user.gameStats = createDefaultState().user.gameStats;
+    const gs = state.user.gameStats;
+
     if (x.mode === "local2p") {
       if (enemyMoves.length === 0) {
         x.solved = true;
+        x.inProgress = false;
+        x.forfeitedPendingReload = false;
+        matchHistoryGuardArmed = false;
+        gs.xiangqiWins = (Number(gs.xiangqiWins) || 0) + 1;
+        gs.winStreak = (Number(gs.winStreak) || 0) + 1;
+        gs.bestWinStreak = Math.max(Number(gs.bestWinStreak) || 0, gs.winStreak);
+        checkGameWinMilestones();
         x.status = `Chiếu bí! Bên ${movedSide === "red" ? "Đỏ" : "Đen"} đã thắng ván 9×10!`;
       } else {
+        x.inProgress = true;
+        armBrowserBackMatchGuard("xiangqi");
         x.turn = enemySide;
         x.status = `${moveDesc}${enemyChecked ? " (Chiếu Tướng!)" : ""} — Đến lượt bên ${enemySide === "red" ? "Đỏ" : "Đen"} đi.`;
       }
@@ -5747,9 +5881,19 @@
       x.turn = enemySide;
       if (enemyMoves.length === 0) {
         x.solved = true;
+        x.inProgress = false;
+        x.forfeitedPendingReload = false;
+        matchHistoryGuardArmed = false;
+        gs.xiangqiWins = (Number(gs.xiangqiWins) || 0) + 1;
+        gs.winStreak = (Number(gs.winStreak) || 0) + 1;
+        gs.bestWinStreak = Math.max(Number(gs.bestWinStreak) || 0, gs.winStreak);
+        awardSkillPoints("xiangqi", 8);
+        checkGameWinMilestones();
         x.status = `Chiếu bí! ${state.user.name} đã giành chiến thắng ván Cờ tướng 9×10!`;
         addXu(8, "Thắng ván treo Cờ tướng 9×10");
       } else {
+        x.inProgress = true;
+        armBrowserBackMatchGuard("xiangqi");
         x.status = `${moveDesc}${enemyChecked ? " (Chiếu Tướng!)" : ""} — đang chờ đối thủ đi tiếp.`;
         addXu(2, "Đi nước Cờ tướng ván treo");
       }
@@ -5775,12 +5919,19 @@
 
     if (enemyMoves.length === 0) {
       x.solved = true;
+      x.inProgress = false;
+      x.forfeitedPendingReload = false;
+      matchHistoryGuardArmed = false;
       if (x.mode === "puzzle") {
         const pz = XQ.PUZZLES[(x.puzzleIdx || 0) % XQ.PUZZLES.length];
         if (!Array.isArray(x.solvedPuzzleIds)) x.solvedPuzzleIds = [];
         if (pz && !x.solvedPuzzleIds.includes(pz.id)) {
           x.solvedPuzzleIds.push(pz.id);
         }
+      } else {
+        gs.xiangqiWins = (Number(gs.xiangqiWins) || 0) + 1;
+        gs.winStreak = (Number(gs.winStreak) || 0) + 1;
+        gs.bestWinStreak = Math.max(Number(gs.bestWinStreak) || 0, gs.winStreak);
       }
       const newlyUnlocked = unlockTitleFrame("ky-thu", "Kỳ Thủ Đầu Xuân");
       x.status = newlyUnlocked
@@ -5790,6 +5941,7 @@
         : "Chiếu bí tuyệt đẹp! Bác đã chiến thắng đối thủ Máy trên bàn 9×10!";
       addXu(6, x.mode === "puzzle" ? "Phá giải thế cờ thành công" : "Thắng ván Cờ tướng 9×10");
       awardSkillPoints("xiangqi", x.mode === "puzzle" ? 10 : 8);
+      if (x.mode !== "puzzle") checkGameWinMilestones();
       awardSeniorityPoints(
         x.mode === "puzzle" ? 8 : 6,
         x.mode === "puzzle" ? "puzzle_solved" : "xiangqi_win",
@@ -5802,6 +5954,10 @@
       return;
     }
 
+    if (x.mode !== "puzzle") {
+      x.inProgress = true;
+      armBrowserBackMatchGuard("xiangqi");
+    }
     x.turn = "black";
     x.puzzleStep = (x.puzzleStep || 0) + 1;
     x.status = `${moveDesc}${enemyChecked ? " — Chiếu Tướng!" : ""}. Máy đang suy nghĩ đỡ nước cờ...`;
@@ -5814,6 +5970,16 @@
       const aiMv = XQ.pickAiMove(x.board, "black", aiParam);
       if (!aiMv) {
         x.solved = true;
+        x.inProgress = false;
+        x.forfeitedPendingReload = false;
+        matchHistoryGuardArmed = false;
+        if (x.mode !== "puzzle") {
+          gs.xiangqiWins = (Number(gs.xiangqiWins) || 0) + 1;
+          gs.winStreak = (Number(gs.winStreak) || 0) + 1;
+          gs.bestWinStreak = Math.max(Number(gs.bestWinStreak) || 0, gs.winStreak);
+          awardSkillPoints("xiangqi", 8);
+          checkGameWinMilestones();
+        }
         x.status = "Đối phương hết nước đi — bác đã thắng ván này!";
         saveState();
         refreshXiangqiHosts();
@@ -5830,6 +5996,13 @@
       const redChecked = XQ.isInCheck(x.board, "red");
       if (redMoves.length === 0) {
         x.solved = true;
+        x.inProgress = false;
+        x.forfeitedPendingReload = false;
+        matchHistoryGuardArmed = false;
+        if (x.mode !== "puzzle") {
+          gs.xiangqiLosses = (Number(gs.xiangqiLosses) || 0) + 1;
+          gs.winStreak = 0;
+        }
         x.status = `Máy vừa đi ${aiDesc} — Đỏ hết nước đi. Bác bấm Hoàn lại 1 nước hoặc Xếp lại nhé!`;
       } else {
         x.status = `Máy đỡ: ${aiDesc}${redChecked ? " (Chiếu Tướng!)" : ""}. Đến lượt bác cầm quân Đỏ!`;
@@ -6872,9 +7045,20 @@
       })
       .sort((a, b) => b.score - a.score);
 
+    const gs = state.user.gameStats || {};
+    const totalGameWins = (Number(gs.oaqWins) || 0) + (Number(gs.xiangqiWins) || 0);
+    const totalGameLosses = (Number(gs.oaqLosses) || 0) + (Number(gs.xiangqiLosses) || 0);
+    const templeActions = (Number(userSkills.temple_zen) || 0);
+    const currentEraId =
+      !prog.isGuest && prog.current && prog.current.era
+        ? prog.current.era.id
+        : eras[1]
+        ? eras[1].id
+        : "";
+
     els.main.innerHTML = `
-      <h1>Hệ Thống 96 Danh Hiệu &amp; Bảng Vinh Danh</h1>
-      <p class="lead-copy">Gồm 32 tầng thâm niên chính thức và 8 cây danh hiệu chuyên môn (64 bậc) tính theo công thức toán học lồi độ khó tăng dần, vinh danh rõ ràng cả người mới lẫn bậc lão làng.</p>
+      <h1>Danh Hiệu &amp; Bảng Vinh Danh</h1>
+      <p class="lead-copy">Ghi nhận thâm niên sinh hoạt, công đức Chánh Điện và thành tích thắng ván cờ của từng hội viên.</p>
 
       <!-- Thẻ tóm tắt thâm niên hiện tại của Hội viên -->
       <div class="surface-panel warm">
@@ -6886,57 +7070,55 @@
           <div class="seniority-progress-track">
             <div class="seniority-progress-fill" style="width:${prog.percent}%"></div>
           </div>
-          <small style="font-size:0.88rem; color:var(--ink-secondary);" class="num">
-            Tích lũy hiện tại: <strong>${prog.points} XP</strong> · Đã mở <strong>${unlockedSkillBadgesCount}/64</strong> bậc chuyên môn${
+          <small style="font-size:0.86rem; color:var(--ink-secondary);" class="num">
+            Tích lũy: <strong>${prog.points} XP</strong> · Đã mở <strong>${unlockedSkillBadgesCount}/64</strong> bậc kỹ năng${
               prog.next ? ` · Cần thêm <strong>${prog.xpNeededForNext} XP</strong> lên ${escHtml(prog.next.name)}` : ""
-            }.
+            }
           </small>
+        </div>
+        <div class="game-stats-strip num" style="margin-top:6px;">
+          <span>Thắng cờ: <strong>${totalGameWins}</strong></span>
+          <span>Thua: <strong>${totalGameLosses}</strong></span>
+          <span>Đi chùa: <strong>${templeActions}</strong> điểm</span>
         </div>
         ${
           prog.isGuest
-            ? `<button type="button" class="btn-primary" id="btn-lb-open-card">${ico("card")}<span>Mở Thẻ 10 Giây — Nhận +35 XP Lên Tầng 1 Ngay</span></button>`
+            ? `<button type="button" class="btn-primary" id="btn-lb-open-card">${ico("card")}<span>Mở Thẻ 10 Giây — Lưu Danh Hiệu Ngay</span></button>`
             : ""
         }
       </div>
 
       <div class="temple-cam-bar" role="tablist" aria-label="Chọn nhánh danh hiệu">
-        <button type="button" class="temple-cam-btn ${activeLeaderTab === "Cay32" ? "active" : ""}" id="lb-tab-32">Cây 32 Tầng Thâm Niên</button>
-        <button type="button" class="temple-cam-btn ${activeLeaderTab === "ChuyenMon" ? "active" : ""}" id="lb-tab-skills">8 Cây Chuyên Môn (64)</button>
-        <button type="button" class="temple-cam-btn ${activeLeaderTab === "Tinh" ? "active" : ""}" id="lb-tab-board">Bảng Vàng Mới &amp; Cũ</button>
+        <button type="button" class="temple-cam-btn ${activeLeaderTab === "Cay32" ? "active" : ""}" id="lb-tab-32">32 Tầng Sinh Hoạt</button>
+        <button type="button" class="temple-cam-btn ${activeLeaderTab === "ChuyenMon" ? "active" : ""}" id="lb-tab-skills">8 Nhánh Kỹ Năng</button>
+        <button type="button" class="temple-cam-btn ${activeLeaderTab === "Tinh" ? "active" : ""}" id="lb-tab-board">Bảng Xếp Hạng</button>
       </div>
 
       ${
         activeLeaderTab === "Cay32"
           ? `
-        <div class="math-formula-box">
-          <strong>Công thức toán học độ khó tăng dần (Hàm lũy thừa kết hợp mũ lồi):</strong>
-          <div class="math-formula-code">XP(L) = floor( 20 · L^1.85 + 12 · L · 1.11^L )   với L = 1..32</div>
-          <span>Tầng 1 chỉ cần <strong>33 XP</strong> (người mới lên ngay trong ngày đầu), Tầng 10 cần <strong>1.756 XP</strong>, Tầng 20 cần <strong>7.024 XP</strong>, và đỉnh cao Tầng 32 cần <strong>23.006 XP</strong> gắn bó bền bỉ nhiều năm.</span>
-        </div>
-
         ${eras
           .slice(1)
           .map((era) => {
             const tiersInEra = mainTiers.filter((t) => t.era && t.era.id === era.id);
+            const isOpenByDefault = era.id === currentEraId;
             return `
-            <div class="era-section-card">
-              <div class="passcard-head">
-                <strong style="color:${escHtml(era.color)};">${escHtml(era.eraName)} (${escHtml(era.rangeLabel)})</strong>
-                <span class="badge-tag" style="background:${escHtml(era.bg)};color:${escHtml(era.color)};">${escHtml(era.cohortRole)}</span>
-              </div>
-              <div class="era-tier-grid">
+            <details class="tb-details" ${isOpenByDefault ? "open" : ""}>
+              <summary>
+                <span style="color:${escHtml(era.color)};">${escHtml(era.eraName)} (${escHtml(era.rangeLabel)})</span>
+                <span class="tb-details-hint">${isOpenByDefault ? "Cấp hiện tại" : `${tiersInEra.length} tầng`}</span>
+              </summary>
+              <div class="era-tier-grid" style="margin-top:8px;">
                 ${tiersInEra
                   .map((t) => {
                     const isCurr = !prog.isGuest && prog.current.level === t.level;
                     const isReached = !prog.isGuest && prog.current.level >= t.level;
-                    const prevMin = t.level > 1 ? mainTiers[t.level - 1].minXp : 0;
-                    const deltaReq = t.minXp - prevMin;
                     return `
                     <div class="tier-32-row ${isCurr ? "current" : isReached ? "reached" : ""}">
                       <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
                         <strong style="color:${escHtml(era.color)};">${escHtml(t.fullLabel)}</strong>
                         <span class="badge-tag ${isCurr ? "amber" : isReached ? "jade" : ""} num">${
-                          isCurr ? "Đang đạt" : `${t.minXp.toLocaleString("vi-VN")} XP (+${deltaReq.toLocaleString("vi-VN")})`
+                          isCurr ? "Đang đạt" : isReached ? "Đã qua" : `${t.minXp.toLocaleString("vi-VN")} XP`
                         }</span>
                       </div>
                       <span style="color:var(--ink-secondary);">${escHtml(t.perk)}</span>
@@ -6945,19 +7127,13 @@
                   })
                   .join("")}
               </div>
-            </div>
+            </details>
           `;
           })
           .join("")}
       `
           : activeLeaderTab === "ChuyenMon"
           ? `
-        <div class="math-formula-box">
-          <strong>Công thức toán cho 8 Cây Tính Năng (Mỗi cây 8 bậc I → VIII = 64 danh hiệu):</strong>
-          <div class="math-formula-code">M(k) = ceil( a · k^2.15 + b · (1.38^(k-1) - 1) )   với k = 1..8</div>
-          <span>Bậc I chỉ cần 1 điểm để khích lệ người mới thử tính năng; từ Bậc V đến Bậc VIII khoảng cách điểm giãn rộng theo cấp số nhân để tôn vinh chuyên gia thực thụ.</span>
-        </div>
-
         <div style="display:flex; flex-direction:column; gap:12px;">
           ${skillTrees
             .map((tree) => {
@@ -6968,31 +7144,37 @@
                   <strong style="color:${escHtml(tree.color)};">${escHtml(tree.name)}</strong>
                   <span class="badge-tag amber num">${ev.points} điểm</span>
                 </div>
-                <small style="font-size:0.88rem; color:var(--ink-secondary);">Cách tích điểm: ${escHtml(tree.howToEarn)} · <code>${escHtml(tree.formulaNote)}</code></small>
+                <small style="font-size:0.86rem; color:var(--ink-secondary);">Cách tích điểm: ${escHtml(tree.howToEarn)}</small>
                 <div class="seniority-progress-wrap">
                   <div class="seniority-progress-track">
                     <div class="seniority-progress-fill" style="width:${ev.percent}%; background-color:${escHtml(tree.color)};"></div>
                   </div>
-                  <small style="font-size:0.88rem;">
+                  <small style="font-size:0.86rem;">
                     Hiện đạt: <strong>${ev.current ? `Bậc ${ev.current.roman} · ${escHtml(ev.current.title)}` : "Chưa mở bậc I"}</strong>
                     ${ev.next ? ` · Mốc tiếp: Bậc ${ev.next.roman} (${ev.next.reqPoints} điểm)` : " · Đã đạt đỉnh Bậc VIII!"}
                   </small>
                 </div>
-                <div class="skill-tier-pill-grid">
-                  ${tree.tiers
-                    .map((rk) => {
-                      const unlocked = ev.points >= rk.reqPoints;
-                      const isActive = ev.current && ev.current.rank === rk.rank;
-                      return `
-                      <div class="skill-tier-pill ${isActive ? "active-rank" : unlocked ? "unlocked" : ""}">
-                        <strong>${rk.roman}. ${escHtml(rk.title)}</strong>
-                        <span style="color:var(--ink-secondary);">${rk.reqPoints} điểm</span>
-                      </div>
-                    `;
-                    })
-                    .join("")}
-                </div>
-                <button type="button" class="btn-secondary" data-go-skill="${escHtml(tree.featureRoute)}">Vào rèn luyện tính năng này</button>
+                <details class="tb-details">
+                  <summary>
+                    <span>Xem chi tiết 8 bậc danh hiệu</span>
+                    <span class="tb-details-hint">Bấm mở</span>
+                  </summary>
+                  <div class="skill-tier-pill-grid" style="margin-top:8px;">
+                    ${tree.tiers
+                      .map((rk) => {
+                        const unlocked = ev.points >= rk.reqPoints;
+                        const isActive = ev.current && ev.current.rank === rk.rank;
+                        return `
+                        <div class="skill-tier-pill ${isActive ? "active-rank" : unlocked ? "unlocked" : ""}">
+                          <strong>${rk.roman}. ${escHtml(rk.title)}</strong>
+                          <span style="color:var(--ink-secondary);">${rk.reqPoints} điểm</span>
+                        </div>
+                      `;
+                      })
+                      .join("")}
+                  </div>
+                </details>
+                <button type="button" class="btn-secondary" data-go-skill="${escHtml(tree.featureRoute)}">Vào rèn luyện mục này</button>
               </div>
             `;
             })
@@ -7258,415 +7440,429 @@
       activeItemId !== state.user.itemId ||
       activeFrameId !== (state.user.titleFrameId || "tri-am");
 
-    els.main.innerHTML = `
-      <h1>Hồ sơ & Đồ bày bàn trà</h1>
-      <p class="lead-copy">Dùng Xu kiếm được từ Điểm danh, Cờ tướng và Ngâm thơ để chọn áo mới, vật phẩm bàn trà và khung danh hiệu 3D (không bán xu bằng tiền).</p>
+    const gs = state.user.gameStats || {};
+    const totalWins = (Number(gs.oaqWins) || 0) + (Number(gs.xiangqiWins) || 0);
 
-      <!-- Khung 3D / 2.5D xem trực tiếp sự thay đổi trang phục, phụ kiện, đồ bày bàn trà và khung danh hiệu -->
-      <div class="surface-panel warm" id="profile-live-card">
-        <div class="tearoom-controls-row">
-          <span class="stage-badge" id="profile-render-badge">${isPreviewingDraft ? "Đang xem thử mẫu" : "Mẫu đang dùng"}</span>
-          <button type="button" class="stage-badge-btn" id="btn-profile-toggle-render">Đổi 3D / 2.5D</button>
-        </div>
-
-        <div class="tearoom-stage profile-showcase-stage" id="profile-preview-stage">
-          <canvas class="tearoom-canvas" id="profile-preview-canvas"></canvas>
-          <div class="avatar-tags-layer" id="profile-preview-tags"></div>
-        </div>
-
-        <div class="profile-equipped-strip">
-          <span>Áo: <strong>${escHtml(activeOutfit.name)}</strong></span>
-          <span>Phụ kiện: <strong>${escHtml(activeAcc.name)}</strong></span>
-          <span>Khung 3D: <strong>${escHtml(activeFrame.name)}</strong></span>
-          <span>Trên bàn: <strong>${escHtml(activeItem.name)}</strong></span>
-        </div>
-
-        ${
-          isPreviewingDraft
-            ? `<button type="button" class="btn-secondary" id="btn-reset-preview">Quay về bộ đang trang bị thật</button>`
-            : ""
-        }
-      </div>
-
-      <!-- Thông tin Xưng hô Anh/Chị + Tên + Tuổi + Tỉnh thành -->
+    const renderWardrobeCatalogList = (heading, items, cfg) => `
       <div class="surface-panel">
-        <h3>Thông tin xưng hô & độ tuổi</h3>
-        <div class="honorific-toggle-row" role="group" aria-label="Chọn cách xưng hô">
-          <button type="button" class="honorific-btn ${hon === "Anh" ? "selected" : ""}" data-prof-hon="Anh">Xưng là Anh</button>
-          <button type="button" class="honorific-btn ${hon === "Chị" ? "selected" : ""}" data-prof-hon="Chị">Xưng là Chị</button>
-        </div>
-        <div class="setup-inline-fields">
-          <label class="field-label" style="flex:1.2;">
-            Tên gọi hiển thị
-            <input type="text" class="input-lg" id="prof-name-in" value="${escHtml(baseName)}" />
-          </label>
-          <div class="field-label" style="flex:1;">
-            Tuổi của ${pron}
-            <div class="age-stepper">
-              <button type="button" class="age-step-btn" id="prof-age-minus" aria-label="Giảm 1 tuổi">−</button>
-              <input type="number" class="input-lg num" id="prof-age-in" min="45" max="105" value="${age}" />
-              <button type="button" class="age-step-btn" id="prof-age-plus" aria-label="Tăng 1 tuổi">+</button>
-            </div>
-          </div>
-        </div>
-        <label class="field-label">
-          Quê quán (${D.PROVINCES.length} tỉnh thành & xa quê)
-          <select class="select-lg" id="prof-prov-in">
-            ${D.PROVINCES.map((p) => `<option value="${p.id}" ${p.id === state.user.provinceId ? "selected" : ""}>${escHtml(p.name)}</option>`).join("")}
-          </select>
-        </label>
-        <button type="button" class="btn-primary" id="btn-save-name">Lưu xưng hô & tuổi</button>
-      </div>
-
-      <!-- 1. Mẫu Trang phục nhân vật -->
-      <div class="surface-panel">
-        <h3>1. Trang phục nhân vật (chạm để xem trên hình mẫu)</h3>
+        <h3>${heading}</h3>
         <div class="catalog-stack">
-          ${D.OUTFITS.map((o) => {
-            const owned = state.user.unlockedOutfits.includes(o.id);
-            const equipped = state.user.outfitId === o.id;
-            const previewing = activeOutfitId === o.id && !equipped;
-            return `
-              <div class="catalog-sample-card ${equipped ? "is-equipped" : previewing ? "is-previewing" : ""}">
-                <div class="catalog-sample-top">
-                  ${renderOutfitSampleSvg(o)}
-                  <div class="catalog-sample-info">
-                    <strong>${escHtml(o.name)}</strong>
-                    <small>${escHtml(o.desc || "")}</small>
+          ${items
+            .map((item) => {
+              const owned = cfg.ownedList.includes(item.id);
+              const equipped = cfg.equippedId === item.id;
+              const previewing = cfg.activeId === item.id && !equipped;
+              return `
+                <div class="catalog-sample-card ${equipped ? "is-equipped" : previewing ? "is-previewing" : ""}">
+                  <div class="catalog-sample-top">
+                    ${cfg.thumbFn(item)}
+                    <div class="catalog-sample-info">
+                      <strong>${escHtml(item.name)}</strong>
+                      <small>${escHtml(item.desc || "")}</small>
+                    </div>
+                  </div>
+                  <div class="catalog-sample-actions">
+                    ${!owned ? `<button type="button" class="btn-mini ${cfg.previewCls}" data-id="${item.id}">${previewing ? "Đang thử" : "Xem thử"}</button>` : ""}
+                    <button type="button" class="btn-mini ${cfg.equipCls} ${equipped ? "active-equip" : ""}" data-id="${item.id}">
+                      ${equipped ? cfg.activeLabel : owned ? cfg.ownedLabel : `Đổi (${item.cost} Xu)`}
+                    </button>
                   </div>
                 </div>
-                <div class="catalog-sample-actions">
-                  ${
-                    !owned
-                      ? `<button type="button" class="btn-mini preview-outfit-btn" data-id="${o.id}">${previewing ? "Đang xem thử" : "Xem thử"}</button>`
-                      : ""
-                  }
-                  <button type="button" class="btn-mini equip-outfit-btn ${equipped ? "active-equip" : ""}" data-id="${o.id}">
-                    ${equipped ? "Đang mặc" : owned ? "Chọn mặc" : `Đổi (${o.cost} Xu)`}
-                  </button>
-                </div>
-              </div>
-            `;
-          }).join("")}
+              `;
+            })
+            .join("")}
         </div>
-      </div>
-
-      <!-- 2. Mẫu Phụ kiện nhân vật 3D -->
-      <div class="surface-panel">
-        <h3>2. Phụ kiện nhân vật (hiển thị trực tiếp trên đầu / mặt)</h3>
-        <div class="catalog-stack">
-          ${D.ACCESSORIES.map((acc) => {
-            const unlockedList = state.user.unlockedAccessories || ["none", "glasses"];
-            const owned = unlockedList.includes(acc.id);
-            const equipped = (state.user.accessoryId || "glasses") === acc.id;
-            const previewing = activeAccId === acc.id && !equipped;
-            return `
-              <div class="catalog-sample-card ${equipped ? "is-equipped" : previewing ? "is-previewing" : ""}">
-                <div class="catalog-sample-top">
-                  ${renderAccessorySampleSvg(acc)}
-                  <div class="catalog-sample-info">
-                    <strong>${escHtml(acc.name)}</strong>
-                    <small>${escHtml(acc.desc || "")}</small>
-                  </div>
-                </div>
-                <div class="catalog-sample-actions">
-                  ${
-                    !owned
-                      ? `<button type="button" class="btn-mini preview-acc-btn" data-id="${acc.id}">${previewing ? "Đang xem thử" : "Xem thử"}</button>`
-                      : ""
-                  }
-                  <button type="button" class="btn-mini equip-acc-btn ${equipped ? "active-equip" : ""}" data-id="${acc.id}">
-                    ${equipped ? "Đang đeo" : owned ? "Chọn đeo" : `Đổi (${acc.cost} Xu)`}
-                  </button>
-                </div>
-              </div>
-            `;
-          }).join("")}
-        </div>
-      </div>
-
-      <!-- 3. Mẫu Đồ bày bàn trà trước mặt -->
-      <div class="surface-panel">
-        <h3>3. Đồ bày bàn trà trước mặt (xoay trên mặt bàn mẫu)</h3>
-        <div class="catalog-stack">
-          ${D.TABLE_ITEMS.map((it) => {
-            const owned = state.user.unlockedItems.includes(it.id);
-            const equipped = state.user.itemId === it.id;
-            const previewing = activeItemId === it.id && !equipped;
-            return `
-              <div class="catalog-sample-card ${equipped ? "is-equipped" : previewing ? "is-previewing" : ""}">
-                <div class="catalog-sample-top">
-                  ${renderTableItemSampleSvg(it)}
-                  <div class="catalog-sample-info">
-                    <strong>${escHtml(it.name)}</strong>
-                    <small>${escHtml(it.desc || "")}</small>
-                  </div>
-                </div>
-                <div class="catalog-sample-actions">
-                  ${
-                    !owned
-                      ? `<button type="button" class="btn-mini preview-item-btn" data-id="${it.id}">${previewing ? "Đang xem thử" : "Xem thử"}</button>`
-                      : ""
-                  }
-                  <button type="button" class="btn-mini equip-item-btn ${equipped ? "active-equip" : ""}" data-id="${it.id}">
-                    ${equipped ? "Đang bày" : owned ? "Đặt lên bàn" : `Đổi (${it.cost} Xu)`}
-                  </button>
-                </div>
-              </div>
-            `;
-          }).join("")}
-        </div>
-      </div>
-
-      <!-- 4. Khung danh hiệu gắn lên nhân vật 3D -->
-      <div class="surface-panel">
-        <h3>4. Khung danh hiệu gắn lên nhân vật 3D (Huy hiệu áo &amp; Thẻ tên)</h3>
-        <div class="catalog-stack">
-          ${D.TITLE_FRAMES.map((fr) => {
-            const unlockedFrames = state.user.unlockedTitleFrames || ["none", "tri-am"];
-            const owned = unlockedFrames.includes(fr.id);
-            const equipped = (state.user.titleFrameId || "tri-am") === fr.id;
-            const previewing = activeFrameId === fr.id && !equipped;
-            return `
-              <div class="catalog-sample-card ${equipped ? "is-equipped" : previewing ? "is-previewing" : ""}">
-                <div class="catalog-sample-top">
-                  ${renderTitleFrameSampleSvg(fr)}
-                  <div class="catalog-sample-info">
-                    <strong>${escHtml(fr.name)}</strong>
-                    <small>${escHtml(fr.desc || "")}</small>
-                  </div>
-                </div>
-                <div class="catalog-sample-actions">
-                  ${
-                    !owned
-                      ? `<button type="button" class="btn-mini preview-frame-btn" data-id="${fr.id}">${previewing ? "Đang xem thử" : "Xem thử"}</button>`
-                      : ""
-                  }
-                  <button type="button" class="btn-mini equip-frame-btn ${equipped ? "active-equip" : ""}" data-id="${fr.id}">
-                    ${equipped ? "Đang gắn" : owned ? "Gắn lên 3D" : `Đổi (${fr.cost} Xu)`}
-                  </button>
-                </div>
-              </div>
-            `;
-          }).join("")}
-        </div>
-      </div>
-
-      <div class="surface-panel">
-        <button type="button" class="btn-secondary" id="btn-profile-open-privacy">${ico("shield")}<span>Xem Chỉ số sinh hoạt &amp; Quyền riêng tư dữ liệu</span></button>
       </div>
     `;
 
-    // Mount live 3D / 2.5D showcase
-    const stageEl = document.getElementById("profile-preview-stage");
-    const canvasEl = document.getElementById("profile-preview-canvas");
-    const tagsEl = document.getElementById("profile-preview-tags");
-    if (stageEl && canvasEl && tagsEl) {
-      window.TeaRoomScene.mount(
-        stageEl,
-        canvasEl,
-        tagsEl,
+    const wardrobeCategoryConfigs = {
+      outfits: [
+        "Trang phục nhân vật",
+        D.OUTFITS,
         {
-          viewMode: "profile",
-          preferredMode: state.settings.preferredRender,
-          roomTheme: getCurrentRoom().theme,
-          userName: state.user.name,
-          userAge: age,
-          userGender: hon === "Chị" ? "female" : "male",
-          userOutfitColor: activeOutfit.color,
-          userAccessory: activeAcc.id,
-          userTitleFrame: activeFrame.id,
-          userItem: activeItem.id,
-          itemLabel: activeItem.name,
-          itemColor: activeItem.color
-        },
-        () => {
-          state.settings.autoFallbacked = true;
-          state.settings.preferredRender = "2.5d";
-          saveState();
-          updateGlobalChrome();
+          ownedList: state.user.unlockedOutfits,
+          equippedId: state.user.outfitId,
+          activeId: activeOutfitId,
+          thumbFn: renderOutfitSampleSvg,
+          previewCls: "preview-outfit-btn",
+          equipCls: "equip-outfit-btn",
+          activeLabel: "Đang mặc",
+          ownedLabel: "Chọn mặc"
         }
-      );
-    }
-
-    document.getElementById("btn-profile-toggle-render").addEventListener("click", () => {
-      state.settings.autoFallbacked = false;
-      state.settings.preferredRender = state.settings.preferredRender === "3d" ? "2.5d" : "3d";
-      saveState();
-      updateGlobalChrome();
-      renderProfile();
-    });
-
-    const resetPrevBtn = document.getElementById("btn-reset-preview");
-    if (resetPrevBtn) {
-      resetPrevBtn.addEventListener("click", () => {
-        profilePreviewDraft = null;
-        renderProfile();
-      });
-    }
-
-    let profHon = hon;
-    els.main.querySelectorAll("[data-prof-hon]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        profHon = btn.dataset.profHon === "Chị" ? "Chị" : "Anh";
-        els.main.querySelectorAll("[data-prof-hon]").forEach((b) => b.classList.toggle("selected", b === btn));
-      });
-    });
-
-    const profAgeIn = document.getElementById("prof-age-in");
-    document.getElementById("prof-age-minus").addEventListener("click", () => {
-      profAgeIn.value = String(Math.max(45, (Number(profAgeIn.value) || 65) - 1));
-    });
-    document.getElementById("prof-age-plus").addEventListener("click", () => {
-      profAgeIn.value = String(Math.min(105, (Number(profAgeIn.value) || 65) + 1));
-    });
-
-    document.getElementById("btn-save-name").addEventListener("click", () => {
-      const val = document.getElementById("prof-name-in").value.trim();
-      const ageVal = document.getElementById("prof-age-in").value;
-      const provVal = document.getElementById("prof-prov-in").value;
-      applyUserIdentity(profHon, val, ageVal, provVal);
-      showToast(`Đã lưu hồ sơ: ${state.user.name} · ${state.user.age} tuổi.`);
-      renderProfile();
-    });
-
-    const scrollShowcaseIntoView = () => {
-      const card = document.getElementById("profile-live-card");
-      if (card) card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      ],
+      accessories: [
+        "Phụ kiện đội đầu &amp; mắt",
+        D.ACCESSORIES,
+        {
+          ownedList: state.user.unlockedAccessories || ["none", "glasses"],
+          equippedId: state.user.accessoryId || "glasses",
+          activeId: activeAccId,
+          thumbFn: renderAccessorySampleSvg,
+          previewCls: "preview-acc-btn",
+          equipCls: "equip-acc-btn",
+          activeLabel: "Đang đeo",
+          ownedLabel: "Chọn đeo"
+        }
+      ],
+      items: [
+        "Đồ bày bàn trà trước mặt",
+        D.TABLE_ITEMS,
+        {
+          ownedList: state.user.unlockedItems,
+          equippedId: state.user.itemId,
+          activeId: activeItemId,
+          thumbFn: renderTableItemSampleSvg,
+          previewCls: "preview-item-btn",
+          equipCls: "equip-item-btn",
+          activeLabel: "Đang bày",
+          ownedLabel: "Đặt lên bàn"
+        }
+      ],
+      frames: [
+        "Khung danh hiệu gắn lên nhân vật",
+        D.TITLE_FRAMES,
+        {
+          ownedList: state.user.unlockedTitleFrames || ["none", "tri-am"],
+          equippedId: state.user.titleFrameId || "tri-am",
+          activeId: activeFrameId,
+          thumbFn: renderTitleFrameSampleSvg,
+          previewCls: "preview-frame-btn",
+          equipCls: "equip-frame-btn",
+          activeLabel: "Đang gắn",
+          ownedLabel: "Gắn lên 3D"
+        }
+      ]
     };
 
-    els.main.querySelectorAll(".preview-outfit-btn").forEach((b) => {
-      b.addEventListener("click", () => {
-        profilePreviewDraft = Object.assign({}, profilePreviewDraft || {}, { outfitId: b.dataset.id });
-        renderProfile();
-        scrollShowcaseIntoView();
-      });
+    const renderSelectedWardrobeCatalog = () => {
+      const args = wardrobeCategoryConfigs[activeWardrobeCat] || wardrobeCategoryConfigs.outfits;
+      return renderWardrobeCatalogList(args[0], args[1], args[2]);
+    };
+
+    els.main.innerHTML = `
+      <h1>Cá Nhân &amp; Tủ Trang Phục</h1>
+      <div class="tab-bar" role="tablist" aria-label="Chọn mục Cá nhân">
+        <button type="button" class="tab-btn ${activeProfileMainTab === "wardrobe" ? "active" : ""}" id="prof-tab-wardrobe">Tủ Trang Phục &amp; Đồ Bày</button>
+        <button type="button" class="tab-btn ${activeProfileMainTab === "identity" ? "active" : ""}" id="prof-tab-identity">Đổi Tên · Tuổi &amp; Thẻ QR</button>
+      </div>
+
+      ${
+        activeProfileMainTab === "wardrobe"
+          ? `
+        <div class="surface-panel warm" id="profile-live-card">
+          <div class="tearoom-controls-row">
+            <span class="stage-badge" id="profile-render-badge">${isPreviewingDraft ? "Đang xem thử mẫu" : "Mẫu đang dùng"}</span>
+            <button type="button" class="stage-badge-btn" id="btn-profile-toggle-render">Đổi 3D / 2.5D</button>
+          </div>
+
+          <div class="tearoom-stage profile-showcase-stage" id="profile-preview-stage">
+            <canvas class="tearoom-canvas" id="profile-preview-canvas"></canvas>
+            <div class="avatar-tags-layer" id="profile-preview-tags"></div>
+          </div>
+
+          <div class="profile-equipped-strip">
+            <span>Áo: <strong>${escHtml(activeOutfit.name)}</strong></span>
+            <span>Phụ kiện: <strong>${escHtml(activeAcc.name)}</strong></span>
+            <span>Khung: <strong>${escHtml(activeFrame.name)}</strong></span>
+            <span>Bàn: <strong>${escHtml(activeItem.name)}</strong></span>
+          </div>
+
+          ${isPreviewingDraft ? `<button type="button" class="btn-secondary" id="btn-reset-preview">Quay về bộ đang dùng thật</button>` : ""}
+        </div>
+
+        <div class="wardrobe-cat-bar" role="tablist" aria-label="Danh mục trang bị">
+          <button type="button" class="wardrobe-cat-btn ${activeWardrobeCat === "outfits" ? "active" : ""}" data-wcat="outfits">Trang phục (${D.OUTFITS.length})</button>
+          <button type="button" class="wardrobe-cat-btn ${activeWardrobeCat === "accessories" ? "active" : ""}" data-wcat="accessories">Phụ kiện (${D.ACCESSORIES.length})</button>
+          <button type="button" class="wardrobe-cat-btn ${activeWardrobeCat === "items" ? "active" : ""}" data-wcat="items">Đồ bàn trà (${D.TABLE_ITEMS.length})</button>
+          <button type="button" class="wardrobe-cat-btn ${activeWardrobeCat === "frames" ? "active" : ""}" data-wcat="frames">Khung tên (${D.TITLE_FRAMES.length})</button>
+        </div>
+
+        ${renderSelectedWardrobeCatalog()}
+      `
+          : `
+        <div class="surface-panel warm">
+          <h3>Thông tin xưng hô &amp; độ tuổi</h3>
+          <div class="honorific-toggle-row" role="group" aria-label="Chọn cách xưng hô">
+            <button type="button" class="honorific-btn ${hon === "Anh" ? "selected" : ""}" data-prof-hon="Anh">Xưng là Anh</button>
+            <button type="button" class="honorific-btn ${hon === "Chị" ? "selected" : ""}" data-prof-hon="Chị">Xưng là Chị</button>
+          </div>
+          <div class="setup-inline-fields">
+            <label class="field-label" style="flex:1.2;">
+              Tên gọi hiển thị
+              <input type="text" class="input-lg" id="prof-name-in" value="${escHtml(baseName)}" />
+            </label>
+            <div class="field-label" style="flex:1;">
+              Tuổi của ${pron}
+              <div class="age-stepper">
+                <button type="button" class="age-step-btn" id="prof-age-minus" aria-label="Giảm 1 tuổi">−</button>
+                <input type="number" class="input-lg num" id="prof-age-in" min="45" max="105" value="${age}" />
+                <button type="button" class="age-step-btn" id="prof-age-plus" aria-label="Tăng 1 tuổi">+</button>
+              </div>
+            </div>
+          </div>
+          <label class="field-label">
+            Quê quán (${D.PROVINCES.length} tỉnh thành &amp; xa quê)
+            <select class="select-lg" id="prof-prov-in">
+              ${D.PROVINCES.map((p) => `<option value="${p.id}" ${p.id === state.user.provinceId ? "selected" : ""}>${escHtml(p.name)}</option>`).join("")}
+            </select>
+          </label>
+          <button type="button" class="btn-primary" id="btn-save-name">Lưu xưng hô &amp; tuổi</button>
+        </div>
+
+        <div class="surface-panel">
+          <h3>Thẻ Hội Viên &amp; Danh Hiệu Đã Đạt</h3>
+          <p class="num" style="font-size:0.9rem; color:var(--ink-secondary);">Thắng cờ: <strong>${totalWins}</strong> ván · Khung đã mở: <strong>${(state.user.unlockedTitleFrames || []).length}/${D.TITLE_FRAMES.length}</strong></p>
+          <div class="btn-row">
+            <button type="button" class="btn-jade" id="btn-prof-open-auth">${ico("card")}<span>${state.auth.isRegistered ? "Xem Thẻ QR Hội Viên" : "Mở Thẻ Lưu Dữ Liệu"}</span></button>
+            <button type="button" class="btn-secondary" id="btn-prof-goto-lb">${ico("trophy")}<span>Bảng Danh Hiệu</span></button>
+          </div>
+        </div>
+
+        <div class="surface-panel">
+          <button type="button" class="btn-secondary" id="btn-profile-open-privacy">${ico("shield")}<span>Chỉ số sinh hoạt &amp; Quyền riêng tư dữ liệu</span></button>
+        </div>
+      `
+      }
+    `;
+
+    document.getElementById("prof-tab-wardrobe").addEventListener("click", () => {
+      if (activeProfileMainTab === "wardrobe") return;
+      activeProfileMainTab = "wardrobe";
+      renderProfile();
     });
-    els.main.querySelectorAll(".preview-acc-btn").forEach((b) => {
-      b.addEventListener("click", () => {
-        profilePreviewDraft = Object.assign({}, profilePreviewDraft || {}, { accessoryId: b.dataset.id });
-        renderProfile();
-        scrollShowcaseIntoView();
-      });
-    });
-    els.main.querySelectorAll(".preview-item-btn").forEach((b) => {
-      b.addEventListener("click", () => {
-        profilePreviewDraft = Object.assign({}, profilePreviewDraft || {}, { itemId: b.dataset.id });
-        renderProfile();
-        scrollShowcaseIntoView();
-      });
-    });
-    els.main.querySelectorAll(".preview-frame-btn").forEach((b) => {
-      b.addEventListener("click", () => {
-        profilePreviewDraft = Object.assign({}, profilePreviewDraft || {}, { titleFrameId: b.dataset.id });
-        renderProfile();
-        scrollShowcaseIntoView();
-      });
+    document.getElementById("prof-tab-identity").addEventListener("click", () => {
+      if (activeProfileMainTab === "identity") return;
+      window.TeaRoomScene.dispose();
+      activeProfileMainTab = "identity";
+      renderProfile();
     });
 
-    els.main.querySelectorAll(".equip-outfit-btn").forEach((b) => {
-      b.addEventListener("click", () => {
-        const o = getOutfit(b.dataset.id);
-        if (!state.user.unlockedOutfits.includes(o.id)) {
-          if (state.user.xu < o.cost) {
-            profilePreviewDraft = Object.assign({}, profilePreviewDraft || {}, { outfitId: o.id });
-            showToast(`Chưa đủ ${o.cost} Xu — đã bật Xem thử "${o.name}" trên nhân vật cho ${pron} ngắm trước!`);
-            renderProfile();
-            scrollShowcaseIntoView();
-            return;
+    if (activeProfileMainTab === "wardrobe") {
+      const stageEl = document.getElementById("profile-preview-stage");
+      const canvasEl = document.getElementById("profile-preview-canvas");
+      const tagsEl = document.getElementById("profile-preview-tags");
+      if (stageEl && canvasEl && tagsEl) {
+        window.TeaRoomScene.mount(
+          stageEl,
+          canvasEl,
+          tagsEl,
+          {
+            viewMode: "profile",
+            preferredMode: state.settings.preferredRender,
+            roomTheme: getCurrentRoom().theme,
+            userName: state.user.name,
+            userAge: age,
+            userGender: hon === "Chị" ? "female" : "male",
+            userOutfitColor: activeOutfit.color,
+            userAccessory: activeAcc.id,
+            userTitleFrame: activeFrame.id,
+            userItem: activeItem.id,
+            itemLabel: activeItem.name,
+            itemColor: activeItem.color
+          },
+          () => {
+            state.settings.autoFallbacked = true;
+            state.settings.preferredRender = "2.5d";
+            saveState();
+            updateGlobalChrome();
           }
-          state.user.xu -= o.cost;
-          state.user.unlockedOutfits.push(o.id);
-        }
-        state.user.outfitId = o.id;
-        if (profilePreviewDraft) delete profilePreviewDraft.outfitId;
-        saveState();
-        updateGlobalChrome();
-        showToast(`Đã mặc: ${o.name}`);
-        renderProfile();
-        scrollShowcaseIntoView();
-      });
-    });
+        );
+      }
 
-    els.main.querySelectorAll(".equip-acc-btn").forEach((b) => {
-      b.addEventListener("click", () => {
-        const acc = D.ACCESSORIES.find((a) => a.id === b.dataset.id) || D.ACCESSORIES[0];
-        if (!Array.isArray(state.user.unlockedAccessories)) {
-          state.user.unlockedAccessories = ["none", "glasses"];
-        }
-        if (!state.user.unlockedAccessories.includes(acc.id)) {
-          if (state.user.xu < acc.cost) {
-            profilePreviewDraft = Object.assign({}, profilePreviewDraft || {}, { accessoryId: acc.id });
-            showToast(`Chưa đủ ${acc.cost} Xu — đã bật Xem thử "${acc.name}" trên nhân vật!`);
-            renderProfile();
-            scrollShowcaseIntoView();
-            return;
+      const toggleRenBtn = document.getElementById("btn-profile-toggle-render");
+      if (toggleRenBtn) {
+        toggleRenBtn.addEventListener("click", () => {
+          state.settings.autoFallbacked = false;
+          state.settings.preferredRender = state.settings.preferredRender === "3d" ? "2.5d" : "3d";
+          saveState();
+          updateGlobalChrome();
+          renderProfile();
+        });
+      }
+
+      const resetPrevBtn = document.getElementById("btn-reset-preview");
+      if (resetPrevBtn) {
+        resetPrevBtn.addEventListener("click", () => {
+          profilePreviewDraft = null;
+          renderProfile();
+        });
+      }
+
+      els.main.querySelectorAll("[data-wcat]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          activeWardrobeCat = btn.dataset.wcat || "outfits";
+          renderProfile();
+        });
+      });
+
+      const scrollShowcaseIntoView = () => {
+        const card = document.getElementById("profile-live-card");
+        if (card) card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      };
+
+      els.main.querySelectorAll(".preview-outfit-btn").forEach((b) => {
+        b.addEventListener("click", () => {
+          profilePreviewDraft = Object.assign({}, profilePreviewDraft || {}, { outfitId: b.dataset.id });
+          renderProfile();
+          scrollShowcaseIntoView();
+        });
+      });
+      els.main.querySelectorAll(".preview-acc-btn").forEach((b) => {
+        b.addEventListener("click", () => {
+          profilePreviewDraft = Object.assign({}, profilePreviewDraft || {}, { accessoryId: b.dataset.id });
+          renderProfile();
+          scrollShowcaseIntoView();
+        });
+      });
+      els.main.querySelectorAll(".preview-item-btn").forEach((b) => {
+        b.addEventListener("click", () => {
+          profilePreviewDraft = Object.assign({}, profilePreviewDraft || {}, { itemId: b.dataset.id });
+          renderProfile();
+          scrollShowcaseIntoView();
+        });
+      });
+      els.main.querySelectorAll(".preview-frame-btn").forEach((b) => {
+        b.addEventListener("click", () => {
+          profilePreviewDraft = Object.assign({}, profilePreviewDraft || {}, { titleFrameId: b.dataset.id });
+          renderProfile();
+          scrollShowcaseIntoView();
+        });
+      });
+
+      els.main.querySelectorAll(".equip-outfit-btn").forEach((b) => {
+        b.addEventListener("click", () => {
+          const o = getOutfit(b.dataset.id);
+          if (!state.user.unlockedOutfits.includes(o.id)) {
+            if (state.user.xu < o.cost) {
+              profilePreviewDraft = Object.assign({}, profilePreviewDraft || {}, { outfitId: o.id });
+              showToast(`Chưa đủ ${o.cost} Xu — đã bật Xem thử "${o.name}" trên nhân vật cho ${pron} ngắm trước!`);
+              renderProfile();
+              scrollShowcaseIntoView();
+              return;
+            }
+            state.user.xu -= o.cost;
+            state.user.unlockedOutfits.push(o.id);
           }
-          state.user.xu -= acc.cost;
-          state.user.unlockedAccessories.push(acc.id);
-        }
-        state.user.accessoryId = acc.id;
-        if (profilePreviewDraft) delete profilePreviewDraft.accessoryId;
-        saveState();
-        updateGlobalChrome();
-        showToast(`Đã trang bị: ${acc.name}`);
-        renderProfile();
-        scrollShowcaseIntoView();
+          state.user.outfitId = o.id;
+          if (profilePreviewDraft) delete profilePreviewDraft.outfitId;
+          saveState();
+          updateGlobalChrome();
+          showToast(`Đã mặc: ${o.name}`);
+          renderProfile();
+          scrollShowcaseIntoView();
+        });
       });
-    });
 
-    els.main.querySelectorAll(".equip-item-btn").forEach((b) => {
-      b.addEventListener("click", () => {
-        const it = getTableItem(b.dataset.id);
-        if (!state.user.unlockedItems.includes(it.id)) {
-          if (state.user.xu < it.cost) {
-            profilePreviewDraft = Object.assign({}, profilePreviewDraft || {}, { itemId: it.id });
-            showToast(`Chưa đủ ${it.cost} Xu — đã đặt thử "${it.name}" lên bàn mẫu để ${pron} xem!`);
-            renderProfile();
-            scrollShowcaseIntoView();
-            return;
+      els.main.querySelectorAll(".equip-acc-btn").forEach((b) => {
+        b.addEventListener("click", () => {
+          const acc = D.ACCESSORIES.find((a) => a.id === b.dataset.id) || D.ACCESSORIES[0];
+          if (!Array.isArray(state.user.unlockedAccessories)) {
+            state.user.unlockedAccessories = ["none", "glasses"];
           }
-          state.user.xu -= it.cost;
-          state.user.unlockedItems.push(it.id);
-        }
-        state.user.itemId = it.id;
-        if (profilePreviewDraft) delete profilePreviewDraft.itemId;
-        saveState();
-        updateGlobalChrome();
-        showToast(`Đã bày lên bàn trà: ${it.name}`);
-        renderProfile();
-        scrollShowcaseIntoView();
-      });
-    });
-
-    els.main.querySelectorAll(".equip-frame-btn").forEach((b) => {
-      b.addEventListener("click", () => {
-        const fr = getTitleFrame(b.dataset.id);
-        if (!Array.isArray(state.user.unlockedTitleFrames)) {
-          state.user.unlockedTitleFrames = ["none", "tri-am"];
-        }
-        if (!state.user.unlockedTitleFrames.includes(fr.id)) {
-          if (state.user.xu < fr.cost) {
-            profilePreviewDraft = Object.assign({}, profilePreviewDraft || {}, { titleFrameId: fr.id });
-            showToast(`Chưa đủ ${fr.cost} Xu — đã gắn thử khung "${fr.name}" lên nhân vật 3D!`);
-            renderProfile();
-            scrollShowcaseIntoView();
-            return;
+          if (!state.user.unlockedAccessories.includes(acc.id)) {
+            if (state.user.xu < acc.cost) {
+              profilePreviewDraft = Object.assign({}, profilePreviewDraft || {}, { accessoryId: acc.id });
+              showToast(`Chưa đủ ${acc.cost} Xu — đã bật Xem thử "${acc.name}" trên nhân vật!`);
+              renderProfile();
+              scrollShowcaseIntoView();
+              return;
+            }
+            state.user.xu -= acc.cost;
+            state.user.unlockedAccessories.push(acc.id);
           }
-          state.user.xu -= fr.cost;
-          state.user.unlockedTitleFrames.push(fr.id);
-        }
-        state.user.titleFrameId = fr.id;
-        if (profilePreviewDraft) delete profilePreviewDraft.titleFrameId;
-        saveState();
-        updateGlobalChrome();
-        showToast(`Đã gắn khung danh hiệu 3D: ${fr.name}`);
-        renderProfile();
-        scrollShowcaseIntoView();
+          state.user.accessoryId = acc.id;
+          if (profilePreviewDraft) delete profilePreviewDraft.accessoryId;
+          saveState();
+          updateGlobalChrome();
+          showToast(`Đã trang bị: ${acc.name}`);
+          renderProfile();
+          scrollShowcaseIntoView();
+        });
       });
-    });
 
-    document.getElementById("btn-profile-open-privacy").addEventListener("click", () => navigate("privacy"));
+      els.main.querySelectorAll(".equip-item-btn").forEach((b) => {
+        b.addEventListener("click", () => {
+          const it = getTableItem(b.dataset.id);
+          if (!state.user.unlockedItems.includes(it.id)) {
+            if (state.user.xu < it.cost) {
+              profilePreviewDraft = Object.assign({}, profilePreviewDraft || {}, { itemId: it.id });
+              showToast(`Chưa đủ ${it.cost} Xu — đã đặt thử "${it.name}" lên bàn mẫu để ${pron} xem!`);
+              renderProfile();
+              scrollShowcaseIntoView();
+              return;
+            }
+            state.user.xu -= it.cost;
+            state.user.unlockedItems.push(it.id);
+          }
+          state.user.itemId = it.id;
+          if (profilePreviewDraft) delete profilePreviewDraft.itemId;
+          saveState();
+          updateGlobalChrome();
+          showToast(`Đã bày lên bàn trà: ${it.name}`);
+          renderProfile();
+          scrollShowcaseIntoView();
+        });
+      });
+
+      els.main.querySelectorAll(".equip-frame-btn").forEach((b) => {
+        b.addEventListener("click", () => {
+          const fr = getTitleFrame(b.dataset.id);
+          if (!Array.isArray(state.user.unlockedTitleFrames)) {
+            state.user.unlockedTitleFrames = ["none", "tri-am"];
+          }
+          if (!state.user.unlockedTitleFrames.includes(fr.id)) {
+            if (state.user.xu < fr.cost) {
+              profilePreviewDraft = Object.assign({}, profilePreviewDraft || {}, { titleFrameId: fr.id });
+              showToast(`Chưa đủ ${fr.cost} Xu — đã gắn thử khung "${fr.name}" lên nhân vật 3D!`);
+              renderProfile();
+              scrollShowcaseIntoView();
+              return;
+            }
+            state.user.xu -= fr.cost;
+            state.user.unlockedTitleFrames.push(fr.id);
+          }
+          state.user.titleFrameId = fr.id;
+          if (profilePreviewDraft) delete profilePreviewDraft.titleFrameId;
+          saveState();
+          updateGlobalChrome();
+          showToast(`Đã gắn khung danh hiệu 3D: ${fr.name}`);
+          renderProfile();
+          scrollShowcaseIntoView();
+        });
+      });
+    } else {
+      let profHon = hon;
+      els.main.querySelectorAll("[data-prof-hon]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          profHon = btn.dataset.profHon === "Chị" ? "Chị" : "Anh";
+          els.main.querySelectorAll("[data-prof-hon]").forEach((b) => b.classList.toggle("selected", b === btn));
+        });
+      });
+
+      const profAgeIn = document.getElementById("prof-age-in");
+      document.getElementById("prof-age-minus").addEventListener("click", () => {
+        profAgeIn.value = String(Math.max(45, (Number(profAgeIn.value) || 65) - 1));
+      });
+      document.getElementById("prof-age-plus").addEventListener("click", () => {
+        profAgeIn.value = String(Math.min(105, (Number(profAgeIn.value) || 65) + 1));
+      });
+
+      document.getElementById("btn-save-name").addEventListener("click", () => {
+        const val = document.getElementById("prof-name-in").value.trim();
+        const ageVal = document.getElementById("prof-age-in").value;
+        const provVal = document.getElementById("prof-prov-in").value;
+        applyUserIdentity(profHon, val, ageVal, provVal);
+        showToast(`Đã lưu hồ sơ: ${state.user.name} · ${state.user.age} tuổi.`);
+        renderProfile();
+      });
+
+      document.getElementById("btn-prof-open-auth").addEventListener("click", () => openMemberAuthModal());
+      document.getElementById("btn-prof-goto-lb").addEventListener("click", () => {
+        activeLeaderTab = "Cay32";
+        navigate("leaderboard");
+      });
+      document.getElementById("btn-profile-open-privacy").addEventListener("click", () => navigate("privacy"));
+    }
   }
 
   // ==================== MODULE 10: HEALTH ASSISTANT & FAMILY VIEW ====================
@@ -10279,6 +10475,62 @@
     });
   }
 
+  document.querySelectorAll("[data-bnav]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const target = btn.dataset.bnav;
+      if (!target) return;
+      if (target === "games") {
+        if (state.route === "xiangqi") return;
+        if (state.xiangqi && state.xiangqi.inProgress && state.xiangqi.mode !== "puzzle") {
+          activeGameTab = "cotuong";
+        }
+      }
+      navigate(target);
+    });
+  });
+
+  let pendingUnloadClearTimerId = null;
+  function markPendingReloadForfeitIfActive() {
+    const active = getActiveForfeitableMatch();
+    if (!active || !isCurrentlyInsideMatchContext(active)) return null;
+    if (state[active.kind]) {
+      state[active.kind].forfeitedPendingReload = true;
+      saveState();
+    }
+    return active;
+  }
+
+  window.addEventListener("beforeunload", (e) => {
+    const active = markPendingReloadForfeitIfActive();
+    if (!active) return;
+    if (pendingUnloadClearTimerId) clearTimeout(pendingUnloadClearTimerId);
+    pendingUnloadClearTimerId = setTimeout(() => {
+      if (state.oaq) state.oaq.forfeitedPendingReload = false;
+      if (state.xiangqi) state.xiangqi.forfeitedPendingReload = false;
+      saveState();
+    }, 1500);
+    e.preventDefault();
+    e.returnValue = "";
+  });
+
+  window.addEventListener("pagehide", () => {
+    markPendingReloadForfeitIfActive();
+  });
+
+  window.addEventListener("popstate", () => {
+    const active = getActiveForfeitableMatch();
+    if (!active) {
+      matchHistoryGuardArmed = false;
+      return;
+    }
+    matchHistoryGuardArmed = false;
+    armBrowserBackMatchGuard(active.kind);
+    confirmMatchExitOrStay(() => {
+      matchHistoryGuardArmed = false;
+      executeNavigate("home");
+    }, "bấm nút Quay lại trên trình duyệt");
+  });
+
   applyUrlDeepLinkIfPresent();
   if (RT) {
     RT.start();
@@ -10290,6 +10542,11 @@
     }, 500);
   }
   render();
+  if (pendingReloadForfeitNotice) {
+    saveState();
+    showToast(pendingReloadForfeitNotice);
+    pendingReloadForfeitNotice = "";
+  }
 })();
 
 
