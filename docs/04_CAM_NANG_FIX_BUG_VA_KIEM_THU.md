@@ -39,7 +39,11 @@ Tài liệu này giúp bất kỳ AI Agent nào khi nhận báo lỗi từ Chủ
 8. **Lọc thông tin nhạy cảm trong ô trò chuyện (`cleanAndApplyDictionary`):**
    - Chuỗi chứa dãy từ 8 chữ số trở lên (SĐT / số tài khoản), `http://`, `https://` hoặc cụm từ vay mượn/chuyển khoản sẽ bị chặn gửi để bảo vệ các bác khỏi lừa đảo trực tuyến.
 9. **Chống giật nhảy khung hình (`Zero Layout Shift`) khi diễn hoạt Ô Ăn Quan:**
-   - Tuyệt đối không chèn thêm/xóa bỏ các khối văn bản động vào luồng DOM phía trên `.oaq-board` khi đang chạy hoạt cảnh rải sỏi; mọi thông báo trạng thái phải đẩy qua `showToast(...)` và huy hiệu đếm sỏi trên tay đặt `position: absolute` trên `.oaq-board-stage`.
+   - Tuyệt đối không chèn thêm/xóa bỏ các khối văn bản động vào luồng DOM phía trên `.oaq-board` khi đang chạy hoạt cảnh rải sỏi; mọi thông báo trạng thái phải đẩy qua `showToast(...)`, huy hiệu đếm sỏi trên tay đặt `position: absolute` trên `.oaq-board-stage`, và luôn giữ cố định 2 hàng nút bên dưới bàn cờ.
+10. **Tránh lỗi Falsy-Zero (`cushionIdx = 0`), kẹt lượt `turn = "ai"` và hủy `<canvas>` Chánh Điện khi nhận gói tin Realtime:**
+    - Không bao giờ dùng `userCushionIdx || 2` hay `userCushionIdx || 7` vì vị trí Chiếu số 1 có chỉ số `0` (falsy trong JavaScript); luôn kiểm tra `typeof x === "number" && Number.isFinite(x)`.
+    - Khi F5 hoặc chuyển tab/màn hình giữa lúc Máy Ô Ăn Quan đang chờ đi (`turn = "ai"`), `loadState()` và `cancelOrCommitOaqAnimation(true)` bắt buộc chốt nước đi và trả lượt về `"host"`.
+    - Khi cập nhật danh sách sớ cầu an, người online hoặc đổi chỗ chiếu tại Chánh Điện, gọi `TempleScene3D.updateConfig(...)` và chỉ thay HTML vùng danh sách thay vì gọi `renderZen()` làm mất khói hương và sóng âm đang chạy trên `<canvas>`.
 
 ---
 

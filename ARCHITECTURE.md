@@ -23,7 +23,7 @@ flowchart TD
         PROG["progression.js<br/>TuoiBacProgression: Toán học lồi 32 tầng chính + 8 cây chuyên môn (96 danh hiệu)"]
         TEL["telemetry.js<br/>TuoiBacTelemetry: Kho sự kiện 100% IndexedDB + Hồ sơ thói quen 24h + Xuất JSONL"]
         TEA3D["tearoom3d.js<br/>TeaRoomScene: Sảnh trà 5 gian & Bàn trà 3D Three.js + 2.5D Fallback + In thiệp QR"]
-        TMP3D["temple3d.js<br/>TempleScene3D: Chánh Điện 3D mái đao cong, 10 Bồ Đoàn, Hồ Sen & Cây Thẻ Đỏ"]
+        TMP3D["temple3d.js<br/>TempleScene3D: Đại sảnh Chánh Điện 20 Bồ Đoàn, hành lễ &amp; Hồ Sen"]
         XQ["xiangqi.js<br/>TuoiBacXiangqi: Luật Cờ Tướng 9×10 chuẩn, AI Alpha-Beta 4 tầng & 6 Cờ Thế"]
     end
 
@@ -71,7 +71,7 @@ flowchart TD
 | 6 | `xiangqi.js` | `window.TuoiBacXiangqi` | Engine Cờ Tướng `9×10` chuẩn 32 quân hoàn chỉnh: sinh nước đi hợp lệ cho cả 7 binh chủng, luật tướng đối mặt, kiểm tra tự chiếu/chiếu bí, AI đối thủ câu lạc bộ (Minimax + Alpha-Beta Pruning + Bảng điểm vị trí PST + Sắp xếp nước bắt quân MVV-LVA) và 6 ván Cờ Thế cổ phổ. |
 | 7 | `realtime.js` | `window.TuoiBacRealtime` | Lớp mạng thời gian thực tự phục hồi: kết nối song song `BroadcastChannel` nội bộ và `MQTT over WSS` công cộng (hoặc `Supabase` khi cấu hình khóa), quản lý hiện diện trực tuyến theo bàn và toàn quán, hàng đợi chat, ván cờ treo, thẻ hội viên đám mây, hội nhóm, kết bạn, chánh điện và luồng telemetry. |
 | 8 | `app.js` | IIFE Controller | Bộ điều phối trung tâm gắn kết tất cả module: quản lý `state`, lưu trữ kép (`localStorage` + `_vault_bak`), bộ định tuyến `navigate(route)`, xử lý Deep Link URL, tổng hợp giọng đọc tiếng Việt (Web Speech TTS + dự phòng luồng âm thanh), nhận dạng giọng nói kèm tự học từ điển phương ngữ, âm thanh nhạc cụ WebAudio (chuông chùa, mõ gỗ, quân cờ, sỏi cuội, đàn tranh) và 16 hàm dựng màn hình. |
-| 9 | `sw.js` | Service Worker | Quản lý bộ nhớ đệm PWA (`tuoibac-pwa-v18`): chiến lược *Network-First* cho mã nguồn chính để luôn nhận bản mới nhất khi có mạng và tự động dùng bản lưu sẵn khi mất sóng 4G (bao gồm 3 ảnh nền Chánh Điện và Sprite Atlas `temple-sprites.webp` trong `assets/`), đồng thời bỏ qua không chặn các luồng WebSocket/TTS/RSS. |
+| 9 | `sw.js` | Service Worker | Quản lý bộ nhớ đệm PWA (`tuoibac-pwa-v19`): chiến lược *Network-First* cho mã nguồn chính để luôn nhận bản mới nhất khi có mạng và tự động dùng bản lưu sẵn khi mất sóng 4G (bao gồm 3 ảnh nền Chánh Điện và Sprite Atlas `temple-sprites.webp` trong `assets/`), đồng thời bỏ qua không chặn các luồng WebSocket/TTS/RSS. |
 | — | `supabase_schema.sql` | PostgreSQL DDL | Tập lệnh SQL khởi tạo 14 bảng dữ liệu và chính sách bảo mật RLS trên gói miễn phí Supabase. |
 
 ---
@@ -92,7 +92,7 @@ Khi cần sửa giao diện hoặc logic của một màn hình cụ thể, tra 
 | `"quiz"` | Đố Vui Minh Mẫn Hôm Nay (5 câu, không phạt người chậm) | `renderQuiz()` | `data.js`, `telemetry.js` |
 | `"poetry"` | Chiếu Thơ Lục Bát, Đàn Tranh & Sáng Tác Thơ Mới | `renderPoetry()` | `data.js`, `realtime.js` |
 | `"watch"` | Phòng Xem Chung Theo Giờ Hẹn (Dưỡng sinh & Hài kịch phụ đề lớn) | `renderWatch()` | `data.js` |
-| `"zen"` | Chánh Điện 3D & Sân Chùa Cổ (10 Bồ Đoàn, Hồ Sen, Cây Thẻ Đỏ) | `renderZen()` | `temple3d.js`, `realtime.js`, `telemetry.js` |
+| `"zen"` | Chánh Điện &amp; Đạo Tràng (20 Bồ Đoàn, Hồ Sen, Cây Thẻ Đỏ) | `renderZen()` | `temple3d.js`, `realtime.js`, `telemetry.js` |
 | `"leaderboard"` | Hệ Thống 96 Danh Hiệu Toán Học & Bảng Vàng Mới – Cũ | `renderLeaderboard()` | `progression.js` |
 | `"profile"` | Hồ Sơ Cá Nhân, Tủ Trang Phục & Khung Danh Hiệu 3D | `renderProfile()` | `tearoom3d.js` (sân khấu thử đồ 3D), `progression.js` |
 | `"health"` | Trợ Lý Sức Khỏe, Nhắc Thuốc & Nút Cấp Cứu 115 | `renderHealth()` | `data.js` |

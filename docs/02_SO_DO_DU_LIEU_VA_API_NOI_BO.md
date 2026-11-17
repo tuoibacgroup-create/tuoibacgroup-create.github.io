@@ -96,7 +96,7 @@ state = {
   zen: {
     spaceIdx: 0,                  // 0: Sân Chùa Quê, 1: Nhà Thờ Họ, 2: Vườn Thiền
     cameraView: "wide" | "cushions" | "courtyard",
-    userCushionIdx: 2,            // Vị trí chiếu Bồ Đoàn 0..9 (BĐ 1..10)
+    userCushionIdx: 2,            // Vị trí chiếu Bồ Đoàn 0..19 (BĐ 1..20)
     incenseLit: true,
     incenseCount: 14,
     muyuCount: 0,
@@ -160,9 +160,10 @@ state = {
 ### 2.4. `window.TempleScene3D` (`temple3d.js`)
 - `CUSHION_COORDS`: Mảng `20` tọa độ chiếu Bồ Đoàn (`4 hàng × 5 chiếu`, `idx 0..19`) trải rộng trên nền Đại Sảnh.
 - `mount(container, config, onFallback)`: Dựng Đại Sảnh Chánh Điện góc siêu rộng 20 chiếu Bồ Đoàn (`./assets/temple-wide.jpg`, `./assets/temple-altar.jpg`, `./assets/temple-courtyard.jpg`) kết hợp Sprite Atlas Phật tử Áo Lam / Áo Nâu tả thực nhìn từ sau lưng (`./assets/temple-sprites.webp`), sắp xếp chiều sâu Painter's Algorithm và diễn hoạt bước đi hành lễ mượt mà.
+- `updateConfig(partialCfg)`: Cập nhật tại chỗ danh sách `attendees`, `userCushionIdx`, `wishes`, bộ đếm và chế độ tự gõ mõ mà không hủy `<canvas>` hay cắt ngang sóng âm / khói hương đang chạy.
 - `setCameraView("wide" | "cushions" | "courtyard")` / `getCameraView()` / `setAutoMuyuMode(active)`.
-- `triggerIncense(speakerName)` / `triggerMuyu(count)` / `triggerBell(speakerName)` / `triggerFortuneStick(cardCode)`: Đưa nhân vật đứng dậy từ chiếu bước lên Lư hương / Mõ gỗ / Đại Hồng Chung / Ống xăm, cúi vái 3 nhịp trang nghiêm rồi bước quay về chiếu.
-- `spawnWishPlaque(speakerName, isVeteranGold)` / `spawnPondLantern(speakerName)`: Hành lễ và thắp sáng thẻ đỏ / hoa đăng kèm thông báo nổi gọn nhẹ.
+- `triggerIncense(speakerName, preferredCushionIdx)` / `triggerMuyu(count)` / `triggerBell(speakerName, preferredCushionIdx)` / `triggerFortuneStick(cardCode)`: Đưa đúng nhân vật tương ứng đứng dậy từ chiếu bước lên Lư hương / Mõ gỗ / Đại Hồng Chung / Ống xăm, cúi vái 3 nhịp trang nghiêm rồi bước quay về chiếu.
+- `spawnWishPlaque(speakerName, isVeteranGold, wishText, preferredCushionIdx)` / `spawnPondLantern(speakerName, preferredCushionIdx)`: Hành lễ và thắp sáng thẻ đỏ / hoa đăng kèm thông báo nổi gọn nhẹ.
 - `dispose()`: Giải phóng toàn bộ tài nguyên Canvas/Renderer Chánh Điện và gỡ bỏ listener kéo chuột khỏi `window`.
 
 ### 2.5. `window.TuoiBacXiangqi` (`xiangqi.js`)

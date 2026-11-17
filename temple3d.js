@@ -148,17 +148,22 @@ window.TempleScene3D = (function () {
 
   function rebuildTwentySeatActors() {
     const attendees = (currentConfig && currentConfig.attendees) || [];
-    const selectedIdx = Math.max(0, Math.min(19, Number(currentConfig && currentConfig.userCushionIdx) || 7));
+    const rawIdx =
+      currentConfig && typeof currentConfig.userCushionIdx === "number" && Number.isFinite(currentConfig.userCushionIdx)
+        ? Math.floor(currentConfig.userCushionIdx)
+        : 2;
+    const selectedIdx = Math.max(0, Math.min(19, rawIdx));
 
-    // Giữ lại tiến trình đi bộ đang diễn ra nếu chỉ cập nhật nhẹ
+    // Giữ lại tiến trình đi bộ đang diễn ra nếu cùng vai (tránh gán nhầm hành trình sang NPC khác khi đổi chiếu)
     const prevWalkByIdx = {};
     seatActors.forEach((sa) => {
-      if (sa.walkTask) prevWalkByIdx[sa.idx] = sa.walkTask;
+      if (sa.walkTask) prevWalkByIdx[sa.idx] = { task: sa.walkTask, isUser: Boolean(sa.isUser) };
     });
 
     seatActors = CUSHION_COORDS.map((slot) => {
       const occ = attendees.find((a) => a.cushionIdx === slot.idx) || null;
-      const isUser = Boolean(occ && occ.isUser) || slot.idx === selectedIdx;
+      const isUser = slot.idx === selectedIdx;
+      const prevWalk = prevWalkByIdx[slot.idx];
       return {
         idx: slot.idx,
         row: slot.row,
@@ -169,7 +174,7 @@ window.TempleScene3D = (function () {
         occupant: occ,
         isUser,
         spritePrefix: chooseSpritePrefix(occ, slot.idx),
-        walkTask: prevWalkByIdx[slot.idx] || null
+        walkTask: prevWalk && prevWalk.isUser === isUser && occ ? prevWalk.task : null
       };
     });
 
@@ -968,7 +973,11 @@ window.TempleScene3D = (function () {
   }
 
   function mount(container, config, onFallback) {
-    const prevWalkSnapshot = seatActors.map((sa) => ({ idx: sa.idx, walkTask: sa.walkTask }));
+    const prevWalkSnapshot = seatActors.map((sa) => ({
+      idx: sa.idx,
+      isUser: Boolean(sa.isUser),
+      walkTask: sa.walkTask
+    }));
     dispose();
     containerEl = container;
     currentConfig = config || {};
@@ -999,11 +1008,13 @@ window.TempleScene3D = (function () {
       };
 
       initAtmosphericParticles();
-      // Khôi phục hành trình đi bộ nếu renderZen() vừa gọi lại
+      // Khôi phục hành trình đi bộ nếu cùng vai trò trên đúng chiếu
       prevWalkSnapshot.forEach((snap) => {
         if (snap.walkTask) {
           const found = seatActors.find((a) => a.idx === snap.idx);
-          if (found && found.occupant) found.walkTask = snap.walkTask;
+          if (found && found.occupant && Boolean(found.isUser) === snap.isUser) {
+            found.walkTask = snap.walkTask;
+          }
         }
       });
 
@@ -1015,6 +1026,18 @@ window.TempleScene3D = (function () {
     } catch (err) {
       if (typeof onFallback === "function") onFallback(err);
     }
+  }
+
+  function updateConfig(partialCfg) {
+    if (!partialCfg) return;
+    currentConfig = Object.assign({}, currentConfig || {}, partialCfg);
+    if (typeof partialCfg.cameraView === "string") {
+      cameraView = partialCfg.cameraView;
+    }
+    if (typeof partialCfg.autoMuyuActive === "boolean") {
+      autoMuyuPinned = partialCfg.autoMuyuActive;
+    }
+    rebuildTwentySeatActors();
   }
 
   function setCameraView(viewMode) {
@@ -1040,22 +1063,43 @@ window.TempleScene3D = (function () {
     }
   }
 
-  function findActorIndexBySpeaker(speakerName) {
+  function findActorIndexBySpeaker(speakerName, preferredCushionIdx) {
     const userActor = seatActors.find((a) => a.isUser);
-    if (!speakerName) return userActor ? userActor.idx : 7;
-    const clean = String(speakerName).toLowerCase();
-    const matched = seatActors.find(
-      (a) => a.occupant && String(a.occupant.name || "").toLowerCase().includes(clean)
-    );
+    const fallbackUserIdx = userActor ? userActor.idx : 2;
+    const baseClean = String(speakerName || "").split("·")[0].trim().toLowerCase();
+    if (!baseClean) return fallbackUserIdx;
+
+    const myClean = String((currentConfig && currentConfig.userName) || "").split("·")[0].trim().toLowerCase();
+    if (myClean && baseClean === myClean) {
+      return fallbackUserIdx;
+    }
+
+    const matched = seatActors.find((a) => {
+      if (!a.occupant) return false;
+      const occClean = String(a.occupant.name || "").split("·")[0].trim().toLowerCase();
+      return Boolean(occClean && (occClean === baseClean || occClean.includes(baseClean) || baseClean.includes(occClean)));
+    });
     if (matched) return matched.idx;
-    return userActor ? userActor.idx : 7;
+
+    if (typeof preferredCushionIdx === "number" && Number.isFinite(preferredCushionIdx)) {
+      const prefIdx = Math.max(0, Math.min(19, Math.floor(preferredCushionIdx)));
+      const prefActor = seatActors.find((a) => a.idx === prefIdx);
+      if (prefActor && prefActor.occupant && !prefActor.isUser) {
+        return prefActor.idx;
+      }
+    }
+
+    const peerIdle =
+      seatActors.find((a) => a.occupant && !a.isUser && !a.walkTask) ||
+      seatActors.find((a) => a.occupant && !a.isUser);
+    return peerIdle ? peerIdle.idx : fallbackUserIdx;
   }
 
-  function triggerIncense(speakerName) {
+  function triggerIncense(speakerName, preferredCushionIdx) {
     if (currentConfig) {
       currentConfig.incenseCount = (Number(currentConfig.incenseCount) || 14) + 1;
     }
-    const actorIdx = findActorIndexBySpeaker(speakerName);
+    const actorIdx = findActorIndexBySpeaker(speakerName, preferredCushionIdx);
     const fireFx = () => {
       incenseBoost = 1.0;
       const ry = cameraView === "cushions" ? 0.68 : 0.50;
@@ -1075,7 +1119,7 @@ window.TempleScene3D = (function () {
       currentConfig.muyuCount = nextCnt;
     }
     const userActor = seatActors.find((a) => a.isUser);
-    const actorIdx = userActor ? userActor.idx : 7;
+    const actorIdx = userActor ? userActor.idx : 2;
     const fireFx = () => {
       muyuPulse = 1.0;
       const rx = cameraView === "cushions" ? 0.85 : cameraView === "courtyard" ? 0.5 : 0.815;
@@ -1090,8 +1134,8 @@ window.TempleScene3D = (function () {
     }
   }
 
-  function triggerBell(speakerName) {
-    const actorIdx = findActorIndexBySpeaker(speakerName);
+  function triggerBell(speakerName, preferredCushionIdx) {
+    const actorIdx = findActorIndexBySpeaker(speakerName, preferredCushionIdx);
     const fireFx = () => {
       bellResonance = 1.0;
       const rx = cameraView === "cushions" ? 0.15 : cameraView === "courtyard" ? 0.5 : 0.155;
@@ -1108,7 +1152,7 @@ window.TempleScene3D = (function () {
 
   function triggerFortuneStick(cardCode) {
     const userActor = seatActors.find((a) => a.isUser);
-    const actorIdx = userActor ? userActor.idx : 7;
+    const actorIdx = userActor ? userActor.idx : 2;
     const fireFx = () => {
       fortunePulse = 1.0;
       const rx = cameraView === "cushions" ? 0.72 : 0.72;
@@ -1123,7 +1167,7 @@ window.TempleScene3D = (function () {
     }
   }
 
-  function spawnWishPlaque(speakerName, isVeteranGold) {
+  function spawnWishPlaque(speakerName, isVeteranGold, wishText, preferredCushionIdx) {
     if (currentConfig) {
       currentConfig.totalWishCount = (Number(currentConfig.totalWishCount) || 16) + 1;
     }
@@ -1134,7 +1178,7 @@ window.TempleScene3D = (function () {
     });
     if (extraTreeGlints.length > 9) extraTreeGlints.shift();
 
-    const actorIdx = findActorIndexBySpeaker(speakerName);
+    const actorIdx = findActorIndexBySpeaker(speakerName, preferredCushionIdx);
     const fireFx = () => {
       const rx = cameraView === "courtyard" ? 0.78 : 0.502;
       const ry = cameraView === "courtyard" ? 0.44 : 0.50;
@@ -1148,7 +1192,7 @@ window.TempleScene3D = (function () {
     }
   }
 
-  function spawnPondLantern(speakerName) {
+  function spawnPondLantern(speakerName, preferredCushionIdx) {
     if (currentConfig) {
       currentConfig.lanternCount = (Number(currentConfig.lanternCount) || 18) + 1;
     }
@@ -1159,7 +1203,7 @@ window.TempleScene3D = (function () {
     });
     if (extraPondLights.length > 8) extraPondLights.shift();
 
-    const actorIdx = findActorIndexBySpeaker(speakerName);
+    const actorIdx = findActorIndexBySpeaker(speakerName, preferredCushionIdx);
     const fireFx = () => {
       const rx = cameraView === "courtyard" ? 0.25 : 0.502;
       const ry = cameraView === "courtyard" ? 0.76 : 0.50;
@@ -1225,6 +1269,7 @@ window.TempleScene3D = (function () {
   return {
     CUSHION_COORDS,
     mount,
+    updateConfig,
     setCameraView,
     getCameraView,
     setAutoMuyuMode,

@@ -29,6 +29,18 @@
 
 ## 2. Nhật Ký Phiên Bản Kỹ Thuật (Append-Only Engineering Log)
 
+### [2026-11-17] — Kiểm Thử Toàn Diện 16 Màn Hình & Vá Triệt Để 8 Lỗi Tiềm Ẩn (`?v=20261117g`)
+- **Tệp cập nhật:** `app.js`, `temple3d.js`, `styles.css`, `index.html` (`?v=20261117g`), `sw.js` (`tuoibac-pwa-v19`), `ARCHITECTURE.md`, `docs/02_SO_DO_DU_LIEU_VA_API_NOI_BO.md`, `docs/03_TIEN_DO_VA_NHAT_KY.md`, `docs/04_CAM_NANG_FIX_BUG_VA_KIEM_THU.md`.
+- **8 lỗi thực tế đã phát hiện và xử lý dứt điểm:**
+  1. **Kẹt lượt `turn = "ai"` trong Ô Ăn Quan khi F5 / chuyển tab / rời màn hình:** Bổ sung tự phục hồi lượt `"host"` trong `loadState()`, `renderOaqTab()` và chốt nước đi Máy đồng bộ trong `cancelOrCommitOaqAnimation(true)` khi chuyển sang tab `Cờ tướng 9×10` hoặc thoát màn hình.
+  2. **Thiếu luật tàn cuộc kéo quân khi cả 2 Quan đều hết & thưởng Xu thắng ván:** Đồng bộ trong cả `executeOaqMove()` lẫn `buildOaqMoveTimeline()` (`sweep_end`) để thu toàn bộ quân Dân còn lại về giỏ hai bên khi `cells[5] === 0 && cells[11] === 0`, kèm `finishOaqGameIfEnded()` thông báo tỷ số và cộng `+5 Xu` nếu thắng.
+  3. **Dính chữ số với nhãn `Ô1..Ô11` và nhảy chiều cao nút dưới bàn Ô Ăn Quan:** Đưa `.oaq-count-num` lên đỉnh ô, hốc sỏi SVG ở giữa, `<small>Ôx</small>` xuống đáy ô giống `.oaq-quan` trong `styles.css`, đồng thời giữ cố định 2 hàng nút dưới `.oaq-score-tray`.
+  4. **Lỗi Falsy-Zero khi ngồi Chiếu Bồ Đoàn số 1 (`BĐ 1`, `userCushionIdx = 0`):** Sửa toàn bộ biểu thức `|| 7` / `|| 2` trong `temple3d.js` (`rebuildTwentySeatActors`, `findActorIndexBySpeaker`) và `app.js` (`loadState`, `buildTempleTenCushionAttendees`, `syncMyGlobalOnlinePresence`) để chỉ hiện duy nhất 1 nhãn `BĐ1·Bạn` và không gán nhầm hành trình đi bộ khi đổi chiếu.
+  5. **Thiếu bộ lọc an toàn SĐT / link lạ trên Sớ Cầu An (`#temple-prayer-in`):** Gọi `cleanAndApplyDictionary()` chặn SĐT >= 8 số, link và từ khóa nhạy cảm ngay đầu `publishWishOrIncense()`.
+  6. **Cập nhật Chánh Điện tại chỗ không làm mất khói hương / sóng âm:** Bổ sung `TempleScene3D.updateConfig()` và tách `#peace-card-host`, `#temple-prayers-list-host` để rút quẻ, gửi sớ, đổi chiếu hay nhận gói tin `RT.on("temple")` / `RT.on("online")` không phải dựng lại `<canvas>`.
+  7. **Khớp chính xác người hành lễ qua mạng trong `findActorIndexBySpeaker()`:** Cắt hậu tố tuổi (`"Chị Lan · 68t"`) và dùng `preferredCushionIdx` để đúng bác đạo hữu đó bước đi thắp nhang thay vì kéo nhầm nhân vật người dùng.
+  8. **Chống tràn ô nhập Sớ trên `390px` & sửa nút `"Đọc to"` (`buildCurrentScreenSpeech`):** Thêm `min-width: 0` + `flex-wrap: wrap` cho `#temple-prayer-in`; sửa `state.newspaper.articles`, `!state.quiz.finished`, và bổ sung lời đọc to rõ ràng cho hai màn hình `games` và `zen`.
+
 ### [2026-11-17] — Khóa Cứng Bàn Ô Ăn Quan Nhịp Đều 600ms + Đại Sảnh Chánh Điện 20 Bồ Đoàn Có Phật Tử Tả Thực Bước Lên Hành Lễ (`?v=20261117f`)
 - **Tệp tạo mới / cập nhật:** `assets/temple-wide.jpg`, `assets/temple-sprites.webp` (`44 KB`), `temple3d.js`, `app.js`, `styles.css`, `index.html` (`?v=20261117f`), `sw.js` (`tuoibac-pwa-v18`), `ARCHITECTURE.md`, `docs/02_SO_DO_DU_LIEU_VA_API_NOI_BO.md`, `docs/03_TIEN_DO_VA_NHAT_KY.md`, `docs/04_CAM_NANG_FIX_BUG_VA_KIEM_THU.md`, `docs/05_QUYET_DINH_KIEN_TRUC_ADR.md`.
 - **Chi tiết kỹ thuật theo 2 hạng mục:**
