@@ -51,7 +51,15 @@ window.TeaRoomScene = (function () {
     lobbyImg: null,
     lobbyReady: false,
     spritesImg: null,
-    spritesReady: false
+    spritesReady: false,
+    itemsImg: null,
+    itemsReady: false,
+    itemsExtraImg: null,
+    itemsExtraReady: false,
+    accImg: null,
+    accReady: false,
+    accExtraImg: null,
+    accExtraReady: false
   };
   const composedSpriteCache = new Map();
   let tempMaskCanvas = null;
@@ -102,7 +110,7 @@ window.TeaRoomScene = (function () {
     tblImg.onerror = () => {
       assets25D.tableReady = false;
     };
-    tblImg.src = "./assets/tearoom-table-25d.jpg?v=20261117l";
+    tblImg.src = "./assets/tearoom-table-25d.jpg?v=20261118c";
 
     const lobImg = new Image();
     lobImg.onload = () => {
@@ -113,7 +121,7 @@ window.TeaRoomScene = (function () {
     lobImg.onerror = () => {
       assets25D.lobbyReady = false;
     };
-    lobImg.src = "./assets/tearoom-lobby-25d.jpg?v=20261117l";
+    lobImg.src = "./assets/tearoom-lobby-25d.jpg?v=20261118c";
 
     const sprImg = new Image();
     sprImg.onload = () => {
@@ -126,7 +134,55 @@ window.TeaRoomScene = (function () {
     sprImg.onerror = () => {
       assets25D.spritesReady = false;
     };
-    sprImg.src = "./assets/tearoom-sprites.webp?v=20261117l";
+    sprImg.src = "./assets/tearoom-sprites.webp?v=20261118c";
+
+    const itmImg = new Image();
+    itmImg.onload = () => {
+      assets25D.itemsImg = itmImg;
+      assets25D.itemsReady = true;
+      triggerRenderIf25D();
+    };
+    itmImg.onerror = () => {
+      assets25D.itemsReady = false;
+    };
+    itmImg.src = "./assets/tearoom-items.webp?v=20261118c";
+
+    const acImg = new Image();
+    acImg.onload = () => {
+      assets25D.accImg = acImg;
+      assets25D.accReady = true;
+      composedSpriteCache.clear();
+      refreshHybridBillboardsOnLoad();
+      triggerRenderIf25D();
+    };
+    acImg.onerror = () => {
+      assets25D.accReady = false;
+    };
+    acImg.src = "./assets/tearoom-accessories.webp?v=20261118c";
+
+    const itmExImg = new Image();
+    itmExImg.onload = () => {
+      assets25D.itemsExtraImg = itmExImg;
+      assets25D.itemsExtraReady = true;
+      triggerRenderIf25D();
+    };
+    itmExImg.onerror = () => {
+      assets25D.itemsExtraReady = false;
+    };
+    itmExImg.src = "./assets/tearoom-items-extra.webp?v=20261118c";
+
+    const acExImg = new Image();
+    acExImg.onload = () => {
+      assets25D.accExtraImg = acExImg;
+      assets25D.accExtraReady = true;
+      composedSpriteCache.clear();
+      refreshHybridBillboardsOnLoad();
+      triggerRenderIf25D();
+    };
+    acExImg.onerror = () => {
+      assets25D.accExtraReady = false;
+    };
+    acExImg.src = "./assets/tearoom-accessories-extra.webp?v=20261118c";
   }
 
   function createCanvas2D(w, h) {
@@ -136,6 +192,20 @@ window.TeaRoomScene = (function () {
     return c;
   }
 
+  const ACC_CELL_W = 180;
+  const ACC_CELL_H = 150;
+  const ITEM_CELL_W = 240;
+  const ITEM_CELL_H = 220;
+
+  function drawSpritePreHeadAccessory(ctx, col, acc) {
+    if (acc === "non-la" && col < 2 && assets25D.accReady && assets25D.accImg) {
+      // Rear woven underside of Nón Lá drawn behind head/bun so head sits naturally inside the cone
+      const hx = col === 0 ? 52 : 51;
+      const hy = col === 0 ? -6 : -4;
+      ctx.drawImage(assets25D.accImg, ACC_CELL_W * 3, 0, ACC_CELL_W, ACC_CELL_H, hx, hy, 88, 70);
+    }
+  }
+
   function drawSpriteAccessories(ctx, col, spec) {
     const acc = spec.accessory || "none";
     const frameId = spec.titleFrameId || "none";
@@ -143,174 +213,245 @@ window.TeaRoomScene = (function () {
 
     const anchors =
       col === 1
-        ? { crownX: 100, crownY: 20, leftEyeX: 104, rightEyeX: 117, eyeY: 40, earX: 84, neckX: 102, neckY: 66, chestX: 90, chestY: 96 }
+        ? { lx: 96.8, rx: 108.3, ey: 42.5, earX: 81.5, earY: 42.0, neckX: 98, neckY: 67, chestX: 88, chestY: 92 }
         : col === 2
-          ? { crownX: 118, crownY: 24, leftEyeX: 112, rightEyeX: 112, eyeY: 44, earX: 100, neckX: 118, neckY: 86, chestX: 124, chestY: 118 }
+          ? { lx: 112, rx: 112, ey: 44, earX: 100, earY: 44, neckX: 118, neckY: 84, chestX: 124, chestY: 118 }
           : col === 3
-            ? { crownX: 100, crownY: 22, leftEyeX: 102, rightEyeX: 114, eyeY: 41, earX: 86, neckX: 98, neckY: 64, chestX: 88, chestY: 90 }
-            : { crownX: 99, crownY: 20, leftEyeX: 104, rightEyeX: 117, eyeY: 38, earX: 85, neckX: 104, neckY: 63, chestX: 88, chestY: 92 };
+            ? { lx: 96.5, rx: 107.8, ey: 41.2, earX: 82, earY: 41, neckX: 98, neckY: 64, chestX: 88, chestY: 88 }
+            : { lx: 97.5, rx: 108.5, ey: 39.8, earX: 83.5, earY: 39.2, neckX: 100, neckY: 64, chestX: 88, chestY: 90 };
 
-    // Outfit character touches (collar piping for ao-gam-vang / uniform pockets for ao-linh)
-    if (col < 2 && outfitId === "ao-gam-vang") {
+    // Subtle outfit collar/pocket/brocade details
+    if (col < 2 && (outfitId === "ao-gam-vang" || outfitId === "ao-gam-lam-ngoc")) {
       ctx.save();
-      ctx.strokeStyle = "rgba(255, 232, 160, 0.85)";
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = outfitId === "ao-gam-lam-ngoc" ? "rgba(246, 214, 128, 0.86)" : "rgba(255, 232, 160, 0.78)";
+      ctx.lineWidth = 1.6;
       ctx.beginPath();
-      ctx.moveTo(anchors.neckX - 16, anchors.neckY + 2);
-      ctx.lineTo(anchors.neckX + 6, anchors.neckY + 12);
+      ctx.moveTo(anchors.neckX - 14, anchors.neckY - 2);
+      ctx.lineTo(anchors.neckX + 4, anchors.neckY + 8);
       ctx.stroke();
       ctx.restore();
-    } else if (col < 2 && outfitId === "ao-linh") {
+    } else if (col < 2 && outfitId === "ao-lua-tim-hue") {
       ctx.save();
-      ctx.fillStyle = "rgba(42, 56, 30, 0.42)";
-      ctx.fillRect(anchors.chestX - 10, anchors.chestY + 18, 20, 5);
-      ctx.fillRect(anchors.chestX + 20, anchors.chestY + 15, 20, 5);
+      ctx.fillStyle = "rgba(255, 244, 232, 0.9)";
+      ctx.beginPath();
+      ctx.arc(anchors.neckX - 2, anchors.neckY + 3, 2.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    } else if (col < 2 && (outfitId === "ao-linh" || outfitId === "ao-kaki-kem")) {
+      ctx.save();
+      ctx.fillStyle = outfitId === "ao-kaki-kem" ? "rgba(92, 68, 38, 0.34)" : "rgba(38, 52, 28, 0.36)";
+      ctx.fillRect(anchors.chestX - 9, anchors.chestY + 18, 18, 4);
+      ctx.fillRect(anchors.chestX + 18, anchors.chestY + 15, 18, 4);
       ctx.restore();
     }
 
-    // Silk scarf worn around neck
+    // 1. Khăn quàng ấm cổ (2.5D Painterly draped wool/silk scarf nestled naturally around collar beneath chin)
     if (acc === "scarf") {
-      ctx.save();
-      const scGrad = ctx.createLinearGradient(anchors.neckX - 24, anchors.neckY - 4, anchors.neckX + 26, anchors.neckY + 40);
-      scGrad.addColorStop(0, "#B83B2A");
-      scGrad.addColorStop(1, "#7B1F16");
-      ctx.fillStyle = scGrad;
-      ctx.strokeStyle = "#4A120D";
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      if (col === 2) {
-        ctx.ellipse(anchors.neckX, anchors.neckY + 3, 21, 7, -0.1, 0, Math.PI * 2);
+      if (assets25D.accReady && assets25D.accImg) {
+        if (col === 2) {
+          ctx.drawImage(assets25D.accImg, 0, ACC_CELL_H, ACC_CELL_W, ACC_CELL_H, 88, 66, 72, 50);
+        } else {
+          const sx = col === 0 ? 63 : 64;
+          const sy = col === 0 ? 47 : 51;
+          const sw = col === 0 ? 68 : 66;
+          const sh = col === 0 ? 56 : 54;
+          ctx.drawImage(assets25D.accImg, 0, 0, ACC_CELL_W, ACC_CELL_H, sx, sy, sw, sh);
+        }
       } else {
-        ctx.ellipse(anchors.neckX, anchors.neckY + 3, 22, 8.5, 0.08, 0, Math.PI * 2);
-      }
-      ctx.fill();
-      ctx.stroke();
-      if (col < 2) {
+        ctx.save();
+        ctx.strokeStyle = "#8C221A";
+        ctx.lineWidth = 7;
+        ctx.lineCap = "round";
         ctx.beginPath();
-        ctx.roundRect(anchors.neckX - 3, anchors.neckY + 6, 14, 36, 4);
-        ctx.fill();
+        if (col === 2) {
+          ctx.arc(118, 78, 17, 0.15 * Math.PI, 0.88 * Math.PI);
+        } else {
+          ctx.arc(98, 62, 15, 0.12 * Math.PI, 0.92 * Math.PI);
+        }
         ctx.stroke();
-        ctx.fillStyle = "#F5DFB6";
-        ctx.fillRect(anchors.neckX - 2, anchors.neckY + 36, 12, 3.2);
+        ctx.restore();
       }
-      ctx.restore();
     }
 
-    // Crisp reading glasses calibrated to adult eye pixels
-    if (acc === "glasses" && col < 2) {
+    // 2. Kính lão gọng vàng & Kính mát mắt trà gọng đồi mồi (Anatomically calibrated to exact 3/4 eye pupils + ear bridge)
+    if ((acc === "glasses" || acc === "kinh-ram-tra") && col < 2) {
+      const isTeaTint = acc === "kinh-ram-tra";
       ctx.save();
-      ctx.fillStyle = "rgba(235, 250, 255, 0.24)";
+      const lrx = 4.4;
+      const lry = 3.2;
+      const rrx = 3.7;
+      const rry = 3.0;
+      const rey = anchors.ey - 0.5;
+
+      // Lens tint: subtle anti-reflective clear vs warm amber-tea sun tint
+      ctx.fillStyle = isTeaTint ? "rgba(156, 88, 26, 0.44)" : "rgba(235, 248, 255, 0.18)";
       ctx.beginPath();
-      ctx.ellipse(anchors.leftEyeX, anchors.eyeY, 6.4, 4.6, 0, 0, Math.PI * 2);
-      ctx.ellipse(anchors.rightEyeX, anchors.eyeY - 0.5, 5.9, 4.4, 0, 0, Math.PI * 2);
+      ctx.ellipse(anchors.lx, anchors.ey, lrx, lry, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(anchors.rx, rey, rrx, rry, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      [
-        { color: "#4A2E0B", width: 2.1 },
-        { color: "#F2BC46", width: 1.05 }
-      ].forEach((pass) => {
+      // Temple arm resting cleanly on top of ear
+      ctx.strokeStyle = isTeaTint ? "rgba(68, 34, 12, 0.94)" : "rgba(104, 66, 18, 0.88)";
+      ctx.lineWidth = isTeaTint ? 1.35 : 1.15;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(anchors.earX, anchors.earY);
+      ctx.lineTo(anchors.lx - lrx, anchors.ey - 0.3);
+      ctx.stroke();
+
+      // Dual-pass rim & nose bridge (18K Gold vs Classic Tortoiseshell)
+      (isTeaTint
+        ? [
+            { color: "rgba(56, 26, 10, 0.96)", width: 1.65 },
+            { color: "#B86E2E", width: 0.82 }
+          ]
+        : [
+            { color: "rgba(92, 56, 16, 0.92)", width: 1.45 },
+            { color: "#F2C14E", width: 0.78 }
+          ]
+      ).forEach((pass) => {
         ctx.strokeStyle = pass.color;
         ctx.lineWidth = pass.width;
         ctx.beginPath();
-        ctx.ellipse(anchors.leftEyeX, anchors.eyeY, 6.4, 4.6, 0, 0, Math.PI * 2);
+        ctx.ellipse(anchors.lx, anchors.ey, lrx, lry, 0, 0, Math.PI * 2);
         ctx.stroke();
         ctx.beginPath();
-        ctx.ellipse(anchors.rightEyeX, anchors.eyeY - 0.5, 5.9, 4.4, 0, 0, Math.PI * 2);
+        ctx.ellipse(anchors.rx, rey, rrx, rry, 0, 0, Math.PI * 2);
         ctx.stroke();
         ctx.beginPath();
-        ctx.moveTo(anchors.leftEyeX + 6.4, anchors.eyeY);
-        ctx.lineTo(anchors.rightEyeX - 5.9, anchors.eyeY - 0.5);
-        ctx.moveTo(anchors.leftEyeX - 6.4, anchors.eyeY);
-        ctx.lineTo(anchors.earX, anchors.eyeY + 2);
+        ctx.moveTo(anchors.lx + lrx, anchors.ey - 0.35);
+        ctx.quadraticCurveTo((anchors.lx + anchors.rx) * 0.5, anchors.ey - 1.25, anchors.rx - rrx, rey - 0.25);
         ctx.stroke();
       });
+
+      // Tiny diagonal glass highlight glints
+      ctx.strokeStyle = isTeaTint ? "rgba(255, 236, 196, 0.55)" : "rgba(255, 255, 255, 0.62)";
+      ctx.lineWidth = 0.75;
+      ctx.beginPath();
+      ctx.moveTo(anchors.lx - 2.1, anchors.ey - 1.5);
+      ctx.lineTo(anchors.lx - 0.6, anchors.ey - 0.2);
+      ctx.moveTo(anchors.rx - 1.6, rey - 1.4);
+      ctx.lineTo(anchors.rx - 0.3, rey - 0.2);
+      ctx.stroke();
       ctx.restore();
     }
 
-    // Military / Cloth field cap
+    // 3. Mũ cối xanh cựu chiến binh (2.5D Painterly Vietnamese pith helmet fitted snugly over 3/4 crown)
     if (acc === "cap") {
-      ctx.save();
-      const capGrad = ctx.createLinearGradient(anchors.crownX - 28, anchors.crownY - 12, anchors.crownX + 28, anchors.crownY + 18);
-      capGrad.addColorStop(0, "#637D4F");
-      capGrad.addColorStop(1, "#3A4E2D");
-      ctx.fillStyle = capGrad;
-      ctx.strokeStyle = "#26331D";
-      ctx.lineWidth = 1.6;
-      ctx.beginPath();
-      ctx.ellipse(anchors.crownX, anchors.crownY + 3, 27, 14, col === 2 ? -0.1 : 0.1, Math.PI * 0.96, Math.PI * 2.04);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-      // Visor
-      ctx.fillStyle = "#334527";
-      ctx.beginPath();
-      if (col === 2) {
-        ctx.ellipse(anchors.crownX - 22, anchors.crownY + 7, 15, 5.2, -0.22, 0, Math.PI * 2);
+      if (assets25D.accReady && assets25D.accImg) {
+        if (col === 2) {
+          ctx.drawImage(assets25D.accImg, ACC_CELL_W, ACC_CELL_H, ACC_CELL_W, ACC_CELL_H, 75, 4, 88, 68);
+        } else {
+          const cx = col === 0 ? 67 : 66;
+          const cy = col === 0 ? 0 : 2;
+          ctx.save();
+          ctx.translate(cx + 31, cy + 23);
+          ctx.rotate(-0.068);
+          ctx.drawImage(assets25D.accImg, ACC_CELL_W, 0, ACC_CELL_W, ACC_CELL_H, -31, -23, 62, 46);
+          ctx.restore();
+        }
       } else {
-        ctx.ellipse(anchors.crownX + 18, anchors.crownY + 8, 18, 5.8, 0.22, 0, Math.PI * 2);
+        ctx.save();
+        ctx.fillStyle = "#556B45";
+        ctx.beginPath();
+        ctx.ellipse(98, 22, 24, 12, -0.06, Math.PI, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
       }
-      ctx.fill();
-      ctx.stroke();
-      ctx.restore();
     }
 
-    // Traditional Vietnamese Nón Lá conical palm hat
+    // 4. Nón lá truyền thống (2.5D Painterly woven palm-leaf cone + silk jawline ribbon)
     if (acc === "non-la") {
-      ctx.save();
-      const hatX = col === 2 ? anchors.crownX - 3 : anchors.crownX - 1;
-      const hatTopY = anchors.crownY - 22;
-      const brimY = anchors.crownY + 15;
-      const nonGrad = ctx.createLinearGradient(hatX - 52, hatTopY, hatX + 52, brimY);
-      nonGrad.addColorStop(0, "#F6E8BE");
-      nonGrad.addColorStop(0.55, "#E7CD8B");
-      nonGrad.addColorStop(1, "#C39E59");
-      ctx.fillStyle = nonGrad;
-      ctx.strokeStyle = "#7D5D28";
-      ctx.lineWidth = 1.8;
-      ctx.beginPath();
-      ctx.moveTo(hatX, hatTopY);
-      ctx.lineTo(hatX - 52, brimY);
-      ctx.quadraticCurveTo(hatX, brimY + 11, hatX + 52, brimY);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-      // Subtle woven bamboo ribs
-      ctx.strokeStyle = "rgba(125, 93, 40, 0.35)";
-      ctx.lineWidth = 1;
-      for (let r = 1; r <= 3; r++) {
-        const frac = r * 0.24;
-        const ry = hatTopY + (brimY - hatTopY) * frac;
-        const rx = 50 * frac;
-        ctx.beginPath();
-        ctx.moveTo(hatX - rx, ry);
-        ctx.quadraticCurveTo(hatX, ry + 7 * frac, hatX + rx, ry);
-        ctx.stroke();
+      if (assets25D.accReady && assets25D.accImg) {
+        if (col === 2) {
+          ctx.drawImage(assets25D.accImg, ACC_CELL_W * 2, ACC_CELL_H, ACC_CELL_W, ACC_CELL_H, 64, -6, 112, 86);
+        } else {
+          const hx = col === 0 ? 52 : 51;
+          const hy = col === 0 ? -6 : -4;
+          const browCutY = col === 0 ? 33.5 : 35.5;
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(0, 0, SPRITE_CELL_W, browCutY);
+          ctx.clip();
+          ctx.drawImage(assets25D.accImg, ACC_CELL_W * 3, 0, ACC_CELL_W, ACC_CELL_H, hx, hy, 88, 70);
+          ctx.restore();
+          ctx.drawImage(assets25D.accImg, ACC_CELL_W * 2, 0, ACC_CELL_W, ACC_CELL_H, hx, hy, 88, 70);
+          ctx.save();
+          ctx.strokeStyle = "rgba(156, 44, 34, 0.78)";
+          ctx.lineWidth = 1.25;
+          ctx.lineCap = "round";
+          ctx.beginPath();
+          if (col === 0) {
+            ctx.moveTo(85, 46);
+            ctx.quadraticCurveTo(93, 59, 102, 60);
+            ctx.quadraticCurveTo(106, 59, 108.5, 55.5);
+          } else {
+            ctx.moveTo(83, 48);
+            ctx.quadraticCurveTo(92, 62, 101, 63);
+            ctx.quadraticCurveTo(105, 62, 108, 58.5);
+          }
+          ctx.stroke();
+          ctx.restore();
+        }
       }
-      // Red silk chin strap hint
-      if (col < 2) {
-        ctx.strokeStyle = "#A93B2C";
-        ctx.lineWidth = 1.8;
-        ctx.beginPath();
-        ctx.moveTo(hatX - 18, brimY + 2);
-        ctx.quadraticCurveTo(anchors.neckX, anchors.neckY + 2, anchors.rightEyeX + 4, brimY + 3);
-        ctx.stroke();
-      }
-      ctx.restore();
     }
 
-    // Chest Title Frame Honor Rosette
+    // 4b. Khăn đóng gấm đỏ lễ thọ & Mũ tai bèo kaki dã ngoại (2.5D Painterly heritage headwear)
+    if (acc === "khan-dong" || acc === "mu-tai-beo") {
+      const exCol = acc === "khan-dong" ? 0 : 1;
+      if (assets25D.accExtraReady && assets25D.accExtraImg) {
+        if (col === 2) {
+          const bx = acc === "khan-dong" ? 80 : 73;
+          const by = acc === "khan-dong" ? 7 : 3;
+          const bw = acc === "khan-dong" ? 76 : 92;
+          const bh = acc === "khan-dong" ? 62 : 70;
+          ctx.drawImage(assets25D.accExtraImg, exCol * ACC_CELL_W, ACC_CELL_H, ACC_CELL_W, ACC_CELL_H, bx, by, bw, bh);
+        } else {
+          const fx = acc === "khan-dong" ? (col === 0 ? 68 : 67) : col === 0 ? 64 : 63;
+          const fy = acc === "khan-dong" ? (col === 0 ? 4 : 6) : col === 0 ? -1 : 1;
+          const fw = acc === "khan-dong" ? 56 : 66;
+          const fh = acc === "khan-dong" ? 42 : 50;
+          ctx.save();
+          ctx.translate(fx + fw * 0.5, fy + fh * 0.5);
+          ctx.rotate(acc === "khan-dong" ? 0.045 : -0.05);
+          ctx.drawImage(assets25D.accExtraImg, exCol * ACC_CELL_W, 0, ACC_CELL_W, ACC_CELL_H, -fw * 0.5, -fh * 0.5, fw, fh);
+          ctx.restore();
+        }
+      } else {
+        ctx.save();
+        ctx.fillStyle = acc === "khan-dong" ? "#8E2020" : "#6D7C56";
+        ctx.beginPath();
+        ctx.ellipse(96, 22, 24, 11, 0, Math.PI, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    // 5. Refined Title Frame Lapel Pin on chest
     if (col < 2 && FRAME_HEX[frameId]) {
       ctx.save();
-      ctx.fillStyle = "#E8B74E";
-      ctx.strokeStyle = "#5F3E12";
-      ctx.lineWidth = 1.4;
+      ctx.fillStyle = "rgba(45, 24, 8, 0.25)";
       ctx.beginPath();
-      ctx.arc(anchors.chestX, anchors.chestY, 7.2, 0, Math.PI * 2);
+      ctx.arc(anchors.chestX + 0.6, anchors.chestY + 1.1, 5.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      const pinGrad = ctx.createRadialGradient(anchors.chestX - 1.5, anchors.chestY - 1.5, 0.8, anchors.chestX, anchors.chestY, 5.6);
+      pinGrad.addColorStop(0, "#FFF0B3");
+      pinGrad.addColorStop(0.65, "#DFA93A");
+      pinGrad.addColorStop(1, "#7B5214");
+      ctx.fillStyle = pinGrad;
+      ctx.strokeStyle = "#56370D";
+      ctx.lineWidth = 1.0;
+      ctx.beginPath();
+      ctx.arc(anchors.chestX, anchors.chestY, 5.4, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
+
       ctx.fillStyle = FRAME_HEX[frameId];
       ctx.beginPath();
-      ctx.arc(anchors.chestX, anchors.chestY, 4.6, 0, Math.PI * 2);
+      ctx.arc(anchors.chestX, anchors.chestY, 3.3, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }
@@ -325,7 +466,7 @@ window.TeaRoomScene = (function () {
     const outfitId = s.outfitId || "";
     const acc = s.accessory || "none";
     const frameId = s.titleFrameId || "none";
-    const cacheKey = `${col}|${outfitColor}|${outfitId}|${acc}|${frameId}|${s.isHost ? 1 : 0}|${assets25D.spritesReady ? 1 : 0}`;
+    const cacheKey = `${col}|${outfitColor}|${outfitId}|${acc}|${frameId}|${s.isHost ? 1 : 0}|${assets25D.spritesReady ? 1 : 0}|${assets25D.accReady ? 1 : 0}|${assets25D.accExtraReady ? 1 : 0}`;
 
     if (composedSpriteCache.has(cacheKey)) {
       return composedSpriteCache.get(cacheKey);
@@ -335,8 +476,12 @@ window.TeaRoomScene = (function () {
     const ctx = out.getContext("2d");
 
     if (assets25D.spritesReady && assets25D.spritesImg) {
+      drawSpritePreHeadAccessory(ctx, col, acc);
+
+      const chCanvas = createCanvas2D(SPRITE_CELL_W, SPRITE_CELL_H);
+      const cctx = chCanvas.getContext("2d");
       const sx = col * SPRITE_CELL_W;
-      ctx.drawImage(assets25D.spritesImg, sx, 0, SPRITE_CELL_W, SPRITE_CELL_H, 0, 0, SPRITE_CELL_W, SPRITE_CELL_H);
+      cctx.drawImage(assets25D.spritesImg, sx, 0, SPRITE_CELL_W, SPRITE_CELL_H, 0, 0, SPRITE_CELL_W, SPRITE_CELL_H);
 
       if (!tempMaskCanvas) {
         tempMaskCanvas = createCanvas2D(SPRITE_CELL_W, SPRITE_CELL_H);
@@ -350,12 +495,13 @@ window.TeaRoomScene = (function () {
       mctx.fillRect(0, 0, SPRITE_CELL_W, SPRITE_CELL_H);
       mctx.globalCompositeOperation = "source-over";
 
-      ctx.globalCompositeOperation = "multiply";
-      ctx.drawImage(tempMaskCanvas, 0, 0);
-      ctx.globalCompositeOperation = "source-over";
+      cctx.globalCompositeOperation = "multiply";
+      cctx.drawImage(tempMaskCanvas, 0, 0);
+      cctx.globalCompositeOperation = "source-over";
+
+      ctx.drawImage(chCanvas, 0, 0);
       drawSpriteAccessories(ctx, col, { accessory: acc, titleFrameId: frameId, outfitId });
     } else {
-      // Painterly fallback silhouette while tearoom-sprites.webp loads
       ctx.fillStyle = outfitColor;
       ctx.strokeStyle = "#3E291C";
       ctx.lineWidth = 3;
@@ -384,130 +530,90 @@ window.TeaRoomScene = (function () {
     return out;
   }
 
+  const TABLE_ITEM_ATLAS_MAP = {
+    "am-tu-sa": { sheet: "base", col: 0, row: 0, w: 66, h: 60, yOff: 14 },
+    "binh-sen": { sheet: "base", col: 1, row: 0, w: 58, h: 64, yOff: 12 },
+    "bonsai-mini": { sheet: "base", col: 2, row: 0, w: 66, h: 64, yOff: 12 },
+    "dia-hat-dua": { sheet: "base", col: 0, row: 1, w: 62, h: 56, yOff: 13 },
+    "snack-plate": { sheet: "base", col: 0, row: 1, w: 54, h: 48, yOff: 12 },
+    "den-dau": { sheet: "base", col: 1, row: 1, w: 54, h: 66, yOff: 12 },
+    "radio-go": { sheet: "base", col: 2, row: 1, w: 62, h: 58, yOff: 13 },
+    "khay-trau-cau": { sheet: "extra", col: 0, row: 0, w: 64, h: 54, yOff: 13 },
+    "banh-dau-xanh": { sheet: "extra", col: 1, row: 0, w: 64, h: 54, yOff: 13 },
+    "long-chim-khuyen": { sheet: "extra", col: 2, row: 0, w: 56, h: 68, yOff: 11 },
+    "ban-co-ngoc": { sheet: "extra", col: 0, row: 1, w: 66, h: 56, yOff: 13 },
+    "lu-tram-dong": { sheet: "extra", col: 1, row: 1, w: 56, h: 64, yOff: 12 },
+    "tich-tra-men-lam": { sheet: "extra", col: 2, row: 1, w: 60, h: 64, yOff: 12 }
+  };
+
   function drawPainterlyTableItem25D(ctx, itemId, x, y, sc, now) {
+    ensureAssets25DLoaded();
     ctx.save();
     ctx.translate(x, y);
     ctx.scale(sc, sc);
 
-    // Subtle tabletop shadow
-    ctx.fillStyle = "rgba(35, 22, 12, 0.22)";
+    // Warm tabletop ambient occlusion shadow
+    ctx.fillStyle = "rgba(28, 16, 8, 0.26)";
     ctx.beginPath();
-    ctx.ellipse(0, 12, 24, 9, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 9, 25, 8.5, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    if (itemId === "binh-sen") {
-      const vaseGrad = ctx.createLinearGradient(-12, -26, 12, 10);
-      vaseGrad.addColorStop(0, "#4F8F77");
-      vaseGrad.addColorStop(1, "#2A5746");
-      ctx.fillStyle = vaseGrad;
-      ctx.strokeStyle = "#1E3B2F";
-      ctx.lineWidth = 1.6;
-      ctx.beginPath();
-      ctx.ellipse(0, -4, 12, 15, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-      // Two lotus blossoms
-      [[-8, -28], [8, -24]].forEach(([lx, ly]) => {
-        ctx.strokeStyle = "#3E7047";
-        ctx.lineWidth = 2.2;
+    const meta = TABLE_ITEM_ATLAS_MAP[itemId] || TABLE_ITEM_ATLAS_MAP["am-tu-sa"];
+    const useExtra = meta.sheet === "extra";
+    const sheetReady = useExtra ? assets25D.itemsExtraReady : assets25D.itemsReady;
+    const sheetImg = useExtra ? assets25D.itemsExtraImg : assets25D.itemsImg;
+
+    if (sheetReady && sheetImg) {
+      ctx.drawImage(
+        sheetImg,
+        meta.col * ITEM_CELL_W,
+        meta.row * ITEM_CELL_H,
+        ITEM_CELL_W,
+        ITEM_CELL_H,
+        -meta.w * 0.5,
+        -meta.h + meta.yOff,
+        meta.w,
+        meta.h
+      );
+
+      // Live atmospheric touches for oil lamp, bronze censer & tea cosy
+      if (itemId === "den-dau") {
+        const pulse = 0.22 + Math.sin((now || 0) * 0.007) * 0.07;
+        const glow = ctx.createRadialGradient(0, -24, 2, 0, -24, 24);
+        glow.addColorStop(0, `rgba(255, 232, 148, ${pulse.toFixed(2)})`);
+        glow.addColorStop(1, "rgba(255, 200, 90, 0)");
+        ctx.fillStyle = glow;
         ctx.beginPath();
-        ctx.moveTo(0, -14);
-        ctx.lineTo(lx, ly + 4);
-        ctx.stroke();
-        ctx.fillStyle = "#EFA5B9";
-        ctx.beginPath();
-        ctx.ellipse(lx, ly, 7.5, 5.5, 0, 0, Math.PI * 2);
+        ctx.arc(0, -24, 24, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = "#FAD76B";
-        ctx.beginPath();
-        ctx.arc(lx, ly - 1, 2.5, 0, Math.PI * 2);
-        ctx.fill();
-      });
-    } else if (itemId === "bonsai-mini") {
-      ctx.fillStyle = "#2E6A75";
-      ctx.strokeStyle = "#1C4249";
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.roundRect(-16, 0, 32, 11, 3);
-      ctx.fill();
-      ctx.stroke();
-      ctx.strokeStyle = "#5B3B24";
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.moveTo(0, 1);
-      ctx.quadraticCurveTo(-8, -14, 6, -24);
-      ctx.stroke();
-      [[-10, -18, 9], [8, -26, 11], [15, -16, 7.5]].forEach(([bx, by, br]) => {
-        ctx.fillStyle = "#3E7A48";
-        ctx.beginPath();
-        ctx.ellipse(bx, by, br + 2, br * 0.72, 0, 0, Math.PI * 2);
-        ctx.fill();
-      });
-    } else if (itemId === "dia-hat-dua" || itemId === "snack-plate") {
-      ctx.fillStyle = "#E8DFCC";
-      ctx.strokeStyle = "#8C785C";
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.ellipse(0, 4, 21, 9, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-      [[-6, 3, "#C9483B"], [4, 2, "#D49B3D"], [-1, -1, "#5C3A28"], [7, 5, "#C9483B"], [-7, 6, "#D49B3D"]].forEach(([sx, sy, col]) => {
-        ctx.fillStyle = col;
-        ctx.beginPath();
-        ctx.arc(sx, sy, 3.2, 0, Math.PI * 2);
-        ctx.fill();
-      });
-    } else if (itemId === "den-dau") {
-      ctx.fillStyle = "#7D522D";
-      ctx.beginPath();
-      ctx.ellipse(0, 6, 13, 6, 0, 0, Math.PI * 2);
-      ctx.fill();
-      const glow = 0.78 + Math.sin((now || 0) * 0.008) * 0.16;
-      ctx.fillStyle = `rgba(255, 224, 128, ${glow.toFixed(2)})`;
-      ctx.beginPath();
-      ctx.ellipse(0, -14, 10, 14, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = "#B88438";
-      ctx.lineWidth = 1.6;
-      ctx.stroke();
-      ctx.fillStyle = "#FFF5CC";
-      ctx.beginPath();
-      ctx.ellipse(0, -13, 3.2, 5.5, 0, 0, Math.PI * 2);
-      ctx.fill();
-    } else if (itemId === "radio-go") {
-      ctx.fillStyle = "#7C4C2B";
-      ctx.strokeStyle = "#482914";
-      ctx.lineWidth = 1.6;
-      ctx.beginPath();
-      ctx.roundRect(-18, -16, 36, 25, 4);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = "#E8D3A4";
-      ctx.fillRect(-13, -11, 16, 15);
-      ctx.fillStyle = "#C99848";
-      ctx.beginPath();
-      ctx.arc(10, -6, 3.2, 0, Math.PI * 2);
-      ctx.arc(10, 3, 3.2, 0, Math.PI * 2);
-      ctx.fill();
+      } else if (itemId === "lu-tram-dong" || itemId === "tich-tra-men-lam") {
+        const tS = (now || 0) * 0.0022;
+        for (let k = 0; k < 2; k++) {
+          const ph = (tS + k * 2.8) % (Math.PI * 2);
+          const lift = (ph / (Math.PI * 2)) * 18;
+          const sway = Math.sin(ph * 2.2 + k) * 3;
+          const alpha = Math.max(0, 0.42 * (1 - ph / (Math.PI * 2)));
+          ctx.strokeStyle =
+            itemId === "lu-tram-dong"
+              ? `rgba(244, 232, 212, ${alpha.toFixed(2)})`
+              : `rgba(255, 252, 244, ${alpha.toFixed(2)})`;
+          ctx.lineWidth = 1.3;
+          ctx.beginPath();
+          const ox = itemId === "tich-tra-men-lam" ? -12 : 0;
+          const oy = itemId === "tich-tra-men-lam" ? -34 : -48;
+          ctx.moveTo(ox, oy);
+          ctx.quadraticCurveTo(ox + sway, oy - lift * 0.55, ox - sway * 0.5, oy - lift);
+          ctx.stroke();
+        }
+      }
     } else {
-      // Classic Tử Sa teapot + wooden coaster
-      ctx.fillStyle = "#4C2C18";
+      ctx.fillStyle = "#7B4425";
       ctx.beginPath();
-      ctx.ellipse(0, 8, 22, 9, 0, 0, Math.PI * 2);
+      ctx.roundRect(-20, -4, 40, 12, 4);
       ctx.fill();
-      const potGrad = ctx.createRadialGradient(-4, -8, 2, 0, -2, 18);
-      potGrad.addColorStop(0, "#C85A38");
-      potGrad.addColorStop(1, "#7F2F1B");
-      ctx.fillStyle = potGrad;
-      ctx.strokeStyle = "#481C10";
-      ctx.lineWidth = 1.5;
+      ctx.fillStyle = "#B45332";
       ctx.beginPath();
-      ctx.ellipse(0, -2, 13, 10.5, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = "#E2AD42";
-      ctx.beginPath();
-      ctx.arc(0, -14, 2.8, 0, Math.PI * 2);
+      ctx.ellipse(4, -10, 11, 8, 0, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.restore();
@@ -518,7 +624,8 @@ window.TeaRoomScene = (function () {
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
   }
 
   function hexToCss(val, fallback) {
@@ -719,7 +826,7 @@ window.TeaRoomScene = (function () {
 
     // Traditional Vietnamese calligraphy ("Trà Tâm" / "Bình An")
     ctx.fillStyle = "#2A1E17";
-    ctx.font = "bold 28px Georgia, serif";
+    ctx.font = "bold 28px 'Merriweather', 'Segoe UI', sans-serif";
     ctx.textAlign = "center";
     ctx.fillText("BÌNH", 80, 74);
     ctx.fillText("AN", 80, 112);
@@ -2141,8 +2248,13 @@ window.TeaRoomScene = (function () {
       ctx.lineWidth = 1.6;
       ctx.stroke();
 
-      // Tiny Tử Sa pot center
-      drawPainterlyTableItem25D(ctx, isRec ? "binh-sen" : "am-tu-sa", cx, cy - 3 * sc, 0.42 * sc, now);
+      // Diverse heritage table centerpiece per lobby table (and user's equipped item on their active table)
+      const defaultLobbyItems = ["am-tu-sa", "tich-tra-men-lam", "khay-trau-cau", "banh-dau-xanh", "lu-tram-dong", "ban-co-ngoc"];
+      const lobbyItemId =
+        typeof currentConfig.activeTableIdx === "number" && tIdx === currentConfig.activeTableIdx && currentConfig.userItem
+          ? currentConfig.userItem
+          : (lobbyMembers[0] && lobbyMembers[0].item) || (isRec ? "binh-sen" : defaultLobbyItems[tIdx % defaultLobbyItems.length]);
+      drawPainterlyTableItem25D(ctx, lobbyItemId, cx, cy - 3 * sc, 0.44 * sc, now);
 
       // Front row seated sprites (slots 2, 3)
       lobbyMembers.slice(2, 4).forEach((m, mIdx) => {
@@ -2277,11 +2389,11 @@ window.TeaRoomScene = (function () {
 
     // 5 exact cushion coordinates with dignified adult chair proportions (0 bobbing!)
     const chairSlots = [
-      { nx: 0.252, ny: 0.602, hFrac: 0.475, flip: false, pose: "front", order: 2, tagDx: -6, tagDy: 4 },   // 0: 8:30 left-front (Bạn)
-      { nx: 0.346, ny: 0.484, hFrac: 0.435, flip: false, pose: "front", order: 0, tagDx: -28, tagDy: 12 }, // 1: 10:30 left-back
-      { nx: 0.523, ny: 0.424, hFrac: 0.415, flip: false, pose: "front", order: 0, tagDx: 16, tagDy: 2 },   // 2: 12:00 top-center
-      { nx: 0.708, ny: 0.512, hFrac: 0.445, flip: true, pose: "front", order: 1, tagDx: 0, tagDy: 8 },     // 3: 2:00 right-back
-      { nx: 0.684, ny: 0.782, hFrac: 0.355, flip: false, pose: "back", order: 4, tagDx: 0, tagDy: 2 }      // 4: 4:30 foreground-right
+      { nx: 0.252, ny: 0.602, hFrac: 0.475, flip: false, pose: "front", order: 2, tagDx: -12, tagDy: 22 },  // 0: 8:30 left-front (Bạn)
+      { nx: 0.346, ny: 0.484, hFrac: 0.435, flip: false, pose: "front", order: 0, tagDx: -28, tagDy: 14 },  // 1: 10:30 left-back
+      { nx: 0.523, ny: 0.424, hFrac: 0.415, flip: false, pose: "front", order: 0, tagDx: 24, tagDy: -10 },  // 2: 12:00 top-center
+      { nx: 0.708, ny: 0.512, hFrac: 0.445, flip: true, pose: "front", order: 1, tagDx: 6, tagDy: 12 },     // 3: 2:00 right-back
+      { nx: 0.684, ny: 0.782, hFrac: 0.355, flip: false, pose: "back", order: 4, tagDx: 0, tagDy: 2 }       // 4: 4:30 foreground-right
     ];
 
     const list = currentConfig.table.members.slice(0, 4).map((m, idx) => ({
@@ -2341,18 +2453,23 @@ window.TeaRoomScene = (function () {
     // 3) Draw Chair 0 (8:30 left-front "Bạn") naturally in front of left rug
     list.filter((entry) => entry.slotIdx === 0).forEach(renderSeatedSlot);
 
-    // 4) Center tabletop props + user's equipped table item
+    // 4) Center tabletop props + companion treat + user's equipped table item (100% painted 2.5D heritage sprites)
     const tblCx = bgRect.x + bgRect.w * 0.506;
     const tblCy = bgRect.y + bgRect.h * 0.508;
     const propScale = (bgRect.h / 330) * 0.96;
-    drawPainterlyTableItem25D(ctx, "snack-plate", tblCx - 29 * propScale, tblCy + 11 * propScale, propScale * 0.80, now);
+    const treatPool = ["banh-dau-xanh", "khay-trau-cau", "dia-hat-dua"];
+    const tableSeed = Number(currentConfig.activeTableIdx) || 0;
+    const leftTreatId =
+      currentConfig.userItem === treatPool[tableSeed % treatPool.length]
+        ? treatPool[(tableSeed + 1) % treatPool.length]
+        : treatPool[tableSeed % treatPool.length];
+    drawPainterlyTableItem25D(ctx, leftTreatId, tblCx - 30 * propScale, tblCy + 11 * propScale, propScale * 0.82, now);
     drawPainterlyTableItem25D(ctx, "am-tu-sa", tblCx, tblCy - 4 * propScale, propScale, now);
     if (currentConfig.userItem) {
       if (currentConfig.userItem === "am-tu-sa") {
-        // Distinct personal warm porcelain tasting pot near user side when classic Tử Sa pot is selected
-        drawPainterlyTableItem25D(ctx, "am-tu-sa", tblCx - 34 * propScale, tblCy + 26 * propScale, propScale * 0.72, now);
+        drawPainterlyTableItem25D(ctx, "tich-tra-men-lam", tblCx + 33 * propScale, tblCy + 6 * propScale, propScale * 0.82, now);
       } else {
-        drawPainterlyTableItem25D(ctx, currentConfig.userItem, tblCx + 33 * propScale, tblCy + 6 * propScale, propScale * 0.86, now);
+        drawPainterlyTableItem25D(ctx, currentConfig.userItem, tblCx + 33 * propScale, tblCy + 6 * propScale, propScale * 0.88, now);
       }
     }
 
@@ -2538,14 +2655,31 @@ window.TeaRoomScene = (function () {
       ctx.fillRect(0, h * 0.42, w, h * 0.58);
     }
 
-    // Floral Indochine rug ellipse
-    ctx.fillStyle = "#F7EFE0";
+    // Warm woven Indochine sedge & crimson-gold brocade rug ellipse (thảm chiếu hoa Đông Dương)
+    ctx.save();
+    ctx.fillStyle = "rgba(42, 24, 12, 0.16)";
+    ctx.beginPath();
+    ctx.ellipse(w * 0.5, h * 0.79, w * 0.43, h * 0.165, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    const rugGrad = ctx.createRadialGradient(w * 0.5, h * 0.77, 12, w * 0.5, h * 0.78, w * 0.43);
+    rugGrad.addColorStop(0, "#EFE1C6");
+    rugGrad.addColorStop(0.72, "#E1CBA5");
+    rugGrad.addColorStop(1, "#CDAE82");
+    ctx.fillStyle = rugGrad;
     ctx.beginPath();
     ctx.ellipse(w * 0.5, h * 0.78, w * 0.42, h * 0.16, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = "#B83B2A";
-    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = "#9E3324";
+    ctx.lineWidth = 3;
     ctx.stroke();
+
+    ctx.strokeStyle = "rgba(46, 94, 78, 0.45)";
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.ellipse(w * 0.5, h * 0.78, w * 0.385, h * 0.14, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
 
     // Carved wooden armchair scaled accurately behind full-shoe adult seated portrait
     const px = w * 0.32;
@@ -2592,41 +2726,128 @@ window.TeaRoomScene = (function () {
     });
     ctx.drawImage(spr, px - anch.u * sprW, baseFootY - sprH, sprW, sprH);
 
-    // Rosewood round side table & enlarged painterly Table Item on the right
-    const tx = w * 0.72;
-    const ty = h * 0.74;
-    ctx.fillStyle = "rgba(35, 22, 12, 0.24)";
+    // Carved Vietnamese rosewood pedestal tea table (đôn trà gỗ gụ chân quỳ) at natural armrest height
+    const tx = w * 0.71;
+    const ty = h * 0.65;
+    const legFootY = baseFootY - 8;
+
+    ctx.save();
+    // Floor contact shadow on floral rug
+    ctx.fillStyle = "rgba(32, 18, 8, 0.24)";
     ctx.beginPath();
-    ctx.ellipse(tx, ty + 18, 44, 15, 0, 0, Math.PI * 2);
+    ctx.ellipse(tx, legFootY + 2, 50, 12, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = "#542F19";
-    ctx.fillRect(tx - 10, ty - 2, 20, 20);
-    const tblGrad = ctx.createRadialGradient(tx - 10, ty - 8, 4, tx, ty - 4, 52);
-    tblGrad.addColorStop(0, "#8B4E2B");
-    tblGrad.addColorStop(1, "#522A14");
+
+    // Rear cabriole legs & lower stretcher shelf
+    ctx.strokeStyle = "#3E2010";
+    ctx.lineWidth = 4.5;
+    ctx.lineCap = "round";
+    [[-26, -6], [26, -6]].forEach(([dxL, dyTop]) => {
+      ctx.beginPath();
+      ctx.moveTo(tx + dxL * 0.85, ty + dyTop + 10);
+      ctx.quadraticCurveTo(tx + dxL * 1.05, (ty + legFootY) * 0.52, tx + dxL * 0.82, legFootY - 4);
+      ctx.stroke();
+    });
+    // Lower bamboo/wood stretcher ring
+    ctx.fillStyle = "#5B321A";
+    ctx.strokeStyle = "#3A1E0E";
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.ellipse(tx, legFootY - 18, 34, 9.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Front cabriole legs (chân quỳ chạm trổ)
+    ctx.strokeStyle = "#542C16";
+    ctx.lineWidth = 5.5;
+    [[-34, 4], [34, 4]].forEach(([dxL, dyTop]) => {
+      ctx.beginPath();
+      ctx.moveTo(tx + dxL, ty + dyTop + 8);
+      ctx.quadraticCurveTo(tx + dxL * 1.16, (ty + legFootY) * 0.56, tx + dxL * 0.92, legFootY);
+      ctx.stroke();
+    });
+
+    // Carved apron rim beneath tabletop
+    ctx.fillStyle = "#4B2613";
+    ctx.beginPath();
+    ctx.ellipse(tx, ty + 6, 54, 21, 0, 0, Math.PI);
+    ctx.fill();
+
+    // Polished rosewood tabletop with subtle woodgrain & brocade mat
+    const tblGrad = ctx.createRadialGradient(tx - 12, ty - 6, 4, tx, ty, 58);
+    tblGrad.addColorStop(0, "#9A5B36");
+    tblGrad.addColorStop(0.72, "#6E3B1E");
+    tblGrad.addColorStop(1, "#492411");
     ctx.fillStyle = tblGrad;
     ctx.beginPath();
-    ctx.ellipse(tx, ty - 4, 52, 22, 0, 0, Math.PI * 2);
+    ctx.ellipse(tx, ty, 56, 21, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = "#3B1E0D";
+    ctx.strokeStyle = "#361A0B";
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    drawPainterlyTableItem25D(ctx, currentConfig.userItem || "am-tu-sa", tx, ty - 16, Math.max(1.25, h / 190), now);
+    // Inner recessed bevel & warm burl-wood gold-filigree medallion
+    ctx.strokeStyle = "rgba(245, 214, 162, 0.32)";
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.ellipse(tx, ty - 0.5, 48, 17, 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.fillStyle = "rgba(128, 72, 38, 0.82)";
+    ctx.strokeStyle = "rgba(232, 184, 96, 0.68)";
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.ellipse(tx, ty - 1, 32, 11, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+
+    const itemScale = Math.max(1.38, h / 172);
+    const activeItemId = currentConfig.userItem || "am-tu-sa";
+    drawPainterlyTableItem25D(ctx, activeItemId, tx, ty - 4, itemScale, now);
+
+    // Gentle rising tea steam when showcasing Tử Sa teapot
+    if (activeItemId === "am-tu-sa") {
+      const steamT = (now || 0) * 0.0024;
+      ctx.save();
+      for (let s = 0; s < 2; s++) {
+        const ph = (steamT + s * 2.6) % (Math.PI * 2);
+        const lift = (ph / (Math.PI * 2)) * 24;
+        const drift = Math.sin(ph * 2 + s) * 3.5;
+        const alpha = Math.max(0, 0.48 * (1 - ph / (Math.PI * 2)));
+        ctx.strokeStyle = `rgba(255, 252, 244, ${alpha.toFixed(2)})`;
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.moveTo(tx + 8 + drift * 0.4, ty - 34 * (itemScale / 1.4) - lift * 0.3);
+        ctx.quadraticCurveTo(tx + 8 + drift * 1.2, ty - 44 * (itemScale / 1.4) - lift * 0.7, tx + 8 - drift * 0.5, ty - 54 * (itemScale / 1.4) - lift);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
 
     if (tagsLayerEl) {
-      const tagPx = Math.max(82, Math.min(w - 82, px));
-      const tagTx = Math.max(82, Math.min(w - 82, tx));
+      const SHORT_ITEM_TAG_MAP = {
+        "khay-trau-cau": "Cơi trầu cánh phượng",
+        "banh-dau-xanh": "Bánh đậu xanh",
+        "long-chim-khuyen": "Lồng chim khuyên",
+        "ban-co-ngoc": "Bàn cờ tướng ngọc",
+        "lu-tram-dong": "Đỉnh trầm mắt cua",
+        "tich-tra-men-lam": "Ấm tích men lam"
+      };
+      const rawItemLbl = SHORT_ITEM_TAG_MAP[activeItemId] || currentConfig.itemLabel || "Đồ bày bàn trà";
+      const conciseItemLbl = rawItemLbl.length > 20 ? rawItemLbl.slice(0, 19).trim() + "…" : rawItemLbl;
+      const itemTagY = Math.max(44, ty - 72 * (itemScale / 1.4));
+      const userBadgeHtml = formatSeatTagHtml({
+        sx: 10,
+        sy: 10,
+        isActive: true,
+        label: `${currentConfig.userName || "Anh Tám Vườn"} · ${currentConfig.userAge || 65}t`,
+        titleFrameId: currentConfig.userTitleFrame || "none",
+        isRealPeer: false
+      }).replace('style="left:10px;top:10px"', 'style="left:8px;top:8px;transform:none;max-width:calc(100% - 16px);"');
       tagsLayerEl.innerHTML =
-        formatSeatTagHtml({
-          sx: tagPx,
-          sy: Math.max(28, baseFootY - sprH - 2),
-          isActive: true,
-          label: `${currentConfig.userName || "Anh Tám Vườn"} · ${currentConfig.userAge || 65}t`,
-          titleFrameId: currentConfig.userTitleFrame || "none",
-          isRealPeer: false
-        }) +
-        `<span class="seat-status-tag" style="left:${tagTx.toFixed(0)}px;top:${Math.max(28, ty - 56).toFixed(0)}px">${escHtml(currentConfig.itemLabel || "Đồ bày bàn trà")}</span>`;
+        userBadgeHtml +
+        `<span class="seat-status-tag" style="left:auto;right:8px;top:${itemTagY.toFixed(0)}px;transform:translate(0,-100%);max-width:54%;">${escHtml(conciseItemLbl)}</span>`;
     }
   }
 

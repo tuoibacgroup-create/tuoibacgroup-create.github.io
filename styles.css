@@ -3545,3 +3545,497 @@ p {
     grid-template-columns: 1fr;
   }
 }
+
+/* ==================== HOẠT CẢNH TỜ GIẤY ĐỎ QUẺ XĂM / THẺ ĐỎ & KHÓA QUẢN TRỊ ==================== */
+.red-slip-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background-color: rgba(18, 9, 5, 0.72);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 18px 14px;
+  overflow-y: auto;
+}
+
+.red-slip-card {
+  position: relative;
+  width: 100%;
+  max-width: 382px;
+  background: linear-gradient(180deg, #981F19 0%, #7E1612 100%);
+  color: #FFF9EC;
+  border: 1px solid #F2C96B;
+  border-radius: 16px;
+  padding: 18px 16px 16px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 22px 46px rgba(14, 5, 3, 0.56);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transform-origin: top center;
+  animation: redSlipUnfurl 540ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.red-slip-card::before {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border: 1px solid rgba(242, 201, 107, 0.52);
+  border-radius: 11px;
+  pointer-events: none;
+}
+
+@keyframes redSlipUnfurl {
+  0% {
+    opacity: 0;
+    transform: translateY(-28px) scaleY(0.72) scaleX(0.94);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scaleY(1) scaleX(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .red-slip-card {
+    animation: none;
+  }
+}
+
+.red-slip-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.red-slip-seal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  height: 44px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background-color: #630F0C;
+  border: 1px solid #F5D27A;
+  color: #FFE699;
+  font-family: var(--font-serif);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.red-slip-title {
+  margin: 0;
+  color: #FFE79E;
+  font-family: var(--font-serif);
+  font-size: 1.16rem;
+  line-height: 1.35;
+  text-wrap: balance;
+}
+
+.red-slip-verse-box {
+  background-color: rgba(46, 8, 6, 0.52);
+  border: 1px solid rgba(245, 210, 122, 0.45);
+  border-radius: 12px;
+  padding: 13px 14px;
+  font-family: var(--font-serif);
+  font-size: 1.04rem;
+  line-height: 1.65;
+  color: #FFFDF7;
+  white-space: pre-line;
+  text-align: center;
+}
+
+.red-slip-wish-quote {
+  background-color: rgba(255, 246, 220, 0.12);
+  border: 1px solid rgba(245, 210, 122, 0.36);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 0.94rem;
+  line-height: 1.5;
+  color: #FFEEC2;
+}
+
+.red-slip-advice {
+  margin: 0;
+  font-size: 0.94rem;
+  line-height: 1.55;
+  color: #FFF6E3;
+}
+
+.red-slip-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.btn-red-slip-gold {
+  min-height: 56px;
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid #FCE59E;
+  background-color: #E5AC38;
+  color: #241307;
+  font-family: inherit;
+  font-size: 0.96rem;
+  font-weight: 700;
+  padding: 10px 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.btn-red-slip-close {
+  min-height: 56px;
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 232, 178, 0.55);
+  background-color: rgba(38, 8, 6, 0.65);
+  color: #FFF9EC;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+
+.red-slip-tassel {
+  width: 4px;
+  height: 26px;
+  background: linear-gradient(180deg, #F2C96B 0%, #D13328 45%, #8F1711 100%);
+  border-radius: 999px;
+  margin-top: -1px;
+}
+
+.is-cooldown {
+  opacity: 0.78;
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-session-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background-color: #2B1E16;
+  color: #FFF9EC;
+  border: 1px solid #C88A28;
+}
+
+.admin-session-bar small {
+  color: #F2DFBD;
+}
+
+.admin-session-bar .btn-mini {
+  background-color: #FFF8EB;
+  color: #23170F;
+  border-color: #DFBC76;
+}
+
+/* ==================== DAILY QUESTS, PROVERB MEMORY, XIANGQI CUP & LIVE WATCH STAGE ==================== */
+.daily-quest-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-radius: var(--radius-lg);
+  background-color: #FFFDF7;
+  border: 1px solid #D5BE97;
+  box-shadow: var(--shadow-soft);
+}
+
+.daily-quest-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.daily-quest-row {
+  min-height: 56px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background-color: #FBF5E8;
+  border: 1px solid var(--border-subtle);
+  color: var(--ink-primary);
+  font-family: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.daily-quest-row.is-done {
+  background-color: #ECF7F1;
+  border-color: #2E7D5B;
+  color: #1A4D38;
+}
+
+.daily-quest-status {
+  flex-shrink: 0;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  background-color: #FFF6DD;
+  border: 1px solid #D59B38;
+  color: #6B4208;
+  font-variant-numeric: tabular-nums;
+}
+
+.daily-quest-row.is-done .daily-quest-status {
+  background-color: #2E5E4E;
+  border-color: #2E5E4E;
+  color: #FFFDF7;
+}
+
+.proverb-board-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.proverb-tile-btn {
+  min-height: 82px;
+  padding: 8px 6px;
+  border-radius: 12px;
+  border: 1px solid #8C6239;
+  background: linear-gradient(180deg, #6E4526 0%, #523118 100%);
+  color: #FFECC4;
+  font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: 700;
+  line-height: 1.3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(35, 22, 12, 0.16);
+  word-break: break-word;
+}
+
+.proverb-tile-btn.is-flipped {
+  background: #FFFDF7;
+  border-color: var(--accent-terracotta);
+  color: var(--ink-primary);
+}
+
+.proverb-tile-btn.is-matched {
+  background: #E9F6EE;
+  border-color: #2E7D5B;
+  color: #184F37;
+}
+
+.quiz-opt-btn.is-eliminated {
+  opacity: 0.42;
+  text-decoration: line-through;
+}
+
+.cup-bracket-bar {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.cup-step-pill {
+  padding: 8px 6px;
+  border-radius: 10px;
+  border: 1px solid var(--border-subtle);
+  background-color: #FBF5E8;
+  color: var(--ink-secondary);
+  font-size: 0.84rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.cup-step-pill.is-current {
+  background-color: #FFF3D4;
+  border-color: #C88A28;
+  color: #5E3706;
+}
+
+.cup-step-pill.is-won {
+  background-color: #E7F6ED;
+  border-color: #238A52;
+  color: #185434;
+}
+
+.watch-live-canvas {
+  width: 100%;
+  height: 196px;
+  display: block;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 236, 190, 0.28);
+  background-color: #16241F;
+}
+
+.water-cups-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.water-cup-pill {
+  padding: 8px 4px;
+  border-radius: 10px;
+  border: 1px solid var(--border-subtle);
+  background-color: #FBF5E8;
+  color: var(--ink-secondary);
+  font-size: 0.84rem;
+  font-weight: 700;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.water-cup-pill.is-filled {
+  background-color: #E5F4FA;
+  border-color: #2B7A9B;
+  color: #154A61;
+}
+
+/* ==================== PAVILION HERO & CRAFT ELEVATION (v20261118c) ==================== */
+::selection {
+  background-color: #F2D79E;
+  color: #231A14;
+}
+
+:focus-visible {
+  outline: 2px solid #B83B2A;
+  outline-offset: 2px;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #EFE4D0;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #C4AB89;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9E825E;
+}
+
+.home-pavilion-hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 15px 16px;
+  border-radius: 18px;
+  border: 1px solid #CFA86E;
+  background: linear-gradient(155deg, #FFFDF7 0%, #FBF0DC 58%, #F4E1BF 100%);
+  box-shadow: 0 8px 22px rgba(68, 40, 16, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+}
+
+.home-pavilion-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.home-time-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background-color: #FFF7E4;
+  border: 1px solid #DFBA7E;
+  color: #6E3E12;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.home-streak-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background-color: #E7F4EE;
+  border: 1px solid #8CC4AC;
+  color: #19563F;
+  font-size: 0.82rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.home-pavilion-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.home-pavilion-hero h1 {
+  color: #26180F;
+  letter-spacing: -0.01em;
+}
+
+.home-pavilion-hero .lead-copy {
+  color: #4D392A;
+  margin-bottom: 0;
+}
+
+.home-core-card {
+  box-shadow: 0 4px 12px rgba(58, 38, 22, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.72);
+  transition: transform 0.14s ease, box-shadow 0.14s ease, border-color 0.14s ease;
+}
+
+.home-core-card:active {
+  transform: translateY(1px);
+}
+
+.catalog-sample-card {
+  box-shadow: 0 3px 10px rgba(58, 38, 22, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.catalog-sample-card.is-equipped {
+  background: linear-gradient(160deg, #F3FBF7 0%, #E5F5EC 100%);
+  border-color: #2B7B5C;
+}
+
+.catalog-sample-card.is-previewing {
+  background: linear-gradient(160deg, #FFFDF4 0%, #FBF0D2 100%);
+  border-color: #C88A28;
+}
+
+.sample-thumb {
+  box-shadow: 0 2px 6px rgba(52, 34, 18, 0.1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -64,7 +64,9 @@ Các tham số dưới đây được bóc tách trực tiếp từ `app.js` (tr
 | `?ketban=TB-102` | Mở mục Bạn Bè và tự động gửi/chấp nhận kết nối tâm giao với mã thẻ `TB-102`. |
 | `?hoi=d25-d3-1k2-mn75` | Mở thẳng trang chi tiết đơn vị đồng ngũ / câu lạc bộ có mã `d25-d3-1k2-mn75`. |
 | `?khoiphuc=<token>` | Khôi phục toàn bộ Thẻ Hội Viên, Xu, 96 danh hiệu, đơn vị và bạn bè trên điện thoại mới từ mã QR Ảnh Thẻ. |
-| `?dash=1` | Mở thẳng Dash Quản lý Hoạt động User (`route = "privacy"`, tab Tổng Quan & Dịch Vụ) để theo dõi On-Time, dịch vụ nổi bật và phàn nàn. |
+| `?uat=bac01-4g` | Gắn nhãn nhóm thử nghiệm thực địa UAT (`state.settings.uatTag`) cho 5–10 cô bác dùng Android qua 4G để tự động đo cỡ chữ, mạng và tốc độ lên bậc `23.008 XP`. |
+| `?dash=1` | Mở màn hình Quyền riêng tư & Quản trị (`route = "privacy"`). Hội viên thường chỉ thấy mục riêng tư cá nhân; Quản trị viên bấm mở khóa để xem Dash toàn quán. |
+| `?admin=1` | Mở thẳng màn hình Quản trị (`route = "privacy"`) và bật ngay hộp thoại nhập mã khóa Quản trị viên (mã mặc định khởi tạo lần đầu: `2026`, đổi trực tiếp trong phiên Admin). |
 
 ---
 
@@ -78,6 +80,8 @@ Các tham số dưới đây được bóc tách trực tiếp từ `app.js` (tr
    ```powershell
    node "E:\DuAn\_Dashboard\doctor.mjs"
    ```
-3. **Bước 3 — Kiểm tra trực quan trên khung di động `390×844` (`@2x`):**
-   - Kiểm tra 4 màn hình trọng tâm: Trang chủ (`home`), Bàn trà 3D (`tearoom`), Chánh Điện 3D (`zen`), Cây 96 Danh Hiệu (`leaderboard`) và Kho AI Tracking (`privacy`).
-   - Đảm bảo `document.documentElement.scrollWidth <= window.innerWidth`, mọi nút chính cao `>= 56px` và Console không có dòng lỗi đỏ nào.
+3. **Bước 3 — Chạy bộ kiểm thử hồi quy & Pentest tự động toàn bộ 16 màn hình (`390×844` ở cả `20px` và `24px`):**
+   ```powershell
+   node scripts/e2e-regression.mjs
+   ```
+   - Tự động duyệt đủ 16 `route` ở cả cỡ chữ chuẩn (`20px`) và Chữ to (`24px`), xác nhận `scrollWidth <= innerWidth`, `0` lỗi Console / CSP / mạng cục bộ, kiểm thử trọn bộ 8 trang phục + 8 phụ kiện + 12 món đồ bàn trà mới và chạy bộ kiểm thử thâm nhập (Pentest: XSS đa ngữ cảnh, chống né bộ lọc SĐT/link lừa đảo qua khoảng trắng/từ điển phương ngữ, khóa tạm `60s` sau `5` lần nhập sai mã Admin).

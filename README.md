@@ -19,7 +19,7 @@ Bộ tài liệu của dự án được chia nhỏ giống mô hình một Stud
 | [docs/03_TIEN_DO_VA_NHAT_KY.md](docs/03_TIEN_DO_VA_NHAT_KY.md) | **"Sổ theo dõi tiến độ & lịch sử"** — Ghi rõ 16 hạng mục nào đã xong, ngày nào nâng cấp gì, còn việc gì dự kiến làm tiếp. |
 | [docs/04_CAM_NANG_FIX_BUG_VA_KIEM_THU.md](docs/04_CAM_NANG_FIX_BUG_VA_KIEM_THU.md) | **"Sổ bắt bệnh nhanh"** — Bảng tra cứu: thấy hiện tượng lỗi gì thì mở đúng tệp nào để sửa ngay, kèm các bẫy kỹ thuật cần tránh. |
 | [docs/05_QUYET_DINH_KIEN_TRUC_ADR.md](docs/05_QUYET_DINH_KIEN_TRUC_ADR.md) | **"Lý do thiết kế"** — Giải thích vì sao chọn cách làm hiện tại để AI đời sau không tự ý đập đi làm lại sai hướng. |
-| `verify.bat` / `scripts/studio-doctor.mjs` | **"Máy khám sức khỏe & ép đồng bộ tự động"** — Nhấp đúp `verify.bat`, máy tự rà soát **9 cổng kỹ thuật**: kiểm tra lỗi code, đối chiếu từng màn hình / biến dữ liệu / bảng SQL / tham số link giữa code thực tế với các tệp `.md`, và chặn báo lỗi ngay nếu AI sửa code mà quên cập nhật sổ tiến độ. |
+| `verify.bat` / `scripts/studio-doctor.mjs` / `scripts/e2e-regression.mjs` | **"Máy khám sức khỏe, E2E 16 màn hình & Pentest tự động"** — Nhấp đúp `verify.bat`, máy tự rà soát **9 cổng kỹ thuật Code ↔ Docs**, quét đủ **16 màn hình ở cả 20px và 24px** (`390×844`) và chạy bộ kiểm thử bảo mật Pentest. |
 
 ---
 

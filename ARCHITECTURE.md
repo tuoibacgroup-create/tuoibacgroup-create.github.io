@@ -61,18 +61,18 @@ flowchart TD
 
 | Thứ tự nạp | Tên tệp | Namespace toàn cục | Trách nhiệm kỹ thuật cốt lõi |
 | :---: | :--- | :--- | :--- |
-| — | `index.html` | DOM Shell | Khung trang đơn (SPA), thanh điều hướng đáy 4 mục (`bottom-nav`), kho biểu tượng `<svg class="svg-sprite">` (gồm `#ico-chart`, `#ico-feedback`), thanh trạng thái hội viên, hộp thoại `<dialog>` dùng chung và nạp thư viện CDN (`Three.js r160`, `qrcode-generator`, `mqtt.js 5`, `supabase-js 2`). |
-| — | `styles.css` | CSS Tokens | Toàn bộ biến màu `--bg-paper`, quy chuẩn chữ lớn cho người cao tuổi, bố cục thẻ, bàn cờ, sảnh 3D, biểu đồ 24h và chế độ `.xl-font`. |
-| 1 | `data.js` | `window.TuoiBacData` | Kho dữ liệu tĩnh: danh mục 34 đơn vị hành chính Việt Nam mới (kèm tỉnh cũ gộp vào), mẫu câu gợi ý theo chủ đề (`REPLY_MATRIX`), từ điển phát âm vùng miền (`INITIAL_PHONETIC_DICT`), 5 phòng trà, bài báo mẫu, câu đố vui, bài thơ, 8 Sticker văn hóa trà, thẻ an lạc và đơn vị đồng ngũ mẫu (`Đại đội 1K2 · D3 · Sư đoàn 25`). |
+| — | `index.html` | DOM Shell | Khung trang đơn (SPA), chính sách bảo mật `Content-Security-Policy` (chặn inline script/eval XSS), thanh điều hướng đáy 4 mục (`bottom-nav`), kho biểu tượng `<svg class="svg-sprite">` (gồm `#ico-chart`, `#ico-feedback`), thanh trạng thái hội viên, hộp thoại `<dialog>` dùng chung và nạp thư viện CDN (`Three.js r160`, `qrcode-generator`, `mqtt.js 5`, `supabase-js 2`). |
+| — | `styles.css` | CSS Tokens | Toàn bộ biến màu `--bg-paper`, quy chuẩn chữ lớn cho người cao tuổi, thẻ Hiên Trà Sáng (`.home-pavilion-hero`), bố cục thẻ, bàn cờ, sảnh 3D, biểu đồ 24h và chế độ `.xl-font`. |
+| 1 | `data.js` | `window.TuoiBacData` | Kho dữ liệu tĩnh: danh mục 34 đơn vị hành chính Việt Nam mới, 8 trang phục, 8 phụ kiện, 12 món đồ bày bàn trà di sản, mẫu câu gợi ý (`REPLY_MATRIX`), từ điển phát âm vùng miền (`INITIAL_PHONETIC_DICT`), 5 phòng trà, bài báo mẫu, 5 bộ đố vui 25 câu (`QUIZ_PACKS`, `QUIZ_QUESTIONS`), 18 cặp ca dao tục ngữ (`PROVERB_PAIRS`), 5 CLB đối thủ Cúp Cờ Tướng (`TOURNAMENT_RIVAL_CLUBS`), gợi ý vần lục bát (`LUC_BAT_RHYME_PAIRS`), thơ, 8 Sticker trà, 6 quẻ lộc theo 3 không gian (`TEMPLE_PEACE_CARDS`), 15 tệp giọng thu sẵn (`VOICE_CLIPS`) và đơn vị đồng ngũ mẫu. |
 | 2 | `progression.js` | `window.TuoiBacProgression` | Hệ thống toán học tính điểm thăng cấp lồi: 32 tầng thâm niên chính thức chia làm 6 giai đoạn (`ERAS`) và 8 cây kỹ năng chuyên sâu (`SKILL_TREES`, tổng 96 danh hiệu), kèm hàm phân loại nhãn Người mới / Quen thân / Tri kỷ / Trưởng lão / Cây đại thụ. |
-| 3 | `telemetry.js` | `window.TuoiBacTelemetry` | Động cơ ghi nhận 100% hành vi thành viên vào `IndexedDB` (`tuoibac_telemetry_db_v1`), tổng hợp Dash quản lý toàn diện `getGlobalActivityDashboard()` (On-Time 24h, dịch vụ dùng nhiều nhất, xu hướng chat, phân loại phàn nàn & góp ý), hồ sơ thói quen sâu và xuất dữ liệu AI (`.jsonl`, `.json`, `.csv`). |
-| 4 | `tearoom3d.js` | `window.TeaRoomScene` | Bộ dựng cảnh Quán Trà chuẩn **Full 2.5D Cổ Điển (Thiên Long Bát Bộ)** cố định nhẹ pin dùng tranh nền nén `assets/tearoom-table-25d.jpg`, `assets/tearoom-lobby-25d.jpg` + Sprite Atlas 4×2 `assets/tearoom-sprites.webp` (người ngồi cân tỷ lệ trên ghế không nhấp nhô bồng bềnh kèm che khuất mặt bàn/tựa lưng, và Trợ lý Chị Trà đứng bưng khay trà đi mời); vẫn giữ hàm `dispose()` và xuất thiệp QR PNG. |
-| 5 | `temple3d.js` | `window.TempleScene3D` | Đại sảnh Chánh Điện 20 Chiếu Bồ Đoàn (`4×5`) góc siêu rộng kết hợp ảnh Chùa Cổ Việt Nam (`assets/temple-*.jpg`) và Sprite Phật tử Áo Lam / Áo Nâu tả thực (`assets/temple-sprites.webp`): hỗ trợ bước từ chiếu lên Lư hương thắp nhang, sang Mõ gỗ gõ mõ, sang Chuông đồng thỉnh chuông, cúi vái 3 nhịp rồi quay về chiếu (`28 FPS`). |
+| 3 | `telemetry.js` | `window.TuoiBacTelemetry` | Động cơ ghi nhận 100% hành vi thành viên vào `IndexedDB` (`tuoibac_telemetry_db_v1`), tổng hợp Dash quản lý `getGlobalActivityDashboard()`, báo cáo kiểm thử thực địa & cân chỉnh mốc `23.008 XP` (`getUatAndXpCalibrationReport()`), hồ sơ thói quen sâu và xuất dữ liệu AI (`.jsonl`, `.json`, `.csv`). |
+| 4 | `tearoom3d.js` | `window.TeaRoomScene` | Bộ dựng cảnh Quán Trà chuẩn **Full 2.5D Cổ Điển (Thiên Long Bát Bộ)** dùng tranh nền nén `assets/tearoom-table-25d.jpg`, `assets/tearoom-lobby-25d.jpg`, Sprite nhân vật `assets/tearoom-sprites.webp`, 2 bộ Sprite phụ kiện 2.5D khớp đầu/cổ `assets/tearoom-accessories.webp` + `assets/tearoom-accessories-extra.webp` (kính lão, kính mát tròng trà, khăn len, mũ cối, mũ tai bèo, khăn đóng gấm, nón lá) và 2 bộ Sprite 12 món đồ bàn trà chạm khắc `assets/tearoom-items.webp` + `assets/tearoom-items-extra.webp` đặt trên đôn gỗ nu khảm đồng; giữ `dispose()` và xuất thiệp QR PNG. |
+| 5 | `temple3d.js` | `window.TempleScene3D` | Không gian Tĩnh Tâm 20 Chiếu (`4×5`) tách biệt 3 bối cảnh kiến trúc riêng (`Sân Chùa Quê` `assets/temple-*.jpg`, `Nhà Thờ Họ` `assets/ancestral-*.jpg`, `Vườn Thiền Tĩnh Lặng` `assets/zengarden-*.jpg`) kết hợp Sprite `assets/temple-sprites.webp`: bước lên dâng hương/gõ mõ/thỉnh chuông, thả đèn Hoa Đăng nổi trên mặt Hồ Sen 3 phút (`180s`), rút xăm/treo thẻ đỏ kèm đếm ngược hồi lượt `45s` (`28 FPS`). |
 | 6 | `xiangqi.js` | `window.TuoiBacXiangqi` | Engine Cờ Tướng `9×10` chuẩn 32 quân hoàn chỉnh: sinh nước đi hợp lệ cho cả 7 binh chủng, luật tướng đối mặt, kiểm tra tự chiếu/chiếu bí, AI đối thủ câu lạc bộ (Minimax + Alpha-Beta Pruning + Bảng điểm vị trí PST + Sắp xếp nước bắt quân MVV-LVA) và 6 ván Cờ Thế cổ phổ. |
-| 7 | `realtime.js` | `window.TuoiBacRealtime` | Lớp mạng thời gian thực tự phục hồi: kết nối song song `BroadcastChannel` nội bộ và `MQTT over WSS` công cộng (hoặc `Supabase` khi cấu hình khóa), quản lý hiện diện trực tuyến theo bàn và toàn quán, hàng đợi chat, ván cờ treo, thẻ hội viên đám mây, hội nhóm, kết bạn, chánh điện và luồng telemetry. |
-| 8 | `app.js` | IIFE Controller | Bộ điều phối trung tâm gắn kết tất cả module: quản lý `state`, lưu trữ kép (`localStorage` + `_vault_bak`), bộ định tuyến `navigate(route)`, xử lý Deep Link URL, tổng hợp giọng đọc tiếng Việt (Web Speech TTS + dự phòng luồng âm thanh), nhận dạng giọng nói kèm tự học từ điển phương ngữ, âm thanh nhạc cụ WebAudio (chuông chùa, mõ gỗ, quân cờ, sỏi cuội, đàn tranh) và 16 hàm dựng màn hình. |
-| 9 | `sw.js` | Service Worker | Quản lý bộ nhớ đệm PWA (`tuoibac-pwa-v24`): chiến lược *Network-First* cho mã nguồn chính để luôn nhận bản mới nhất khi có mạng và tự động dùng bản lưu sẵn khi mất sóng 4G (bao gồm ảnh nền & Sprite Atlas Chánh Điện `assets/temple-*` và Quán Trà 2.5D `assets/tearoom-*`), đồng thời bỏ qua không chặn các luồng WebSocket/TTS/RSS. |
-| — | `supabase_schema.sql` | PostgreSQL DDL | Tập lệnh SQL khởi tạo 14 bảng dữ liệu và chính sách bảo mật RLS trên gói miễn phí Supabase. |
+| 7 | `realtime.js` | `window.TuoiBacRealtime` | Lớp mạng thời gian thực & bền vững đã gia cố chống Prototype Pollution / OOM / gói tin lừa đảo (`safeJsonParse`, `Object.create(null)`, `capStoreKeys`, `isMaliciousNetworkText`): kết nối `BroadcastChannel` + `MQTT over WSS` công cộng hoặc `Supabase` cố định, đồng bộ hiện diện, chat, báo sáng đã duyệt, từ điển phát âm, ván cờ treo, thẻ hội viên, hội nhóm, chánh điện và luồng telemetry. |
+| 8 | `app.js` | IIFE Controller | Bộ điều phối trung tâm: quản lý `state` + `_vault_bak`, tự chuyển ngày lịch mới (`ensureDailyRollover`), định tuyến 16 màn hình, Sổ tay 3 niềm vui hôm nay, AI Ô ăn quan + Lật thẻ Ca dao trí nhớ, Cúp Cờ Tướng Đồng Ngũ 3 vòng, In thiệp lụa bài thơ PNG, Sân khấu Phòng xem chung 24 FPS, Sổ nước ấm & huyết áp, khóa mật khẩu Admin chống dò (`5` lần sai khóa `60s` + băm lặp `2.500` vòng), bộ lọc an toàn 2 lượt chống lừa đảo/XSS, hiệu ứng mở tờ giấy đỏ xem quẻ (`45s`) và giọng đọc tiếng Việt. |
+| 9 | `sw.js` | Service Worker | Quản lý bộ nhớ đệm PWA (`tuoibac-pwa-v27`): chiến lược *Network-First* cho mã nguồn chính để luôn nhận bản mới nhất khi có mạng và tự động dùng bản lưu sẵn khi mất sóng 4G (bao gồm ảnh nền 3 không gian `temple-*`/`ancestral-*`/`zengarden-*`, trọn bộ Sprite Quán Trà `tearoom-*` + `*-extra.webp` và 15 tệp âm thanh `assets/audio/*.mp3`), đồng thời bỏ qua không chặn các luồng WebSocket/TTS/RSS. |
+| — | `supabase_schema.sql` | PostgreSQL DDL | Tập lệnh SQL khởi tạo 14 bảng dữ liệu và chính sách bảo mật RLS tối thiểu đặc quyền (chặn `DELETE` ẩn danh, bảng `safety_reports` chỉ cho phép `INSERT` ẩn danh kèm ràng buộc `char_length`; đi kèm mẫu lịch tự động `docs/workflows/morning-rss.yml`, `scripts/fetch-morning-rss.mjs` và `scripts/e2e-regression.mjs`). |
 
 ---
 
@@ -82,21 +82,21 @@ Khi cần sửa giao diện hoặc logic của một màn hình cụ thể, tra 
 
 | Giá trị `state.route` | Tên màn hình trên giao diện | Hàm dựng chính trong `app.js` | Module phối hợp |
 | :--- | :--- | :--- | :--- |
-| `"home"` | Trang chủ Quán Trà (Chế độ Đầy đủ & Chuẩn MVP 3 nút) | `renderHome()` | `progression.js`, `realtime.js` |
+| `"home"` | Trang chủ Quán Trà (Chế độ Đầy đủ, Sổ tay 3 niềm vui hôm nay & Chuẩn MVP 3 nút) | `renderHome()` | `progression.js`, `realtime.js` |
 | `"checkin"` | Điểm danh bình an buổi sáng & Bản đồ 34 tỉnh thành | `renderCheckin()` | `data.js`, `tearoom3d.js` (xuất thiệp QR), `realtime.js` |
 | `"tearoom"` | Quán Trà 3D (Sảnh 5 gian 6 bàn & Trong bàn trà đàm đạo) | `renderTeaRoom()`, `renderTeaRoomLobby()`, `renderTeaRoomTableView()` | `tearoom3d.js`, `xiangqi.js` (khi vào Phòng Cờ), `realtime.js`, `telemetry.js` |
 | `"newspaper"` | Tờ Báo Sáng Quán Trà (Tìm kiếm chủ đề, nghe đọc báo, mở bàn đàm đạo theo tin) | `renderNewspaper()`, `openArticleDetailModal()` | `data.js`, `telemetry.js` |
-| `"groups"` | Hội Đồng Ngũ, Câu Lạc Bộ & Kết Bạn Đang Online | `renderGroupsAndFriends()`, `openCreateGroupModal()` | `data.js`, `realtime.js`, `openMemberAuthModal()` |
-| `"xiangqi"` | Cờ Tướng Chuẩn `9×10` (32 quân) & Giải 6 Cờ Thế Cổ Phổ | `renderXiangqiScreen()`, `renderXiangqiTab()` | `xiangqi.js`, `realtime.js` (ván treo qua link) |
-| `"games"` | Ô Ăn Quan Dân Gian (Đấu Máy & Ván Treo Mời Bạn) | `renderGames()`, `renderOaqTab()` | `realtime.js`, `telemetry.js` |
-| `"quiz"` | Đố Vui Minh Mẫn Hôm Nay (5 câu, không phạt người chậm) | `renderQuiz()` | `data.js`, `telemetry.js` |
-| `"poetry"` | Chiếu Thơ Lục Bát, Đàn Tranh & Sáng Tác Thơ Mới | `renderPoetry()` | `data.js`, `realtime.js` |
-| `"watch"` | Phòng Xem Chung Theo Giờ Hẹn (Dưỡng sinh & Hài kịch phụ đề lớn) | `renderWatch()` | `data.js` |
+| `"groups"` | Hội Đồng Ngũ, Câu Lạc Bộ, Đấu Cúp Đơn Vị & Kết Bạn Đang Online | `renderGroupsAndFriends()`, `openCreateGroupModal()` | `data.js`, `realtime.js`, `openMemberAuthModal()` |
+| `"xiangqi"` | Cờ Tướng Chuẩn `9×10` (32 quân), Cúp Đồng Ngũ 3 Vòng & Giải 6 Cờ Thế Cổ Phổ | `renderXiangqiScreen()`, `renderXiangqiTab()` | `xiangqi.js`, `realtime.js` (ván treo qua link) |
+| `"games"` | Ô Ăn Quan (AI Cao Thủ Làng + Gợi Ý), Cờ Tướng & Lật Thẻ Ca Dao Trí Nhớ | `renderGames()`, `renderOaqTab()`, `renderProverbMemoryTab()` | `data.js`, `realtime.js`, `telemetry.js` |
+| `"quiz"` | Đố Vui Minh Mẫn Hôm Nay (5 bộ × 5 câu = 25 câu, trợ giúp 50/50) | `renderQuiz()` | `data.js`, `telemetry.js` |
+| `"poetry"` | Chiếu Thơ Lục Bát, Gợi Ý Vần 6–8, Đàn Tranh & In Thiệp Lụa PNG | `renderPoetry()`, `exportPoemSilkPostcardPng()` | `data.js`, `tearoom3d.js` (QR), `realtime.js` |
+| `"watch"` | Phòng Xem Chung (Sân khấu Canvas 24 FPS: Hoa sen nhịp thở, Chiếu chèo, Quê chiều) | `renderWatch()`, `mountWatchStageCanvas()` | `data.js`, `telemetry.js` |
 | `"zen"` | Chánh Điện &amp; Đạo Tràng (20 Bồ Đoàn, Hồ Sen, Cây Thẻ Đỏ) | `renderZen()` | `temple3d.js`, `realtime.js`, `telemetry.js` |
 | `"leaderboard"` | Hệ Thống 96 Danh Hiệu Toán Học & Bảng Vàng Mới – Cũ | `renderLeaderboard()` | `progression.js` |
 | `"profile"` | Hồ Sơ Cá Nhân, Tủ Trang Phục & Khung Danh Hiệu 3D | `renderProfile()` | `tearoom3d.js` (sân khấu thử đồ 3D), `progression.js` |
-| `"health"` | Trợ Lý Sức Khỏe, Nhắc Thuốc & Nút Cấp Cứu 115 | `renderHealth()` | `data.js` |
-| `"family"` | Góc Con Cái Theo Dõi Bình An Từ Xa | `renderFamilyView()` | `tearoom3d.js` (QR liên kết gia đình) |
+| `"health"` | Trợ Lý Sức Khỏe, Thuốc Sáng/Tối, 8 Cốc Nước Ấm, Sổ Huyết Áp & Cấp Cứu 115 | `renderHealth()` | `data.js`, `telemetry.js` |
+| `"family"` | Góc Con Cái Theo Dõi Bình An & Cài Số Khẩn Cấp Cục Bộ | `renderFamilyView()` | `tearoom3d.js` (QR liên kết gia đình) |
 | `"privacy"` | Dash Quản Lý Hoạt Động, Chủ Đề Phàn Nàn Chat, Góp Ý &amp; Quyền Riêng Tư | `renderPrivacyAndMetrics()`, `openFeedbackModal()` | `telemetry.js`, `realtime.js` |
 
 ---
@@ -107,15 +107,16 @@ Khi cần sửa giao diện hoặc logic của một màn hình cụ thể, tra 
 1. Trình duyệt tải `index.html`, dựng cây DOM tĩnh và nạp tuần tự 9 tệp `.js` có thuộc tính `defer`.
 2. `telemetry.js` mở kết nối bất đồng bộ tới cơ sở dữ liệu `IndexedDB` (`tuoibac_telemetry_db_v1`) và nạp ma trận thói quen nóng.
 3. `app.js` khởi tạo `state = loadState()` (đọc từ `STORAGE_KEY`, tự động rơi về bản sao `_vault_bak` nếu JSON lỗi, rồi hợp nhất sâu với `createDefaultState()`).
-4. `applyUrlDeepLinkIfPresent()` kiểm tra thanh địa chỉ URL để xử lý ngay các liên kết mời bạn (`?phong=&ban=`, `?van=`, `?tin=`, `?tinh=`, `?ketban=`, `?hoi=`, `?khoiphuc=`, `?may=`).
-5. `RT.start()` mở kênh `BroadcastChannel` + `MQTT over WSS` (hoặc `Supabase`), sau `500ms` phát tín hiệu trực tuyến toàn cục (`syncMyGlobalOnlinePresence()`).
+4. `applyUrlDeepLinkIfPresent()` kiểm tra thanh địa chỉ URL để xử lý ngay các liên kết mời bạn & vận hành (`?phong=&ban=`, `?van=`, `?tin=`, `?tinh=`, `?ketban=`, `?hoi=`, `?khoiphuc=`, `?may=`, `?uat=`, `?dash=`, `?admin=`).
+5. `RT.start()` mở kênh `BroadcastChannel` + `MQTT over WSS` (hoặc `Supabase` kèm nạp dữ liệu bền vững `hydratePersistentTablesFromSupabase()`), sau `500ms` phát tín hiệu trực tuyến toàn cục (`syncMyGlobalOnlinePresence()`).
 6. `render()` vẽ màn hình đầu tiên và đăng ký `sw.js` khi chạy qua giao thức `http/https`.
 
-### 4.2. Sáu bộ đếm thời gian chạy ngầm (Timers & Watchdogs)
-Khi gỡ lỗi liên quan đến thời gian hoặc hiệu năng, kiểm tra đúng 6 bộ đếm sau:
+### 4.2. Bảy bộ đếm thời gian chạy ngầm (Timers & Watchdogs)
+Khi gỡ lỗi liên quan đến thời gian hoặc hiệu năng, kiểm tra đúng 7 bộ đếm sau:
 1. **Nhịp kiểm tra mỗi `1 giây` (`app.js`):** Tăng `sessionSeconds`, đếm thời gian im lặng trong bàn trà (`idleSec`) và kích hoạt đồng hồ nhắc nghỉ mắt.
 2. **Nhịp nhấp trà `10 giây` (`cooldownTickId` trong `app.js`):** Khóa tạm nút gửi tin sau mỗi câu nói của người dùng và giãn cách hàng đợi hiển thị `5 giây/câu` (`teaQueueTimerId`) để chữ trên bảng lời bàn trà không trôi quá nhanh đối với mắt người già.
-3. **Chốt thời lượng màn hình mỗi `20 giây` (`flushDwellHeartbeat` trong `app.js` → `telemetry.js`):** Cộng dồn chính xác số giây hội viên đang xem màn hình hiện tại vào kho AI Tracking.
-4. **Nhịp tim hiện diện mạng mỗi `22 giây` (`HEARTBEAT_MS` trong `realtime.js`):** Phát lại trạng thái đang ngồi bàn nào / online ở đâu; tự động dọn các thiết bị mất kết nối quá `85 giây` (`PRESENCE_TTL_MS`).
-5. **Trợ lý Quán Trà tự gợi chuyện sau `60 giây` im lặng (`triggerIdleAssistantPrompt` trong `app.js`):** Rót trà 3D và đưa ra câu hỏi gợi mở theo chủ đề bàn hoặc bài báo đang đọc.
-6. **Nhắc nghỉ mắt sau `20 phút` (`1200 giây`, `showEyeRestModal` trong `app.js`):** Mở hộp thoại khuyên các bác nhìn xa 20 giây và uống nước ấm.
+3. **Nhịp hồi lượt Rút Xăm / Treo Thẻ Đỏ `45 giây` & Hoa Đăng trôi `3 phút` (`zenCooldownTimerId` trong `app.js` + `temple3d.js`):** Đếm ngược `45s` trên nút và nhãn nổi của Ống Xăm / Cây Thẻ Đỏ, đồng thời giữ đèn Hoa Đăng tỏa sáng trôi trên mặt Hồ Sen trong `180 giây` trước khi tan dần.
+4. **Chốt thời lượng màn hình mỗi `20 giây` (`flushDwellHeartbeat` trong `app.js` → `telemetry.js`):** Cộng dồn chính xác số giây hội viên đang xem màn hình hiện tại vào kho AI Tracking.
+5. **Nhịp tim hiện diện mạng mỗi `22 giây` (`HEARTBEAT_MS` trong `realtime.js`):** Phát lại trạng thái đang ngồi bàn nào / online ở đâu; tự động dọn các thiết bị mất kết nối quá `85 giây` (`PRESENCE_TTL_MS`).
+6. **Trợ lý Quán Trà tự gợi chuyện sau `60 giây` im lặng (`triggerIdleAssistantPrompt` trong `app.js`):** Rót trà 3D và đưa ra câu hỏi gợi mở theo chủ đề bàn hoặc bài báo đang đọc.
+7. **Nhắc nghỉ mắt sau `20 phút` (`1200 giây`, `showEyeRestModal` trong `app.js`):** Mở hộp thoại khuyên các bác nhìn xa 20 giây và uống nước ấm (kèm nút nghe lời nhắc thu sẵn).

@@ -47,13 +47,57 @@ window.TempleScene3D = (function () {
   let muyuPulse = 0;
   let incenseBoost = 0;
   let fortunePulse = 0;
+  let wishPulse = 0;
 
-  const SCENE_IMAGES = {
-    wide: "./assets/temple-wide.jpg",
-    cushions: "./assets/temple-altar.jpg",
-    courtyard: "./assets/temple-courtyard.jpg",
-    sprites: "./assets/temple-sprites.webp"
-  };
+  const LANTERN_TTL_MS = 180000; // Đèn Hoa Đăng trôi lung linh trên mặt hồ suốt 3 phút trước khi tan dần
+  let activePondLanterns = [];   // [{ id, ownerName, isUser, spawnAt, expiresAt, baseNx, baseNy, phase, variant }]
+  let activeTreePlaques = [];    // [{ id, isGold, nx, ny, phase, spawnAt }]
+
+  const SPRITES_URL = "./assets/temple-sprites.webp?v=20261118a";
+  const SCENE_IMAGES_BY_SPACE = [
+    {
+      // 0: Sân Chùa Quê (Chánh Điện Tam Bảo Chùa Cổ Bắc Bộ)
+      wide: "./assets/temple-wide.jpg?v=20261118a",
+      cushions: "./assets/temple-altar.jpg?v=20261118a",
+      courtyard: "./assets/temple-courtyard.jpg?v=20261118a",
+      hallBadge: "Chánh điện",
+      meritBadge: "Tâm An",
+      bellLabel: "Chuông đồng",
+      incenseLabel: "Dâng hương",
+      fortuneLabel: "Ống xăm",
+      muyuLabel: "Gõ mõ",
+      pondLabel: "Hồ Sen",
+      treeLabel: "Cây Thẻ Đỏ"
+    },
+    {
+      // 1: Nhà Thờ Họ (Từ Đường Gia Tộc Việt Nam — Hoành phi Đức Lưu Quang, KHÔNG tượng Phật)
+      wide: "./assets/ancestral-wide.jpg?v=20261118a",
+      cushions: "./assets/ancestral-altar.jpg?v=20261118a",
+      courtyard: "./assets/ancestral-courtyard.jpg?v=20261118a",
+      hallBadge: "Từ đường",
+      meritBadge: "Phúc Ấm",
+      bellLabel: "Khánh đồng",
+      incenseLabel: "Kính hương",
+      fortuneLabel: "Ống thẻ lộc",
+      muyuLabel: "Mõ lễ",
+      pondLabel: "Hồ Bán Nguyệt",
+      treeLabel: "Cây Phúc Lộc"
+    },
+    {
+      // 2: Vườn Thiền Tĩnh Lặng (Hiên Gỗ Trúc Lâm & Vườn Sỏi Hồ Tịnh Tâm)
+      wide: "./assets/zengarden-wide.jpg?v=20261118a",
+      cushions: "./assets/zengarden-altar.jpg?v=20261118a",
+      courtyard: "./assets/zengarden-courtyard.jpg?v=20261118a",
+      hallBadge: "Thiền đường",
+      meritBadge: "Tĩnh Tâm",
+      bellLabel: "Chuông thiền",
+      incenseLabel: "Thắp trầm",
+      fortuneLabel: "Ống kệ thiền",
+      muyuLabel: "Mõ thiền",
+      pondLabel: "Hồ Tịnh Tâm",
+      treeLabel: "Cây Ước Nguyện"
+    }
+  ];
 
   const ATLAS_RECTS = {
     cushion: { x: 6, y: 6, w: 156, h: 68 },
@@ -108,22 +152,58 @@ window.TempleScene3D = (function () {
     peace_card: { nx: 0.706, ny: 0.630, aisleX: 0.68 }
   };
 
+  function getSpaceSpec() {
+    const rawIdx = Number(currentConfig && currentConfig.spaceIdx) || 0;
+    const safeIdx = Math.max(0, Math.min(SCENE_IMAGES_BY_SPACE.length - 1, rawIdx));
+    return SCENE_IMAGES_BY_SPACE[safeIdx];
+  }
+
+  function loadSingleCachedImage(cacheKey, url) {
+    if (imgCache[cacheKey] || typeof Image === "undefined") return;
+    const img = new Image();
+    img.decoding = "async";
+    img.onload = () => {
+      imgCache[cacheKey].loaded = true;
+      renderSanctuaryFrame(typeof performance !== "undefined" ? performance.now() * 0.001 : 0);
+    };
+    img.onerror = () => {
+      imgCache[cacheKey].failed = true;
+    };
+    imgCache[cacheKey] = { img, loaded: false, failed: false };
+    img.src = url;
+  }
+
   function ensureImagesLoaded() {
     if (typeof Image === "undefined") return;
-    Object.keys(SCENE_IMAGES).forEach((key) => {
-      if (imgCache[key]) return;
-      const img = new Image();
-      img.decoding = "async";
-      img.onload = () => {
-        imgCache[key].loaded = true;
-        renderSanctuaryFrame(typeof performance !== "undefined" ? performance.now() * 0.001 : 0);
-      };
-      img.onerror = () => {
-        imgCache[key].failed = true;
-      };
-      imgCache[key] = { img, loaded: false, failed: false };
-      img.src = SCENE_IMAGES[key];
+    loadSingleCachedImage("sprites", SPRITES_URL);
+    const activeIdx = Math.max(0, Math.min(2, Number(currentConfig && currentConfig.spaceIdx) || 0));
+    // Load active space immediately first, then warm-cache remaining spaces
+    const order = [activeIdx, 0, 1, 2];
+    order.forEach((sIdx) => {
+      const sp = SCENE_IMAGES_BY_SPACE[sIdx];
+      if (!sp) return;
+      ["wide", "cushions", "courtyard"].forEach((view) => {
+        loadSingleCachedImage(`sp${sIdx}_${view}`, sp[view]);
+      });
     });
+  }
+
+  function syncActiveLanternsFromConfig(cfg) {
+    if (!cfg || !Array.isArray(cfg.activeLanterns)) return;
+    const now = Date.now();
+    activePondLanterns = cfg.activeLanterns
+      .filter((it) => it && (it.expiresAt || 0) > now)
+      .map((it, idx) => ({
+        id: it.id || `ltn_${idx}`,
+        ownerName: it.ownerName || "Bác",
+        isUser: Boolean(it.isUser),
+        spawnAt: it.spawnAt || now - 2000,
+        expiresAt: it.expiresAt || now + LANTERN_TTL_MS,
+        baseNx: typeof it.baseNx === "number" ? it.baseNx : 0.14 + ((idx * 37) % 21) * 0.01,
+        baseNy: typeof it.baseNy === "number" ? it.baseNy : 0.65 + ((idx * 53) % 23) * 0.01,
+        phase: typeof it.phase === "number" ? it.phase : idx * 1.4,
+        variant: it.variant || (idx % 3 === 0 ? "gold" : idx % 2 === 0 ? "pink" : "coral")
+      }));
   }
 
   function roundRectPath(c, x, y, w, h, r) {
@@ -370,8 +450,9 @@ window.TempleScene3D = (function () {
   }
 
   function drawCoverPhoto(c, w, h) {
+    const sIdx = Math.max(0, Math.min(2, Number(currentConfig && currentConfig.spaceIdx) || 0));
     const viewKey = cameraView === "cushions" ? "cushions" : cameraView === "courtyard" ? "courtyard" : "wide";
-    const entry = imgCache[viewKey];
+    const entry = imgCache[`sp${sIdx}_${viewKey}`];
 
     if (entry && entry.loaded && entry.img && entry.img.naturalWidth > 0) {
       const iw = entry.img.naturalWidth;
@@ -386,9 +467,15 @@ window.TempleScene3D = (function () {
     }
 
     const fallbackGrad = c.createLinearGradient(0, 0, 0, h);
-    fallbackGrad.addColorStop(0, "#1E120C");
-    fallbackGrad.addColorStop(0.55, "#382115");
-    fallbackGrad.addColorStop(1, "#523220");
+    if (sIdx === 2) {
+      fallbackGrad.addColorStop(0, "#1E2D24");
+      fallbackGrad.addColorStop(0.55, "#2C4034");
+      fallbackGrad.addColorStop(1, "#4A3A28");
+    } else {
+      fallbackGrad.addColorStop(0, "#1E120C");
+      fallbackGrad.addColorStop(0.55, "#382115");
+      fallbackGrad.addColorStop(1, "#523220");
+    }
     c.fillStyle = fallbackGrad;
     c.fillRect(0, 0, w, h);
     return { dx: 0, dy: 0, dw: w, dh: h, ready: false };
@@ -622,6 +709,231 @@ window.TempleScene3D = (function () {
     });
   }
 
+  function drawSingleLotusLantern(c, w, px, py, sc, alpha, variant, tSec, ageMs, ownerLabel, isUser) {
+    if (alpha <= 0.01) return;
+    c.save();
+    c.globalAlpha = Math.max(0, Math.min(1, alpha));
+
+    // 1. Expanding water ripple ring when newly placed on the pond (first 4.5s)
+    if (ageMs < 4500) {
+      const k = Math.max(0, ageMs / 4500);
+      const ripR = (10 + k * 28) * sc;
+      c.strokeStyle = `rgba(182, 245, 228, ${((1 - k) * 0.65).toFixed(2)})`;
+      c.lineWidth = 1.25;
+      c.beginPath();
+      c.ellipse(px, py + 3 * sc, ripR, ripR * 0.42, 0, 0, Math.PI * 2);
+      c.stroke();
+    }
+
+    // 2. Warm shimmering reflection on dark emerald pond water
+    const reflFlicker = 0.30 + Math.sin(tSec * 5.8 + px * 0.05) * 0.08;
+    const reflGrad = c.createRadialGradient(px, py + 7 * sc, 1, px, py + 8 * sc, 18 * sc);
+    reflGrad.addColorStop(0, `rgba(255, 206, 118, ${reflFlicker.toFixed(2)})`);
+    reflGrad.addColorStop(0.55, `rgba(244, 132, 112, ${(reflFlicker * 0.45).toFixed(2)})`);
+    reflGrad.addColorStop(1, "rgba(244, 132, 112, 0)");
+    c.fillStyle = reflGrad;
+    c.beginPath();
+    c.ellipse(px, py + 7 * sc, 18 * sc, 7.5 * sc, 0, 0, Math.PI * 2);
+    c.fill();
+
+    // 3. Floating dark-jade lotus leaf pad base
+    c.fillStyle = "#1D4D38";
+    c.strokeStyle = "#367858";
+    c.lineWidth = 1.0;
+    c.beginPath();
+    c.ellipse(px, py + 2.5 * sc, 13.5 * sc, 5.4 * sc, 0, 0, Math.PI * 2);
+    c.fill();
+    c.stroke();
+
+    const pal =
+      variant === "gold"
+        ? { outer: "#D9822B", inner: "#FAD06C", tip: "#FFF6D6", stroke: "#8C4814" }
+        : variant === "coral"
+          ? { outer: "#D85A4A", inner: "#F7A188", tip: "#FFE8DF", stroke: "#8A281E" }
+          : { outer: "#C9486B", inner: "#F598B2", tip: "#FFEAF0", stroke: "#7D203C" };
+
+    // 4. Back ring of pointed lotus petals
+    c.fillStyle = pal.outer;
+    c.strokeStyle = pal.stroke;
+    c.lineWidth = 0.85;
+    [-9.5, -4.8, 0, 4.8, 9.5].forEach((dx, i) => {
+      const tilt = dx * 0.045;
+      const ph = (i === 2 ? 11.5 : i === 1 || i === 3 ? 10.2 : 8.5) * sc;
+      c.save();
+      c.translate(px + dx * sc, py + 1 * sc);
+      c.rotate(tilt);
+      c.beginPath();
+      c.moveTo(-3.6 * sc, 0);
+      c.quadraticCurveTo(-4.2 * sc, -ph * 0.65, 0, -ph);
+      c.quadraticCurveTo(4.2 * sc, -ph * 0.65, 3.6 * sc, 0);
+      c.closePath();
+      c.fill();
+      c.stroke();
+      c.restore();
+    });
+
+    // 5. Warm glowing candle core & flickering flame inside lotus cup
+    const flameH = (7.2 + Math.sin(tSec * 9.5 + px) * 1.1) * sc;
+    const candleGlow = c.createRadialGradient(px, py - 3.5 * sc, 1, px, py - 3.5 * sc, 13 * sc);
+    candleGlow.addColorStop(0, "rgba(255, 248, 196, 0.92)");
+    candleGlow.addColorStop(0.5, "rgba(255, 192, 82, 0.45)");
+    candleGlow.addColorStop(1, "rgba(255, 160, 60, 0)");
+    c.fillStyle = candleGlow;
+    c.beginPath();
+    c.arc(px, py - 3.5 * sc, 13 * sc, 0, Math.PI * 2);
+    c.fill();
+
+    c.fillStyle = "#FFB938";
+    c.beginPath();
+    c.moveTo(px - 2.1 * sc, py - 1.5 * sc);
+    c.quadraticCurveTo(px - 2.4 * sc, py - flameH * 0.7, px, py - flameH - 1.5 * sc);
+    c.quadraticCurveTo(px + 2.4 * sc, py - flameH * 0.7, px + 2.1 * sc, py - 1.5 * sc);
+    c.closePath();
+    c.fill();
+
+    c.fillStyle = "#FFFDF2";
+    c.beginPath();
+    c.ellipse(px, py - 3.6 * sc, 1.1 * sc, 2.4 * sc, 0, 0, Math.PI * 2);
+    c.fill();
+
+    // 6. Front translucent lotus petals cradling the candle light
+    const frontGrad = c.createLinearGradient(px, py - 8 * sc, px, py + 3 * sc);
+    frontGrad.addColorStop(0, pal.tip);
+    frontGrad.addColorStop(0.45, pal.inner);
+    frontGrad.addColorStop(1, pal.outer);
+    c.fillStyle = frontGrad;
+    [-7.2, -2.4, 2.4, 7.2].forEach((dx) => {
+      const tilt = dx * 0.05;
+      const ph = (Math.abs(dx) < 4 ? 7.8 : 6.8) * sc;
+      c.save();
+      c.translate(px + dx * sc, py + 2.2 * sc);
+      c.rotate(tilt);
+      c.beginPath();
+      c.moveTo(-3.4 * sc, 0);
+      c.quadraticCurveTo(-3.8 * sc, -ph * 0.6, 0, -ph);
+      c.quadraticCurveTo(3.8 * sc, -ph * 0.6, 3.4 * sc, 0);
+      c.closePath();
+      c.fill();
+      c.stroke();
+      c.restore();
+    });
+
+    // 7. Subtle tag for newly released lantern (first 14s) so the user immediately spots their lantern
+    if (ownerLabel && ageMs < 14000) {
+      const tagAlpha = ageMs > 11000 ? (14000 - ageMs) / 3000 : 1;
+      c.globalAlpha = alpha * Math.max(0, tagAlpha);
+      c.font = "700 8.5px 'Be Vietnam Pro', system-ui, sans-serif";
+      const txt = isUser ? "Hoa đăng · Bạn" : ownerLabel.slice(0, 12);
+      const tw = Math.max(46, c.measureText(txt).width + 10);
+      const tx = Math.max(tw * 0.5 + 4, Math.min(w - tw * 0.5 - 4, px));
+      const ty = py - 15 * sc;
+      roundRectPath(c, tx - tw / 2, ty - 7, tw, 14, 7);
+      c.fillStyle = isUser ? "rgba(176, 52, 34, 0.92)" : "rgba(24, 58, 44, 0.88)";
+      c.fill();
+      c.strokeStyle = "#FFE082";
+      c.lineWidth = 0.9;
+      c.stroke();
+      c.fillStyle = "#FFFDF7";
+      c.textAlign = "center";
+      c.textBaseline = "middle";
+      c.fillText(txt, tx, ty + 0.4);
+    }
+
+    c.restore();
+  }
+
+  function drawFloatingLotusLanterns(c, w, frame, tSec, nowMs) {
+    // Prune lanterns past their 3-minute (180s) lifetime
+    activePondLanterns = activePondLanterns.filter((it) => (it.expiresAt || 0) > nowMs);
+    if (!activePondLanterns.length) return;
+
+    const mapX = (nx) => frame.dx + nx * frame.dw;
+    const mapY = (ny) => frame.dy + ny * frame.dh;
+    const unitScale = frame.dw / 960;
+
+    const live = activePondLanterns
+      .map((it) => {
+        const ageMs = Math.max(0, nowMs - (it.spawnAt || nowMs));
+        const remMs = Math.max(0, (it.expiresAt || nowMs) - nowMs);
+        // Gentle water current drift across the lotus pond
+        const driftX = Math.sin(tSec * 0.34 + it.phase) * 0.016 + Math.min(0.035, ageMs * 0.00000022);
+        const driftY = Math.cos(tSec * 0.28 + it.phase * 1.3) * 0.009;
+        const nx = Math.max(0.08, Math.min(0.37, it.baseNx + driftX));
+        const ny = Math.max(0.61, Math.min(0.92, it.baseNy + driftY));
+        // Perspective scale: smaller near far pond edge (ny=0.61), larger in foreground (ny=0.92)
+        const pScale = (0.72 + ((ny - 0.61) / 0.31) * 0.72) * Math.max(0.85, unitScale * 1.9);
+        const fadeIn = Math.min(1, ageMs / 750);
+        const fadeOut = remMs < 8000 ? remMs / 8000 : 1;
+        return {
+          it,
+          nx,
+          ny,
+          pScale,
+          alpha: fadeIn * fadeOut,
+          ageMs
+        };
+      })
+      .sort((a, b) => a.ny - b.ny);
+
+    live.forEach((row) => {
+      drawSingleLotusLantern(
+        c,
+        w,
+        mapX(row.nx),
+        mapY(row.ny),
+        row.pScale,
+        row.alpha,
+        row.it.variant,
+        tSec,
+        row.ageMs,
+        row.it.ownerName,
+        row.it.isUser
+      );
+    });
+  }
+
+  function drawHangingTreePlaques(c, frame, tSec, nowMs) {
+    activeTreePlaques = activeTreePlaques.filter((p) => nowMs - p.spawnAt < 300000);
+    if (!activeTreePlaques.length) return;
+    const mapX = (nx) => frame.dx + nx * frame.dw;
+    const mapY = (ny) => frame.dy + ny * frame.dh;
+
+    activeTreePlaques.forEach((pl) => {
+      const px = mapX(pl.nx);
+      const py = mapY(pl.ny);
+      const sway = Math.sin(tSec * 2.1 + pl.phase) * 0.09;
+      c.save();
+      c.translate(px, py - 12);
+      c.rotate(sway);
+      // Red silk cord from tree branch
+      c.strokeStyle = "#C92A22";
+      c.lineWidth = 1.3;
+      c.beginPath();
+      c.moveTo(0, 0);
+      c.lineTo(0, 10);
+      c.stroke();
+      // Crimson-and-gold plaque body
+      roundRectPath(c, -6.5, 10, 13, 21, 2.2);
+      c.fillStyle = pl.isGold ? "#C88A1E" : "#A61E19";
+      c.fill();
+      c.strokeStyle = "#FFE082";
+      c.lineWidth = 1.1;
+      c.stroke();
+      // Tiny gold ornament dot + bottom silk tassel
+      c.fillStyle = "#FFE699";
+      c.beginPath();
+      c.arc(0, 16, 1.8, 0, Math.PI * 2);
+      c.fill();
+      c.strokeStyle = "#D4382C";
+      c.lineWidth = 1.4;
+      c.beginPath();
+      c.moveTo(0, 31);
+      c.lineTo(0, 37);
+      c.stroke();
+      c.restore();
+    });
+  }
+
   function renderSanctuaryFrame(tSec) {
     if (!canvasEl || !ctx || !containerEl) return;
     const nowMs = Date.now();
@@ -644,22 +956,26 @@ window.TempleScene3D = (function () {
     const mapX = (nx) => frame.dx + nx * frame.dw;
     const mapY = (ny) => frame.dy + ny * frame.dh;
 
-    const spaceIdx = Number(currentConfig && currentConfig.spaceIdx) || 0;
-    if (spaceIdx === 1) {
-      ctx.fillStyle = "rgba(88, 42, 12, 0.10)";
-      ctx.fillRect(0, 0, w, h);
-    } else if (spaceIdx === 2) {
-      ctx.fillStyle = "rgba(18, 52, 48, 0.10)";
-      ctx.fillRect(0, 0, w, h);
-    }
+    const spaceIdx = Math.max(0, Math.min(2, Number(currentConfig && currentConfig.spaceIdx) || 0));
+    const spSpec = getSpaceSpec();
 
-    // Ánh sáng vật lý lung linh trên đèn dầu & hào quang tượng Phật
+    // Ánh sáng vật lý lung linh tùy theo từng không gian kiến trúc
     ctx.save();
     ctx.globalCompositeOperation = "screen";
 
     if (cameraView === "wide") {
-      const haloBreath = 0.12 + Math.sin(tSec * 1.8) * 0.035;
-      drawSoftLightBloom(ctx, mapX(0.50), mapY(0.32), frame.dw * 0.12, haloBreath, 255, 208, 112);
+      if (spaceIdx === 0) {
+        const haloBreath = 0.12 + Math.sin(tSec * 1.8) * 0.035;
+        drawSoftLightBloom(ctx, mapX(0.50), mapY(0.32), frame.dw * 0.12, haloBreath, 255, 208, 112);
+      } else if (spaceIdx === 1) {
+        // Ánh nến & hoành phi sơn son thếp vàng ấm cúng trong Từ Đường
+        const shrineGlow = 0.10 + Math.sin(tSec * 1.6) * 0.025;
+        drawSoftLightBloom(ctx, mapX(0.50), mapY(0.36), frame.dw * 0.14, shrineGlow, 255, 192, 96);
+      } else {
+        // Nắng mai dịu nhẹ chiếu qua vườn trúc Vườn Thiền
+        const mistGlow = 0.09 + Math.sin(tSec * 1.2) * 0.02;
+        drawSoftLightBloom(ctx, mapX(0.50), mapY(0.34), frame.dw * 0.18, mistGlow, 255, 236, 178);
+      }
 
       [
         [0.405, 0.402],
@@ -667,7 +983,7 @@ window.TempleScene3D = (function () {
         [0.376, 0.422],
         [0.632, 0.422]
       ].forEach(([lx, ly], idx) => {
-        const flk = 0.18 + Math.sin(tSec * 6.2 + idx * 1.9) * 0.05;
+        const flk = 0.16 + Math.sin(tSec * 6.2 + idx * 1.9) * 0.045;
         drawSoftLightBloom(ctx, mapX(lx), mapY(ly), 20, flk, 255, 196, 92);
       });
 
@@ -678,8 +994,13 @@ window.TempleScene3D = (function () {
         drawSoftLightBloom(ctx, mapX(0.815), mapY(0.53), 55, muyuPulse * 0.45, 255, 208, 110);
       }
     } else if (cameraView === "cushions") {
-      const haloBreath = 0.15 + Math.sin(tSec * 1.7) * 0.04;
-      drawSoftLightBloom(ctx, mapX(0.505), mapY(0.245), frame.dw * 0.16, haloBreath, 255, 216, 128);
+      if (spaceIdx === 0) {
+        const haloBreath = 0.15 + Math.sin(tSec * 1.7) * 0.04;
+        drawSoftLightBloom(ctx, mapX(0.505), mapY(0.245), frame.dw * 0.16, haloBreath, 255, 216, 128);
+      } else if (spaceIdx === 1) {
+        const tabletGlow = 0.12 + Math.sin(tSec * 1.7) * 0.03;
+        drawSoftLightBloom(ctx, mapX(0.50), mapY(0.36), frame.dw * 0.15, tabletGlow, 255, 194, 96);
+      }
 
       [
         [0.392, 0.752],
@@ -687,27 +1008,10 @@ window.TempleScene3D = (function () {
         [0.378, 0.446],
         [0.634, 0.446]
       ].forEach(([lx, ly], idx) => {
-        const flk = 0.22 + Math.sin(tSec * 6.2 + idx * 2.1) * 0.06;
-        drawSoftLightBloom(ctx, mapX(lx), mapY(ly), 30, flk, 255, 202, 104);
+        const flk = 0.20 + Math.sin(tSec * 6.2 + idx * 2.1) * 0.05;
+        drawSoftLightBloom(ctx, mapX(lx), mapY(ly), 28, flk, 255, 202, 104);
       });
     } else {
-      [
-        [0.208, 0.892],
-        [0.300, 0.888],
-        [0.332, 0.795],
-        [0.405, 0.680]
-      ].forEach(([lx, ly], idx) => {
-        const flk = 0.24 + Math.sin(tSec * 4.8 + idx * 1.7) * 0.07;
-        drawSoftLightBloom(ctx, mapX(lx), mapY(ly), 26, flk, 255, 190, 110);
-      });
-
-      extraPondLights.forEach((pl, idx) => {
-        const driftX = pl.nx + Math.sin(tSec * 0.45 + pl.phase) * 0.018;
-        const driftY = pl.ny + Math.cos(tSec * 0.38 + pl.phase) * 0.012;
-        const glowA = 0.26 + Math.sin(tSec * 3.6 + idx) * 0.07;
-        drawSoftLightBloom(ctx, mapX(driftX), mapY(driftY), 18, glowA, 255, 176, 125);
-      });
-
       extraTreeGlints.forEach((tg) => {
         const glintA = 0.14 + Math.max(0, Math.sin(tSec * 2.4 + tg.phase)) * 0.18;
         drawSoftLightBloom(ctx, mapX(tg.nx), mapY(tg.ny), 16, glintA, 255, 210, 115);
@@ -737,48 +1041,66 @@ window.TempleScene3D = (function () {
     const muyuTotal = Number(currentConfig && currentConfig.muyuCount) || 0;
     const shownLanterns = Number(currentConfig && currentConfig.lanternCount) || 18;
     const shownWishes = Number(currentConfig && currentConfig.totalWishCount) || 16;
+    const fortuneCoolSec = Math.max(0, Number(currentConfig && currentConfig.fortuneCooldownSec) || 0);
+    const wishCoolSec = Math.max(0, Number(currentConfig && currentConfig.wishCooldownSec) || 0);
+    const fortunePillText = fortuneCoolSec > 0 ? `${spSpec.fortuneLabel} (${fortuneCoolSec}s)` : spSpec.fortuneLabel;
 
     if (cameraView === "wide") {
-      // Vẽ 20 Chiếu Bồ Đoàn và các bác Phật tử ngồi tĩnh tọa + bước đi hành lễ
+      // Vẽ 20 Chiếu Bồ Đoàn và các bác ngồi tĩnh tọa + bước đi hành lễ
       drawTwentyCushionsAndDevotees(ctx, w, h, frame, tSec, nowMs);
 
-      // Nhãn dẫn hướng pháp khí gọn gàng, kẹp biên chống cắt chữ
-      drawClampedHotspotPill(ctx, w, mapX(0.155), mapY(0.32), "Chuông đồng", bellResonance);
-      drawClampedHotspotPill(ctx, w, mapX(0.502), mapY(0.46), "Dâng hương", incenseBoost);
+      // Nhãn dẫn hướng pháp khí theo từng không gian (kẹp biên chống cắt chữ)
+      drawClampedHotspotPill(ctx, w, mapX(0.155), mapY(0.32), spSpec.bellLabel, bellResonance);
+      drawClampedHotspotPill(ctx, w, mapX(0.502), mapY(0.46), spSpec.incenseLabel, incenseBoost);
+      drawClampedHotspotPill(ctx, w, mapX(0.706), mapY(0.53), fortunePillText, fortunePulse);
       drawClampedHotspotPill(
         ctx,
         w,
-        mapX(0.825),
-        mapY(0.44),
-        muyuTotal > 0 ? `Gõ mõ (${muyuTotal})` : "Gõ mõ +1",
+        mapX(0.845),
+        mapY(0.43),
+        muyuTotal > 0 ? `${spSpec.muyuLabel} (${muyuTotal})` : `${spSpec.muyuLabel} +1`,
         muyuPulse
       );
 
-      // Vùng chạm pháp khí trên ảnh Đại Sảnh (đặt sau chiếu để ưu tiên chạm pháp khí phía trên)
+      // Vùng chạm pháp khí trên ảnh Đại Sảnh
       hitZones.push({ kind: "bell", x: mapX(0.06), y: mapY(0.28), w: frame.dw * 0.18, h: frame.dh * 0.32 });
       hitZones.push({ kind: "incense", x: mapX(0.41), y: mapY(0.43), w: frame.dw * 0.18, h: frame.dh * 0.20 });
-      hitZones.push({ kind: "peace_card", x: mapX(0.69), y: mapY(0.50), w: frame.dw * 0.06, h: frame.dh * 0.14 });
-      hitZones.push({ kind: "muyu", x: mapX(0.75), y: mapY(0.44), w: frame.dw * 0.16, h: frame.dh * 0.19 });
+      hitZones.push({ kind: "peace_card", x: mapX(0.66), y: mapY(0.48), w: frame.dw * 0.09, h: frame.dh * 0.16 });
+      hitZones.push({ kind: "muyu", x: mapX(0.76), y: mapY(0.44), w: frame.dw * 0.16, h: frame.dh * 0.19 });
     } else if (cameraView === "cushions") {
-      drawClampedHotspotPill(ctx, w, mapX(0.145), mapY(0.74), "Thỉnh chuông", bellResonance);
-      drawClampedHotspotPill(ctx, w, mapX(0.505), mapY(0.86), "Dâng hương", incenseBoost);
-      drawClampedHotspotPill(ctx, w, mapX(0.722), mapY(0.68), "Ống xăm", fortunePulse);
+      drawClampedHotspotPill(ctx, w, mapX(0.145), mapY(0.74), spSpec.bellLabel, bellResonance);
+      drawClampedHotspotPill(ctx, w, mapX(0.505), mapY(0.86), spSpec.incenseLabel, incenseBoost);
+      drawClampedHotspotPill(ctx, w, mapX(0.722), mapY(0.68), fortunePillText, fortunePulse);
       drawClampedHotspotPill(
         ctx,
         w,
         mapX(0.865),
         mapY(0.57),
-        muyuTotal > 0 ? `Gõ mõ (${muyuTotal})` : "Gõ mõ +1",
+        muyuTotal > 0 ? `${spSpec.muyuLabel} (${muyuTotal})` : `${spSpec.muyuLabel} +1`,
         muyuPulse
       );
 
       hitZones.push({ kind: "bell", x: mapX(0.04), y: mapY(0.34), w: frame.dw * 0.22, h: frame.dh * 0.52 });
       hitZones.push({ kind: "incense", x: mapX(0.41), y: mapY(0.62), w: frame.dw * 0.19, h: frame.dh * 0.30 });
-      hitZones.push({ kind: "peace_card", x: mapX(0.67), y: mapY(0.68), w: frame.dw * 0.10, h: frame.dh * 0.26 });
+      hitZones.push({ kind: "peace_card", x: mapX(0.66), y: mapY(0.64), w: frame.dw * 0.11, h: frame.dh * 0.28 });
       hitZones.push({ kind: "muyu", x: mapX(0.77), y: mapY(0.56), w: frame.dw * 0.21, h: frame.dh * 0.34 });
     } else {
-      drawClampedHotspotPill(ctx, w, mapX(0.24), mapY(0.84), `Hồ Sen (${shownLanterns} đèn)`, 0);
-      drawClampedHotspotPill(ctx, w, mapX(0.79), mapY(0.54), `Cây Thẻ Đỏ (${shownWishes})`, 0);
+      // Vẽ Đèn Hoa Đăng trôi thực tế trên mặt hồ (tồn tại 3 phút) & Thẻ Đỏ đung đưa trên cành cây
+      drawFloatingLotusLanterns(ctx, w, frame, tSec, nowMs);
+      drawHangingTreePlaques(ctx, frame, tSec, nowMs);
+
+      const livePondCount = activePondLanterns.length;
+      const pondPillText =
+        livePondCount > 0
+          ? `${spSpec.pondLabel} (${livePondCount} đèn đang trôi)`
+          : `${spSpec.pondLabel} · Chạm thả đèn`;
+      const treePillText =
+        wishCoolSec > 0
+          ? `${spSpec.treeLabel} (${wishCoolSec}s)`
+          : `${spSpec.treeLabel} (${shownWishes})`;
+
+      drawClampedHotspotPill(ctx, w, mapX(0.24), mapY(0.87), pondPillText, livePondCount > 0 ? 0.35 : 0);
+      drawClampedHotspotPill(ctx, w, mapX(0.79), mapY(0.54), treePillText, wishPulse);
 
       hitZones.push({ kind: "pond_lantern", x: mapX(0.02), y: mapY(0.54), w: frame.dw * 0.45, h: frame.dh * 0.42 });
       hitZones.push({ kind: "wish_plaque", x: mapX(0.60), y: mapY(0.22), w: frame.dw * 0.38, h: frame.dh * 0.58 });
@@ -803,7 +1125,7 @@ window.TempleScene3D = (function () {
       ctx.restore();
     }
 
-    // Noti nổi nhỏ gọn bay lên ngay tại pháp khí rồi tự tan (không chiếm diện tích giao diện)
+    // Noti nổi nhỏ gọn bay lên ngay tại pháp khí rồi tự tan
     for (let i = floatingPopups.length - 1; i >= 0; i--) {
       const fp = floatingPopups[i];
       fp.ny -= fp.vy;
@@ -833,10 +1155,10 @@ window.TempleScene3D = (function () {
       ctx.restore();
     }
 
-    // Hai huy hiệu mỏng gọn ở góc trên (không còn dải chữ đáy che mất chiếu hàng cuối)
+    // Hai huy hiệu mỏng gọn ở góc trên theo đúng tên không gian
     ctx.save();
     const seatedCount = seatActors.filter((a) => Boolean(a.occupant)).length;
-    const leftText = `Đạo tràng · ${seatedCount}/20 chiếu`;
+    const leftText = `${spSpec.hallBadge} · ${seatedCount}/20 chiếu`;
     ctx.font = "600 10px 'Be Vietnam Pro', system-ui, sans-serif";
     const lw = Math.max(138, ctx.measureText(leftText).width + 26);
     roundRectPath(ctx, 8, 8, lw, 22, 11);
@@ -862,7 +1184,7 @@ window.TempleScene3D = (function () {
       (Number(currentConfig && currentConfig.incenseCount) || 14) +
       shownLanterns +
       shownWishes;
-    const meritLabel = `Tâm An: ${totalMerit}`;
+    const meritLabel = `${spSpec.meritBadge}: ${totalMerit}`;
     const mw = Math.max(82, ctx.measureText(meritLabel).width + 18);
     roundRectPath(ctx, w - mw - 8, 8, mw, 22, 11);
     ctx.fillStyle = "rgba(44, 22, 10, 0.84)";
@@ -881,6 +1203,7 @@ window.TempleScene3D = (function () {
     if (muyuPulse > 0.01) muyuPulse = Math.max(0, muyuPulse - 0.08);
     if (incenseBoost > 0.01) incenseBoost = Math.max(0, incenseBoost - 0.03);
     if (fortunePulse > 0.01) fortunePulse = Math.max(0, fortunePulse - 0.06);
+    if (wishPulse > 0.01) wishPulse = Math.max(0, wishPulse - 0.06);
   }
 
   function c_fill(c) {
@@ -1008,6 +1331,7 @@ window.TempleScene3D = (function () {
       };
 
       initAtmosphericParticles();
+      syncActiveLanternsFromConfig(currentConfig);
       // Khôi phục hành trình đi bộ nếu cùng vai trò trên đúng chiếu
       prevWalkSnapshot.forEach((snap) => {
         if (snap.walkTask) {
@@ -1031,11 +1355,17 @@ window.TempleScene3D = (function () {
   function updateConfig(partialCfg) {
     if (!partialCfg) return;
     currentConfig = Object.assign({}, currentConfig || {}, partialCfg);
+    if (typeof partialCfg.spaceIdx === "number") {
+      ensureImagesLoaded();
+    }
     if (typeof partialCfg.cameraView === "string") {
       cameraView = partialCfg.cameraView;
     }
     if (typeof partialCfg.autoMuyuActive === "boolean") {
       autoMuyuPinned = partialCfg.autoMuyuActive;
+    }
+    if (Array.isArray(partialCfg.activeLanterns)) {
+      syncActiveLanternsFromConfig(currentConfig);
     }
     rebuildTwentySeatActors();
   }
@@ -1171,17 +1501,31 @@ window.TempleScene3D = (function () {
     if (currentConfig) {
       currentConfig.totalWishCount = (Number(currentConfig.totalWishCount) || 16) + 1;
     }
+    const slotIdx = activeTreePlaques.length;
+    const pNx = 0.67 + ((slotIdx * 0.067) % 0.24);
+    const pNy = 0.36 + ((slotIdx * 0.043) % 0.14);
+    activeTreePlaques.push({
+      id: `plq_${Date.now()}_${slotIdx}`,
+      isGold: Boolean(isVeteranGold),
+      nx: pNx,
+      ny: pNy,
+      phase: slotIdx * 1.25,
+      spawnAt: Date.now()
+    });
+    if (activeTreePlaques.length > 14) activeTreePlaques.shift();
+
     extraTreeGlints.push({
-      nx: 0.66 + (extraTreeGlints.length % 5) * 0.06,
-      ny: 0.36 + (extraTreeGlints.length % 3) * 0.05,
+      nx: pNx,
+      ny: pNy,
       phase: extraTreeGlints.length * 1.1
     });
     if (extraTreeGlints.length > 9) extraTreeGlints.shift();
 
     const actorIdx = findActorIndexBySpeaker(speakerName, preferredCushionIdx);
     const fireFx = () => {
-      const rx = cameraView === "courtyard" ? 0.78 : 0.502;
-      const ry = cameraView === "courtyard" ? 0.44 : 0.50;
+      wishPulse = 1.0;
+      const rx = cameraView === "courtyard" ? pNx : 0.502;
+      const ry = cameraView === "courtyard" ? pNy : 0.50;
       pushSoundRipple(rx, ry, "rgba(255, 196, 120, 0.9)", 70);
       pushFloatingToast(rx, ry - 0.08, isVeteranGold ? "+1 Thẻ Vàng Cầu An" : "+1 Thẻ Đỏ Cầu An");
     };
@@ -1192,29 +1536,63 @@ window.TempleScene3D = (function () {
     }
   }
 
-  function spawnPondLantern(speakerName, preferredCushionIdx) {
+  function spawnPondLantern(speakerName, preferredCushionIdx, lanternMeta) {
     if (currentConfig) {
       currentConfig.lanternCount = (Number(currentConfig.lanternCount) || 18) + 1;
     }
-    extraPondLights.push({
-      nx: 0.15 + (extraPondLights.length % 4) * 0.06,
-      ny: 0.64 + (extraPondLights.length % 3) * 0.07,
-      phase: extraPondLights.length * 1.3
-    });
-    if (extraPondLights.length > 8) extraPondLights.shift();
+    const now = Date.now();
+    const idx = activePondLanterns.length;
+    const meta = lanternMeta || {};
+    const myClean = String((currentConfig && currentConfig.userName) || "").split("·")[0].trim().toLowerCase();
+    const spkClean = String(speakerName || "").split("·")[0].trim().toLowerCase();
+    const isUser = typeof meta.isUser === "boolean" ? meta.isUser : Boolean(myClean && spkClean === myClean);
+
+    // Distribute floating lotus lanterns harmoniously across the pond water surface
+    const pondSlots = [
+      [0.24, 0.80],
+      [0.17, 0.74],
+      [0.30, 0.73],
+      [0.14, 0.84],
+      [0.27, 0.66],
+      [0.21, 0.88],
+      [0.19, 0.65],
+      [0.32, 0.81]
+    ];
+    const picked = pondSlots[idx % pondSlots.length];
+    const jitterX = (((idx * 29) % 7) - 3) * 0.008;
+    const jitterY = (((idx * 17) % 5) - 2) * 0.008;
+    const baseNx = typeof meta.baseNx === "number" ? meta.baseNx : Math.max(0.10, Math.min(0.35, picked[0] + jitterX));
+    const baseNy = typeof meta.baseNy === "number" ? meta.baseNy : Math.max(0.63, Math.min(0.90, picked[1] + jitterY));
+    const variants = ["pink", "gold", "coral"];
+    const entry = {
+      id: meta.id || `ltn_${now}_${idx}`,
+      ownerName: speakerName || "Bác",
+      isUser,
+      spawnAt: meta.spawnAt || now,
+      expiresAt: meta.expiresAt || now + LANTERN_TTL_MS,
+      baseNx,
+      baseNy,
+      phase: typeof meta.phase === "number" ? meta.phase : idx * 1.45,
+      variant: meta.variant || variants[idx % variants.length]
+    };
+    activePondLanterns = activePondLanterns.filter((it) => it.id !== entry.id && (it.expiresAt || 0) > now);
+    activePondLanterns.push(entry);
+    if (activePondLanterns.length > 16) activePondLanterns.shift();
 
     const actorIdx = findActorIndexBySpeaker(speakerName, preferredCushionIdx);
     const fireFx = () => {
-      const rx = cameraView === "courtyard" ? 0.25 : 0.502;
-      const ry = cameraView === "courtyard" ? 0.76 : 0.50;
+      const rx = cameraView === "courtyard" ? baseNx : 0.502;
+      const ry = cameraView === "courtyard" ? baseNy : 0.50;
       pushSoundRipple(rx, ry, "rgba(180, 245, 232, 0.88)", 72);
-      pushFloatingToast(rx, ry - 0.10, "+1 Hoa Đăng Bình An");
+      floatingPopups = [];
+      pushFloatingToast(0.24, 0.56, "+1 Hoa Đăng (sáng 3 phút)");
     };
     if (cameraView === "wide") {
       startActorRitualWalk(actorIdx, "incense", fireFx, false);
     } else {
       fireFx();
     }
+    return entry;
   }
 
   function dispose() {

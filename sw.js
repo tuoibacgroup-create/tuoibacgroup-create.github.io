@@ -1,4 +1,4 @@
-const CACHE_VERSION = "tuoibac-pwa-v24";
+const CACHE_VERSION = "tuoibac-pwa-v27";
 const CORE_ASSETS = [
   "./",
   "./index.html",
@@ -18,10 +18,35 @@ const CORE_ASSETS = [
   "./assets/temple-wide.jpg",
   "./assets/temple-altar.jpg",
   "./assets/temple-courtyard.jpg",
+  "./assets/ancestral-wide.jpg",
+  "./assets/ancestral-altar.jpg",
+  "./assets/ancestral-courtyard.jpg",
+  "./assets/zengarden-wide.jpg",
+  "./assets/zengarden-altar.jpg",
+  "./assets/zengarden-courtyard.jpg",
   "./assets/temple-sprites.webp",
   "./assets/tearoom-table-25d.jpg",
   "./assets/tearoom-lobby-25d.jpg",
-  "./assets/tearoom-sprites.webp"
+  "./assets/tearoom-sprites.webp",
+  "./assets/tearoom-items.webp",
+  "./assets/tearoom-items-extra.webp",
+  "./assets/tearoom-accessories.webp",
+  "./assets/tearoom-accessories-extra.webp",
+  "./assets/audio/chao-buoi-sang.mp3",
+  "./assets/audio/diem-danh-xong.mp3",
+  "./assets/audio/chao-ban-tra.mp3",
+  "./assets/audio/dan-chanh-dien.mp3",
+  "./assets/audio/dan-nha-tho-ho.mp3",
+  "./assets/audio/dan-vuon-thien.mp3",
+  "./assets/audio/dan-co-tuong.mp3",
+  "./assets/audio/dan-o-an-quan.mp3",
+  "./assets/audio/nhac-nghi-mat.mp3",
+  "./assets/audio/que-01.mp3",
+  "./assets/audio/que-02.mp3",
+  "./assets/audio/que-03.mp3",
+  "./assets/audio/que-04.mp3",
+  "./assets/audio/que-05.mp3",
+  "./assets/audio/que-06.mp3"
 ];
 
 self.addEventListener("install", (event) => {

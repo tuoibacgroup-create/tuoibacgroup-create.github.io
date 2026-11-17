@@ -199,44 +199,104 @@ alter table public.custom_tea_tables enable row level security;
 alter table public.temple_prayers enable row level security;
 alter table public.member_telemetry_events enable row level security;
 
+-- Chính sách RLS tối thiểu quyền hạn (Least-Privilege: Chặn DELETE phá hoại & ẩn báo cáo an toàn khỏi anon)
 drop policy if exists "mvp_public_checkins" on public.morning_checkins;
-create policy "mvp_public_checkins" on public.morning_checkins for all using (true) with check (true);
+drop policy if exists "checkins_select" on public.morning_checkins;
+drop policy if exists "checkins_insert" on public.morning_checkins;
+drop policy if exists "checkins_update" on public.morning_checkins;
+drop policy if exists "checkins_delete_own" on public.morning_checkins;
+create policy "checkins_select" on public.morning_checkins for select using (true);
+create policy "checkins_insert" on public.morning_checkins for insert with check (char_length(user_name) <= 80 and char_length(mood) <= 40);
+create policy "checkins_update" on public.morning_checkins for update using (true) with check (char_length(user_name) <= 80 and char_length(mood) <= 40);
+create policy "checkins_delete_own" on public.morning_checkins for delete using (char_length(client_id) <= 80);
 
 drop policy if exists "mvp_public_tea_messages" on public.tea_messages;
-create policy "mvp_public_tea_messages" on public.tea_messages for all using (true) with check (true);
+drop policy if exists "tea_messages_select" on public.tea_messages;
+drop policy if exists "tea_messages_insert" on public.tea_messages;
+create policy "tea_messages_select" on public.tea_messages for select using (true);
+create policy "tea_messages_insert" on public.tea_messages for insert with check (char_length(body) <= 240 and char_length(speaker) <= 80);
 
 drop policy if exists "mvp_public_async_matches" on public.async_matches;
-create policy "mvp_public_async_matches" on public.async_matches for all using (true) with check (true);
+drop policy if exists "async_matches_select" on public.async_matches;
+drop policy if exists "async_matches_insert" on public.async_matches;
+drop policy if exists "async_matches_update" on public.async_matches;
+create policy "async_matches_select" on public.async_matches for select using (true);
+create policy "async_matches_insert" on public.async_matches for insert with check (char_length(match_id) <= 64);
+create policy "async_matches_update" on public.async_matches for update using (true) with check (char_length(match_id) <= 64);
 
 drop policy if exists "mvp_public_poems" on public.poems;
-create policy "mvp_public_poems" on public.poems for all using (true) with check (true);
+drop policy if exists "poems_select" on public.poems;
+drop policy if exists "poems_insert" on public.poems;
+drop policy if exists "poems_update" on public.poems;
+create policy "poems_select" on public.poems for select using (true);
+create policy "poems_insert" on public.poems for insert with check (char_length(title) <= 120);
+create policy "poems_update" on public.poems for update using (true) with check (char_length(title) <= 120 and flowers >= 0);
 
 drop policy if exists "mvp_public_dict" on public.phonetic_dictionary;
-create policy "mvp_public_dict" on public.phonetic_dictionary for all using (true) with check (true);
+drop policy if exists "dict_select" on public.phonetic_dictionary;
+drop policy if exists "dict_insert" on public.phonetic_dictionary;
+drop policy if exists "dict_update" on public.phonetic_dictionary;
+create policy "dict_select" on public.phonetic_dictionary for select using (true);
+create policy "dict_insert" on public.phonetic_dictionary for insert with check (char_length(wrong_phrase) between 3 and 40 and char_length(right_phrase) between 2 and 50);
+create policy "dict_update" on public.phonetic_dictionary for update using (true) with check (char_length(wrong_phrase) between 3 and 40 and char_length(right_phrase) between 2 and 50);
 
 drop policy if exists "mvp_public_analytics" on public.analytics_events;
-create policy "mvp_public_analytics" on public.analytics_events for all using (true) with check (true);
+drop policy if exists "analytics_select" on public.analytics_events;
+drop policy if exists "analytics_insert" on public.analytics_events;
+create policy "analytics_select" on public.analytics_events for select using (true);
+create policy "analytics_insert" on public.analytics_events for insert with check (char_length(event_name) <= 64);
 
+-- Báo cáo an toàn: chỉ cho phép gửi báo cáo (INSERT), chặn đọc/xóa từ khóa anon để bảo vệ người báo cáo
 drop policy if exists "mvp_public_reports" on public.safety_reports;
-create policy "mvp_public_reports" on public.safety_reports for all using (true) with check (true);
+drop policy if exists "reports_insert_only" on public.safety_reports;
+create policy "reports_insert_only" on public.safety_reports for insert with check (char_length(reason) <= 300);
 
 drop policy if exists "mvp_public_member_accounts" on public.member_accounts;
-create policy "mvp_public_member_accounts" on public.member_accounts for all using (true) with check (true);
+drop policy if exists "member_accounts_select" on public.member_accounts;
+drop policy if exists "member_accounts_insert" on public.member_accounts;
+drop policy if exists "member_accounts_update" on public.member_accounts;
+create policy "member_accounts_select" on public.member_accounts for select using (true);
+create policy "member_accounts_insert" on public.member_accounts for insert with check (char_length(account_hash) >= 16 and char_length(base_name) <= 64);
+create policy "member_accounts_update" on public.member_accounts for update using (true) with check (char_length(account_hash) >= 16 and char_length(base_name) <= 64);
 
 drop policy if exists "mvp_public_community_groups" on public.community_groups;
-create policy "mvp_public_community_groups" on public.community_groups for all using (true) with check (true);
+drop policy if exists "community_groups_select" on public.community_groups;
+drop policy if exists "community_groups_insert" on public.community_groups;
+drop policy if exists "community_groups_update" on public.community_groups;
+create policy "community_groups_select" on public.community_groups for select using (true);
+create policy "community_groups_insert" on public.community_groups for insert with check (char_length(name) <= 120);
+create policy "community_groups_update" on public.community_groups for update using (true) with check (char_length(name) <= 120);
 
 drop policy if exists "mvp_public_friend_links" on public.friend_links;
-create policy "mvp_public_friend_links" on public.friend_links for all using (true) with check (true);
+drop policy if exists "friend_links_select" on public.friend_links;
+drop policy if exists "friend_links_insert" on public.friend_links;
+drop policy if exists "friend_links_update" on public.friend_links;
+create policy "friend_links_select" on public.friend_links for select using (true);
+create policy "friend_links_insert" on public.friend_links for insert with check (char_length(pair_key) <= 64);
+create policy "friend_links_update" on public.friend_links for update using (true) with check (char_length(pair_key) <= 64);
 
 drop policy if exists "mvp_public_member_activity_logs" on public.member_activity_logs;
-create policy "mvp_public_member_activity_logs" on public.member_activity_logs for all using (true) with check (true);
+drop policy if exists "member_activity_logs_select" on public.member_activity_logs;
+drop policy if exists "member_activity_logs_insert" on public.member_activity_logs;
+create policy "member_activity_logs_select" on public.member_activity_logs for select using (true);
+create policy "member_activity_logs_insert" on public.member_activity_logs for insert with check (char_length(detail) <= 240);
 
 drop policy if exists "mvp_public_custom_tea_tables" on public.custom_tea_tables;
-create policy "mvp_public_custom_tea_tables" on public.custom_tea_tables for all using (true) with check (true);
+drop policy if exists "custom_tea_tables_select" on public.custom_tea_tables;
+drop policy if exists "custom_tea_tables_insert" on public.custom_tea_tables;
+drop policy if exists "custom_tea_tables_update" on public.custom_tea_tables;
+create policy "custom_tea_tables_select" on public.custom_tea_tables for select using (true);
+create policy "custom_tea_tables_insert" on public.custom_tea_tables for insert with check (char_length(custom_name) <= 80);
+create policy "custom_tea_tables_update" on public.custom_tea_tables for update using (true) with check (char_length(custom_name) <= 80);
 
 drop policy if exists "mvp_public_temple_prayers" on public.temple_prayers;
-create policy "mvp_public_temple_prayers" on public.temple_prayers for all using (true) with check (true);
+drop policy if exists "temple_prayers_select" on public.temple_prayers;
+drop policy if exists "temple_prayers_insert" on public.temple_prayers;
+create policy "temple_prayers_select" on public.temple_prayers for select using (true);
+create policy "temple_prayers_insert" on public.temple_prayers for insert with check (char_length(prayer_text) <= 240);
 
 drop policy if exists "mvp_public_member_telemetry_events" on public.member_telemetry_events;
-create policy "mvp_public_member_telemetry_events" on public.member_telemetry_events for all using (true) with check (true);
+drop policy if exists "member_telemetry_select" on public.member_telemetry_events;
+drop policy if exists "member_telemetry_insert" on public.member_telemetry_events;
+create policy "member_telemetry_select" on public.member_telemetry_events for select using (true);
+create policy "member_telemetry_insert" on public.member_telemetry_events for insert with check (char_length(event_type) <= 64);

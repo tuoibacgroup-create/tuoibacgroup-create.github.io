@@ -93,12 +93,22 @@
         unlockedTitleFrames: ["none", "tri-am"],
         unlockedTitles: ["Thành viên Chăm Điểm Danh"],
         daysHistory: [true, true, true, true, true, true, false],
+        lastActiveDate: "",
+        dailyQuests: {
+          dateKey: "",
+          morningDone: false,
+          socialDone: false,
+          mindDone: false,
+          chestClaimed: false
+        },
         habits: ["uong-tra", "doc-bao", "co-tuong"],
         gameStats: {
           oaqWins: 0,
           oaqLosses: 0,
           xiangqiWins: 0,
           xiangqiLosses: 0,
+          proverbWins: 0,
+          cupTitles: 0,
           winStreak: 0,
           bestWinStreak: 0
         }
@@ -108,7 +118,9 @@
         preferredRender: "2.5d",
         autoFallbacked: false,
         homeMode: "full",
-        pwaBannerDismissed: false
+        pwaBannerDismissed: false,
+        voiceMode: "auto",
+        uatTag: ""
       },
       privacy: {
         consentFamilyCheckin: true,
@@ -153,9 +165,12 @@
         liveItems: []
       },
       quiz: {
+        packIdx: 0,
         idx: 0,
         score: 0,
         selectedOpt: null,
+        hiddenOpts: [],
+        hintUsed: false,
         finished: false,
         timeLeft: 25
       },
@@ -166,6 +181,7 @@
         turn: "host",
         selectedCell: null,
         mode: "ai",
+        aiLevel: "club",
         matchId: "",
         myRole: "host",
         hostName: "",
@@ -173,7 +189,15 @@
         statusText: "Chọn một ô của bác (hàng dưới) để rải quân.",
         zaloInviteUrl: "",
         inProgress: false,
-        forfeitedPendingReload: false
+        forfeitedPendingReload: false,
+        proverbGame: {
+          deck: [],
+          flipped: [],
+          matchedIds: [],
+          moves: 0,
+          roundSeed: 0,
+          lastMatchedPair: null
+        }
       },
       xiangqi: {
         mode: "ai",
@@ -196,7 +220,15 @@
         inviteUrl: "",
         status: "Bàn chuẩn 9×10 (32 quân) — Bác cầm quân Đỏ đi tiên: chạm quân Đỏ rồi chạm chấm xanh để đi.",
         inProgress: false,
-        forfeitedPendingReload: false
+        forfeitedPendingReload: false,
+        cup: {
+          active: false,
+          round: 0,
+          rivalId: "rv-1",
+          unitName: "",
+          championCount: 0,
+          justWonTitle: false
+        }
       },
       poems: D.POEMS.map((p) => Object.assign({}, p)),
       watch: {
@@ -217,6 +249,9 @@
         lanternsReleased: 18,
         wishPlaquesCount: 16,
         peaceCardIdx: 0,
+        lastPeaceCardAt: 0,
+        lastWishCardAt: 0,
+        activeLanterns: [],
         prayers: [
           {
             id: "seed-p1",
@@ -240,11 +275,90 @@
       customTables: {},
       health: {
         medMorning: false,
-        bpReadings: ["Sáng nay: 128/80 mmHg", "Hôm qua: 130/82 mmHg"],
+        medEvening: false,
+        waterCups: 3,
+        emergencyContactName: "Anh Hùng (Con trai)",
+        emergencyContactPhone: "0900000000",
+        bpReadings: ["Sáng nay: 128/80 mmHg (Ổn định)", "Hôm qua: 130/82 mmHg (Ổn định)"],
         lastAnswer: D.HEALTH_QA[0].answer,
         emergencyMode: false
       }
     };
+  }
+
+  function getLocalDateKey(d) {
+    const dt = d || new Date();
+    const y = dt.getFullYear();
+    const m = String(dt.getMonth() + 1).padStart(2, "0");
+    const day = String(dt.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  }
+
+  function ensureDailyRollover(targetState) {
+    const st = targetState;
+    if (!st || !st.user) return false;
+    const todayKey = getLocalDateKey(new Date());
+    if (!st.user.dailyQuests || typeof st.user.dailyQuests !== "object") {
+      st.user.dailyQuests = {
+        dateKey: todayKey,
+        morningDone: Boolean(st.user.checkedInToday),
+        socialDone: false,
+        mindDone: false,
+        chestClaimed: false
+      };
+    }
+    if (!st.user.lastActiveDate) {
+      st.user.lastActiveDate = todayKey;
+      st.user.dailyQuests.dateKey = todayKey;
+      if (st.user.checkedInToday) st.user.dailyQuests.morningDone = true;
+      return false;
+    }
+    if (st.user.lastActiveDate === todayKey) {
+      if (st.user.dailyQuests.dateKey !== todayKey) {
+        st.user.dailyQuests.dateKey = todayKey;
+      }
+      return false;
+    }
+    // Parse day difference safely in local midnight coordinates
+    const prevParts = String(st.user.lastActiveDate).split("-").map(Number);
+    const prevMid =
+      prevParts.length === 3
+        ? new Date(prevParts[0], prevParts[1] - 1, prevParts[2]).getTime()
+        : Date.now() - 86400000;
+    const nowNow = new Date();
+    const curMid = new Date(nowNow.getFullYear(), nowNow.getMonth(), nowNow.getDate()).getTime();
+    const gapDays = Math.max(1, Math.round((curMid - prevMid) / 86400000));
+
+    const hist = Array.isArray(st.user.daysHistory) && st.user.daysHistory.length === 7
+      ? st.user.daysHistory.slice()
+      : [true, true, true, true, true, true, false];
+    hist[6] = Boolean(st.user.checkedInToday);
+    const shifts = Math.min(7, gapDays);
+    for (let s = 0; s < shifts; s++) {
+      hist.shift();
+      hist.push(false);
+    }
+    st.user.daysHistory = hist;
+
+    if (gapDays > 2 && !st.user.checkedInToday) {
+      st.user.streakDays = Math.max(1, (Number(st.user.streakDays) || 1) - 1);
+    }
+    st.user.checkedInToday = false;
+    st.user.flowersLeft = 3;
+    if (st.health) {
+      st.health.medMorning = false;
+      st.health.medEvening = false;
+      st.health.waterCups = 0;
+    }
+    st.user.dailyQuests = {
+      dateKey: todayKey,
+      morningDone: false,
+      socialDone: false,
+      mindDone: false,
+      chestClaimed: false
+    };
+    st.user.lastActiveDate = todayKey;
+    return true;
   }
 
   let pendingReloadForfeitNotice = "";
@@ -256,6 +370,11 @@
   let teaQueueTimerId = null;
   let cooldownTickId = null;
   let autoMuyuTimerId = null;
+  let zenCooldownTimerId = null;
+  let watchAnimId = null;
+  let proverbFlipTimerId = null;
+  let morningRssFetchedOnce = false;
+  let pendingAdminAutoPrompt = false;
   let oaqAnimTimerId = null;
   let oaqAnimState = null;
   let pendingQueue = [];
@@ -328,6 +447,7 @@
         analytics: Object.assign({}, def.analytics, parsed.analytics || {}),
         teaRoom: Object.assign({}, def.teaRoom, parsed.teaRoom || {}),
         newspaper: Object.assign({}, def.newspaper, parsed.newspaper || {}),
+        quiz: Object.assign({}, def.quiz, parsed.quiz || {}),
         oaq: Object.assign({}, def.oaq, parsed.oaq || {}),
         xiangqi: Object.assign({}, def.xiangqi, parsed.xiangqi || {}),
         watch: Object.assign({}, def.watch, parsed.watch || {}),
@@ -337,6 +457,28 @@
       });
       merged.settings.preferredRender = "2.5d";
       merged.settings.autoFallbacked = false;
+      merged.settings.voiceMode = merged.settings.voiceMode === "recorded" ? "recorded" : "auto";
+      merged.settings.uatTag = String(merged.settings.uatTag || "").slice(0, 24);
+      merged.newspaper.adminOpen = false;
+      if (!Array.isArray(merged.quiz.hiddenOpts)) merged.quiz.hiddenOpts = [];
+      merged.quiz.packIdx = Math.max(0, Math.min(4, Number(merged.quiz.packIdx) || 0));
+      merged.oaq.aiLevel = merged.oaq.aiLevel === "easy" ? "easy" : "club";
+      merged.oaq.proverbGame = Object.assign({}, def.oaq.proverbGame, (parsed.oaq && parsed.oaq.proverbGame) || {});
+      if (!Array.isArray(merged.oaq.proverbGame.deck)) merged.oaq.proverbGame.deck = [];
+      if (!Array.isArray(merged.oaq.proverbGame.flipped)) merged.oaq.proverbGame.flipped = [];
+      if (!Array.isArray(merged.oaq.proverbGame.matchedIds)) merged.oaq.proverbGame.matchedIds = [];
+      merged.xiangqi.cup = Object.assign({}, def.xiangqi.cup, (parsed.xiangqi && parsed.xiangqi.cup) || {});
+      merged.health.waterCups = Math.max(0, Math.min(12, Number(merged.health.waterCups) || 0));
+      if (!merged.health.emergencyContactName) merged.health.emergencyContactName = def.health.emergencyContactName;
+      if (!merged.health.emergencyContactPhone) merged.health.emergencyContactPhone = def.health.emergencyContactPhone;
+      const didRollover = ensureDailyRollover(merged);
+      if (didRollover) {
+        try {
+          const rolledJson = JSON.stringify(merged);
+          localStorage.setItem(STORAGE_KEY, rolledJson);
+          localStorage.setItem(VAULT_BACKUP_KEY, rolledJson);
+        } catch (e) {}
+      }
       if (!Array.isArray(merged.memberLogs)) {
         merged.memberLogs = [];
       }
@@ -403,6 +545,11 @@
           : 2;
       if (!merged.zen.cameraView) merged.zen.cameraView = "wide";
       if (typeof merged.zen.wishPlaquesCount !== "number") merged.zen.wishPlaquesCount = 16;
+      merged.zen.lastPeaceCardAt = Number(merged.zen.lastPeaceCardAt) || 0;
+      merged.zen.lastWishCardAt = Number(merged.zen.lastWishCardAt) || 0;
+      merged.zen.activeLanterns = Array.isArray(merged.zen.activeLanterns)
+        ? merged.zen.activeLanterns.filter((it) => it && (it.expiresAt || 0) > Date.now()).slice(-16)
+        : [];
       if (merged.oaq.mode !== "async" && merged.oaq.turn !== "host") {
         merged.oaq.turn = "host";
         merged.oaq.selectedCell = null;
@@ -490,7 +637,11 @@
       seniorityTitle: prog.current ? prog.current.name : "Bậc 0 · Khách Ghé Hiên Trà",
       cohortTag: prog.cohort ? prog.cohort.tag : "Khách ghé",
       xlFont: Boolean(state.settings && state.settings.xlFont),
-      renderMode: (state.settings && state.settings.preferredRender) || "3d"
+      renderMode: (state.settings && state.settings.preferredRender) || "3d",
+      uatTag: (state.settings && state.settings.uatTag) || "",
+      voiceMode: (state.settings && state.settings.voiceMode) || "auto",
+      ttsMode: (window.__ttsState && window.__ttsState.mode) || ((state.settings && state.settings.voiceMode) || "auto"),
+      netType: (typeof navigator !== "undefined" && navigator.connection && navigator.connection.effectiveType) || "wifi"
     };
   }
 
@@ -519,6 +670,9 @@
         state.user.unlockedTitles.unshift(badgeTitle);
       }
     }
+    if (treeId === "temple_zen" && nextRank >= 2) {
+      unlockHeritageTableItem("lu-tram-dong");
+    }
     if (treeId === "temple_zen" && nextRank >= 3) {
       unlockTitleFrame("tam-an", "Cư Sĩ Tâm An");
     }
@@ -541,7 +695,46 @@
     return null;
   }
 
+  function syncDailyQuestFlagsFromAction(actionKey, category) {
+    ensureDailyRollover(state);
+    const dq = state.user.dailyQuests;
+    if (!dq) return;
+    const act = String(actionKey || "");
+    const cat = String(category || "");
+    if (
+      cat === "diem-danh" ||
+      cat === "doc-bao" ||
+      act.includes("checkin") ||
+      act.includes("news") ||
+      state.user.checkedInToday
+    ) {
+      dq.morningDone = true;
+    }
+    if (
+      cat === "giao-luu" ||
+      cat === "chua-online" ||
+      cat === "tho-ca" ||
+      cat === "dong-ngu" ||
+      act.includes("tea") ||
+      act.includes("temple") ||
+      act.includes("poem")
+    ) {
+      dq.socialDone = true;
+    }
+    if (
+      cat === "co-tuong" ||
+      cat === "dan-gian" ||
+      act.includes("xiangqi") ||
+      act.includes("oaq") ||
+      act.includes("quiz") ||
+      act.includes("proverb")
+    ) {
+      dq.mindDone = true;
+    }
+  }
+
   function awardSeniorityPoints(delta, actionKey, category, detail, extraMeta) {
+    syncDailyQuestFlagsFromAction(actionKey, category);
     const prevProg = getSeniorityProgress();
     state.user.seniorityPoints = (Number(state.user.seniorityPoints) || 28) + (Number(delta) || 0);
     const treeId = mapCategoryToSkillTree(actionKey, category);
@@ -724,6 +917,18 @@
     return false;
   }
 
+  function unlockHeritageTableItem(itemId) {
+    if (!Array.isArray(state.user.unlockedItems)) {
+      state.user.unlockedItems = ["am-tu-sa"];
+    }
+    if (!state.user.unlockedItems.includes(itemId)) {
+      state.user.unlockedItems.push(itemId);
+      saveState();
+      return true;
+    }
+    return false;
+  }
+
   function isStandalonePwa() {
     return (
       window.matchMedia("(display-mode: standalone)").matches ||
@@ -762,7 +967,35 @@
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function sanitizeColorCss(val, fallback) {
+    const raw = String(val || "").trim();
+    if (/^#[0-9a-fA-F]{3,8}$/.test(raw) || /^rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}(?:\s*,\s*(?:0|1|0?\.\d+))?\s*\)$/.test(raw)) {
+      return raw;
+    }
+    return fallback || "#2E5E4E";
+  }
+
+  function isUnsafeScamOrPiiText(raw) {
+    const str = String(raw || "")
+      .replace(/[\uFF10-\uFF19]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xff10 + 48))
+      .trim();
+    if (!str) return false;
+    if (/<\s*\/?\s*(script|iframe|img|svg|object|embed|style|link|meta)\b|javascript\s*:|vbscript\s*:|data\s*:\s*text\/html|\bon[a-z]{2,18}\s*=/i.test(str)) {
+      return true;
+    }
+    const digitsCollapsed = str.replace(/[\s._\-()]/g, "");
+    if (/\d{8,}/.test(digitsCollapsed)) return true;
+    if (/https?:\/\/|www\.|zalo\.me|t\.me\/|bit\.ly|tinyurl|\.(vn|com|net|org|xyz|top|click|apk)\b/i.test(str)) {
+      return true;
+    }
+    if (/(chuyển khoản|số tài khoản|nạp thẻ|trúng thưởng|mã otp|viện kiểm sát|khóa tài khoản|vay vốn|thần dược)/i.test(str)) {
+      return true;
+    }
+    return false;
   }
 
   function getProvince(id) {
@@ -910,9 +1143,100 @@
     playNext();
   }
 
+  function resolveMatchingVoiceClipId(text, opts) {
+    const clips = (D && D.VOICE_CLIPS) || {};
+    if (opts && opts.clipId && clips[opts.clipId]) {
+      return opts.clipId;
+    }
+    const raw = String(text || "");
+    if (!raw) return null;
+    const cards = (D && D.TEMPLE_PEACE_CARDS) || [];
+    for (let i = 0; i < cards.length; i++) {
+      const c = cards[i];
+      if (!c || !c.clipId || !clips[c.clipId]) continue;
+      if (
+        raw.includes(c.code) ||
+        raw.includes(c.verse.slice(0, 18)) ||
+        (Array.isArray(c.spaceCodes) && c.spaceCodes.some((sc) => sc && raw.includes(sc)))
+      ) {
+        return c.clipId;
+      }
+    }
+    if (/nghỉ mắt một chút|nhìn ra xa 20 giây/i.test(raw) && clips["nhac-nghi-mat"]) return "nhac-nghi-mat";
+    if (opts && opts.screenRead) {
+      if (state.route === "home" && clips["chao-buoi-sang"]) return "chao-buoi-sang";
+      if (state.route === "checkin") {
+        return state.user.checkedInToday && clips["diem-danh-xong"] ? "diem-danh-xong" : "chao-buoi-sang";
+      }
+      if (state.route === "tearoom" && clips["chao-ban-tra"]) return "chao-ban-tra";
+      if (state.route === "zen") {
+        const spIdx = Number(state.zen && state.zen.spaceIdx) || 0;
+        const mapZenClip = ["dan-chanh-dien", "dan-nha-tho-ho", "dan-vuon-thien"];
+        const cid = mapZenClip[spIdx] || "dan-chanh-dien";
+        if (clips[cid]) return cid;
+      }
+      if (state.route === "xiangqi" && clips["dan-co-tuong"]) return "dan-co-tuong";
+      if (state.route === "games") {
+        const cid = activeGameTab === "oaq" ? "dan-o-an-quan" : "dan-co-tuong";
+        if (clips[cid]) return cid;
+      }
+    }
+    return null;
+  }
+
+  function playPreRecordedVoiceClip(clipId, session, onFallback) {
+    const clips = (D && D.VOICE_CLIPS) || {};
+    const entry = clips[clipId];
+    if (!entry || !entry.src) {
+      if (typeof onFallback === "function") onFallback();
+      return false;
+    }
+    window.__ttsState.mode = "recorded-vi-mp3";
+    window.__ttsState.error = null;
+    const audio = new Audio();
+    audio.preload = "auto";
+    audio.src = entry.src;
+    activeTtsAudio = audio;
+
+    audio.addEventListener("loadedmetadata", () => {
+      if (session !== ttsSessionId) return;
+      window.__ttsState.lastDuration = audio.duration || 0;
+    });
+    audio.addEventListener("playing", () => {
+      if (session !== ttsSessionId) return;
+      window.__ttsState.playedCount += 1;
+    });
+    audio.addEventListener("ended", () => {
+      if (session !== ttsSessionId) return;
+      activeTtsAudio = null;
+      setReadBtnActive(false);
+    });
+    audio.addEventListener("error", () => {
+      if (session !== ttsSessionId) return;
+      activeTtsAudio = null;
+      if (typeof onFallback === "function") {
+        onFallback();
+      } else {
+        setReadBtnActive(false);
+      }
+    });
+    audio.play().catch((err) => {
+      if (session !== ttsSessionId) return;
+      window.__ttsState.error = String(err);
+      activeTtsAudio = null;
+      if (typeof onFallback === "function") {
+        onFallback();
+      } else {
+        setReadBtnActive(false);
+      }
+    });
+    return true;
+  }
+
   function speak(text, opts) {
     const chunks = splitVietnameseTtsChunks(text);
-    if (!chunks.length) return;
+    const matchedClipId = resolveMatchingVoiceClipId(text, opts);
+    if (!chunks.length && !matchedClipId) return;
 
     stopSpeaking();
     const session = ++ttsSessionId;
@@ -920,11 +1244,37 @@
     window.__ttsState.lastText = fullText;
     setReadBtnActive(true);
 
+    const preferRecorded = (state.settings && state.settings.voiceMode === "recorded") || Boolean(opts && opts.clipId);
+    const viVoice = findNativeVietnameseVoice();
+
     if (opts && opts.announceToast) {
-      showToast("Đang đọc to bằng giọng Tiếng Việt...");
+      showToast(
+        matchedClipId && (preferRecorded || !viVoice)
+          ? "Đang phát giọng đọc Tiếng Việt thu sẵn..."
+          : "Đang đọc to bằng giọng Tiếng Việt..."
+      );
     }
 
-    const viVoice = findNativeVietnameseVoice();
+    if (matchedClipId && (preferRecorded || !viVoice)) {
+      playPreRecordedVoiceClip(matchedClipId, session, () => {
+        if (viVoice && fullText) {
+          const fbUtter = new SpeechSynthesisUtterance(fullText);
+          fbUtter.voice = viVoice;
+          fbUtter.lang = viVoice.lang || "vi-VN";
+          fbUtter.rate = 0.92;
+          fbUtter.onend = () => {
+            if (session === ttsSessionId) setReadBtnActive(false);
+          };
+          window.speechSynthesis.speak(fbUtter);
+        } else if (chunks.length) {
+          playCloudVietnameseTts(chunks, session);
+        } else {
+          setReadBtnActive(false);
+        }
+      });
+      return;
+    }
+
     if (viVoice) {
       window.__ttsState.mode = "native-vi";
       const utter = new SpeechSynthesisUtterance(fullText);
@@ -938,7 +1288,12 @@
         if (session === ttsSessionId) setReadBtnActive(false);
       };
       utter.onerror = () => {
-        if (session === ttsSessionId) playCloudVietnameseTts(chunks, session);
+        if (session !== ttsSessionId) return;
+        if (matchedClipId) {
+          playPreRecordedVoiceClip(matchedClipId, session, () => playCloudVietnameseTts(chunks, session));
+        } else {
+          playCloudVietnameseTts(chunks, session);
+        }
       };
       setTimeout(() => {
         if (session === ttsSessionId) window.speechSynthesis.speak(utter);
@@ -946,7 +1301,11 @@
       return;
     }
 
-    // Fallback to natural Vietnamese MP3 stream when OS lacks a local vi-VN SAPI voice
+    // Fallback to offline pre-recorded voice clip first if matched, else natural Vietnamese MP3 stream
+    if (matchedClipId) {
+      playPreRecordedVoiceClip(matchedClipId, session, () => playCloudVietnameseTts(chunks, session));
+      return;
+    }
     playCloudVietnameseTts(chunks, session);
   }
 
@@ -968,7 +1327,7 @@
   }
 
   function renderSeniorAvatarSvg(member) {
-    const outfit = (member && member.outfitColor) || "#2E5E4E";
+    const outfit = sanitizeColorCss((member && member.outfitColor) || "#2E5E4E", "#2E5E4E");
     const hat = (member && member.hat) || "none";
     const isFemale =
       (member && member.gender === "female") ||
@@ -976,10 +1335,18 @@
     let accSvg = "";
     if (hat === "cap") {
       accSvg = `<path d="M9 14c2-5 10-6 18-4 2 .5 3 2 3 3.5H9z" fill="#4F6842"/><rect x="8" y="13" width="24" height="2.6" rx="1.3" fill="#3E5433"/>`;
+    } else if (hat === "mu-tai-beo") {
+      accSvg = `<ellipse cx="20" cy="14" rx="13.5" ry="3.2" fill="#3F5636"/><path d="M12 13.8c1-4.5 15-4.5 16 0z" fill="#556E48"/><line x1="12.5" y1="12.8" x2="27.5" y2="12.8" stroke="#2D3E26" stroke-width="1.2"/>`;
+    } else if (hat === "khan-dong") {
+      accSvg = `<path d="M11.5 15.2c0-4.6 3.8-7.4 8.5-7.4s8.5 2.8 8.5 7.4c-2.6-1.6-5.5-2.2-8.5-2.2s-5.9.6-8.5 2.2z" fill="#9E241C" stroke="#E3B448" stroke-width="1.1"/><path d="M14 12.2L20 9.6l6 2.6" fill="none" stroke="#F6D57A" stroke-width="1.1"/>`;
     } else if (hat === "non-la") {
       accSvg = `<polygon points="20,4 6,16 34,16" fill="#E9D59B" stroke="#B79452" stroke-width="1.2"/>`;
     } else if (hat === "glasses") {
       accSvg = `<circle cx="16.2" cy="18.5" r="2.7" fill="none" stroke="#8C5B1F" stroke-width="1.3"/><circle cx="23.8" cy="18.5" r="2.7" fill="none" stroke="#8C5B1F" stroke-width="1.3"/><line x1="18.9" y1="18.5" x2="21.1" y2="18.5" stroke="#8C5B1F" stroke-width="1.2"/>`;
+    } else if (hat === "kinh-ram-tra") {
+      accSvg = `<circle cx="16.2" cy="18.5" r="2.8" fill="rgba(184,115,36,0.48)" stroke="#5A3414" stroke-width="1.4"/><circle cx="23.8" cy="18.5" r="2.8" fill="rgba(184,115,36,0.48)" stroke="#5A3414" stroke-width="1.4"/><line x1="19" y1="18.3" x2="21" y2="18.3" stroke="#5A3414" stroke-width="1.3"/>`;
+    } else if (hat === "scarf") {
+      accSvg = `<path d="M13 24.8c2 2.2 12 2.2 14 0l1 2.8c-3 2-13 2-16 0z" fill="#9E2B20"/><rect x="21.5" y="26.5" width="3.6" height="7" rx="1.2" fill="#B23528"/>`;
     } else if (isFemale || hat === "hair-bun") {
       accSvg = `<circle cx="20" cy="8.5" r="4" fill="#DCD6CC"/><line x1="15" y1="8.5" x2="25" y2="8.5" stroke="#2E7D63" stroke-width="1.6" stroke-linecap="round"/>`;
     }
@@ -1022,12 +1389,18 @@
       }
     }
     if (state.route === "quiz") {
-      const q = D.QUIZ_QUESTIONS[state.quiz.idx];
+      const packQs = getActiveQuizPackQuestions();
+      const q = packQs[state.quiz.idx];
       if (q && !state.quiz.finished) {
         return `Câu hỏi số ${state.quiz.idx + 1}: ${q.question}. Đáp án A: ${q.options[0]}. B: ${q.options[1]}. C: ${q.options[2]}. D: ${q.options[3]}.`;
       }
     }
     if (state.route === "games") {
+      if (activeGameTab === "cadao") {
+        const pg = (state.oaq && state.oaq.proverbGame) || {};
+        const matched = (pg.matchedIds || []).length;
+        return `Bàn Lật Thẻ Ca Dao Trí Nhớ. Bác đã ghép đúng ${matched} trên 6 cặp ca dao tục ngữ Việt Nam. Mời bác chạm mở 2 thẻ gỗ để ghép câu đầu với câu kết.`;
+      }
       if (activeGameTab === "oaq") {
         const c = state.oaq.cells || [5, 5, 5, 5, 5, 10, 5, 5, 5, 5, 5, 10];
         return `Bàn Ô ăn quan dân gian. Hàng dưới của bác đang có ${state.oaq.scoreP} quân, Hàng trên đang có ${state.oaq.scoreAI} quân. Quan Trái còn ${c[11]} quân, Quan Phải còn ${c[5]} quân. Năm ô của bác lần lượt có ${c.slice(0, 5).join(", ")} viên sỏi.`;
@@ -1035,7 +1408,8 @@
       return `Bàn Cờ tướng 9×10. ${state.xiangqi.status || "Mời bác chọn quân để đi."}`;
     }
     if (state.route === "zen") {
-      const sp = D.ZEN_SPACES[state.zen.spaceIdx] || D.ZEN_SPACES[0];
+      const spIdx = Number(state.zen.spaceIdx) || 0;
+      const sp = D.ZEN_SPACES[spIdx] || D.ZEN_SPACES[0];
       const seatNum =
         (typeof state.zen.userCushionIdx === "number" && Number.isFinite(state.zen.userCushionIdx)
           ? Math.max(0, Math.min(19, Math.floor(state.zen.userCushionIdx)))
@@ -1043,8 +1417,20 @@
       const attendeeCount = buildTempleTenCushionAttendees().length;
       const cards = D.TEMPLE_PEACE_CARDS || [];
       const curCard = cards.length > 0 ? cards[(state.zen.peaceCardIdx || 0) % cards.length] : null;
-      return `Chánh Điện 20 Bồ Đoàn, không gian ${sp.name}. Đạo tràng đang có ${attendeeCount} trên 20 bác ngồi cùng, bác đang ngồi chiếu Bồ Đoàn số ${seatNum}. ${
-        curCard ? `Quẻ xăm hiện tại: ${curCard.code}. ${curCard.advice}` : sp.quote
+      const cardTitle =
+        curCard && Array.isArray(curCard.spaceCodes) && curCard.spaceCodes[spIdx]
+          ? curCard.spaceCodes[spIdx]
+          : curCard
+          ? curCard.code
+          : "";
+      const spacePlaceLabel =
+        spIdx === 1
+          ? `Gian Bái Đường ${sp.name}`
+          : spIdx === 2
+          ? `Thiền Đường ${sp.name}`
+          : `Chánh Điện ${sp.name}`;
+      return `${spacePlaceLabel}. Đang có ${attendeeCount} trên 20 bác ngồi tĩnh tâm cùng nhau, bác đang ngồi chiếu số ${seatNum}. ${
+        curCard ? `Tờ lộc hiện tại: ${cardTitle}. ${curCard.advice}` : sp.quote
       }`;
     }
     if (state.route === "poetry") {
@@ -1097,15 +1483,26 @@
 
   function applyUserIdentity(honorific, rawBaseName, rawAge, provId) {
     const hon = honorific === "Chị" ? "Chị" : "Anh";
-    const cleanedBase = String(rawBaseName || "")
+    let cleanedBase = String(rawBaseName || "")
+      .replace(/[<>"'`\\\u0000-\u001F]/g, " ")
       .replace(/^(anh|chị|bác|cô|bà|chú|cụ|ông)\s+/i, "")
-      .trim() || "Tám Vườn";
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 24);
+    if (!cleanedBase || isUnsafeScamOrPiiText(cleanedBase)) {
+      if (cleanedBase && isUnsafeScamOrPiiText(cleanedBase)) {
+        showToast("Tên hiển thị không được chứa số điện thoại, đường link hoặc mã lạ.");
+      }
+      cleanedBase = state.user.baseName || "Tám Vườn";
+    }
     const safeAge = Math.max(45, Math.min(105, Math.round(Number(rawAge) || 65)));
     state.user.honorific = hon;
     state.user.baseName = cleanedBase;
     state.user.name = `${hon} ${cleanedBase}`;
     state.user.age = safeAge;
-    if (provId) state.user.provinceId = provId;
+    if (provId && D.PROVINCES.some((p) => p.id === provId)) {
+      state.user.provinceId = provId;
+    }
     state.user.profileConfigured = true;
     saveState();
     updateGlobalChrome();
@@ -1198,6 +1595,8 @@
             ? "ván Cờ tướng qua link"
             : x.mode === "local2p"
             ? "ván Cờ tướng 2 người"
+            : x.mode === "cup"
+            ? "trận Cúp Cờ Tướng Đồng Ngũ"
             : "ván Cờ tướng với Máy"
       };
     }
@@ -1227,6 +1626,39 @@
     } catch (e) {}
   }
 
+  function getCupUnitDisplayName() {
+    const cup = (state.xiangqi && state.xiangqi.cup) || {};
+    if (cup.unitName) return cup.unitName;
+    if (state.auth && state.auth.primaryUnitLabel) return state.auth.primaryUnitLabel;
+    const joinedId = state.social && Array.isArray(state.social.joinedGroupIds) && state.social.joinedGroupIds[0];
+    if (joinedId) {
+      const grp = ((state.social && state.social.groups) || []).find((g) => g.id === joinedId);
+      if (grp) return grp.shortName || grp.name;
+    }
+    return `Đoàn Cờ ${getProvince(state.user.provinceId).short}`;
+  }
+
+  function getCupCurrentRival(cupState) {
+    const cup = cupState || {};
+    const r = Math.max(0, Math.min(2, Number(cup.round) || 0));
+    const list = (D.TOURNAMENT_RIVAL_CLUBS || []).filter((c) => c.round === r);
+    const matched = list.find((c) => c.id === cup.rivalId) || list[0] || (D.TOURNAMENT_RIVAL_CLUBS || [])[0];
+    if (matched && cup.rivalId !== matched.id) {
+      cup.rivalId = matched.id;
+    }
+    return (
+      matched || {
+        id: "rv-1",
+        round: r,
+        roundLabel: r === 0 ? "Vòng Tứ Kết" : r === 1 ? "Vòng Bán Kết" : "Trận Chung Kết",
+        aiLevel: r === 0 ? "easy" : "club",
+        clubName: "CLB Cờ Hưu Trí Sông Hàn",
+        captain: "Anh Tấn · 66t (Đà Nẵng)",
+        motto: "Khai cuộc điềm đạm, giao lưu kết bạn"
+      }
+    );
+  }
+
   function resetXiangqiMatchState(nextMode) {
     if (!XQ) return;
     const x = state.xiangqi;
@@ -1245,6 +1677,18 @@
       x.turn = "red";
       x.puzzleStep = 0;
       x.status = `${curPz.name} — Đỏ đi tiên: chạm quân Đỏ rồi chạm chấm xanh để chiếu Tướng.`;
+    } else if (nextMode === "cup") {
+      if (!x.cup || typeof x.cup !== "object") {
+        x.cup = createDefaultState().xiangqi.cup;
+      }
+      x.cup.active = true;
+      x.cup.justWonRound = false;
+      if (!x.cup.unitName) x.cup.unitName = getCupUnitDisplayName();
+      const rival = getCupCurrentRival(x.cup);
+      x.aiLevel = rival.aiLevel || (x.cup.round === 0 ? "easy" : "club");
+      x.board = XQ.createInitialBoard();
+      x.turn = "red";
+      x.status = `${rival.roundLabel}: Đại diện ${x.cup.unitName} gặp ${rival.clubName} (${rival.captain}) — Bác cầm Đỏ đi tiên!`;
     } else if (nextMode === "ai") {
       x.board = XQ.createInitialBoard();
       x.turn = "red";
@@ -1342,12 +1786,28 @@
     }
     if (state.route === "games" && route !== "games") {
       cancelOrCommitOaqAnimation(true);
+      if (proverbFlipTimerId) {
+        clearTimeout(proverbFlipTimerId);
+        proverbFlipTimerId = null;
+      }
+    }
+    if (state.route === "watch" && route !== "watch") {
+      if (watchAnimId) {
+        cancelAnimationFrame(watchAnimId);
+        watchAnimId = null;
+      }
     }
     if (state.route === "zen" && route !== "zen") {
       if (autoMuyuTimerId) {
         clearInterval(autoMuyuTimerId);
         autoMuyuTimerId = null;
       }
+      if (zenCooldownTimerId) {
+        clearInterval(zenCooldownTimerId);
+        zenCooldownTimerId = null;
+      }
+      const existingSlip = document.querySelector(".red-slip-backdrop");
+      if (existingSlip) existingSlip.remove();
       if (window.TempleScene3D) {
         window.TempleScene3D.dispose();
       }
@@ -1421,12 +1881,215 @@
     );
   }
 
+  const ADMIN_HASH_KEY = "tuoi_bac_admin_hash_v1";
+  const ADMIN_SESSION_KEY = "tuoi_bac_admin_session_v1";
+  const ADMIN_LOCKOUT_KEY = "tuoi_bac_admin_lockout_v1";
+  const ADMIN_MAX_ATTEMPTS = 5;
+  const ADMIN_LOCKOUT_MS = 60 * 1000;
+  const DEFAULT_ADMIN_PIN_HASH = "12bac726287ff3aa";
+
+  function computeAdminPinHash(rawPin) {
+    const clean = String(rawPin || "").trim();
+    return fnv32Hex("tb_adm_v1|" + clean, 0x811c9dc5) + fnv32Hex("tb_adm_s2|" + clean, 0x9e3779b9);
+  }
+
+  function computeStretchedAdminHash(rawPin, salt) {
+    const clean = String(rawPin || "").trim();
+    const s = String(salt || "tb26");
+    let h1 = 0x811c9dc5;
+    let h2 = 0x9e3779b9;
+    for (let i = 0; i < 2500; i++) {
+      h1 = parseInt(fnv32Hex(`${s}|${i}|${clean}|${h2}`, h1), 16) >>> 0;
+      h2 = parseInt(fnv32Hex(`${h1}|${clean}|${s}|${i}`, h2), 16) >>> 0;
+    }
+    return `v2$${s}$${h1.toString(16).padStart(8, "0")}${h2.toString(16).padStart(8, "0")}`;
+  }
+
+  function verifyAdminPinInput(rawPin) {
+    const clean = String(rawPin || "").trim();
+    if (!clean) return false;
+    const stored = getActiveAdminPinHash();
+    if (stored.startsWith("v2$")) {
+      const parts = stored.split("$");
+      const salt = parts[1] || "tb26";
+      return computeStretchedAdminHash(clean, salt) === stored;
+    }
+    return computeAdminPinHash(clean) === stored;
+  }
+
+  function readAdminLockoutState() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(ADMIN_LOCKOUT_KEY) || "null");
+      if (raw && typeof raw === "object") {
+        return {
+          fails: Math.max(0, Number(raw.fails) || 0),
+          lockedUntil: Math.max(0, Number(raw.lockedUntil) || 0)
+        };
+      }
+    } catch (e) {}
+    return { fails: 0, lockedUntil: 0 };
+  }
+
+  function writeAdminLockoutState(st) {
+    try {
+      localStorage.setItem(ADMIN_LOCKOUT_KEY, JSON.stringify(st));
+    } catch (e) {}
+  }
+
+  function getActiveAdminPinHash() {
+    try {
+      const saved = localStorage.getItem(ADMIN_HASH_KEY);
+      return saved && saved.length >= 16 ? saved : DEFAULT_ADMIN_PIN_HASH;
+    } catch (e) {
+      return DEFAULT_ADMIN_PIN_HASH;
+    }
+  }
+
+  function isAdminUnlocked() {
+    try {
+      return sessionStorage.getItem(ADMIN_SESSION_KEY) === "1";
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function lockAdminSession() {
+    try {
+      sessionStorage.removeItem(ADMIN_SESSION_KEY);
+    } catch (e) {}
+    if (state.newspaper) {
+      state.newspaper.adminOpen = false;
+      saveState();
+    }
+  }
+
+  function openAdminUnlockModal(onSuccess) {
+    openDialog(
+      "Xác thực Quản Trị Viên (Admin)",
+      `
+      <div class="surface-panel warm">
+        <p style="font-size:0.9rem;">Khu vực duyệt RSS Báo Sáng, giám sát vận hành UAT, xuất dữ liệu AI (<code>.jsonl</code>) và cấu hình Supabase cố định được khóa riêng để hội viên không bấm nhầm.</p>
+        <label class="field-label">
+          Mã khóa Quản trị viên
+          <input type="password" inputmode="numeric" autocomplete="off" class="input-lg" id="admin-pin-input" placeholder="Nhập mã khóa Admin..." />
+        </label>
+        <div id="admin-pin-err" style="font-size:0.86rem; color:#B42318; font-weight:700;" hidden>Mã khóa chưa đúng. Vui lòng kiểm tra lại.</div>
+      </div>
+      <div class="btn-row">
+        <button type="button" class="btn-primary" id="btn-submit-admin-pin">${ico("shield")}<span>Mở khóa Admin</span></button>
+        <button type="button" class="btn-secondary" id="btn-cancel-admin-pin">Đóng</button>
+      </div>
+      `
+    );
+    const pinIn = document.getElementById("admin-pin-input");
+    const errEl = document.getElementById("admin-pin-err");
+    const showErrMsg = (msg) => {
+      if (!errEl) return;
+      errEl.textContent = msg;
+      errEl.hidden = false;
+    };
+    const initLock = readAdminLockoutState();
+    if (initLock.lockedUntil > Date.now()) {
+      const waitSec = Math.ceil((initLock.lockedUntil - Date.now()) / 1000);
+      showErrMsg(`Đã nhập sai quá ${ADMIN_MAX_ATTEMPTS} lần. Tạm khóa thêm ${waitSec} giây để chống dò mật khẩu.`);
+    }
+    const tryUnlock = () => {
+      const now = Date.now();
+      const lockSt = readAdminLockoutState();
+      if (lockSt.lockedUntil > now) {
+        const waitSec = Math.ceil((lockSt.lockedUntil - now) / 1000);
+        showErrMsg(`Tạm khóa bảo vệ Admin (${waitSec} giây). Vui lòng thử lại sau.`);
+        return;
+      }
+      const val = (pinIn && pinIn.value ? pinIn.value : "").trim();
+      if (!verifyAdminPinInput(val)) {
+        const nextFails = (lockSt.lockedUntil > 0 && lockSt.lockedUntil <= now ? 0 : lockSt.fails) + 1;
+        if (nextFails >= ADMIN_MAX_ATTEMPTS) {
+          writeAdminLockoutState({ fails: nextFails, lockedUntil: now + ADMIN_LOCKOUT_MS });
+          showErrMsg(`Nhập sai ${ADMIN_MAX_ATTEMPTS} lần liên tiếp. Khóa bảo vệ trong 60 giây.`);
+          trackTelemetryDirect("admin_lockout", state.route, "pin_bruteforce_locked", {});
+        } else {
+          writeAdminLockoutState({ fails: nextFails, lockedUntil: 0 });
+          showErrMsg(`Mã khóa chưa đúng (còn ${ADMIN_MAX_ATTEMPTS - nextFails} lần thử).`);
+          trackTelemetryDirect("admin_auth_fail", state.route, "wrong_admin_pin", {});
+        }
+        return;
+      }
+      writeAdminLockoutState({ fails: 0, lockedUntil: 0 });
+      try {
+        sessionStorage.setItem(ADMIN_SESSION_KEY, "1");
+      } catch (e) {}
+      trackTelemetryDirect("admin_auth_ok", state.route, "unlocked_admin_session", {});
+      closeDialog();
+      showToast("Đã mở quyền Quản trị viên trong phiên làm việc này.");
+      if (typeof onSuccess === "function") onSuccess();
+    };
+    document.getElementById("btn-submit-admin-pin").addEventListener("click", tryUnlock);
+    document.getElementById("btn-cancel-admin-pin").addEventListener("click", closeDialog);
+    if (pinIn) {
+      pinIn.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter") {
+          ev.preventDefault();
+          tryUnlock();
+        }
+      });
+      setTimeout(() => pinIn.focus(), 60);
+    }
+  }
+
+  function openChangeAdminPinModal() {
+    if (!isAdminUnlocked()) {
+      openAdminUnlockModal(openChangeAdminPinModal);
+      return;
+    }
+    openDialog(
+      "Đổi mã khóa Quản Trị Viên",
+      `
+      <div class="surface-panel">
+        <label class="field-label">
+          Mã khóa Admin hiện tại
+          <input type="password" autocomplete="off" class="input-lg" id="adm-old-pin" placeholder="Nhập mã hiện tại..." />
+        </label>
+        <label class="field-label">
+          Mã khóa Admin mới (từ 4 ký tự trở lên)
+          <input type="password" autocomplete="off" class="input-lg" id="adm-new-pin" placeholder="Nhập mã mới..." />
+        </label>
+      </div>
+      <div class="btn-row">
+        <button type="button" class="btn-jade" id="btn-save-new-admin-pin">Lưu mã khóa mới</button>
+        <button type="button" class="btn-secondary" id="btn-cancel-new-admin-pin">Hủy</button>
+      </div>
+      `
+    );
+    document.getElementById("btn-cancel-new-admin-pin").addEventListener("click", closeDialog);
+    document.getElementById("btn-save-new-admin-pin").addEventListener("click", () => {
+      const oldVal = (document.getElementById("adm-old-pin").value || "").trim();
+      const newVal = (document.getElementById("adm-new-pin").value || "").trim();
+      if (!verifyAdminPinInput(oldVal)) {
+        showToast("Mã khóa hiện tại chưa chính xác.");
+        return;
+      }
+      if (newVal.length < 4) {
+        showToast("Mã khóa mới cần tối thiểu 4 ký tự.");
+        return;
+      }
+      try {
+        const salt = Math.random().toString(36).slice(2, 8) || "tb26";
+        localStorage.setItem(ADMIN_HASH_KEY, computeStretchedAdminHash(newVal, salt));
+        writeAdminLockoutState({ fails: 0, lockedUntil: 0 });
+      } catch (e) {}
+      closeDialog();
+      showToast("Đã cập nhật mã khóa Quản trị viên mới!");
+    });
+  }
+
   function openRealtimeStatusModal() {
     const st = RT ? RT.getStatus() : { connected: false, providerName: "Cục bộ", totalOtherPeers: 0, clientId: "local" };
     const savedCfg = RT ? RT.getSupabaseConfig() : null;
     const baseShare = getPublicBaseUrl();
     const room = getCurrentRoom();
     const inviteSameTable = `${baseShare}?phong=${encodeURIComponent(room.id)}&ban=${state.teaRoom.tableIdx + 1}`;
+    const adminOpen = isAdminUnlocked();
 
     openDialog(
       "Kết nối Thời Gian Thực (Nhiều Điện Thoại Thật)",
@@ -1444,22 +2107,36 @@
         </div>
       </div>
 
+      ${
+        adminOpen
+          ? `
       <div class="surface-panel">
-        <h3>Nối vào dự án Supabase riêng (Tùy chọn)</h3>
-        <p style="font-size:0.88rem; color:var(--ink-secondary);">Mặc định hệ thống đã chạy sẵn kênh WSS miễn phí 24/7. Nếu muốn lưu lâu dài vào PostgreSQL của riêng mình, chạy tệp <code>supabase_schema.sql</code> rồi dán Project URL + Anon Key:</p>
+        <h3>Cấu hình Supabase cố định (Admin)</h3>
+        <p style="font-size:0.88rem; color:var(--ink-secondary);">Chạy tệp <code>supabase_schema.sql</code> trên dự án Supabase rồi dán Project URL + Public Anon Key để lưu dài hạn điểm danh, ván cờ treo, thơ, sớ cầu an và báo cáo an toàn:</p>
         <label class="field-label">
           Supabase Project URL
           <input type="url" class="input-lg" id="sb-url-in" placeholder="https://xxxx.supabase.co" value="${escHtml(savedCfg ? savedCfg.url : "")}" />
         </label>
         <label class="field-label">
           Supabase Public Anon Key
-          <input type="text" class="input-lg" id="sb-key-in" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6..." value="${escHtml(savedCfg ? savedCfg.anonKey : "")}" />
+          <input type="text" class="input-lg" id="sb-key-in" placeholder="Dán anon public key của dự án..." value="${escHtml(savedCfg ? savedCfg.anonKey : "")}" />
         </label>
+        <div id="sb-test-result-box" style="font-size:0.86rem;" hidden></div>
         <div class="btn-row">
-          <button type="button" class="btn-primary" id="btn-save-sb-cfg">Lưu &amp; Chuyển sang Supabase</button>
-          <button type="button" class="btn-secondary" id="btn-reset-sb-cfg">Dùng kênh WSS mặc định</button>
+          <button type="button" class="btn-jade" id="btn-test-sb-cfg">Kiểm tra bảng SQL</button>
+          <button type="button" class="btn-primary" id="btn-save-sb-cfg">Lưu &amp; Bật Supabase</button>
         </div>
+        <button type="button" class="btn-secondary" id="btn-reset-sb-cfg">Chuyển về kênh WSS mặc định</button>
       </div>
+      `
+          : `
+      <div class="surface-panel">
+        <h3>Máy chủ lưu trữ dài hạn (Dành cho Quản trị viên)</h3>
+        <p style="font-size:0.88rem; color:var(--ink-secondary);">Hệ thống đang tự đồng bộ trực tuyến miễn phí 24/7. Khu vực gắn khóa Supabase cố định được khóa bảo vệ để các bác yên tâm sinh hoạt.</p>
+        <button type="button" class="btn-secondary" id="btn-unlock-rt-admin">${ico("shield")}<span>Mở khóa cấu hình máy chủ (Admin)</span></button>
+      </div>
+      `
+      }
       `
     );
 
@@ -1467,6 +2144,34 @@
       trackEvent("share_link_created");
       copyTextSafe(inviteSameTable, "Đã sao chép link bàn trà để mở trên điện thoại thứ 2!");
     });
+
+    const unlockRtBtn = document.getElementById("btn-unlock-rt-admin");
+    if (unlockRtBtn) {
+      unlockRtBtn.addEventListener("click", () => {
+        openAdminUnlockModal(() => openRealtimeStatusModal());
+      });
+      return;
+    }
+
+    const testBtn = document.getElementById("btn-test-sb-cfg");
+    const testBox = document.getElementById("sb-test-result-box");
+    if (testBtn && RT && typeof RT.testSupabaseConnection === "function") {
+      testBtn.addEventListener("click", async () => {
+        const u = document.getElementById("sb-url-in").value.trim();
+        const k = document.getElementById("sb-key-in").value.trim();
+        if (testBox) {
+          testBox.hidden = false;
+          testBox.textContent = "Đang kiểm tra kết nối và bảng dữ liệu trên Supabase...";
+        }
+        const res = await RT.testSupabaseConnection(u, k);
+        if (testBox) {
+          testBox.style.color = res.ok ? "#1F5F46" : "#B42318";
+          testBox.style.fontWeight = "700";
+          testBox.textContent = res.message;
+        }
+      });
+    }
+
     document.getElementById("btn-save-sb-cfg").addEventListener("click", () => {
       const u = document.getElementById("sb-url-in").value.trim();
       const k = document.getElementById("sb-key-in").value.trim();
@@ -1476,7 +2181,7 @@
       }
       RT.saveSupabaseConfig(u, k);
       closeDialog();
-      showToast("Đã lưu cấu hình Supabase Realtime!");
+      showToast("Đã lưu cấu hình Supabase Realtime & lưu trữ bền vững!");
     });
     document.getElementById("btn-reset-sb-cfg").addEventListener("click", () => {
       RT.saveSupabaseConfig("", "");
@@ -1493,15 +2198,36 @@
     const showPwaCard = !isStandalonePwa() && !state.settings.pwaBannerDismissed;
     const prog = getSeniorityProgress();
     const gs = state.user.gameStats || {};
-    const totalWins = (Number(gs.oaqWins) || 0) + (Number(gs.xiangqiWins) || 0);
+    const totalWins = (Number(gs.oaqWins) || 0) + (Number(gs.xiangqiWins) || 0) + (Number(gs.proverbWins) || 0);
+    ensureDailyRollover(state);
+    const dq = state.user.dailyQuests || {};
+    if (state.user.checkedInToday) dq.morningDone = true;
+    const doneQuestCount = [dq.morningDone, dq.socialDone, dq.mindDone].filter(Boolean).length;
+    const canClaimDailyChest = doneQuestCount === 3 && !dq.chestClaimed;
+
+    const hourNow = new Date().getHours();
+    const timeGreeting =
+      hourNow < 11
+        ? "Buổi sáng an lành · Ấm trà đầu ngày đã pha"
+        : hourNow < 14
+        ? "Buổi trưa thư thái · Nghỉ ngơi dưỡng sức"
+        : hourNow < 18
+        ? "Buổi chiều ấm áp · Trà thơm đợi bạn hiền"
+        : "Buổi tối tĩnh tâm · An nhiên bên tách trà";
 
     els.main.innerHTML = `
       <section class="section-block">
-        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
-          <h1>Chào ${escHtml(state.user.name)} · ${age}t</h1>
-          <button type="button" class="btn-mini" id="btn-home-edit-identity">${ico("user", "ico-sm")}<span>Đổi Tên · Tuổi</span></button>
+        <div class="home-pavilion-hero">
+          <div class="home-pavilion-meta">
+            <span class="home-time-pill">${ico("tea", "ico-sm")}<span>${timeGreeting}</span></span>
+            <span class="home-streak-pill num">${escHtml(prov.short)} · Chuỗi ${state.user.streakDays || 1} ngày</span>
+          </div>
+          <div class="home-pavilion-title-row">
+            <h1>Chào ${escHtml(state.user.name)} · <span class="num">${age}t</span></h1>
+            <button type="button" class="btn-mini" id="btn-home-edit-identity">${ico("user", "ico-sm")}<span>Đổi Tên · Tuổi</span></button>
+          </div>
+          <p class="lead-copy">Mời ${pron} chọn góc sinh hoạt hôm nay. Chữ nét đậm, nút rộng rãi, thảnh thơi trò chuyện cùng bạn đồng niên.</p>
         </div>
-        <p class="lead-copy">Mời ${pron} chọn một góc sinh hoạt sáng nay. Mọi chữ và nút đều làm to rõ, dễ bấm.</p>
 
         <div class="passcard-banner ${state.auth.isRegistered ? "verified" : ""}" id="home-passcard-banner">
           <div class="passcard-head">
@@ -1516,7 +2242,7 @@
               ${
                 prog.isGuest
                   ? `Mở Thẻ 10 giây để lưu tên, nhận <strong>+35 XP &amp; +15 Xu</strong>${totalWins > 0 ? ` · Đã thắng <strong class="num">${totalWins}</strong> ván` : ""}.`
-                  : `${prog.next ? `Còn <strong class="num">${prog.xpNeededForNext}</strong> XP lên ${escHtml(prog.next.name)}` : "Đã đạt đỉnh cao sinh hoạt"} · Thắng cờ: <strong class="num">${totalWins}</strong> ván`
+                  : `${prog.next ? `Còn <strong class="num">${prog.xpNeededForNext}</strong> XP lên ${escHtml(prog.next.name)}` : "Đã đạt đỉnh cao sinh hoạt"} · Thắng cờ/trò chơi: <strong class="num">${totalWins}</strong> ván`
               }
             </small>
           </div>
@@ -1530,6 +2256,34 @@
               <span>Bảng Danh Hiệu</span>
             </button>
           </div>
+        </div>
+
+        <div class="daily-quest-card" id="home-daily-quest-card">
+          <div class="passcard-head">
+            <strong>Sổ Tay 3 Niềm Vui Hôm Nay</strong>
+            <span class="badge-tag ${doneQuestCount === 3 ? "jade" : "amber"} num">${doneQuestCount}/3 việc</span>
+          </div>
+          <div class="daily-quest-list">
+            <button type="button" class="daily-quest-row ${dq.morningDone ? "is-done" : ""}" data-go="${state.user.checkedInToday ? "newspaper" : "checkin"}">
+              <span>1. Khởi đầu bình an (Điểm danh hoặc Đọc báo)</span>
+              <span class="daily-quest-status">${dq.morningDone ? "Đã xong" : "Mở ngay"}</span>
+            </button>
+            <button type="button" class="daily-quest-row ${dq.socialDone ? "is-done" : ""}" data-go="tearoom">
+              <span>2. Kết nối tình thân (Trà đàm, Thơ hoặc Hoa đăng)</span>
+              <span class="daily-quest-status">${dq.socialDone ? "Đã xong" : "Mở ngay"}</span>
+            </button>
+            <button type="button" class="daily-quest-row ${dq.mindDone ? "is-done" : ""}" data-go="games">
+              <span>3. Rèn trí minh mẫn (Cờ, Ca dao hoặc Đố vui)</span>
+              <span class="daily-quest-status">${dq.mindDone ? "Đã xong" : "Mở ngay"}</span>
+            </button>
+          </div>
+          ${
+            canClaimDailyChest
+              ? `<button type="button" class="btn-primary" id="btn-claim-daily-chest">${ico("award")}<span>Nhận Lộc Ngày Mới (+12 Xu · +15 XP)</span></button>`
+              : dq.chestClaimed
+              ? `<div style="font-size:0.86rem; color:var(--accent-jade); font-weight:700;">Đã nhận trọn vẹn Rương Lộc Ngày Mới hôm nay. Hẹn gặp lại ${pron} sáng mai!</div>`
+              : `<small style="font-size:0.84rem; color:var(--ink-secondary);">Hoàn thành đủ 3 niềm vui để mở Rương Lộc <strong>+12 Xu &amp; +15 XP</strong> mỗi ngày.</small>`
+          }
         </div>
 
         ${
@@ -1593,8 +2347,8 @@
 
           <button type="button" class="module-tile" data-go="zen">
             ${ico("lotus")}
-            <strong>Chánh Điện &amp; Hồ Sen</strong>
-            <span class="sub">Thỉnh chuông, thả hoa đăng</span>
+            <strong>Chùa Quê &amp; Từ Đường</strong>
+            <span class="sub">Chánh điện, Nhà thờ họ, Hồ sen</span>
           </button>
 
           <button type="button" class="module-tile" data-go="poetry">
@@ -1624,7 +2378,7 @@
 
         <div class="btn-row" style="margin-top:4px;">
           <button type="button" class="btn-secondary" id="btn-home-feedback">${ico("feedback", "ico-sm")}<span>Góp ý nhanh</span></button>
-          <button type="button" class="btn-secondary" data-go="privacy">${ico("chart", "ico-sm")}<span>Dash Hoạt động</span></button>
+          <button type="button" class="btn-secondary" data-go="privacy">${ico("shield", "ico-sm")}<span>Riêng tư &amp; Admin</span></button>
           <button type="button" class="btn-secondary" data-go="family">${ico("family", "ico-sm")}<span>Góc Con Cái</span></button>
           <button type="button" class="btn-secondary" data-go="xiangqi">${ico("xiangqi", "ico-sm")}<span>Bàn Cờ 9×10</span></button>
         </div>
@@ -1643,6 +2397,20 @@
     const homeFeedbackBtn = document.getElementById("btn-home-feedback");
     if (homeFeedbackBtn) {
       homeFeedbackBtn.addEventListener("click", () => openFeedbackModal("home"));
+    }
+
+    const claimChestBtn = document.getElementById("btn-claim-daily-chest");
+    if (claimChestBtn) {
+      claimChestBtn.addEventListener("click", () => {
+        if (!state.user.dailyQuests || state.user.dailyQuests.chestClaimed) return;
+        state.user.dailyQuests.chestClaimed = true;
+        playTempleBell();
+        const giftedPastry = (state.user.streakDays || 0) >= 7 ? unlockHeritageTableItem("banh-dau-xanh") : false;
+        addXu(12, giftedPastry ? "Mở Rương Lộc + Tặng Đĩa bánh đậu xanh men lam!" : "Mở Rương Lộc 3 Niềm Vui Hôm Nay");
+        awardSeniorityPoints(15, "daily_chest_claimed", "diem-danh", "Hoàn thành trọn vẹn Sổ Tay 3 Niềm Vui Hôm Nay (+15 XP)");
+        saveState();
+        renderHome();
+      });
     }
 
     const homeOpenAuth = document.getElementById("btn-home-open-auth");
@@ -1792,10 +2560,23 @@
   function applyUrlDeepLinkIfPresent() {
     try {
       const params = new URLSearchParams(window.location.search || "");
+      const uat = params.get("uat");
+      if (uat) {
+        const cleanUat = String(uat).replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 24);
+        if (cleanUat) {
+          state.settings.uatTag = cleanUat;
+          saveState();
+          trackTelemetryDirect("uat_cohort", state.route || "home", "uat_link_opened", { uatTag: cleanUat });
+        }
+      }
+      const admin = params.get("admin");
       const dash = params.get("dash");
-      if (dash) {
+      if (admin || dash) {
         activePrivacySubTab = "overview-dash";
         state.route = "privacy";
+        if (admin && !isAdminUnlocked()) {
+          pendingAdminAutoPrompt = true;
+        }
         saveState();
         return;
       }
@@ -2089,6 +2870,9 @@
       }
       saveState();
       updateGlobalChrome();
+      if (state.settings && state.settings.voiceMode === "recorded" && D.VOICE_CLIPS && D.VOICE_CLIPS["diem-danh-xong"]) {
+        speak(D.VOICE_CLIPS["diem-danh-xong"].text, { clipId: "diem-danh-xong" });
+      }
       renderCheckin();
     });
 
@@ -2157,18 +2941,20 @@
     });
     text = text.trim();
 
-    // Regex safety check: block >=8 digits, URLs, scam keywords
-    const digitsOnly = text.replace(/[\s.-]/g, "");
-    if (/\d{8,}/.test(digitsOnly) || /https?:\/\/|www\.|\.vn\b|\.com\b/i.test(text) || /(chuyển khoản|số tài khoản|nạp thẻ|trúng thưởng)/i.test(text)) {
-      return { blocked: true, reason: "Hệ thống tự động chặn số điện thoại, số tài khoản, đường link hoặc từ khóa xin tiền để bảo vệ các bác." };
+    if (isUnsafeScamOrPiiText(text)) {
+      return {
+        blocked: true,
+        reason: "Hệ thống tự động chặn số điện thoại, số tài khoản, đường link hoặc từ khóa lừa đảo để bảo vệ các bác."
+      };
     }
 
     const appliedDict = [];
     state.phoneticDict.forEach((entry) => {
-      const escaped = entry.wrong.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      if (!entry || !entry.wrong || !entry.right || isUnsafeScamOrPiiText(entry.right)) return;
+      const escaped = String(entry.wrong).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       const rx = new RegExp(escaped, "gi");
       if (rx.test(text)) {
-        text = text.replace(rx, entry.right);
+        text = text.replace(rx, String(entry.right));
         appliedDict.push(entry);
       }
     });
@@ -2191,6 +2977,13 @@
         learnedCandidate = fix;
       }
     });
+
+    if (isUnsafeScamOrPiiText(text) || isUnsafeScamOrPiiText(aiPolished)) {
+      return {
+        blocked: true,
+        reason: "Hệ thống tự động chặn số điện thoại, số tài khoản, đường link hoặc từ khóa lừa đảo để bảo vệ các bác."
+      };
+    }
 
     // Format punctuation & polite ending
     if (aiPolished.length > 0) {
@@ -2528,11 +3321,19 @@
 
     document.getElementById("btn-save-host-table").addEventListener("click", () => {
       const pickedIdx = Number(document.getElementById("host-tbl-idx-in").value) || 0;
-      const rawTitle = (document.getElementById("host-tbl-name-in").value || "").trim();
-      const rawTopic = (document.getElementById("host-tbl-topic-in").value || "").trim();
-      const welcomeLine = (document.getElementById("host-tbl-welcome-in").value || "").trim();
+      const rawTitle = (document.getElementById("host-tbl-name-in").value || "").replace(/[<>]/g, "").trim();
+      const rawTopic = (document.getElementById("host-tbl-topic-in").value || "").replace(/[<>]/g, "").trim();
+      const welcomeLine = (document.getElementById("host-tbl-welcome-in").value || "").replace(/[<>]/g, "").trim();
       if (!rawTitle) {
         showToast("Vui lòng nhập tên bàn đàm đạo.");
+        return;
+      }
+      if (isUnsafeScamOrPiiText(`${rawTitle} ${rawTopic} ${welcomeLine}`)) {
+        trackTelemetryDirect("chat_blocked", "tearoom", "auto_blocked_table_rename", {
+          category: "safety_alert",
+          detail: "Chặn tự động SĐT, đường link hoặc từ khóa lừa đảo khi đặt tên bàn trà"
+        });
+        showToast("Vì an toàn, tên bàn và lời chào không được chứa số điện thoại, số tài khoản hoặc đường link.");
         return;
       }
       const targetBase = room.tables[pickedIdx];
@@ -3781,12 +4582,16 @@
       if (found) found.hits += 1;
     });
     if (res.learnedCandidate && !state.phoneticDict.some((d) => d.wrong === res.learnedCandidate.wrong)) {
-      state.phoneticDict.push({
+      const newEntry = {
         wrong: res.learnedCandidate.wrong,
         right: res.learnedCandidate.right,
         hits: 1,
         learnedBy: `Tự học (${state.user.name})`
-      });
+      };
+      state.phoneticDict.push(newEntry);
+      if (RT && typeof RT.publishPhoneticEntry === "function") {
+        RT.publishPhoneticEntry(newEntry);
+      }
       awardSkillPoints("voice_wisdom", 6);
       trackTelemetryDirect("dict_correction", "tearoom", "learned_new_phonetic_pair", {
         wrong: res.learnedCandidate.wrong,
@@ -4047,17 +4852,84 @@
     return list;
   }
 
+  function syncMorningRssFeedOnce() {
+    if (RT && typeof RT.getApprovedArticles === "function") {
+      const remoteArts = RT.getApprovedArticles() || [];
+      if (remoteArts.length > 0 && state.newspaper && Array.isArray(state.newspaper.articles)) {
+        const existingIds = new Set(state.newspaper.articles.map((a) => a.id));
+        let addedRemote = false;
+        remoteArts.forEach((ra) => {
+          if (ra && ra.id && !existingIds.has(ra.id)) {
+            state.newspaper.articles.unshift(ra);
+            existingIds.add(ra.id);
+            addedRemote = true;
+          }
+        });
+        if (addedRemote) saveState();
+      }
+    }
+    if (morningRssFetchedOnce) return;
+    morningRssFetchedOnce = true;
+    if (typeof fetch !== "function") return;
+    fetch("./assets/morning-rss.json", { cache: "no-store" })
+      .then((res) => (res && res.ok ? res.json() : null))
+      .then((payload) => {
+        if (!payload || !Array.isArray(payload.items) || !state.newspaper) return;
+        const knownTitles = new Set(
+          []
+            .concat(state.newspaper.articles || [])
+            .concat(state.newspaper.drafts || [])
+            .map((x) => stripVnAccents((x && x.title) || "").toLowerCase())
+        );
+        let added = 0;
+        payload.items.forEach((it) => {
+          if (!it || !it.title || !it.body) return;
+          const normTitle = stripVnAccents(it.title).toLowerCase();
+          if (knownTitles.has(normTitle)) return;
+          knownTitles.add(normTitle);
+          state.newspaper.drafts.push({
+            id: it.id || `rss_${Date.now()}_${added}`,
+            category: it.category || "doi-song",
+            tag: it.tag || "Điểm báo 05:30 (RSS nháp)",
+            title: it.title,
+            source: it.source || "Điểm báo tích cực 05:30",
+            body: it.body,
+            detailPoints: Array.isArray(it.detailPoints) ? it.detailPoints : [],
+            topicKeyword: it.topicKeyword || "thời sự"
+          });
+          added += 1;
+        });
+        if (added > 0) {
+          saveState();
+          if (state.route === "newspaper") {
+            const actTag = (document.activeElement && document.activeElement.tagName) || "";
+            if (actTag !== "INPUT" && actTag !== "TEXTAREA") renderNewspaper();
+          }
+        }
+      })
+      .catch(() => {});
+  }
+
   function renderNewspaper() {
+    syncMorningRssFeedOnce();
     const pron = getUserPronoun();
     const selectedCat = state.newspaper.selectedCategory || "all";
     const searchQ = state.newspaper.searchQuery || "";
     const hasFilter = selectedCat !== "all" || Boolean(searchQ.trim());
     const visibleArticles = getFilteredNewspaperArticles();
+    const adminUnlocked = isAdminUnlocked();
+    const showAdminRssBox = Boolean(state.newspaper.adminOpen && adminUnlocked);
 
     els.main.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
         <h1>Tờ Báo Sáng</h1>
-        <button type="button" class="btn-mini" id="btn-toggle-rss-admin">${state.newspaper.adminOpen ? "Đóng góc Admin RSS" : `Duyệt RSS (${state.newspaper.drafts.length})`}</button>
+        <button type="button" class="btn-mini" id="btn-toggle-rss-admin">${
+          !adminUnlocked
+            ? `${ico("shield", "ico-sm")}<span>Duyệt RSS (Admin)</span>`
+            : showAdminRssBox
+            ? "Đóng góc Admin RSS"
+            : `Duyệt RSS (${state.newspaper.drafts.length})`
+        }</button>
       </div>
       <p class="lead-copy">Chọn chuyên mục hoặc tìm chủ đề (${pron} gõ hoặc chạm gợi ý như <strong>Giá dầu, Thế giới...</strong>), rồi ấn vào tin để ngồi đàm đạo cùng những người đang đọc tin đó.</p>
 
@@ -4114,11 +4986,14 @@
       </div>
 
       ${
-        state.newspaper.adminOpen
+        showAdminRssBox
           ? `
         <div class="surface-panel warm">
-          <h3>Góc Admin duyệt RSS 1 chạm (Hậu trường buổi sáng)</h3>
-          <p style="font-size:0.88rem;">Hệ thống tự kéo RSS báo chính thống, lọc tin tích cực lưu nháp. Admin chỉ bấm duyệt 1 chạm để đăng lên Tờ Báo Sáng:</p>
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+            <h3>Góc Admin duyệt RSS 05:30 (1 chạm)</h3>
+            <button type="button" class="btn-mini" id="btn-lock-rss-admin">Khóa lại</button>
+          </div>
+          <p style="font-size:0.88rem;">GitHub Action 05:30 sáng tự kéo RSS báo chính thống, lọc tin tích cực lưu vào <code>assets/morning-rss.json</code>. Quản trị viên bấm duyệt để đăng đồng bộ lên Báo Sáng:</p>
           ${
             state.newspaper.drafts.length === 0
               ? `<p style="font-size:0.88rem; font-weight:700;">Đã duyệt hết bản nháp RSS sáng nay.</p>`
@@ -4265,19 +5140,44 @@
     }
 
     document.getElementById("btn-toggle-rss-admin").addEventListener("click", () => {
+      if (!isAdminUnlocked()) {
+        openAdminUnlockModal(() => {
+          state.newspaper.adminOpen = true;
+          saveState();
+          renderNewspaper();
+        });
+        return;
+      }
       state.newspaper.adminOpen = !state.newspaper.adminOpen;
       saveState();
       renderNewspaper();
     });
 
+    const lockRssAdminBtn = document.getElementById("btn-lock-rss-admin");
+    if (lockRssAdminBtn) {
+      lockRssAdminBtn.addEventListener("click", () => {
+        lockAdminSession();
+        showToast("Đã khóa góc quản trị RSS.");
+        renderNewspaper();
+      });
+    }
+
     els.main.querySelectorAll(".approve-rss-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
+        if (!isAdminUnlocked()) return;
         const idx = Number(btn.dataset.idx);
         const [approved] = state.newspaper.drafts.splice(idx, 1);
         if (approved) {
-          approved.tag = approved.tag.replace(" (RSS nháp)", "");
+          approved.tag = String(approved.tag || "Điểm báo sáng").replace(" (RSS nháp)", "");
           approved.category = approved.category || "doi-song";
           state.newspaper.articles.unshift(approved);
+          if (RT && typeof RT.publishApprovedArticle === "function") {
+            RT.publishApprovedArticle(approved);
+          }
+          trackTelemetryDirect("rss_approved", "newspaper", "approve_morning_rss", {
+            articleId: approved.id,
+            title: approved.title
+          });
           saveState();
           showToast("Đã duyệt tin RSS lên trang nhất Tờ Báo Sáng!");
           renderNewspaper();
@@ -4307,63 +5207,120 @@
     });
   }
 
-  // ==================== MODULE 4: DAILY QUIZ ====================
+  // ==================== MODULE 4: DAILY QUIZ (25 ROTATING QUESTIONS · 5 PACKS · 50/50 HINT) ====================
+  function getActiveQuizPackQuestions() {
+    const all = D.QUIZ_QUESTIONS || [];
+    const pIdx = Math.max(0, Math.min(4, Number(state.quiz && state.quiz.packIdx) || 0));
+    const filtered = all.filter((q) => Number(q.packIdx || 0) === pIdx);
+    return filtered.length > 0 ? filtered : all.slice(0, 5);
+  }
+
   function renderQuiz() {
     clearInterval(quizTimerId);
     const qState = state.quiz;
-    const total = D.QUIZ_QUESTIONS.length;
+    if (!Array.isArray(qState.hiddenOpts)) qState.hiddenOpts = [];
+    const packs = D.QUIZ_PACKS || [{ idx: 0, title: "Bộ 1 · Ký Ức & Quê Hương" }];
+    const curPackIdx = Math.max(0, Math.min(packs.length - 1, Number(qState.packIdx) || 0));
+    const curPack = packs[curPackIdx] || packs[0];
+    const packQuestions = getActiveQuizPackQuestions();
+    const total = packQuestions.length;
+
+    const packBarHtml = `
+      <div class="temple-cam-bar" role="tablist" aria-label="Chọn bộ câu đố vui">
+        ${packs
+          .map(
+            (pk) =>
+              `<button type="button" class="temple-cam-btn ${pk.idx === curPackIdx ? "active" : ""}" data-qpack="${pk.idx}">${escHtml(pk.title.split("·")[0].trim())} · ${escHtml((pk.title.split("·")[1] || "").trim())}</button>`
+          )
+          .join("")}
+      </div>
+    `;
 
     if (qState.finished) {
+      const nextPackIdx = (curPackIdx + 1) % packs.length;
       els.main.innerHTML = `
         <h1>Hoàn thành Đố vui hôm nay</h1>
+        ${packBarHtml}
         <div class="surface-panel jade">
-          <h2>Kết quả của ${escHtml(state.user.name)}</h2>
+          <h2>Kết quả ${escHtml(curPack.title)}</h2>
           <p class="num" style="font-size:1.5rem; font-weight:700;">${qState.score} điểm</p>
-          <p>Trả lời chậm vẫn được tối thiểu 60% điểm mỗi câu đúng. Bác giữ vững phong độ nhé!</p>
-          <button type="button" class="btn-primary" id="btn-retry-quiz">Chơi lại bộ câu đố</button>
+          <p>Trả lời thong thả sau 25 giây vẫn nhận đủ 60% điểm mỗi câu đúng. Mời bác thử sức tiếp bộ chủ đề mới nhé!</p>
+          <div class="btn-row">
+            <button type="button" class="btn-primary" id="btn-next-pack-quiz">Sang ${escHtml(packs[nextPackIdx].title)}</button>
+            <button type="button" class="btn-secondary" id="btn-retry-quiz">Chơi lại bộ này</button>
+          </div>
         </div>
       `;
+      els.main.querySelectorAll("[data-qpack]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          state.quiz = { packIdx: Number(btn.dataset.qpack) || 0, idx: 0, score: 0, selectedOpt: null, hiddenOpts: [], hintUsed: false, finished: false, timeLeft: 25 };
+          saveState();
+          renderQuiz();
+        });
+      });
+      document.getElementById("btn-next-pack-quiz").addEventListener("click", () => {
+        state.quiz = { packIdx: nextPackIdx, idx: 0, score: 0, selectedOpt: null, hiddenOpts: [], hintUsed: false, finished: false, timeLeft: 25 };
+        saveState();
+        renderQuiz();
+      });
       document.getElementById("btn-retry-quiz").addEventListener("click", () => {
-        state.quiz = { idx: 0, score: 0, selectedOpt: null, finished: false, timeLeft: 25 };
+        state.quiz = { packIdx: curPackIdx, idx: 0, score: 0, selectedOpt: null, hiddenOpts: [], hintUsed: false, finished: false, timeLeft: 25 };
         saveState();
         renderQuiz();
       });
       return;
     }
 
-    const q = D.QUIZ_QUESTIONS[qState.idx];
+    const safeIdx = Math.max(0, Math.min(total - 1, Number(qState.idx) || 0));
+    qState.idx = safeIdx;
+    const q = packQuestions[safeIdx];
     const hasAnswered = qState.selectedOpt !== null;
     const letters = ["A", "B", "C", "D"];
 
     els.main.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <h1>Đố vui hôm nay</h1>
-        <span class="badge-tag amber num">Câu ${qState.idx + 1}/${total}</span>
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+        <h1>Đố vui minh mẫn</h1>
+        <span class="badge-tag amber num">Câu ${safeIdx + 1}/${total} · ${qState.score}đ</span>
       </div>
 
+      ${packBarHtml}
+
       <div class="surface-panel">
-        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
           <span class="badge-tag">${escHtml(q.tag)}</span>
-          <span class="num" id="quiz-timer-lbl" style="font-weight:700; color:var(--accent-terracotta);">Còn ${qState.timeLeft} giây</span>
+          <span class="num" id="quiz-timer-lbl" style="font-weight:700; color:${qState.timeLeft > 0 ? "var(--accent-terracotta)" : "var(--accent-jade)"};">
+            ${qState.timeLeft > 0 ? `Tham khảo ${qState.timeLeft} giây` : "Thong thả chọn (vẫn +60đ)"}
+          </span>
         </div>
 
         <h2 style="line-height:1.4;">${escHtml(q.question)}</h2>
 
-        <button type="button" class="btn-secondary" id="btn-read-quiz" style="min-height:56px;">
-          ${ico("speaker")}
-          <span>Đọc to câu hỏi</span>
-        </button>
+        <div class="btn-row">
+          <button type="button" class="btn-secondary" id="btn-read-quiz">
+            ${ico("speaker")}
+            <span>Đọc to câu hỏi</span>
+          </button>
+          ${
+            !hasAnswered
+              ? `<button type="button" class="btn-jade" id="btn-quiz-5050" ${qState.hintUsed ? "disabled" : ""}>
+                  ${ico("eye")}
+                  <span>${qState.hintUsed ? "Đã lọc 2 câu nhiễu" : "Gợi ý 50/50"}</span>
+                </button>`
+              : ""
+          }
+        </div>
 
         <div class="quiz-options">
           ${q.options
             .map((opt, i) => {
-              let cls = "";
+              const isElim = !hasAnswered && qState.hiddenOpts.includes(i);
+              let cls = isElim ? "is-eliminated" : "";
               if (hasAnswered) {
                 if (i === q.correctIndex) cls = "correct";
                 else if (i === qState.selectedOpt) cls = "wrong";
               }
               return `
-                <button type="button" class="quiz-opt-btn ${cls}" data-opt="${i}" ${hasAnswered ? "disabled" : ""}>
+                <button type="button" class="quiz-opt-btn ${cls}" data-opt="${i}" ${hasAnswered || isElim ? "disabled" : ""}>
                   <span class="quiz-opt-badge">${letters[i]}</span>
                   <span>${escHtml(opt)}</span>
                 </button>
@@ -4379,7 +5336,7 @@
             <strong>${qState.selectedOpt === q.correctIndex ? "Chính xác!" : "Gần đúng rồi bác ạ:"}</strong>
             <p style="font-size:0.88rem;">${escHtml(q.explain)}</p>
             <button type="button" class="btn-primary" id="btn-next-quiz">
-              ${qState.idx + 1 < total ? "Sang câu tiếp theo" : "Xem tổng điểm"}
+              ${safeIdx + 1 < total ? "Sang câu tiếp theo →" : "Xem tổng điểm &amp; Nhận thưởng"}
             </button>
           </div>
         `
@@ -4388,7 +5345,17 @@
       </div>
     `;
 
-    if (!hasAnswered) {
+    els.main.querySelectorAll("[data-qpack]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const nextP = Number(btn.dataset.qpack) || 0;
+        if (nextP === curPackIdx) return;
+        state.quiz = { packIdx: nextP, idx: 0, score: 0, selectedOpt: null, hiddenOpts: [], hintUsed: false, finished: false, timeLeft: 25 };
+        saveState();
+        renderQuiz();
+      });
+    });
+
+    if (!hasAnswered && qState.timeLeft > 0) {
       quizTimerId = setInterval(() => {
         if (state.route !== "quiz") {
           clearInterval(quizTimerId);
@@ -4396,13 +5363,34 @@
         }
         state.quiz.timeLeft = Math.max(0, state.quiz.timeLeft - 1);
         const lbl = document.getElementById("quiz-timer-lbl");
-        if (lbl) lbl.textContent = `Còn ${state.quiz.timeLeft} giây`;
+        if (lbl) {
+          if (state.quiz.timeLeft > 0) {
+            lbl.textContent = `Tham khảo ${state.quiz.timeLeft} giây`;
+          } else {
+            lbl.style.color = "var(--accent-jade)";
+            lbl.textContent = "Thong thả chọn (vẫn +60đ)";
+            clearInterval(quizTimerId);
+          }
+        }
       }, 1000);
     }
 
     document.getElementById("btn-read-quiz").addEventListener("click", () => {
       speak(`${q.question}. A: ${q.options[0]}. B: ${q.options[1]}. C: ${q.options[2]}. D: ${q.options[3]}`);
     });
+
+    const btn5050 = document.getElementById("btn-quiz-5050");
+    if (btn5050) {
+      btn5050.addEventListener("click", () => {
+        if (state.quiz.hintUsed) return;
+        const wrongIndices = [0, 1, 2, 3].filter((idx) => idx !== q.correctIndex);
+        state.quiz.hiddenOpts = wrongIndices.slice(0, 2);
+        state.quiz.hintUsed = true;
+        saveState();
+        showToast("Đã gạch bớt 2 phương án sai để bác dễ chọn!");
+        renderQuiz();
+      });
+    }
 
     els.main.querySelectorAll(".quiz-opt-btn").forEach((b) => {
       b.addEventListener("click", () => {
@@ -4417,12 +5405,15 @@
             eventType: "folk_game",
             module: "quiz",
             gameKind: "quiz",
+            packIdx: curPackIdx,
             score: state.quiz.score
           });
         } else {
+          syncDailyQuestFlagsFromAction("quiz_try", "dan-gian");
           trackTelemetryDirect("folk_game", "quiz", "quiz_wrong_try", {
-            questionIdx: qState.idx,
-            detail: `Thử câu đố vui số ${qState.idx + 1}`
+            packIdx: curPackIdx,
+            questionIdx: safeIdx,
+            detail: `Thử câu đố vui số ${safeIdx + 1}`
           });
         }
         saveState();
@@ -4436,10 +5427,12 @@
         if (state.quiz.idx + 1 < total) {
           state.quiz.idx += 1;
           state.quiz.selectedOpt = null;
+          state.quiz.hiddenOpts = [];
+          state.quiz.hintUsed = false;
           state.quiz.timeLeft = 25;
         } else {
           state.quiz.finished = true;
-          addXu(5, "Hoàn thành 5 câu Đố vui hôm nay");
+          addXu(5, `Hoàn thành ${curPack.title}`);
         }
         saveState();
         renderQuiz();
@@ -4518,11 +5511,260 @@
     return cells;
   }
 
+  function buildProverbMemoryDeck(seedNum) {
+    const allPairs = D.PROVERB_PAIRS || [];
+    const offset = ((Number(seedNum) || 0) * 6) % Math.max(1, allPairs.length);
+    const chosen = [];
+    for (let i = 0; i < 6 && i < allPairs.length; i++) {
+      chosen.push(allPairs[(offset + i) % allPairs.length]);
+    }
+    const cards = [];
+    chosen.forEach((pv) => {
+      cards.push({ uid: `${pv.id}_h`, pairId: pv.id, role: "Vế đầu", text: pv.head, full: `${pv.head}, ${pv.tail}`, meaning: pv.meaning });
+      cards.push({ uid: `${pv.id}_t`, pairId: pv.id, role: "Vế kết", text: pv.tail, full: `${pv.head}, ${pv.tail}`, meaning: pv.meaning });
+    });
+    // Deterministic Fisher-Yates shuffle mixed with seed so every deal feels fresh
+    let s = (Number(seedNum) || 1) * 9301 + 49297;
+    for (let i = cards.length - 1; i > 0; i--) {
+      s = (s * 233280 + 12345) % 2147483647;
+      const j = s % (i + 1);
+      const tmp = cards[i];
+      cards[i] = cards[j];
+      cards[j] = tmp;
+    }
+    return cards;
+  }
+
+  function renderProverbMemoryTab(container) {
+    if (!state.oaq.proverbGame || !Array.isArray(state.oaq.proverbGame.deck) || state.oaq.proverbGame.deck.length !== 12) {
+      const nextSeed = ((state.oaq.proverbGame && state.oaq.proverbGame.roundSeed) || 0) + 1;
+      state.oaq.proverbGame = {
+        deck: buildProverbMemoryDeck(nextSeed),
+        flipped: [],
+        matchedIds: [],
+        moves: 0,
+        roundSeed: nextSeed,
+        lastMatchedPair: null
+      };
+      saveState();
+    }
+    const pg = state.oaq.proverbGame;
+    const matchedSet = new Set(pg.matchedIds || []);
+    const allCleared = matchedSet.size >= 6;
+    const proverbWins = (state.user.gameStats && state.user.gameStats.proverbWins) || 0;
+
+    container.innerHTML = `
+      <div class="surface-panel">
+        <div class="passcard-head">
+          <strong>Ghép Cặp Ca Dao &amp; Tục Ngữ (6 cặp)</strong>
+          <span class="badge-tag jade num">Đã ghép ${matchedSet.size}/6 · Thắng ${proverbWins} ván</span>
+        </div>
+        <p style="font-size:0.88rem; color:var(--ink-secondary);">Chạm mở lần lượt 2 thẻ gỗ để nối <strong>Vế đầu</strong> với <strong>Vế kết</strong> của câu ca dao. Không tính giờ gấp gáp.</p>
+
+        ${
+          pg.lastMatchedPair
+            ? `
+          <div class="surface-panel warm" style="padding:10px 12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+              <strong style="color:var(--accent-jade);">"${escHtml(pg.lastMatchedPair.full)}"</strong>
+              <button type="button" class="btn-mini" id="btn-read-matched-proverb">${ico("speaker", "ico-sm")}<span>Nghe đọc</span></button>
+            </div>
+            <small style="font-size:0.86rem; color:var(--ink-secondary);">${escHtml(pg.lastMatchedPair.meaning)}</small>
+          </div>
+        `
+            : ""
+        }
+
+        <div class="proverb-board-grid" role="group" aria-label="Bàn 12 thẻ gỗ ca dao tục ngữ">
+          ${pg.deck
+            .map((card, idx) => {
+              const isMatched = matchedSet.has(card.pairId);
+              const isFlipped = isMatched || (pg.flipped || []).includes(idx);
+              const cls = isMatched ? "is-matched" : isFlipped ? "is-flipped" : "";
+              return `
+                <button type="button" class="proverb-tile-btn ${cls}" data-pv-idx="${idx}" ${isMatched ? "disabled" : ""}>
+                  ${
+                    isFlipped
+                      ? `<small style="font-size:0.74rem; opacity:0.78;">${escHtml(card.role)}</small><span>${escHtml(card.text)}</span>`
+                      : `<span>Thẻ ${idx + 1}</span><small style="font-size:0.74rem; opacity:0.85;">Chạm mở</small>`
+                  }
+                </button>
+              `;
+            })
+            .join("")}
+        </div>
+
+        ${
+          allCleared
+            ? `
+          <div class="surface-panel jade">
+            <strong>Tuyệt vời! Bác đã ghép trọn vẹn 6 cặp ca dao sau ${pg.moves} lượt lật!</strong>
+            <button type="button" class="btn-primary" id="btn-proverb-next-round">Chia ván Ca dao mới (Đổi câu khác)</button>
+          </div>
+        `
+            : `<button type="button" class="btn-secondary" id="btn-proverb-reset">Xáo bộ thẻ Ca dao mới</button>`
+        }
+      </div>
+    `;
+
+    const readPvBtn = container.querySelector("#btn-read-matched-proverb");
+    if (readPvBtn && pg.lastMatchedPair) {
+      readPvBtn.addEventListener("click", () => {
+        speak(`${pg.lastMatchedPair.full}. Ý nghĩa: ${pg.lastMatchedPair.meaning}`, { announceToast: true });
+      });
+    }
+
+    const startFreshDeck = () => {
+      if (proverbFlipTimerId) {
+        clearTimeout(proverbFlipTimerId);
+        proverbFlipTimerId = null;
+      }
+      const nextSeed = (Number(pg.roundSeed) || 0) + 1;
+      state.oaq.proverbGame = {
+        deck: buildProverbMemoryDeck(nextSeed),
+        flipped: [],
+        matchedIds: [],
+        moves: 0,
+        roundSeed: nextSeed,
+        lastMatchedPair: null
+      };
+      saveState();
+      renderProverbMemoryTab(container);
+    };
+
+    const nextRoundBtn = container.querySelector("#btn-proverb-next-round");
+    if (nextRoundBtn) nextRoundBtn.addEventListener("click", startFreshDeck);
+    const resetPvBtn = container.querySelector("#btn-proverb-reset");
+    if (resetPvBtn) resetPvBtn.addEventListener("click", startFreshDeck);
+
+    container.querySelectorAll("[data-pv-idx]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        if (proverbFlipTimerId) return;
+        const idx = Number(btn.dataset.pvIdx);
+        if ((pg.flipped || []).includes(idx)) return;
+        const card = pg.deck[idx];
+        if (!card || matchedSet.has(card.pairId)) return;
+
+        playWoodPieceClack(false);
+        pg.flipped.push(idx);
+
+        if (pg.flipped.length === 2) {
+          pg.moves = (Number(pg.moves) || 0) + 1;
+          const c1 = pg.deck[pg.flipped[0]];
+          const c2 = pg.deck[pg.flipped[1]];
+          if (c1 && c2 && c1.pairId === c2.pairId) {
+            pg.matchedIds.push(c1.pairId);
+            pg.lastMatchedPair = { full: c1.full, meaning: c1.meaning };
+            pg.flipped = [];
+            playTempleBell();
+            if (pg.matchedIds.length >= 6) {
+              if (!state.user.gameStats) state.user.gameStats = createDefaultState().user.gameStats;
+              state.user.gameStats.proverbWins = (Number(state.user.gameStats.proverbWins) || 0) + 1;
+              checkGameWinMilestones();
+              const giftedBetel = unlockHeritageTableItem("khay-trau-cau");
+              addXu(6, giftedBetel ? "Ghép trọn 6 cặp Ca dao + Tặng Cơi trầu đồng cánh phượng!" : "Ghép trọn 6 cặp Ca dao Trí nhớ!");
+              awardSeniorityPoints(6, "proverb_memory_win", "dan-gian", "Hoàn thành bàn Lật Thẻ Ca Dao Trí Nhớ", {
+                eventType: "folk_game",
+                module: "games",
+                gameKind: "proverb_memory",
+                moves: pg.moves
+              });
+            } else {
+              awardSkillPoints("folk_games", 2);
+              showToast(`Khớp đúng: "${c1.full}"!`);
+            }
+            saveState();
+            renderProverbMemoryTab(container);
+            return;
+          }
+
+          renderProverbMemoryTab(container);
+          proverbFlipTimerId = setTimeout(() => {
+            proverbFlipTimerId = null;
+            pg.flipped = [];
+            saveState();
+            if (state.route === "games" && activeGameTab === "cadao") {
+              const host = document.getElementById("game-tab-body");
+              if (host) renderProverbMemoryTab(host);
+            }
+          }, 950);
+          return;
+        }
+
+        saveState();
+        renderProverbMemoryTab(container);
+      });
+    });
+  }
+
+  function pickSmartOaqAiMove(cells, scoreP, scoreAI, forPlayerSide, difficulty) {
+    const candidateCells = forPlayerSide ? [0, 1, 2, 3, 4] : [6, 7, 8, 9, 10];
+    const valid = candidateCells.filter((idx) => (cells[idx] || 0) > 0);
+    if (valid.length === 0) return null;
+
+    const scoredMoves = [];
+    valid.forEach((cIdx) => {
+      [-1, 1].forEach((dirStep) => {
+        const sim = buildOaqMoveTimeline(cells, scoreP, scoreAI, cIdx, dirStep, forPlayerSide, "", "");
+        if (!sim || !sim.finalSnapshot) return;
+        const myGain = forPlayerSide
+          ? sim.finalSnapshot.scoreP - scoreP
+          : sim.finalSnapshot.scoreAI - scoreAI;
+        const nextCells = sim.finalSnapshot.cells;
+        // 1-ply opponent reply lookahead
+        const oppIndices = forPlayerSide ? [6, 7, 8, 9, 10] : [0, 1, 2, 3, 4];
+        let maxOppReply = 0;
+        oppIndices.forEach((oppIdx) => {
+          if ((nextCells[oppIdx] || 0) <= 0) return;
+          [-1, 1].forEach((oppDir) => {
+            const oppSim = buildOaqMoveTimeline(
+              nextCells,
+              sim.finalSnapshot.scoreP,
+              sim.finalSnapshot.scoreAI,
+              oppIdx,
+              oppDir,
+              !forPlayerSide,
+              "",
+              ""
+            );
+            if (!oppSim || !oppSim.finalSnapshot) return;
+            const oppGain = forPlayerSide
+              ? oppSim.finalSnapshot.scoreAI - sim.finalSnapshot.scoreAI
+              : oppSim.finalSnapshot.scoreP - sim.finalSnapshot.scoreP;
+            if (oppGain > maxOppReply) maxOppReply = oppGain;
+          });
+        });
+
+        const totalEval = myGain * 2.25 - maxOppReply * 1.05 + (myGain >= 10 ? 2.5 : 0);
+        scoredMoves.push({
+          cell: cIdx,
+          dirStep,
+          myGain,
+          maxOppReply,
+          totalEval
+        });
+      });
+    });
+
+    if (scoredMoves.length === 0) {
+      return { cell: valid[0], dirStep: 1, myGain: 0 };
+    }
+    scoredMoves.sort((a, b) => b.totalEval - a.totalEval || b.myGain - a.myGain);
+
+    if (!forPlayerSide && difficulty === "easy" && scoredMoves.length > 2) {
+      // Gentle relaxed AI picks a moderate move so newcomers enjoy smooth rallies
+      const midIdx = Math.min(scoredMoves.length - 1, 1 + Math.floor(Math.random() * Math.min(3, scoredMoves.length - 1)));
+      return scoredMoves[midIdx];
+    }
+    return scoredMoves[0];
+  }
+
   function renderGames() {
     els.main.innerHTML = `
-      <h1>Trò chơi dân gian &amp; Cờ tướng 9×10</h1>
-      <div class="tab-bar">
+      <h1>Trò chơi dân gian &amp; Rèn trí nhớ</h1>
+      <div class="tab-bar" role="tablist" aria-label="Chọn trò chơi dân gian">
         <button type="button" class="tab-btn ${activeGameTab === "oaq" ? "active" : ""}" id="tab-oaq">Ô ăn quan</button>
+        <button type="button" class="tab-btn ${activeGameTab === "cadao" ? "active" : ""}" id="tab-cadao">Ca dao Trí nhớ</button>
         <button type="button" class="tab-btn ${activeGameTab === "cotuong" ? "active" : ""}" id="tab-cotuong">Cờ tướng 9×10</button>
       </div>
       <div id="game-tab-body"></div>
@@ -4530,13 +5772,29 @@
 
     document.getElementById("tab-oaq").addEventListener("click", () => {
       if (activeGameTab === "oaq") return;
+      if (proverbFlipTimerId) {
+        clearTimeout(proverbFlipTimerId);
+        proverbFlipTimerId = null;
+      }
       confirmMatchExitOrStay(() => {
         activeGameTab = "oaq";
         renderGames();
       }, "chuyển sang Ô ăn quan");
     });
+    document.getElementById("tab-cadao").addEventListener("click", () => {
+      if (activeGameTab === "cadao") return;
+      confirmMatchExitOrStay(() => {
+        cancelOrCommitOaqAnimation(true);
+        activeGameTab = "cadao";
+        renderGames();
+      }, "chuyển sang Lật Thẻ Ca Dao");
+    });
     document.getElementById("tab-cotuong").addEventListener("click", () => {
       if (activeGameTab === "cotuong") return;
+      if (proverbFlipTimerId) {
+        clearTimeout(proverbFlipTimerId);
+        proverbFlipTimerId = null;
+      }
       confirmMatchExitOrStay(() => {
         cancelOrCommitOaqAnimation(true);
         activeGameTab = "cotuong";
@@ -4547,6 +5805,8 @@
     const body = document.getElementById("game-tab-body");
     if (activeGameTab === "oaq") {
       renderOaqTab(body);
+    } else if (activeGameTab === "cadao") {
+      renderProverbMemoryTab(body);
     } else {
       renderXiangqiTab(body);
     }
@@ -5174,6 +6434,17 @@
           <button type="button" class="btn-secondary" id="oaq-mode-async" ${isAnimating ? "disabled" : ""} style="${o.mode === "async" ? "background:var(--accent-jade);color:#fff;" : ""}">Ván treo thật (Qua link)</button>
         </div>
 
+        ${
+          o.mode === "ai"
+            ? `
+          <div class="temple-cam-bar" role="group" aria-label="Chọn mức độ Máy Ô ăn quan">
+            <button type="button" class="temple-cam-btn ${o.aiLevel === "easy" ? "active" : ""}" data-oaq-lvl="easy" ${isAnimating ? "disabled" : ""}>Máy Thư Giãn</button>
+            <button type="button" class="temple-cam-btn ${o.aiLevel !== "easy" ? "active" : ""}" data-oaq-lvl="club" ${isAnimating ? "disabled" : ""}>Máy Cao Thủ Làng</button>
+          </div>
+        `
+            : ""
+        }
+
         <div class="game-stats-strip num">
           <span>Thắng: <strong>${(state.user.gameStats && state.user.gameStats.oaqWins) || 0}</strong></span>
           <span>Thua: <strong>${(state.user.gameStats && state.user.gameStats.oaqLosses) || 0}</strong></span>
@@ -5292,7 +6563,10 @@
           }
         </div>
 
-        <button type="button" class="btn-secondary" id="oaq-reset">${isAnimating ? "Bỏ qua rải &amp; Xếp ván mới" : "Xếp lại bàn cờ mới"}</button>
+        <div class="btn-row">
+          <button type="button" class="btn-secondary" id="oaq-btn-hint" ${!isMyTurn || isGameOver || isAnimating ? "disabled" : ""}>Gợi ý nước ăn sỏi</button>
+          <button type="button" class="btn-secondary" id="oaq-reset">${isAnimating ? "Bỏ qua &amp; Ván mới" : "Xếp ván mới"}</button>
+        </div>
 
         ${
           o.mode === "async" && o.zaloInviteUrl
@@ -5413,8 +6687,15 @@
             refreshOaqTabIfActive();
             return;
           }
-          const pick = validAiCells[Math.floor(Math.random() * validAiCells.length)];
-          const aiDir = Math.random() > 0.5 ? 1 : -1;
+          const smartPick = pickSmartOaqAiMove(
+            state.oaq.cells,
+            state.oaq.scoreP,
+            state.oaq.scoreAI,
+            false,
+            state.oaq.aiLevel || "club"
+          );
+          const pick = smartPick ? smartPick.cell : validAiCells[0];
+          const aiDir = smartPick ? smartPick.dirStep : 1;
           const aiTimeline = buildOaqMoveTimeline(
             state.oaq.cells,
             state.oaq.scoreP,
@@ -5422,7 +6703,7 @@
             pick,
             aiDir,
             false,
-            "Máy",
+            state.oaq.aiLevel === "easy" ? "Máy (Thư giãn)" : "Máy (Cao thủ)",
             aiDir === -1 ? "bên Phải" : "bên Trái"
           );
           runOaqSowingAnimation(aiTimeline, () => {
@@ -5441,6 +6722,36 @@
     const btnR = document.getElementById("oaq-dir-right");
     if (btnL) btnL.addEventListener("click", () => doPlayerDir(-1));
     if (btnR) btnR.addEventListener("click", () => doPlayerDir(1));
+
+    container.querySelectorAll("[data-oaq-lvl]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        if (oaqAnimState) return;
+        const nextLv = btn.dataset.oaqLvl === "easy" ? "easy" : "club";
+        if (state.oaq.aiLevel === nextLv) return;
+        state.oaq.aiLevel = nextLv;
+        saveState();
+        showToast(nextLv === "easy" ? "Đã chọn Máy Thư Giãn — rải sỏi nhẹ nhàng." : "Đã chọn Máy Cao Thủ Làng — tính nước ăn liên hoàn!");
+        refreshOaqTabIfActive();
+      });
+    });
+
+    const oaqHintBtn = document.getElementById("oaq-btn-hint");
+    if (oaqHintBtn) {
+      oaqHintBtn.addEventListener("click", () => {
+        if (oaqAnimState || !isMyTurn || isGameOver) return;
+        const isHostSide = !isGuestAsync;
+        const best = pickSmartOaqAiMove(state.oaq.cells, state.oaq.scoreP, state.oaq.scoreAI, isHostSide, "club");
+        if (!best) return;
+        state.oaq.selectedCell = best.cell;
+        const visualDir = (isHostSide ? best.dirStep : -best.dirStep) > 0 ? "Rải sang Phải →" : "← Rải sang Trái";
+        showToast(
+          best.myGain > 0
+            ? `Gợi ý: Ô ${best.cell + 1} · ${visualDir} (ăn ngay ${best.myGain} quân)!`
+            : `Gợi ý thế thủ chắc nhất: Ô ${best.cell + 1} · ${visualDir}`
+        );
+        refreshOaqTabIfActive();
+      });
+    }
 
     document.getElementById("oaq-mode-ai").addEventListener("click", () => {
       if (oaqAnimState || state.oaq.mode === "ai") return;
@@ -5593,7 +6904,12 @@
     ensureXiangqiBoardInitialized();
 
     const pz = XQ.PUZZLES[(x.puzzleIdx || 0) % XQ.PUZZLES.length];
+    const isCupTab = x.mode === "cup";
     const isPlayGameTab = x.mode !== "puzzle";
+    const cupObj = x.cup || createDefaultState().xiangqi.cup;
+    const cupRival = getCupCurrentRival(cupObj);
+    const cupUnitLabel = getCupUnitDisplayName();
+    const cupTitlesCount = (state.user.gameStats && state.user.gameStats.cupTitles) || 0;
     const myControllableSide =
       x.mode === "local2p"
         ? x.turn
@@ -5611,20 +6927,46 @@
 
     container.innerHTML = `
       <div class="surface-panel">
-        <!-- 2 Chế độ lớn dễ chọn nhất: Đánh Ván Thật 32 Quân vs Giải 6 Thế Cờ -->
-        <div class="xq-top-switch" role="tablist" aria-label="Chọn Đánh ván thật hoặc Giải cờ thế">
-          <button type="button" class="xq-top-btn ${isPlayGameTab ? "active" : ""}" id="xq-top-play">Đánh ván thật (32 quân)</button>
+        <!-- Chế độ lớn dễ chọn nhất: Đánh Ván Thật · Giải Cờ Thế · Cúp Đồng Ngũ -->
+        <div class="xq-top-switch" role="tablist" aria-label="Chọn Đánh ván thật, Giải cờ thế hoặc Cúp Đồng Ngũ">
+          <button type="button" class="xq-top-btn ${isPlayGameTab && !isCupTab ? "active" : ""}" id="xq-top-play">Đánh ván thật (32 quân)</button>
           <button type="button" class="xq-top-btn ${!isPlayGameTab ? "active" : ""}" id="xq-top-puzzle">Giải Cờ thế (${solvedCount}/${XQ.PUZZLES.length} thế)</button>
         </div>
+        <button type="button" class="xq-top-btn ${isCupTab ? "active" : ""}" id="xq-top-cup" style="width:100%;">
+          ${ico("trophy", "ico-sm")} Cúp Cờ Tướng Đồng Ngũ · 3 Vòng (${cupTitlesCount} Cúp)
+        </button>
 
         <div class="game-stats-strip num">
           <span>Thắng: <strong>${(state.user.gameStats && state.user.gameStats.xiangqiWins) || 0}</strong></span>
           <span>Thua: <strong>${(state.user.gameStats && state.user.gameStats.xiangqiLosses) || 0}</strong></span>
-          <span>Chuỗi thắng: <strong>${(state.user.gameStats && state.user.gameStats.winStreak) || 0}</strong></span>
+          <span>Cúp CLB: <strong>${cupTitlesCount}</strong></span>
         </div>
 
         ${
-          isPlayGameTab
+          isCupTab
+            ? `
+          <div class="surface-panel jade" style="padding:10px 12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+              <strong>Đại diện: ${escHtml(cupUnitLabel)}</strong>
+              <span class="badge-tag jade num">${escHtml(cupRival.roundLabel)}</span>
+            </div>
+            <div class="cup-bracket-bar" role="group" aria-label="Tiến độ 3 vòng Cúp Đồng Ngũ">
+              <div class="cup-step-pill ${cupObj.round > 0 || (cupObj.round === 0 && cupObj.justWonRound) ? "is-won" : cupObj.round === 0 ? "is-current" : ""}">1. Tứ Kết</div>
+              <div class="cup-step-pill ${cupObj.round > 1 || (cupObj.round === 1 && cupObj.justWonRound) ? "is-won" : cupObj.round === 1 ? "is-current" : ""}">2. Bán Kết</div>
+              <div class="cup-step-pill ${cupObj.justWonTitle ? "is-won" : cupObj.round === 2 ? "is-current" : ""}">3. Chung Kết</div>
+            </div>
+            <div style="font-size:0.88rem; color:var(--ink-primary);">
+              Đối thủ CLB bạn: <strong>${escHtml(cupRival.clubName)}</strong> · Đội trưởng ${escHtml(cupRival.captain)}
+            </div>
+            <small style="font-size:0.84rem; color:var(--ink-secondary);">${escHtml(cupRival.motto)}</small>
+          </div>
+
+          <div class="xq-captured-strip">
+            <span>Đỏ ăn: <strong>${capInfo.capturedByRed.length ? escHtml(capInfo.capturedByRed.join(", ")) : "chưa ăn quân"}</strong></span>
+            <span>Đen ăn: <strong>${capInfo.capturedByBlack.length ? escHtml(capInfo.capturedByBlack.join(", ")) : "chưa ăn quân"}</strong></span>
+          </div>
+        `
+            : isPlayGameTab
             ? `
           <div class="xq-opp-grid" role="group" aria-label="Chọn đối thủ trên bàn 9×10">
             <button type="button" class="xq-mode-btn ${x.mode === "ai" && x.aiLevel !== "easy" ? "active" : ""}" data-xq-play="ai-club">Đấu Máy CLB (Khá)</button>
@@ -5709,12 +7051,26 @@
               ? `<button type="button" class="btn-secondary" id="xq-btn-undo">Hoàn lại 1 nước</button>`
               : ""
           }
-          <button type="button" class="btn-primary" id="xq-btn-reset">${x.mode === "puzzle" ? "Xếp lại thế cờ" : "Xếp ván 9×10 mới"}</button>
+          <button type="button" class="btn-primary" id="xq-btn-reset">${
+            x.mode === "puzzle" ? "Xếp lại thế cờ" : isCupTab ? "Đánh lại vòng này" : "Xếp ván 9×10 mới"
+          }</button>
         </div>
 
         ${
           x.mode === "puzzle" && x.solved
             ? `<button type="button" class="btn-jade" id="xq-btn-next-puzzle">Sang Thế cờ tiếp theo →</button>`
+            : ""
+        }
+        ${
+          isCupTab && x.solved && cupObj.justWonRound && !cupObj.justWonTitle
+            ? `<button type="button" class="btn-jade" id="xq-btn-next-cup-round">${
+                cupObj.round === 0 ? "Vào Vòng Bán Kết →" : "Tiến vào Trận Chung Kết →"
+              }</button>`
+            : ""
+        }
+        ${
+          isCupTab && x.solved && cupObj.justWonTitle
+            ? `<button type="button" class="btn-jade" id="xq-btn-restart-cup">${ico("trophy")}<span>Bảo vệ ngôi vô địch mùa Cúp mới</span></button>`
             : ""
         }
 
@@ -5740,9 +7096,11 @@
     `;
 
     container.querySelector("#xq-top-play").addEventListener("click", () => {
-      if (x.mode === "puzzle") {
-        switchXiangqiMode("ai");
-        refreshXiangqiHosts();
+      if (x.mode === "puzzle" || x.mode === "cup") {
+        confirmMatchExitOrStay(() => {
+          switchXiangqiMode("ai");
+          refreshXiangqiHosts();
+        }, "chuyển sang Đánh ván thật tự do");
       }
     });
     container.querySelector("#xq-top-puzzle").addEventListener("click", () => {
@@ -5753,6 +7111,52 @@
         }, "chuyển sang Giải Cờ thế");
       }
     });
+    container.querySelector("#xq-top-cup").addEventListener("click", () => {
+      if (x.mode !== "cup") {
+        confirmMatchExitOrStay(() => {
+          if (!x.cup) x.cup = createDefaultState().xiangqi.cup;
+          if (x.cup.justWonTitle) {
+            x.cup.round = 0;
+            x.cup.justWonTitle = false;
+            x.cup.justWonRound = false;
+          }
+          switchXiangqiMode("cup");
+          refreshXiangqiHosts();
+        }, "bước vào Cúp Cờ Tướng Đồng Ngũ");
+      }
+    });
+
+    const nextCupBtn = container.querySelector("#xq-btn-next-cup-round");
+    if (nextCupBtn) {
+      nextCupBtn.addEventListener("click", () => {
+        if (!x.cup) x.cup = createDefaultState().xiangqi.cup;
+        x.cup.round = Math.min(2, (Number(x.cup.round) || 0) + 1);
+        x.cup.justWonRound = false;
+        const roundRivals = (D.TOURNAMENT_RIVAL_CLUBS || []).filter((c) => c.round === x.cup.round);
+        if (roundRivals.length > 0) {
+          const pickIdx = (Number(x.cup.championCount) || 0) % roundRivals.length;
+          x.cup.rivalId = roundRivals[pickIdx].id;
+        }
+        switchXiangqiMode("cup");
+        refreshXiangqiHosts();
+      });
+    }
+
+    const restartCupBtn = container.querySelector("#xq-btn-restart-cup");
+    if (restartCupBtn) {
+      restartCupBtn.addEventListener("click", () => {
+        if (!x.cup) x.cup = createDefaultState().xiangqi.cup;
+        x.cup.round = 0;
+        x.cup.justWonTitle = false;
+        x.cup.justWonRound = false;
+        const r0 = (D.TOURNAMENT_RIVAL_CLUBS || []).filter((c) => c.round === 0);
+        if (r0.length > 0) {
+          x.cup.rivalId = r0[((Number(x.cup.championCount) || 0) + 1) % r0.length].id;
+        }
+        switchXiangqiMode("cup");
+        refreshXiangqiHosts();
+      });
+    }
 
     container.querySelectorAll("[data-xq-play]").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -5977,11 +7381,59 @@
       return;
     }
 
+    const handleCupVictory = () => {
+      if (!x.cup || typeof x.cup !== "object") x.cup = createDefaultState().xiangqi.cup;
+      const rival = getCupCurrentRival(x.cup);
+      const unitLabel = getCupUnitDisplayName();
+      x.cup.justWonRound = true;
+      gs.xiangqiWins = (Number(gs.xiangqiWins) || 0) + 1;
+      gs.winStreak = (Number(gs.winStreak) || 0) + 1;
+      gs.bestWinStreak = Math.max(Number(gs.bestWinStreak) || 0, gs.winStreak);
+      checkGameWinMilestones();
+      if ((Number(x.cup.round) || 0) >= 2) {
+        x.cup.justWonTitle = true;
+        x.cup.championCount = (Number(x.cup.championCount) || 0) + 1;
+        gs.cupTitles = (Number(gs.cupTitles) || 0) + 1;
+        unlockTitleFrame("kien-tuong", "Kiện Tướng Dân Gian");
+        unlockHeritageTableItem("ban-co-ngoc");
+        x.status = `Vô địch Cúp Đồng Ngũ! ${state.user.name} đại diện ${unitLabel} đã thắng ${rival.clubName} ở Trận Chung Kết (+25 Xu · +25 XP · Mở khóa Bàn cờ ngọc)!`;
+        addXu(25, `Vô địch Cúp Cờ Tướng Đồng Ngũ (${unitLabel})`);
+        awardSkillPoints("xiangqi", 16);
+        awardSkillPoints("comrade_social", 14);
+        awardSeniorityPoints(
+          25,
+          "xiangqi_cup_champion",
+          "co-tuong",
+          `Vô địch Cúp Cờ Tướng Đồng Ngũ đại diện "${unitLabel}"`,
+          { eventType: "cup_champion", module: "xiangqi", unitName: unitLabel, rivalClub: rival.clubName }
+        );
+      } else {
+        const nextRoundName = x.cup.round === 0 ? "Vòng Bán Kết" : "Trận Chung Kết";
+        x.status = `Chiến thắng ${rival.roundLabel} trước ${rival.clubName}! Mời bác bấm tiến vào ${nextRoundName} (+10 Xu · +12 XP).`;
+        addXu(10, `Vượt qua ${rival.roundLabel} Cúp Đồng Ngũ`);
+        awardSkillPoints("xiangqi", 10);
+        awardSkillPoints("comrade_social", 8);
+        awardSeniorityPoints(
+          12,
+          "xiangqi_cup_round_win",
+          "co-tuong",
+          `Thắng ${rival.roundLabel} trước ${rival.clubName}`,
+          { eventType: "cup_round_win", module: "xiangqi", round: x.cup.round, rivalClub: rival.clubName }
+        );
+      }
+    };
+
     if (enemyMoves.length === 0) {
       x.solved = true;
       x.inProgress = false;
       x.forfeitedPendingReload = false;
       matchHistoryGuardArmed = false;
+      if (x.mode === "cup") {
+        handleCupVictory();
+        saveState();
+        refreshXiangqiHosts();
+        return;
+      }
       if (x.mode === "puzzle") {
         const pz = XQ.PUZZLES[(x.puzzleIdx || 0) % XQ.PUZZLES.length];
         if (!Array.isArray(x.solvedPuzzleIds)) x.solvedPuzzleIds = [];
@@ -6033,6 +7485,12 @@
         x.inProgress = false;
         x.forfeitedPendingReload = false;
         matchHistoryGuardArmed = false;
+        if (x.mode === "cup") {
+          handleCupVictory();
+          saveState();
+          refreshXiangqiHosts();
+          return;
+        }
         if (x.mode !== "puzzle") {
           gs.xiangqiWins = (Number(gs.xiangqiWins) || 0) + 1;
           gs.winStreak = (Number(gs.winStreak) || 0) + 1;
@@ -6131,6 +7589,162 @@
     return out;
   }
 
+  let rhymeHelperIdx = 0;
+
+  function wrapCanvasLineText(ctx, text, maxWidth) {
+    const words = String(text || "").split(/\s+/).filter(Boolean);
+    if (words.length === 0) return [];
+    const lines = [];
+    let curr = words[0];
+    for (let i = 1; i < words.length; i++) {
+      const test = curr + " " + words[i];
+      if (ctx.measureText(test).width <= maxWidth) {
+        curr = test;
+      } else {
+        lines.push(curr);
+        curr = words[i];
+      }
+    }
+    lines.push(curr);
+    return lines;
+  }
+
+  function exportPoemSilkPostcardPng(poem) {
+    if (!poem) return;
+    const c = document.createElement("canvas");
+    c.width = 720;
+    c.height = 920;
+    const ctx = c.getContext("2d");
+    if (!ctx) return;
+
+    const grad = ctx.createLinearGradient(0, 0, 0, 920);
+    grad.addColorStop(0, "#FDF8EC");
+    grad.addColorStop(0.55, "#F7ECD4");
+    grad.addColorStop(1, "#EFE0BE");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 720, 920);
+
+    // Outer & inner traditional silk-scroll border
+    ctx.strokeStyle = "#8C3526";
+    ctx.lineWidth = 3;
+    ctx.strokeRect(24, 24, 672, 872);
+    ctx.strokeStyle = "#C6923E";
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(36, 36, 648, 848);
+
+    // Corner ornamental brackets
+    const corners = [
+      [44, 44, 1, 1],
+      [676, 44, -1, 1],
+      [44, 876, 1, -1],
+      [676, 876, -1, -1]
+    ];
+    ctx.strokeStyle = "#8C3526";
+    ctx.lineWidth = 2.4;
+    corners.forEach(([cx, cy, dx, dy]) => {
+      ctx.beginPath();
+      ctx.moveTo(cx, cy + dy * 28);
+      ctx.lineTo(cx, cy);
+      ctx.lineTo(cx + dx * 28, cy);
+      ctx.stroke();
+    });
+
+    // Header banner & cinnabar seal
+    ctx.fillStyle = "#8C3526";
+    ctx.font = "bold 19px sans-serif";
+    ctx.fillText("CHIẾU THƠ QUÁN TRÀ TUỔI BẠC", 64, 92);
+
+    ctx.save();
+    ctx.fillStyle = "#B22E21";
+    ctx.fillRect(584, 64, 72, 72);
+    ctx.strokeStyle = "#FCE9C5";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(590, 70, 60, 60);
+    ctx.fillStyle = "#FFF8EB";
+    ctx.font = "bold 18px 'Merriweather', 'Be Vietnam Pro', 'Segoe UI', sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("THI", 620, 98);
+    ctx.fillText("HỮU", 620, 120);
+    ctx.restore();
+
+    // Poem title & credit
+    ctx.fillStyle = "#2A1C15";
+    ctx.font = "bold 33px 'Merriweather', 'Be Vietnam Pro', 'Segoe UI', sans-serif";
+    const titleLines = wrapCanvasLineText(ctx, poem.title || "Hương Trà Sớm Mai", 490).slice(0, 2);
+    let yCursor = 152;
+    titleLines.forEach((tl) => {
+      ctx.fillText(tl, 64, yCursor);
+      yCursor += 42;
+    });
+
+    ctx.fillStyle = "#6B4E35";
+    ctx.font = "italic 19px 'Merriweather', 'Be Vietnam Pro', 'Segoe UI', sans-serif";
+    ctx.fillText(`${poem.reciter || state.user.name} · ${poem.author || "Thơ cộng đồng"}`, 64, yCursor + 6);
+
+    // Subtle divider
+    ctx.strokeStyle = "#D4B483";
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(64, yCursor + 28);
+    ctx.lineTo(656, yCursor + 28);
+    ctx.stroke();
+
+    // Poem body lines
+    ctx.fillStyle = "#23170F";
+    ctx.font = "25px 'Merriweather', 'Be Vietnam Pro', 'Segoe UI', sans-serif";
+    let bodyY = yCursor + 82;
+    const rawLines = Array.isArray(poem.lines) ? poem.lines : [];
+    const wrappedBody = [];
+    rawLines.forEach((ln) => {
+      wrapCanvasLineText(ctx, ln, 580).forEach((sub) => wrappedBody.push(sub));
+    });
+    wrappedBody.slice(0, 10).forEach((ln) => {
+      ctx.fillText(ln, 72, bodyY);
+      bodyY += 46;
+    });
+
+    // Footer card with QR code
+    ctx.fillStyle = "#F3E2BE";
+    ctx.fillRect(52, 726, 616, 144);
+    ctx.strokeStyle = "#C6923E";
+    ctx.lineWidth = 1.2;
+    ctx.strokeRect(52, 726, 616, 144);
+
+    ctx.fillStyle = "#2E5E4E";
+    ctx.font = "bold 22px sans-serif";
+    ctx.fillText(`Đã nhận ${Number(poem.flowers) || 1} bông hoa tri âm`, 76, 772);
+    ctx.fillStyle = "#4A3A2C";
+    ctx.font = "18px sans-serif";
+    ctx.fillText("Quét mã QR bằng Zalo hoặc máy ảnh để vào", 76, 808);
+    ctx.fillText("nghe ngâm thơ cùng tiếng đàn tranh tại Tuổi Bạc.", 76, 836);
+
+    const shareUrl = `${getPublicBaseUrl()}?phong=phong-tho`;
+    if (window.TeaRoomScene && typeof window.TeaRoomScene.drawQrToCanvas === "function") {
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fillRect(534, 738, 120, 120);
+      window.TeaRoomScene.drawQrToCanvas(ctx, shareUrl, 540, 744, 108);
+    }
+
+    const pngUrl = c.toDataURL("image/png");
+    trackTelemetryDirect("poem_postcard", "poetry", "export_silk_poem_card", {
+      poemId: poem.id,
+      poemTitle: poem.title
+    });
+
+    openDialog(
+      "Thiệp Lụa Bài Thơ (Lưu gửi bạn bè & con cháu)",
+      `
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <img src="${pngUrl}" alt="Thiệp lụa bài thơ ${escHtml(poem.title)}" style="width:100%; border-radius:12px; border:1px solid var(--border-strong);" />
+        <a href="${pngUrl}" download="thiep-tho-tuoi-bac.png" class="btn-jade" style="text-decoration:none;">
+          ${ico("download")}
+          <span>Tải ảnh Thiệp Lụa về điện thoại</span>
+        </a>
+      </div>
+      `
+    );
+  }
+
   function renderPoetry() {
     const allPoems = getMergedPoemsList();
     const activeFrame = getTitleFrame(state.user.titleFrameId);
@@ -6140,7 +7754,7 @@
         <h1>Ngâm thơ &amp; Tặng hoa</h1>
         <span class="badge-tag amber num">Còn ${state.user.flowersLeft}/3 hoa hôm nay</span>
       </div>
-      <p class="lead-copy">Tự sáng tác hoặc đọc thơ bằng giọng nói, nghe ngâm thơ cùng tiếng đàn tranh và nhận khung danh hiệu <strong>Thi Hữu Tao Đàn</strong> gắn trực tiếp lên nhân vật 3D.</p>
+      <p class="lead-copy">Tự sáng tác hoặc đọc thơ bằng giọng nói, nghe ngâm thơ cùng tiếng đàn tranh, in Thiệp Lụa gửi Zalo và nhận khung danh hiệu <strong>Thi Hữu Tao Đàn</strong>.</p>
 
       <div class="surface-panel warm">
         <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
@@ -6165,12 +7779,13 @@
             </select>
           </label>
         </div>
-        <textarea class="textarea-lg" id="poem-body-in" rows="3" placeholder="Gõ từng câu thơ xuống dòng, hoặc bấm Đọc thơ bằng giọng..."></textarea>
+        <textarea class="textarea-lg" id="poem-body-in" rows="3" placeholder="Gõ từng câu thơ xuống dòng, hoặc bấm Đọc thơ bằng giọng / Gợi ý câu Lục Bát..."></textarea>
         <div id="poem-meter-feedback" style="font-size:0.88rem; color:var(--accent-jade); font-weight:600;" hidden></div>
         <div class="btn-row">
           <button type="button" class="btn-secondary" id="btn-mic-poem">${ico("mic")}<span>Đọc thơ bằng giọng</span></button>
-          <button type="button" class="btn-secondary" id="btn-check-meter">Kiểm tra nhịp thơ</button>
+          <button type="button" class="btn-secondary" id="btn-rhyme-helper">Gợi ý câu Lục Bát</button>
         </div>
+        <button type="button" class="btn-secondary" id="btn-check-meter">Kiểm tra nhịp thơ 6–8</button>
         <button type="button" class="btn-jade" id="btn-post-poem">${ico("poem")}<span>Đăng bài thơ &amp; Mở danh hiệu Thi Hữu (+4 Xu)</span></button>
       </div>
 
@@ -6196,6 +7811,10 @@
               <span>${alreadyGifted ? "Đã tặng hoa" : "Tặng 1 bông hoa"}</span>
             </button>
           </div>
+          <button type="button" class="btn-secondary export-poem-card-btn" data-idx="${idx}">
+            ${ico("camera")}
+            <span>In Thiệp Lụa Bài Thơ (Lưu gửi Zalo)</span>
+          </button>
         </article>
       `;
         })
@@ -6204,9 +7823,24 @@
 
     document.getElementById("btn-go-frame-preview").addEventListener("click", () => navigate("profile"));
 
+    const titleEl = document.getElementById("poem-title-in");
     const bodyEl = document.getElementById("poem-body-in");
     const styleEl = document.getElementById("poem-style-in");
     const meterEl = document.getElementById("poem-meter-feedback");
+
+    document.getElementById("btn-rhyme-helper").addEventListener("click", () => {
+      const pairs = D.LUC_BAT_RHYME_PAIRS || [];
+      if (pairs.length === 0) return;
+      const picked = pairs[rhymeHelperIdx % pairs.length];
+      rhymeHelperIdx += 1;
+      styleEl.value = "luc-bat";
+      if (titleEl && !titleEl.value.trim()) {
+        titleEl.value = picked.theme;
+      }
+      bodyEl.value = picked.lines.join("\n");
+      meterEl.hidden = false;
+      meterEl.textContent = `Gợi ý chủ đề "${picked.theme}" — ${evaluatePoemMeter(picked.lines, "luc-bat")}`;
+    });
 
     document.getElementById("btn-check-meter").addEventListener("click", () => {
       const raw = bodyEl.value.trim() || "Sớm mai ấm chén trà sen\nGặp người tri kỷ thân quen một nhà";
@@ -6301,9 +7935,300 @@
         renderPoetry();
       });
     });
+
+    els.main.querySelectorAll(".export-poem-card-btn").forEach((b) => {
+      b.addEventListener("click", () => {
+        const p = allPoems[Number(b.dataset.idx)];
+        if (p) exportPoemSilkPostcardPng(p);
+      });
+    });
   }
 
-  // ==================== MODULE 7: WATCH TOGETHER ====================
+  // ==================== MODULE 7: WATCH TOGETHER (LIVE 24 FPS CANVAS STAGE) ====================
+  let watchStageBubbles = [];
+
+  function spawnWatchReactionBubble(rxKey) {
+    const labelMap = {
+      laugh: "Vui quá",
+      clap: "Vỗ tay",
+      heart: "Thả tim",
+      wow: "Tuyệt đẹp"
+    };
+    const colMap = {
+      laugh: "#F5C242",
+      clap: "#7DE0AD",
+      heart: "#FF998A",
+      wow: "#9ED8FF"
+    };
+    watchStageBubbles.push({
+      text: labelMap[rxKey] || "Hay quá",
+      color: colMap[rxKey] || "#FFE6A8",
+      xFrac: 0.22 + Math.random() * 0.56,
+      bornAt: performance.now()
+    });
+    if (watchStageBubbles.length > 14) {
+      watchStageBubbles = watchStageBubbles.slice(-14);
+    }
+  }
+
+  function mountWatchStageCanvas(chIdx) {
+    if (watchAnimId) {
+      cancelAnimationFrame(watchAnimId);
+      watchAnimId = null;
+    }
+    const canvas = document.getElementById("watch-stage-canvas");
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const rectW = Math.max(300, Math.round(canvas.clientWidth || 336));
+    const rectH = 196;
+    canvas.width = Math.round(rectW * dpr);
+    canvas.height = Math.round(rectH * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    let lastDrawTs = 0;
+    const drawFrame = (ts) => {
+      if (state.route !== "watch" || !document.body.contains(canvas)) {
+        watchAnimId = null;
+        return;
+      }
+      if (ts - lastDrawTs >= 40) {
+        lastDrawTs = ts;
+        const t = ts * 0.001;
+        ctx.clearRect(0, 0, rectW, rectH);
+
+        if (chIdx === 0) {
+          // Channel 0: Morning Breathing Lotus (4s inhale - 4s hold - 6s exhale = 14s)
+          const bg = ctx.createLinearGradient(0, 0, 0, rectH);
+          bg.addColorStop(0, "#102820");
+          bg.addColorStop(1, "#1C3F33");
+          ctx.fillStyle = bg;
+          ctx.fillRect(0, 0, rectW, rectH);
+
+          const cycle = t % 14;
+          let breathScale = 0.62;
+          let phaseText = "Hít vào sâu bằng mũi (4 giây)";
+          let subText = "Mở rộng lồng ngực nhẹ nhàng";
+          if (cycle < 4) {
+            const p = cycle / 4;
+            breathScale = 0.58 + 0.42 * (0.5 - 0.5 * Math.cos(Math.PI * p));
+            phaseText = `Hít vào chậm · ${Math.ceil(4 - cycle)}s`;
+            subText = "Đón khí lành buổi sớm";
+          } else if (cycle < 8) {
+            breathScale = 1.0 + 0.02 * Math.sin(t * 3);
+            phaseText = `Giữ hơi ấm · ${Math.ceil(8 - cycle)}s`;
+            subText = "Thả lỏng hai vai và cổ";
+          } else {
+            const p = (cycle - 8) / 6;
+            breathScale = 1.0 - 0.42 * (0.5 - 0.5 * Math.cos(Math.PI * p));
+            phaseText = `Thở ra êm · ${Math.ceil(14 - cycle)}s`;
+            subText = "Thở sạch hơi chậm rãi qua miệng";
+          }
+
+          const cx = rectW * 0.5;
+          const cy = 84;
+          const rOuter = 54 * breathScale;
+
+          // Soft golden-jade aura
+          const aura = ctx.createRadialGradient(cx, cy, 6, cx, cy, rOuter + 24);
+          aura.addColorStop(0, "rgba(247, 214, 116, 0.48)");
+          aura.addColorStop(0.6, "rgba(68, 179, 134, 0.24)");
+          aura.addColorStop(1, "rgba(16, 40, 32, 0)");
+          ctx.fillStyle = aura;
+          ctx.beginPath();
+          ctx.arc(cx, cy, rOuter + 24, 0, Math.PI * 2);
+          ctx.fill();
+
+          // 8 Lotus petals
+          for (let k = 0; k < 8; k++) {
+            const ang = (k * Math.PI) / 4 + t * 0.12;
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate(ang);
+            ctx.beginPath();
+            ctx.ellipse(0, -rOuter * 0.46, rOuter * 0.24, rOuter * 0.48, 0, 0, Math.PI * 2);
+            ctx.fillStyle = k % 2 === 0 ? "rgba(245, 200, 108, 0.78)" : "rgba(118, 219, 174, 0.68)";
+            ctx.fill();
+            ctx.restore();
+          }
+
+          ctx.fillStyle = "#FFF7DC";
+          ctx.beginPath();
+          ctx.arc(cx, cy, 12, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.textAlign = "center";
+          ctx.fillStyle = "#FFFDF7";
+          ctx.font = "bold 20px sans-serif";
+          ctx.fillText(phaseText, cx, 162);
+          ctx.fillStyle = "#CBEAD9";
+          ctx.font = "15px sans-serif";
+          ctx.fillText(subText, cx, 184);
+        } else if (chIdx === 1) {
+          // Channel 1: Folk Cheo / Comedy Velvet Stage
+          const bg = ctx.createLinearGradient(0, 0, 0, rectH);
+          bg.addColorStop(0, "#2A1215");
+          bg.addColorStop(0.75, "#471D20");
+          bg.addColorStop(1, "#3B2416");
+          ctx.fillStyle = bg;
+          ctx.fillRect(0, 0, rectW, rectH);
+
+          // Warm sweeping spotlight
+          const spotX = rectW * (0.5 + 0.18 * Math.sin(t * 0.85));
+          const spot = ctx.createRadialGradient(spotX, 88, 10, spotX, 96, 118);
+          spot.addColorStop(0, "rgba(255, 224, 148, 0.36)");
+          spot.addColorStop(1, "rgba(42, 18, 21, 0)");
+          ctx.fillStyle = spot;
+          ctx.fillRect(0, 0, rectW, rectH);
+
+          // Stage wooden apron
+          ctx.fillStyle = "#5C3720";
+          ctx.fillRect(0, 152, rectW, 44);
+          ctx.strokeStyle = "#D49B3E";
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(0, 152);
+          ctx.lineTo(rectW, 152);
+          ctx.stroke();
+
+          // Velvet side curtains
+          ctx.fillStyle = "#8B2220";
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(48, 0);
+          ctx.quadraticCurveTo(30, 82, 18, 152);
+          ctx.lineTo(0, 152);
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.beginPath();
+          ctx.moveTo(rectW, 0);
+          ctx.lineTo(rectW - 48, 0);
+          ctx.quadraticCurveTo(rectW - 30, 82, rectW - 18, 152);
+          ctx.lineTo(rectW, 152);
+          ctx.closePath();
+          ctx.fill();
+
+          // Traditional fan & lantern silhouettes on stage
+          const fanSwing = Math.sin(t * 1.8) * 0.14;
+          ctx.save();
+          ctx.translate(rectW * 0.5, 118);
+          ctx.rotate(fanSwing);
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.arc(0, 0, 44, -Math.PI * 0.82, -Math.PI * 0.18);
+          ctx.closePath();
+          ctx.fillStyle = "#F2C464";
+          ctx.fill();
+          ctx.strokeStyle = "#8C3526";
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          ctx.restore();
+
+          ctx.textAlign = "center";
+          ctx.fillStyle = "#FFEBC2";
+          ctx.font = "bold 17px sans-serif";
+          ctx.fillText("Sân khấu Chiếu Chèo & Hài kịch tối", rectW * 0.5, 178);
+        } else {
+          // Channel 2: Peaceful Vietnamese Countryside Sunset & Bamboo Flute
+          const sky = ctx.createLinearGradient(0, 0, 0, 132);
+          sky.addColorStop(0, "#2E2436");
+          sky.addColorStop(0.55, "#8E4B32");
+          sky.addColorStop(1, "#E5A552");
+          ctx.fillStyle = sky;
+          ctx.fillRect(0, 0, rectW, 132);
+
+          // Setting sun
+          const sunX = rectW * 0.68;
+          ctx.fillStyle = "rgba(255, 232, 166, 0.88)";
+          ctx.beginPath();
+          ctx.arc(sunX, 86, 22, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Distant hills
+          ctx.fillStyle = "#3B2B28";
+          ctx.beginPath();
+          ctx.moveTo(0, 132);
+          ctx.quadraticCurveTo(rectW * 0.25, 92, rectW * 0.52, 124);
+          ctx.quadraticCurveTo(rectW * 0.78, 98, rectW, 128);
+          ctx.lineTo(rectW, 132);
+          ctx.closePath();
+          ctx.fill();
+
+          // Calm lotus pond water
+          const pond = ctx.createLinearGradient(0, 132, 0, rectH);
+          pond.addColorStop(0, "#2F4544");
+          pond.addColorStop(1, "#182829");
+          ctx.fillStyle = pond;
+          ctx.fillRect(0, 132, rectW, rectH - 132);
+
+          // Shimmering water ripples
+          ctx.strokeStyle = "rgba(255, 222, 148, 0.45)";
+          ctx.lineWidth = 1.4;
+          for (let r = 0; r < 4; r++) {
+            const ry = 144 + r * 11;
+            const rw = 36 - r * 5 + Math.sin(t * 2 + r) * 6;
+            ctx.beginPath();
+            ctx.moveTo(sunX - rw, ry);
+            ctx.lineTo(sunX + rw, ry);
+            ctx.stroke();
+          }
+
+          // Swaying bamboo stalks on left bank
+          const sway = Math.sin(t * 1.4) * 6;
+          ctx.strokeStyle = "#1D2A1E";
+          ctx.lineWidth = 3;
+          [26, 42, 56].forEach((bx, bi) => {
+            ctx.beginPath();
+            ctx.moveTo(bx, 140);
+            ctx.quadraticCurveTo(bx + sway * 0.5, 80, bx + sway + bi * 3, 24 + bi * 10);
+            ctx.stroke();
+          });
+
+          // Flying white herons
+          for (let h = 0; h < 2; h++) {
+            const hx = ((t * 22 + h * 90) % (rectW + 60)) - 30;
+            const hy = 46 + h * 16 + Math.sin(t * 3 + h) * 4;
+            const wing = Math.sin(t * 6 + h) * 5;
+            ctx.strokeStyle = "#FFF6E0";
+            ctx.lineWidth = 1.8;
+            ctx.beginPath();
+            ctx.moveTo(hx - 8, hy + wing);
+            ctx.quadraticCurveTo(hx - 3, hy - 4, hx, hy);
+            ctx.quadraticCurveTo(hx + 3, hy - 4, hx + 8, hy + wing);
+            ctx.stroke();
+          }
+        }
+
+        // Floating community reaction pills
+        watchStageBubbles = watchStageBubbles.filter((b) => ts - b.bornAt < 2400);
+        watchStageBubbles.forEach((b) => {
+          const age = (ts - b.bornAt) / 2400;
+          const bx = b.xFrac * rectW + Math.sin(age * 6) * 8;
+          const by = rectH - 22 - age * 125;
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, 1 - age);
+          ctx.fillStyle = "rgba(24, 18, 14, 0.78)";
+          ctx.strokeStyle = b.color;
+          ctx.lineWidth = 1.3;
+          ctx.beginPath();
+          ctx.roundRect(bx - 38, by - 13, 76, 24, 12);
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = b.color;
+          ctx.textAlign = "center";
+          ctx.font = "bold 13px sans-serif";
+          ctx.fillText(b.text, bx, by + 4);
+          ctx.restore();
+        });
+      }
+      watchAnimId = requestAnimationFrame(drawFrame);
+    };
+    watchAnimId = requestAnimationFrame(drawFrame);
+  }
+
   function renderWatch() {
     const ch = D.WATCH_CHANNELS[state.watch.channelIdx];
     const r = state.watch.reactions;
@@ -6314,8 +8239,12 @@
 
       <div class="watch-screen">
         <div class="watch-canvas-area">
-          <span class="badge-tag amber">${escHtml(ch.slot)}</span>
-          <h2 style="color:#FFFDF7;">${escHtml(ch.title)}</h2>
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; width:100%; flex-wrap:wrap;">
+            <span class="badge-tag amber" style="white-space:normal; max-width:100%; text-align:left;">${escHtml(ch.slot)}</span>
+            <small style="color:#E0D4BE; font-weight:600;">39 bác đang xem</small>
+          </div>
+          <canvas id="watch-stage-canvas" class="watch-live-canvas" aria-label="Màn hình sân khấu trực tiếp ${escHtml(ch.title)}"></canvas>
+          <h2 style="color:#FFFDF7; font-size:1.12rem;">${escHtml(ch.title)}</h2>
           <small style="color:#E0D4BE;">${escHtml(ch.instructor)}</small>
           <button type="button" class="btn-primary btn-inline" id="btn-watch-play">${ico("speaker")}<span>Nghe thuyết minh đoạn đang chiếu</span></button>
         </div>
@@ -6362,17 +8291,22 @@
       </div>
     `;
 
+    mountWatchStageCanvas(state.watch.channelIdx);
+
     document.getElementById("btn-watch-play").addEventListener("click", () => {
       trackTelemetryDirect("watch_play", "watch", "listen_channel", { channelIdx: state.watch.channelIdx, title: ch.title });
-      speak(`${ch.title}. ${ch.subtitle}`);
+      speak(`${ch.title}. ${ch.subtitle}`, { announceToast: true });
     });
 
     els.main.querySelectorAll(".reaction-btn").forEach((b) => {
       b.addEventListener("click", () => {
-        state.watch.reactions[b.dataset.rx] += 1;
-        trackTelemetryDirect("watch_reaction", "watch", `react_${b.dataset.rx}`, { channelIdx: state.watch.channelIdx });
+        const rxKey = b.dataset.rx;
+        state.watch.reactions[rxKey] += 1;
+        const numEl = b.querySelector("strong.num");
+        if (numEl) numEl.textContent = String(state.watch.reactions[rxKey]);
+        spawnWatchReactionBubble(rxKey);
+        trackTelemetryDirect("watch_reaction", "watch", `react_${rxKey}`, { channelIdx: state.watch.channelIdx });
         saveState();
-        renderWatch();
       });
     });
 
@@ -6441,6 +8375,220 @@
     } catch (e) {}
   }
 
+  const FORTUNE_COOLDOWN_MS = 45000;
+  const WISH_COOLDOWN_MS = 45000;
+  const POND_LANTERN_TTL_MS = 180000;
+
+  function playFortuneShakeSound() {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    try {
+      const ctx = new AudioCtx();
+      const base = ctx.currentTime;
+      [0, 0.09, 0.18, 0.28, 0.4].forEach((offset, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(620 + (idx % 3) * 115, base + offset);
+        osc.frequency.exponentialRampToValueAtTime(360, base + offset + 0.06);
+        gain.gain.setValueAtTime(0.22, base + offset);
+        gain.gain.exponentialRampToValueAtTime(0.001, base + offset + 0.075);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(base + offset);
+        osc.stop(base + offset + 0.08);
+      });
+    } catch (e) {}
+  }
+
+  function getFortuneCooldownSec() {
+    const last = Number(state.zen && state.zen.lastPeaceCardAt) || 0;
+    if (!last) return 0;
+    const rem = Math.ceil((last + FORTUNE_COOLDOWN_MS - Date.now()) / 1000);
+    return rem > 0 ? rem : 0;
+  }
+
+  function getWishCooldownSec() {
+    const last = Number(state.zen && state.zen.lastWishCardAt) || 0;
+    if (!last) return 0;
+    const rem = Math.ceil((last + WISH_COOLDOWN_MS - Date.now()) / 1000);
+    return rem > 0 ? rem : 0;
+  }
+
+  function pruneAndGetActiveLanterns() {
+    if (!state.zen || !Array.isArray(state.zen.activeLanterns)) return [];
+    const now = Date.now();
+    const alive = state.zen.activeLanterns.filter((it) => it && (Number(it.expiresAt) || 0) > now);
+    if (alive.length !== state.zen.activeLanterns.length) {
+      state.zen.activeLanterns = alive;
+      saveState();
+    }
+    return alive;
+  }
+
+  function appendActivePondLantern(ownerName, isUser) {
+    if (!state.zen) return [];
+    const now = Date.now();
+    const alive = pruneAndGetActiveLanterns();
+    alive.push({
+      id: `lt_${now}_${Math.random().toString(36).slice(2, 6)}`,
+      ownerName: String(ownerName || state.user.name || "Bạn trà").slice(0, 22),
+      isUser: Boolean(isUser),
+      spawnAt: now,
+      expiresAt: now + POND_LANTERN_TTL_MS,
+      phase: Math.random() * Math.PI * 2
+    });
+    state.zen.activeLanterns = alive.slice(-14);
+    saveState();
+    return state.zen.activeLanterns;
+  }
+
+  function getZenSpaceMeta(rawSpaceIdx) {
+    const idx = Math.max(0, Math.min(2, Number(rawSpaceIdx) || 0));
+    if (idx === 1) {
+      return {
+        idx: 1,
+        heading: "Nhà Thờ Họ & Từ Đường Tộc Việt",
+        plaqueTitle: "ĐỨC LƯU QUANG · UỐNG NƯỚC NHỚ NGUỒN",
+        camWide: "Gian Bái Đường",
+        camAltar: "Hương Án Gia Tiên",
+        camYard: "Hồ Sen & Cây Thẻ Đỏ",
+        incenseBtn: "Dâng Hương Tiên Tổ",
+        muyuBtn: "Gõ Phách Tĩnh Tâm (+1)",
+        autoMuyuIdle: "Bật Nhịp Tĩnh Tâm Đều Đặn",
+        autoMuyuRunning: "Đang Giữ Nhịp Tĩnh Tâm (Chạm để về chiếu)",
+        bellBtn: "Thỉnh Khánh Đồng",
+        fortuneBtn: "Rút Xăm Gia Huấn",
+        prayerHeading: "Viết Lời Khấn Gia Tiên & Treo Thẻ Đỏ Cây Lộc",
+        prayerVoicePrefix: "Thành tâm kính lễ Tiên Tổ. Lời khấn nguyện của",
+        slipSeal: "GIA PHONG PHÚC ẤM",
+        cardBadge: "Quẻ Gia Huấn Đầu Ngày",
+        presets: [
+          "Con cháu thành tâm dâng nén hương trầm tưởng nhớ công đức Tổ tiên.",
+          "Cầu mong đại gia đình thuận hòa, con cháu thảo hiền, học hành tấn tới.",
+          "Kính chúc các bậc cao niên trong họ trường thọ, bách niên giai lão.",
+          "Giữ gìn gia phong nề nếp, uống nước nhớ nguồn, phúc ấm muôn đời."
+        ]
+      };
+    }
+    if (idx === 2) {
+      return {
+        idx: 2,
+        heading: "Vườn Thiền Tĩnh Lặng & Hồ Sen",
+        plaqueTitle: "TÂM TỊNH AN NHIÊN · TRÚC LÂM TĨNH TỌA",
+        camWide: "Thiền Đường Trúc Lâm",
+        camAltar: "Bàn Trà Thiền Tĩnh",
+        camYard: "Hồ Sen & Cây Thẻ Đỏ",
+        incenseBtn: "Thắp Trầm Tĩnh Tâm",
+        muyuBtn: "Gõ Mõ Thiền (+1)",
+        autoMuyuIdle: "Bật Tự Động Gõ Mõ Thiền Đều Nhịp",
+        autoMuyuRunning: "Đang Gõ Mõ Thiền Đều Nhịp (Chạm để về chiếu)",
+        bellBtn: "Thỉnh Chuông Thiền",
+        fortuneBtn: "Rút Thẻ Thiền Ngữ",
+        prayerHeading: "Gửi Lời Nguyện An Nhiên & Treo Thẻ Đỏ Vườn Thiền",
+        prayerVoicePrefix: "Giữ tâm thanh tịnh. Lời nguyện an lành của",
+        slipSeal: "TÂM AN VẠN SỰ AN",
+        cardBadge: "Thẻ Thiền Ngữ Tĩnh Tâm",
+        presets: [
+          "Hít vào tâm tĩnh lặng, thở ra miệng mỉm cười, an trú ngay phút giây này.",
+          "Chúc bạn đồng niên thân khỏe tâm an, mỗi sớm mai thức dậy đều nhẹ nhõm.",
+          "Buông bớt lo toan thường nhật, giữ lòng trong sáng như mặt hồ sen.",
+          "Cầu chúc mọi nhà bình yên, xóm giềng ấm áp nghĩa tình sớm tối."
+        ]
+      };
+    }
+    return {
+      idx: 0,
+      heading: "Sân Chùa Quê & Đạo Tràng 20 Bồ Đoàn",
+      plaqueTitle: "TÂM AN VẠN SỰ AN",
+      camWide: "Đại sảnh 20 Chiếu",
+      camAltar: "Cận cảnh Tam Bảo",
+      camYard: "Hồ Sen & Cây Thẻ Đỏ",
+      incenseBtn: "Lên Dâng Hương",
+      muyuBtn: "Lên Gõ Mõ (+1)",
+      autoMuyuIdle: "Bật Tự Động Lên Gõ Mõ Đều Nhịp",
+      autoMuyuRunning: "Đang Đứng Gõ Mõ Đều Nhịp (Chạm để về chiếu)",
+      bellBtn: "Lên Thỉnh Chuông",
+      fortuneBtn: "Lên Xin Xăm / Quẻ",
+      prayerHeading: "Viết Sớ Cầu Nguyện & Treo Thẻ Đỏ Sân Chùa",
+      prayerVoicePrefix: "Nam mô A Di Đà Phật. Hồi hướng lời cầu an của",
+      slipSeal: "LỘC PHÚC ĐẦU NGÀY",
+      cardBadge: "Quẻ Xăm Thiện Lành Đầu Ngày",
+      presets: D.TEMPLE_PRAYER_PRESETS || []
+    };
+  }
+
+  function showCeremonialRedSlipOverlay(opts) {
+    const prev = document.querySelector(".red-slip-backdrop");
+    if (prev) prev.remove();
+    const o = opts || {};
+    const spMeta = getZenSpaceMeta(state.zen.spaceIdx);
+    const card = o.card || (D.TEMPLE_PEACE_CARDS && D.TEMPLE_PEACE_CARDS[0]);
+    if (!card) return;
+    const spaceTitle =
+      (Array.isArray(card.spaceCodes) && card.spaceCodes[spMeta.idx]) || card.code || "Quẻ Bình An";
+    const wishLine = String(o.wishText || "").trim();
+    const cooldownSec = Number(o.cooldownSec) || 45;
+    const sealLabel = o.kind === "wish_plaque" ? "THẺ ĐỎ ƯỚC NGUYỆN" : spMeta.slipSeal;
+
+    const backdrop = document.createElement("div");
+    backdrop.className = "red-slip-backdrop";
+    backdrop.setAttribute("role", "dialog");
+    backdrop.setAttribute("aria-modal", "true");
+    backdrop.setAttribute("aria-label", spaceTitle);
+    backdrop.innerHTML = `
+      <div class="red-slip-card">
+        <span class="red-slip-seal">${escHtml(sealLabel)}</span>
+        <div class="red-slip-title">${escHtml(spaceTitle)}</div>
+        <div class="red-slip-sub">${escHtml(o.subtitle || spMeta.heading)}</div>
+        <div class="red-slip-verse-box">
+          <div class="red-slip-verse">${escHtml(card.verse)}</div>
+        </div>
+        ${
+          wishLine
+            ? `<div class="red-slip-wish-quote"><strong>Lời nguyện trên thẻ đỏ:</strong> "${escHtml(wishLine)}"</div>`
+            : ""
+        }
+        <div class="red-slip-advice">${escHtml(card.advice)}</div>
+        <span class="red-slip-cooldown-pill num">${
+          o.isReopen
+            ? "Đang xem lại tờ giấy đỏ của bác"
+            : `Đã trao tờ giấy đỏ · Hồi lượt rút tiếp sau ${cooldownSec}s`
+        }</span>
+        <div class="red-slip-actions">
+          <button type="button" class="btn-red-slip-gold" id="btn-red-slip-speak">
+            ${ico("speaker")}
+            <span>Nghe đọc lời quẻ trên giấy đỏ</span>
+          </button>
+          <button type="button" class="btn-red-slip-close" id="btn-red-slip-dismiss">Giữ Lộc Bình An &amp; Đóng</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(backdrop);
+
+    const closeSlip = () => {
+      if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+    };
+    backdrop.addEventListener("click", (ev) => {
+      if (ev.target === backdrop) closeSlip();
+    });
+    const dismissBtn = backdrop.querySelector("#btn-red-slip-dismiss");
+    if (dismissBtn) dismissBtn.addEventListener("click", closeSlip);
+    const speakBtn = backdrop.querySelector("#btn-red-slip-speak");
+    if (speakBtn) {
+      speakBtn.addEventListener("click", () => {
+        awardSkillPoints("voice_wisdom", 1);
+        const spoken = wishLine
+          ? `${spaceTitle}. ${card.verse}. Lời nguyện của bác: ${wishLine}. Lời nhắn gửi: ${card.advice}`
+          : `${spaceTitle}. ${card.verse}. Lời nhắn gửi: ${card.advice}`;
+        speak(spoken, {
+          clipId: wishLine ? undefined : card.clipId,
+          announceToast: true
+        });
+      });
+    }
+  }
+
   function triggerTempleVisualWave(colorHex, popText, ritualKind, preferredCushionIdx) {
     if (!window.TempleScene3D) return;
     if (ritualKind === "bell") {
@@ -6450,6 +8598,8 @@
     } else if (ritualKind === "wish_plaque") {
       window.TempleScene3D.spawnWishPlaque(popText || state.user.name, false, "", preferredCushionIdx);
     } else if (ritualKind === "pond_lantern") {
+      const alive = appendActivePondLantern(popText || "Bạn trực tuyến", false);
+      window.TempleScene3D.updateConfig({ activeLanterns: alive });
       window.TempleScene3D.spawnPondLantern(popText || state.user.name, preferredCushionIdx);
     } else {
       window.TempleScene3D.triggerIncense(popText || state.user.name, preferredCushionIdx);
@@ -6471,44 +8621,72 @@
 
   function buildTemplePeaceCardHtml(curCard) {
     if (!curCard) return "";
+    const spMeta = getZenSpaceMeta(state.zen.spaceIdx);
+    const spaceTitle =
+      (Array.isArray(curCard.spaceCodes) && curCard.spaceCodes[spMeta.idx]) || curCard.code;
     return `
       <div class="peace-card-slip" id="peace-card-box">
         <div class="passcard-head">
-          <strong style="color:#7A3E12;">${escHtml(curCard.code)}</strong>
-          <span class="badge-tag amber">Quẻ Xăm Thiện Lành Đầu Ngày</span>
+          <strong style="color:#7A3E12;">${escHtml(spaceTitle)}</strong>
+          <span class="badge-tag amber">${escHtml(spMeta.cardBadge)}</span>
         </div>
         <div class="peace-card-verse">${escHtml(curCard.verse)}</div>
         <p style="font-size:0.92rem; color:var(--ink-primary);">${escHtml(curCard.advice)}</p>
-        <button type="button" class="btn-secondary" id="btn-zen-listen">${ico("speaker")}<span>Nghe giọng AI đọc lời giải quẻ</span></button>
+        <div class="btn-row">
+          <button type="button" class="btn-secondary" id="btn-zen-listen">${ico("speaker")}<span>Nghe đọc lời quẻ</span></button>
+          <button type="button" class="btn-primary" id="btn-zen-reopen-slip">${ico("award")}<span>Mở tờ giấy đỏ</span></button>
+        </div>
       </div>
     `;
   }
 
   function bindTemplePeaceCardEvents(curCard) {
+    const spMeta = getZenSpaceMeta(state.zen.spaceIdx);
+    const spaceTitle =
+      curCard && Array.isArray(curCard.spaceCodes) && curCard.spaceCodes[spMeta.idx]
+        ? curCard.spaceCodes[spMeta.idx]
+        : curCard
+        ? curCard.code
+        : "";
     const listenBtn = document.getElementById("btn-zen-listen");
     if (listenBtn && curCard) {
       listenBtn.addEventListener("click", () => {
         awardSkillPoints("voice_wisdom", 1);
-        speak(`${curCard.code}. ${curCard.verse}. Lời nhắn gửi: ${curCard.advice}`);
+        speak(`${spaceTitle}. ${curCard.verse}. Lời nhắn gửi: ${curCard.advice}`, {
+          clipId: curCard.clipId,
+          announceToast: true
+        });
+      });
+    }
+    const reopenBtn = document.getElementById("btn-zen-reopen-slip");
+    if (reopenBtn && curCard) {
+      reopenBtn.addEventListener("click", () => {
+        showCeremonialRedSlipOverlay({
+          card: curCard,
+          kind: "peace_card",
+          isReopen: true
+        });
       });
     }
   }
 
   function buildTemplePrayersListHtml(prayers) {
+    const spMeta = getZenSpaceMeta(state.zen.spaceIdx);
+    const tagWish = spMeta.idx === 1 ? "Thẻ đỏ cây lộc" : spMeta.idx === 2 ? "Thẻ đỏ vườn thiền" : "Thẻ đỏ sân chùa";
     return `
-      <strong>Bảng Vàng Tâm Thành &amp; Sớ Cầu An (${prayers.length}):</strong>
+      <strong>Bảng Tâm Thành &amp; Lời Nguyện (${prayers.length}):</strong>
       ${prayers
         .map(
           (item, pIdx) => `
           <div class="bulletin-item">
             <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; font-size:0.88rem; color:var(--accent-jade); font-weight:700;">
-              <span>${escHtml(item.userName)}${typeof item.cushionIdx === "number" ? ` · BĐ${item.cushionIdx + 1}` : ""}</span>
-              <span>${escHtml(item.ritualKind === "wish_plaque" ? "Thẻ đỏ sân chùa" : "Hương trầm")} · ${escHtml(item.province || "")}</span>
+              <span>${escHtml(item.userName)}${typeof item.cushionIdx === "number" ? ` · Chiếu ${item.cushionIdx + 1}` : ""}</span>
+              <span>${escHtml(item.ritualKind === "wish_plaque" ? tagWish : "Hương trầm")} · ${escHtml(item.province || "")}</span>
             </div>
             <p>${escHtml(item.prayerText)}</p>
             <button type="button" class="btn-mini listen-prayer-btn" data-prayer-idx="${pIdx}" style="align-self:flex-start;">
               ${ico("speaker")}
-              <span>Nghe đọc lời cầu an</span>
+              <span>Nghe đọc lời nguyện</span>
             </button>
           </div>
         `
@@ -6518,12 +8696,13 @@
   }
 
   function bindTemplePrayersListEvents(prayers) {
+    const spMeta = getZenSpaceMeta(state.zen.spaceIdx);
     els.main.querySelectorAll(".listen-prayer-btn").forEach((b) => {
       b.addEventListener("click", () => {
         const item = prayers[Number(b.dataset.prayerIdx)];
         if (!item) return;
         playTempleBell();
-        speak(`Nam mô A Di Đà Phật. Hồi hướng lời cầu an của ${item.userName}, quê ${item.province || "Việt Nam"}: ${item.prayerText}`, {
+        speak(`${spMeta.prayerVoicePrefix} ${item.userName}, quê ${item.province || "Việt Nam"}: ${item.prayerText}`, {
           announceToast: true
         });
       });
@@ -6623,82 +8802,86 @@
   }
 
   function renderZen() {
-    const sp = D.ZEN_SPACES[state.zen.spaceIdx] || D.ZEN_SPACES[0];
+    if (zenCooldownTimerId) {
+      clearInterval(zenCooldownTimerId);
+      zenCooldownTimerId = null;
+    }
+    const spIdx = Math.max(0, Math.min(2, Number(state.zen.spaceIdx) || 0));
+    const sp = D.ZEN_SPACES[spIdx] || D.ZEN_SPACES[0];
+    const spMeta = getZenSpaceMeta(spIdx);
     const cards = D.TEMPLE_PEACE_CARDS || [];
     const curCard = cards[(state.zen.peaceCardIdx || 0) % cards.length];
     const prayers = getMergedTemplePrayers();
     const attendees = buildTempleTenCushionAttendees();
+    const activeLanterns = pruneAndGetActiveLanterns();
     const camMode = state.zen.cameraView || "wide";
     const myCushion = Math.max(
       0,
       Math.min(19, typeof state.zen.userCushionIdx === "number" && Number.isFinite(state.zen.userCushionIdx) ? Math.floor(state.zen.userCushionIdx) : 2)
     );
-    const plaqueTitles = ["TÂM AN VẠN SỰ AN", "HƯƠNG SEN TĨNH TẠI", "ĐẠI HỒNG CHUNG AN LẠC"];
     const isAutoMuyuActive = Boolean(autoMuyuTimerId);
+    const initFortuneCd = getFortuneCooldownSec();
+    const initWishCd = getWishCooldownSec();
 
     els.main.innerHTML = `
-      <h1>Chánh Điện &amp; Đạo Tràng 20 Bồ Đoàn</h1>
+      <h1>${escHtml(spMeta.heading)}</h1>
 
       <div class="temple-cam-bar" role="tablist" aria-label="Chọn không gian tĩnh tâm">
         ${D.ZEN_SPACES.map(
-          (s, i) => `<button type="button" class="temple-cam-btn ${state.zen.spaceIdx === i ? "active" : ""}" data-zen="${i}">${escHtml(s.name)}</button>`
+          (s, i) => `<button type="button" class="temple-cam-btn ${spIdx === i ? "active" : ""}" data-zen="${i}">${escHtml(s.name)}</button>`
         ).join("")}
       </div>
 
-      <!-- Chọn 3 góc máy: Đại sảnh 20 Chiếu / Cận cảnh Tam Bảo / Sân Hồ Sen & Cây Thẻ Đỏ -->
-      <div class="temple-cam-bar" role="group" aria-label="Chọn góc nhìn Chánh Điện">
-        <button type="button" class="temple-cam-btn ${camMode === "wide" ? "active" : ""}" data-tcam="wide">Đại sảnh 20 Chiếu</button>
-        <button type="button" class="temple-cam-btn ${camMode === "cushions" ? "active" : ""}" data-tcam="cushions">Cận cảnh Tam Bảo</button>
-        <button type="button" class="temple-cam-btn ${camMode === "courtyard" ? "active" : ""}" data-tcam="courtyard">Hồ Sen &amp; Cây Thẻ Đỏ</button>
+      <div class="temple-cam-bar" role="group" aria-label="Chọn góc nhìn không gian">
+        <button type="button" class="temple-cam-btn ${camMode === "wide" ? "active" : ""}" data-tcam="wide">${escHtml(spMeta.camWide)}</button>
+        <button type="button" class="temple-cam-btn ${camMode === "cushions" ? "active" : ""}" data-tcam="cushions">${escHtml(spMeta.camAltar)}</button>
+        <button type="button" class="temple-cam-btn ${camMode === "courtyard" ? "active" : ""}" data-tcam="courtyard">${escHtml(spMeta.camYard)}</button>
       </div>
 
-      <div class="temple-sanctuary-wrap" id="temple-3d-stage" aria-label="Đại sảnh Chánh Điện 20 chiếu Bồ Đoàn có các bác bước lên dâng hương và gõ mõ"></div>
+      <div class="temple-sanctuary-wrap" id="temple-3d-stage" aria-label="${escHtml(spMeta.heading)}"></div>
 
-      <!-- Nút Bật/Tắt Tự Động Gõ Mõ Tĩnh Tâm (Nhân vật của bác bước lên đứng cạnh Mõ gỗ gõ đều nhịp) -->
       <button type="button" class="btn-${isAutoMuyuActive ? "primary" : "jade"}" id="btn-temple-auto-muyu">
         ${ico("bell")}
-        <span id="auto-muyu-label">${isAutoMuyuActive ? "Đang Đứng Gõ Mõ Đều Nhịp (Chạm để về chiếu)" : "Bật Tự Động Lên Gõ Mõ Đều Nhịp"}</span>
+        <span id="auto-muyu-label">${escHtml(isAutoMuyuActive ? spMeta.autoMuyuRunning : spMeta.autoMuyuIdle)}</span>
       </button>
 
-      <!-- 6 Nghi thức hành lễ 1 chạm (nhân vật bước từ chiếu lên hành lễ rồi quay về chỗ) -->
-      <div class="temple-ritual-grid" role="group" aria-label="Nghi thức Chánh Điện và Sân Chùa">
+      <div class="temple-ritual-grid" role="group" aria-label="Nghi thức tĩnh tâm và sân Hồ Sen">
         <button type="button" class="btn-primary" id="btn-temple-incense">
-          <span>Lên Dâng Hương</span>
+          <span>${escHtml(spMeta.incenseBtn)}</span>
         </button>
         <button type="button" class="btn-jade" id="btn-temple-muyu">
-          <span>Lên Gõ Mõ (+1)</span>
+          <span>${escHtml(spMeta.muyuBtn)}</span>
         </button>
         <button type="button" class="btn-secondary" id="btn-ring-bell">
           ${ico("bell")}
-          <span>Lên Thỉnh Chuông</span>
+          <span>${escHtml(spMeta.bellBtn)}</span>
         </button>
-        <button type="button" class="btn-secondary" id="btn-draw-peace-card">
-          <span>Lên Xin Xăm / Quẻ</span>
+        <button type="button" class="btn-secondary ${initFortuneCd > 0 ? "is-cooldown" : ""}" id="btn-draw-peace-card">
+          <span class="num">${initFortuneCd > 0 ? `Hồi xăm (${initFortuneCd}s)` : escHtml(spMeta.fortuneBtn)}</span>
         </button>
         <button type="button" class="btn-secondary" id="btn-temple-pond-lantern">
           ${ico("lotus")}
-          <span>Thả Hoa Đăng (${state.zen.lanternsReleased || 18})</span>
+          <span class="num">Thả Hoa Đăng (${activeLanterns.length > 0 ? `${activeLanterns.length} đang trôi` : state.zen.lanternsReleased || 18})</span>
         </button>
-        <button type="button" class="btn-secondary" id="btn-temple-hang-wish">
+        <button type="button" class="btn-secondary ${initWishCd > 0 ? "is-cooldown" : ""}" id="btn-temple-hang-wish">
           ${ico("award")}
-          <span>Treo Thẻ Đỏ (${state.zen.wishPlaquesCount || 16})</span>
+          <span class="num">${initWishCd > 0 ? `Hồi thẻ (${initWishCd}s)` : `Rút & Treo Thẻ Đỏ (${state.zen.wishPlaquesCount || 16})`}</span>
         </button>
       </div>
 
-      <!-- Bảng chọn 20 Chiếu Bồ Đoàn thu gọn gọn gàng (hoặc chạm trực tiếp lên chiếu trên ảnh) -->
       <details class="surface-panel">
         <summary style="cursor:pointer; font-weight:700; display:flex; justify-content:space-between; align-items:center; gap:8px;">
-          <span id="zen-cushion-summary-text">Đổi chỗ trong 20 Chiếu Bồ Đoàn (Đang ngồi BĐ${myCushion + 1})</span>
+          <span id="zen-cushion-summary-text">Đổi chỗ trong 20 Chiếu ngồi (Đang ngồi chiếu ${myCushion + 1})</span>
           <span class="badge-tag jade num">${attendees.length}/20 bác</span>
         </summary>
-        <div class="cushion-pick-grid" id="zen-cushion-grid" role="group" aria-label="Chọn vị trí chiếu Bồ Đoàn từ 1 đến 20" style="margin-top:10px;">
+        <div class="cushion-pick-grid" id="zen-cushion-grid" role="group" aria-label="Chọn vị trí chiếu ngồi từ 1 đến 20" style="margin-top:10px;">
           ${Array.from({ length: 20 }, (_, idx) => {
             const occ = attendees.find((a) => a.cushionIdx === idx);
             const isMe = idx === myCushion;
             const sub = isMe ? "Bạn ngồi" : occ ? occ.shortLabel : "Trống";
             return `
               <button type="button" class="cushion-pick-btn ${isMe ? "selected" : ""} ${occ && occ.isRealPeer ? "peer-occupied" : ""}" data-cushion="${idx}">
-                <span>BĐ ${idx + 1}</span>
+                <span>Chiếu ${idx + 1}</span>
                 <span style="font-weight:500;">${escHtml(sub)}</span>
               </button>
             `;
@@ -6708,11 +8891,10 @@
 
       <div id="peace-card-host">${buildTemplePeaceCardHtml(curCard)}</div>
 
-      <!-- Viết Thẻ Đỏ Ước Nguyện & Sớ Cầu An Có Giọng Đọc AI -->
       <div class="surface-panel">
-        <h3>Viết Sớ Cầu Nguyện &amp; Treo Thẻ Đỏ Sân Chùa</h3>
+        <h3>${escHtml(spMeta.prayerHeading)}</h3>
         <div class="reply-stack">
-          ${(D.TEMPLE_PRAYER_PRESETS || [])
+          ${spMeta.presets
             .map(
               (pr, i) =>
                 `<button type="button" class="reply-btn" data-prayer-preset="${escHtml(pr)}">${i + 1}. "${escHtml(pr)}"</button>`
@@ -6721,7 +8903,7 @@
         </div>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
           <input type="text" class="input-lg" id="temple-prayer-in" placeholder="Viết lời ước nguyện treo lên cây thẻ đỏ..." style="flex:1 1 185px; min-width:0;" />
-          <button type="button" class="btn-primary btn-inline" id="btn-send-prayer" style="flex:1 0 auto;">Treo thẻ đỏ</button>
+          <button type="button" class="btn-primary btn-inline ${initWishCd > 0 ? "is-cooldown" : ""}" id="btn-send-prayer" style="flex:1 0 auto;">${initWishCd > 0 ? `Đợi ${initWishCd}s` : "Treo thẻ đỏ"}</button>
         </div>
 
         <div id="temple-prayers-list-host" style="display:flex; flex-direction:column; gap:8px; margin-top:4px;">
@@ -6730,10 +8912,67 @@
       </div>
     `;
 
+    const syncZenCooldownAndLanternUi = () => {
+      if (state.route !== "zen") {
+        if (zenCooldownTimerId) {
+          clearInterval(zenCooldownTimerId);
+          zenCooldownTimerId = null;
+        }
+        return;
+      }
+      const fCd = getFortuneCooldownSec();
+      const wCd = getWishCooldownSec();
+      const aliveLanterns = pruneAndGetActiveLanterns();
+
+      const drawBtn = document.getElementById("btn-draw-peace-card");
+      if (drawBtn) {
+        drawBtn.classList.toggle("is-cooldown", fCd > 0);
+        const spEl = drawBtn.querySelector("span");
+        if (spEl) spEl.textContent = fCd > 0 ? `Hồi xăm (${fCd}s)` : spMeta.fortuneBtn;
+      }
+      const wishBtn = document.getElementById("btn-temple-hang-wish");
+      if (wishBtn) {
+        wishBtn.classList.toggle("is-cooldown", wCd > 0);
+        const spEl = wishBtn.querySelector("span");
+        if (spEl) spEl.textContent = wCd > 0 ? `Hồi thẻ (${wCd}s)` : `Rút & Treo Thẻ Đỏ (${state.zen.wishPlaquesCount || 16})`;
+      }
+      const sendWishBtn = document.getElementById("btn-send-prayer");
+      if (sendWishBtn) {
+        sendWishBtn.classList.toggle("is-cooldown", wCd > 0);
+        sendWishBtn.textContent = wCd > 0 ? `Đợi ${wCd}s` : "Treo thẻ đỏ";
+      }
+      const lanternBtn = document.getElementById("btn-temple-pond-lantern");
+      if (lanternBtn) {
+        const spEl = lanternBtn.querySelector("span");
+        if (spEl) {
+          spEl.textContent =
+            aliveLanterns.length > 0
+              ? `Thả Hoa Đăng (${aliveLanterns.length} đang trôi)`
+              : `Thả Hoa Đăng (${state.zen.lanternsReleased || 18})`;
+        }
+      }
+      if (window.TempleScene3D && typeof window.TempleScene3D.updateConfig === "function") {
+        window.TempleScene3D.updateConfig({
+          fortuneCooldownSec: fCd,
+          wishCooldownSec: wCd,
+          activeLanterns: aliveLanterns
+        });
+      }
+    };
+
+    zenCooldownTimerId = setInterval(syncZenCooldownAndLanternUi, 1000);
+
+    const switchZenCameraSmooth = (nextCam) => {
+      state.zen.cameraView = nextCam;
+      saveState();
+      els.main.querySelectorAll("[data-tcam]").forEach((el) => el.classList.toggle("active", el.dataset.tcam === nextCam));
+      if (window.TempleScene3D) window.TempleScene3D.setCameraView(nextCam);
+    };
+
     const refreshCushionPickerInPlace = (nextIdx) => {
       const nextAttendees = buildTempleTenCushionAttendees();
       const summaryEl = document.getElementById("zen-cushion-summary-text");
-      if (summaryEl) summaryEl.textContent = `Đổi chỗ trong 20 Chiếu Bồ Đoàn (Đang ngồi BĐ${nextIdx + 1})`;
+      if (summaryEl) summaryEl.textContent = `Đổi chỗ trong 20 Chiếu ngồi (Đang ngồi chiếu ${nextIdx + 1})`;
       const grid = document.getElementById("zen-cushion-grid");
       if (grid) {
         grid.querySelectorAll("[data-cushion]").forEach((btn) => {
@@ -6766,12 +9005,13 @@
       state.zen.muyuCount = (state.zen.muyuCount || 0) + 1;
       if (window.TempleScene3D) window.TempleScene3D.triggerMuyu(state.zen.muyuCount);
       if (!fromAuto) {
-        showToast(`Đã lên gõ mõ tĩnh tâm (+1 Tâm An · tổng ${state.zen.muyuCount})`);
+        showToast(`Đã giữ nhịp tĩnh tâm (+1 Tâm An · tổng ${state.zen.muyuCount})`);
       }
       if (!fromAuto || state.zen.muyuCount % 5 === 0) {
-        awardSeniorityPoints(1, "temple_muyu", "chua-online", `Gõ mõ tĩnh tâm (${state.zen.muyuCount} nhịp)`, {
+        awardSeniorityPoints(1, "temple_muyu", "chua-online", `Giữ nhịp tĩnh tâm (${state.zen.muyuCount} nhịp)`, {
           eventType: "temple_ritual",
           module: "zen",
+          spaceIdx: spIdx,
           ritualKind: "muyu",
           cushionIdx: activeSeat()
         });
@@ -6780,10 +9020,20 @@
       }
     };
 
+    const scrollZenStageIntoViewSmooth = () => {
+      const stg = document.getElementById("temple-3d-stage");
+      if (!stg || typeof stg.getBoundingClientRect !== "function") return;
+      const rect = stg.getBoundingClientRect();
+      if (rect.top < 56 || rect.bottom > window.innerHeight) {
+        stg.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    };
+
     const doBellStep = () => {
       playTempleBell();
       state.zen.bellCount = (state.zen.bellCount || 0) + 1;
       const seatNow = activeSeat();
+      scrollZenStageIntoViewSmooth();
       if (window.TempleScene3D) window.TempleScene3D.triggerBell(state.user.name, seatNow);
       if (RT && typeof RT.publishTempleRitual === "function") {
         RT.publishTempleRitual({
@@ -6792,69 +9042,102 @@
           cushionIdx: seatNow
         });
       }
-      awardSeniorityPoints(2, "temple_bell", "chua-online", "Thỉnh Đại Hồng Chung ngân vang Chánh Điện", {
+      awardSeniorityPoints(2, "temple_bell", "chua-online", `${spMeta.bellBtn} tại ${sp.name}`, {
         eventType: "temple_ritual",
         module: "zen",
+        spaceIdx: spIdx,
         ritualKind: "bell",
         cushionIdx: seatNow
       });
-      showToast("Đang bước lên thỉnh Đại Hồng Chung ngân vang...");
+      showToast(`Đang bước lên ${spMeta.bellBtn.replace(/^lên\s+/i, "").toLowerCase()} ngân vang...`);
     };
 
     const doPondLanternStep = () => {
-      playWoodenFishSound();
+      playTempleBell();
       const seatNow = activeSeat();
       state.zen.lanternsReleased = (state.zen.lanternsReleased || 18) + 1;
-      const btnLantern = document.getElementById("btn-temple-pond-lantern");
-      if (btnLantern) {
-        const spEl = btnLantern.querySelector("span");
-        if (spEl) spEl.textContent = `Thả Hoa Đăng (${state.zen.lanternsReleased})`;
+      const aliveLanterns = appendActivePondLantern(state.user.name, true);
+      if (state.zen.cameraView !== "courtyard") {
+        switchZenCameraSmooth("courtyard");
       }
+      scrollZenStageIntoViewSmooth();
       if (window.TempleScene3D) {
+        window.TempleScene3D.updateConfig({
+          lanternCount: state.zen.lanternsReleased,
+          activeLanterns: aliveLanterns
+        });
         window.TempleScene3D.spawnPondLantern(state.user.name, seatNow);
       }
+      syncZenCooldownAndLanternUi();
       if (RT && typeof RT.publishTempleRitual === "function") {
         RT.publishTempleRitual({ userName: state.user.name, ritualKind: "pond_lantern", cushionIdx: seatNow });
       }
-      awardSeniorityPoints(4, "temple_pond_lantern", "chua-online", "Thả Hoa Đăng sáng trên sân Hồ Sen", {
+      awardSeniorityPoints(4, "temple_pond_lantern", "chua-online", `Thả Hoa Đăng sáng trên mặt Hồ Sen (${sp.name})`, {
         eventType: "temple_ritual",
         module: "zen",
+        spaceIdx: spIdx,
         ritualKind: "pond_lantern",
         cushionIdx: seatNow
       });
-      showToast("Đã thành tâm thả Hoa Đăng bình an!");
+      showToast("Đã thả đèn Hoa Đăng xuống Hồ Sen — đèn sẽ tỏa sáng trôi trên mặt nước trong 3 phút!");
     };
 
     const doDrawPeaceCardStep = () => {
-      playWoodenFishSound();
+      const waitSec = getFortuneCooldownSec();
+      if (waitSec > 0) {
+        showToast(`Ống xăm đang tĩnh lộc — mời bác đợi thêm ${waitSec} giây (hoặc bấm "Mở tờ giấy đỏ" để xem lại quẻ vừa rút).`);
+        return;
+      }
+      playFortuneShakeSound();
+      state.zen.lastPeaceCardAt = Date.now();
       state.zen.peaceCardIdx = ((state.zen.peaceCardIdx || 0) + 1) % Math.max(1, cards.length);
       const nextCard = cards[state.zen.peaceCardIdx];
-      awardSeniorityPoints(3, "temple_peace_card", "chua-online", `Rút ${nextCard ? nextCard.code : "Thẻ An Lạc"}`, {
+      const nextTitle =
+        nextCard && Array.isArray(nextCard.spaceCodes) && nextCard.spaceCodes[spIdx]
+          ? nextCard.spaceCodes[spIdx]
+          : nextCard
+          ? nextCard.code
+          : "Quẻ An Lạc";
+      awardSeniorityPoints(3, "temple_peace_card", "chua-online", `Rút ${nextTitle} tại ${sp.name}`, {
         eventType: "temple_ritual",
         module: "zen",
+        spaceIdx: spIdx,
         ritualKind: "peace_card"
       });
-      showToast(`Đã gieo được ${nextCard ? nextCard.code : "Thẻ An Lạc mới"}!`);
+      syncZenCooldownAndLanternUi();
       const cardHost = document.getElementById("peace-card-host");
       if (cardHost) {
         cardHost.innerHTML = buildTemplePeaceCardHtml(nextCard);
         bindTemplePeaceCardEvents(nextCard);
       }
       if (window.TempleScene3D && typeof window.TempleScene3D.triggerFortuneStick === "function") {
-        window.TempleScene3D.triggerFortuneStick(nextCard ? nextCard.code : "Quẻ Đại Cát");
+        window.TempleScene3D.triggerFortuneStick(nextTitle);
       }
+      showCeremonialRedSlipOverlay({
+        card: nextCard,
+        kind: "peace_card",
+        subtitle: `${sp.name} · Ống xăm đầu ngày`,
+        cooldownSec: Math.ceil(FORTUNE_COOLDOWN_MS / 1000)
+      });
     };
 
     const publishWishOrIncense = (text, ritualKind) => {
       const rawClean = String(text || "").trim();
       if (!rawClean) return false;
+      if (ritualKind === "wish_plaque") {
+        const waitWish = getWishCooldownSec();
+        if (waitWish > 0) {
+          showToast(`Cây Thẻ Đỏ đang lắng nhận lời ước nguyện trước — mời bác đợi thêm ${waitWish} giây nhé.`);
+          return false;
+        }
+      }
       const safety = cleanAndApplyDictionary(rawClean);
       if (safety.blocked) {
         trackTelemetryDirect("chat_blocked", "zen", "auto_blocked_prayer", {
           category: "safety_alert",
           detail: "Chặn tự động SĐT, số tài khoản hoặc đường dẫn trên Sớ cầu an"
         });
-        showToast("Vì an toàn, không đăng số điện thoại, số tài khoản hoặc đường link lên Sớ cầu an.");
+        showToast("Vì an toàn, không đăng số điện thoại, số tài khoản hoặc đường link lên thẻ cầu nguyện.");
         return false;
       }
       const clean = rawClean;
@@ -6862,10 +9145,13 @@
       const prog = getSeniorityProgress();
       const isVeteranGold = Boolean(prog.current && prog.current.level >= 23);
       if (ritualKind === "wish_plaque") {
+        state.zen.lastWishCardAt = Date.now();
         state.zen.wishPlaquesCount = (state.zen.wishPlaquesCount || 16) + 1;
+        playFortuneShakeSound();
       } else {
         state.zen.incenseLit = true;
         state.zen.incenseCount = (state.zen.incenseCount || 14) + 1;
+        playWoodenFishSound();
       }
       const pObj = {
         id: `pr_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
@@ -6887,35 +9173,44 @@
         4,
         ritualKind === "wish_plaque" ? "temple_wish_plaque" : "temple_incense",
         "chua-online",
-        `${ritualKind === "wish_plaque" ? "Treo thẻ đỏ ước nguyện" : "Dâng hương Tam Bảo"}: "${clean.slice(0, 56)}"`,
+        `${ritualKind === "wish_plaque" ? "Treo thẻ đỏ ước nguyện" : spMeta.incenseBtn}: "${clean.slice(0, 56)}"`,
         {
           eventType: "temple_ritual",
           module: "zen",
+          spaceIdx: spIdx,
           ritualKind: ritualKind || "wish_plaque",
           cushionIdx: seatNow,
           wishText: clean
         }
       );
 
-      const btnWish = document.getElementById("btn-temple-hang-wish");
-      if (btnWish) {
-        const spEl = btnWish.querySelector("span");
-        if (spEl) spEl.textContent = `Treo Thẻ Đỏ (${state.zen.wishPlaquesCount || 16})`;
-      }
+      syncZenCooldownAndLanternUi();
       refreshZenPrayersHostIfActive();
 
       if (window.TempleScene3D) {
         if (ritualKind === "wish_plaque") {
+          if (state.zen.cameraView !== "courtyard") {
+            switchZenCameraSmooth("courtyard");
+          }
           window.TempleScene3D.spawnWishPlaque(state.user.name, isVeteranGold, clean, seatNow);
         } else {
+          scrollZenStageIntoViewSmooth();
           window.TempleScene3D.triggerIncense(state.user.name, seatNow);
         }
       }
-      showToast(
-        ritualKind === "wish_plaque"
-          ? "Đang bước lên kính lễ & treo Thẻ Đỏ ước nguyện..."
-          : "Đang bước lên Lư hương thành tâm dâng nhang..."
-      );
+
+      if (ritualKind === "wish_plaque" && cards.length > 0) {
+        const matchedCard = cards[(state.zen.wishPlaquesCount || 0) % cards.length];
+        showCeremonialRedSlipOverlay({
+          card: matchedCard,
+          kind: "wish_plaque",
+          wishText: clean,
+          subtitle: `${sp.name} · Cây Thẻ Đỏ Ước Nguyện`,
+          cooldownSec: Math.ceil(WISH_COOLDOWN_MS / 1000)
+        });
+      } else {
+        showToast(`Đang bước lên thành tâm ${spMeta.incenseBtn.toLowerCase()}...`);
+      }
       return true;
     };
 
@@ -6926,15 +9221,18 @@
         {
           preferredRender: state.settings.preferredRender,
           cameraView: camMode,
-          spaceIdx: state.zen.spaceIdx || 0,
+          spaceIdx: spIdx,
           autoMuyuActive: isAutoMuyuActive,
-          plaqueTitle: plaqueTitles[state.zen.spaceIdx % plaqueTitles.length],
+          plaqueTitle: spMeta.plaqueTitle,
           userName: state.user.name,
           userCushionIdx: myCushion,
           attendees,
           muyuCount: state.zen.muyuCount || 0,
           incenseCount: state.zen.incenseCount || 14,
           lanternCount: state.zen.lanternsReleased || 18,
+          activeLanterns,
+          fortuneCooldownSec: initFortuneCd,
+          wishCooldownSec: initWishCd,
           totalWishCount: state.zen.wishPlaquesCount || 16,
           wishes: prayers,
           onInteractiveAction: (kind, payload) => {
@@ -6943,14 +9241,12 @@
             } else if (kind === "bell") {
               doBellStep();
             } else if (kind === "incense") {
-              const presets = D.TEMPLE_PRAYER_PRESETS || [];
-              const chosen = presets[(state.zen.incenseCount || 0) % Math.max(1, presets.length)] || sp.quote;
+              const chosen = spMeta.presets[(state.zen.incenseCount || 0) % Math.max(1, spMeta.presets.length)] || sp.quote;
               publishWishOrIncense(chosen, "incense");
             } else if (kind === "pond_lantern") {
               doPondLanternStep();
             } else if (kind === "wish_plaque") {
-              const presets = D.TEMPLE_PRAYER_PRESETS || [];
-              const chosen = presets[(state.zen.wishPlaquesCount || 0) % Math.max(1, presets.length)] || sp.quote;
+              const chosen = spMeta.presets[(state.zen.wishPlaquesCount || 0) % Math.max(1, spMeta.presets.length)] || sp.quote;
               publishWishOrIncense(chosen, "wish_plaque");
             } else if (kind === "peace_card") {
               doDrawPeaceCardStep();
@@ -6960,11 +9256,10 @@
                 state.zen.userCushionIdx = cIdx;
                 saveState();
                 syncMyGlobalOnlinePresence();
-                showToast(`Đã chuyển sang ngồi Chiếu Bồ Đoàn số ${cIdx + 1}`);
+                showToast(`Đã chuyển sang ngồi Chiếu số ${cIdx + 1}`);
                 refreshCushionPickerInPlace(cIdx);
               } else {
-                const presets = D.TEMPLE_PRAYER_PRESETS || [];
-                const chosen = presets[(state.zen.incenseCount || 0) % Math.max(1, presets.length)] || sp.quote;
+                const chosen = spMeta.presets[(state.zen.incenseCount || 0) % Math.max(1, spMeta.presets.length)] || sp.quote;
                 publishWishOrIncense(chosen, "incense");
               }
             }
@@ -6988,11 +9283,8 @@
     els.main.querySelectorAll("[data-tcam]").forEach((b) => {
       b.addEventListener("click", () => {
         const nextCam = b.dataset.tcam || "wide";
-        state.zen.cameraView = nextCam;
-        saveState();
-        els.main.querySelectorAll("[data-tcam]").forEach((el) => el.classList.toggle("active", el.dataset.tcam === nextCam));
-        if (window.TempleScene3D) window.TempleScene3D.setCameraView(nextCam);
-        trackTelemetryDirect("temple_ritual", "zen", "switch_3d_camera", { cameraView: nextCam });
+        switchZenCameraSmooth(nextCam);
+        trackTelemetryDirect("temple_ritual", "zen", "switch_3d_camera", { cameraView: nextCam, spaceIdx: spIdx });
       });
     });
 
@@ -7001,10 +9293,10 @@
         const cIdx = Math.max(0, Math.min(19, Number(b.dataset.cushion) || 0));
         state.zen.userCushionIdx = cIdx;
         awardSkillPoints("temple_zen", 2);
-        trackTelemetryDirect("temple_ritual", "zen", "select_cushion", { ritualKind: "cushion_select", cushionIdx: cIdx });
+        trackTelemetryDirect("temple_ritual", "zen", "select_cushion", { ritualKind: "cushion_select", cushionIdx: cIdx, spaceIdx: spIdx });
         saveState();
         syncMyGlobalOnlinePresence();
-        showToast(`Đã chuyển sang ngồi Chiếu Bồ Đoàn số ${cIdx + 1}`);
+        showToast(`Đã chuyển sang ngồi Chiếu số ${cIdx + 1}`);
         refreshCushionPickerInPlace(cIdx);
       });
     });
@@ -7017,14 +9309,14 @@
           clearInterval(autoMuyuTimerId);
           autoMuyuTimerId = null;
           autoMuyuBtn.className = "btn-jade";
-          if (lbl) lbl.textContent = "Bật Tự Động Lên Gõ Mõ Đều Nhịp";
+          if (lbl) lbl.textContent = spMeta.autoMuyuIdle;
           if (window.TempleScene3D && typeof window.TempleScene3D.setAutoMuyuMode === "function") {
             window.TempleScene3D.setAutoMuyuMode(false);
           }
-          showToast("Đã dừng gõ mõ — nhân vật đang bước về chiếu ngồi.");
+          showToast("Đã dừng nhịp gõ — nhân vật đang bước về chiếu ngồi.");
         } else {
           autoMuyuBtn.className = "btn-primary";
-          if (lbl) lbl.textContent = "Đang Đứng Gõ Mõ Đều Nhịp (Chạm để về chiếu)";
+          if (lbl) lbl.textContent = spMeta.autoMuyuRunning;
           if (window.TempleScene3D && typeof window.TempleScene3D.setAutoMuyuMode === "function") {
             window.TempleScene3D.setAutoMuyuMode(true);
           }
@@ -7037,22 +9329,20 @@
             }
             doMuyuStep(true);
           }, 2200);
-          showToast("Nhân vật đang bước lên đứng cạnh Mõ gỗ gõ đều nhịp!");
+          showToast("Nhân vật đang bước lên giữ nhịp tĩnh tâm đều đặn!");
         }
       });
     }
 
     document.getElementById("btn-temple-hang-wish").addEventListener("click", () => {
-      const presets = D.TEMPLE_PRAYER_PRESETS || [];
-      const chosen = presets[(state.zen.wishPlaquesCount || 0) % Math.max(1, presets.length)] || sp.quote;
+      const chosen = spMeta.presets[(state.zen.wishPlaquesCount || 0) % Math.max(1, spMeta.presets.length)] || sp.quote;
       publishWishOrIncense(chosen, "wish_plaque");
     });
 
     document.getElementById("btn-temple-pond-lantern").addEventListener("click", doPondLanternStep);
 
     document.getElementById("btn-temple-incense").addEventListener("click", () => {
-      const presets = D.TEMPLE_PRAYER_PRESETS || [];
-      const chosen = presets[(state.zen.incenseCount || 0) % Math.max(1, presets.length)] || sp.quote;
+      const chosen = spMeta.presets[(state.zen.incenseCount || 0) % Math.max(1, spMeta.presets.length)] || sp.quote;
       publishWishOrIncense(chosen, "incense");
     });
 
@@ -7311,7 +9601,7 @@
   let profilePreviewDraft = null;
 
   function renderOutfitSampleSvg(outfit) {
-    const c = outfit.color || "#6E4A35";
+    const c = sanitizeColorCss(outfit.color || "#6E4A35", "#6E4A35");
     let detail = "";
     if (outfit.id === "ao-ba-ba") {
       detail = `
@@ -7320,18 +9610,26 @@
         <rect x="17" y="36" width="6" height="6" rx="1" fill="none" stroke="rgba(255,255,255,0.45)" stroke-width="1.1"/>
         <rect x="33" y="36" width="6" height="6" rx="1" fill="none" stroke="rgba(255,255,255,0.45)" stroke-width="1.1"/>
       `;
-    } else if (outfit.id === "ao-dai-xanh") {
+    } else if (outfit.id === "ao-dai-xanh" || outfit.id === "ao-lua-tim-hue") {
       detail = `
-        <path d="M24 16 Q32 22 33 46" fill="none" stroke="#E8F3EE" stroke-width="1.5"/>
+        <path d="M24 16 Q32 22 33 46" fill="none" stroke="#F6EDE8" stroke-width="1.5"/>
         <circle cx="29" cy="21" r="1.3" fill="#FFFDF7"/><circle cx="31.5" cy="27" r="1.3" fill="#FFFDF7"/>
+        ${outfit.id === "ao-lua-tim-hue" ? `<circle cx="23.5" cy="33" r="2.7" fill="#F9D5E5" opacity="0.88"/><circle cx="23.5" cy="33" r="1.1" fill="#F4B43A"/>` : ""}
       `;
-    } else if (outfit.id === "ao-linh") {
+    } else if (outfit.id === "ao-linh" || outfit.id === "ao-kaki-kem") {
+      const trimCol = outfit.id === "ao-kaki-kem" ? "#6D5438" : "#DCE6D3";
       detail = `
-        <line x1="28" y1="17" x2="28" y2="46" stroke="#DCE6D3" stroke-width="1.3"/>
-        <rect x="17.5" y="24" width="6.5" height="7" rx="1" fill="none" stroke="#DCE6D3" stroke-width="1.2"/>
-        <rect x="32" y="24" width="6.5" height="7" rx="1" fill="none" stroke="#DCE6D3" stroke-width="1.2"/>
-        <line x1="16" y1="14" x2="22" y2="15" stroke="#DCE6D3" stroke-width="1.6"/>
-        <line x1="34" y1="15" x2="40" y2="14" stroke="#DCE6D3" stroke-width="1.6"/>
+        <line x1="28" y1="17" x2="28" y2="46" stroke="${trimCol}" stroke-width="1.3"/>
+        <rect x="17.5" y="24" width="6.5" height="7" rx="1" fill="none" stroke="${trimCol}" stroke-width="1.2"/>
+        <rect x="32" y="24" width="6.5" height="7" rx="1" fill="none" stroke="${trimCol}" stroke-width="1.2"/>
+        <line x1="16" y1="14" x2="22" y2="15" stroke="${trimCol}" stroke-width="1.6"/>
+        <line x1="34" y1="15" x2="40" y2="14" stroke="${trimCol}" stroke-width="1.6"/>
+      `;
+    } else if (outfit.id === "ao-gam-lam-ngoc") {
+      detail = `
+        <path d="M24 16 Q32 22 33 46" fill="none" stroke="#F2D27A" stroke-width="1.4"/>
+        <circle cx="28" cy="29" r="4.2" fill="none" stroke="#F2D27A" stroke-width="1.3"/>
+        <circle cx="28" cy="29" r="1.6" fill="#F7DC88"/>
       `;
     } else if (outfit.id === "ao-len-do") {
       detail = `
@@ -7358,35 +9656,43 @@
   }
 
   function renderAccessorySampleSvg(acc) {
+    const spritePos = {
+      scarf: "0% 0%",
+      cap: "33.333% 0%",
+      "non-la": "66.667% 0%"
+    }[acc.id];
+    if (spritePos) {
+      return `
+        <span class="sample-thumb" aria-hidden="true" style="display:inline-block; width:56px; height:56px; border-radius:12px; background-color:#FBF5E8; border:1px solid #D5C4AA; background-image:url('assets/tearoom-accessories.webp?v=20261118c'); background-size:400% 200%; background-position:${spritePos}; background-repeat:no-repeat;"></span>
+      `;
+    }
+    const extraAccPos = {
+      "khan-dong": "0% 0%",
+      "mu-tai-beo": "100% 0%"
+    }[acc.id];
+    if (extraAccPos) {
+      return `
+        <span class="sample-thumb" aria-hidden="true" style="display:inline-block; width:56px; height:56px; border-radius:12px; background-color:#FBF5E8; border:1px solid #D5C4AA; background-image:url('assets/tearoom-accessories-extra.webp?v=20261118c'); background-size:200% 200%; background-position:${extraAccPos}; background-repeat:no-repeat;"></span>
+      `;
+    }
     let art = "";
     if (acc.id === "glasses") {
       art = `
-        <circle cx="19" cy="29" r="7.5" fill="#FFFDF9" stroke="#B67E22" stroke-width="2.4"/>
-        <circle cx="37" cy="29" r="7.5" fill="#FFFDF9" stroke="#B67E22" stroke-width="2.4"/>
-        <path d="M26.5 29 Q28 26.5 29.5 29" fill="none" stroke="#B67E22" stroke-width="2.2"/>
-        <line x1="8" y1="26" x2="11.5" y2="28" stroke="#8C5B1F" stroke-width="2" stroke-linecap="round"/>
-        <line x1="44.5" y1="28" x2="48" y2="26" stroke="#8C5B1F" stroke-width="2" stroke-linecap="round"/>
+        <ellipse cx="19" cy="29" rx="7.8" ry="6.4" fill="rgba(255,250,235,0.8)" stroke="#B67E22" stroke-width="2.3"/>
+        <ellipse cx="37" cy="29" rx="7.8" ry="6.4" fill="rgba(255,250,235,0.8)" stroke="#B67E22" stroke-width="2.3"/>
+        <path d="M26.8 28.5 Q28 25.8 29.2 28.5" fill="none" stroke="#B67E22" stroke-width="2.2"/>
+        <line x1="7" y1="25" x2="11.2" y2="28" stroke="#8C5B1F" stroke-width="2" stroke-linecap="round"/>
+        <line x1="44.8" y1="28" x2="49" y2="25" stroke="#8C5B1F" stroke-width="2" stroke-linecap="round"/>
       `;
-    } else if (acc.id === "scarf") {
+    } else if (acc.id === "kinh-ram-tra") {
       art = `
-        <path d="M13 22 C13 15, 43 15, 43 22 C43 29, 13 29, 13 22 Z" fill="#A63426" stroke="#6E1E14" stroke-width="1.5"/>
-        <path d="M29 26 L35 44 L26 44 L23 27 Z" fill="#B83B2A" stroke="#6E1E14" stroke-width="1.3"/>
-        <line x1="26" y1="44" x2="25" y2="48" stroke="#A63426" stroke-width="1.6"/>
-        <line x1="30" y1="44" x2="30" y2="48" stroke="#A63426" stroke-width="1.6"/>
-        <line x1="34" y1="44" x2="35" y2="48" stroke="#A63426" stroke-width="1.6"/>
-      `;
-    } else if (acc.id === "cap") {
-      art = `
-        <path d="M13 31 C14 17, 42 17, 43 31 Z" fill="#4F6842" stroke="#2D3E24" stroke-width="1.5"/>
-        <ellipse cx="28" cy="31" rx="19" ry="4.5" fill="#3E5433" stroke="#2D3E24" stroke-width="1.4"/>
-        <circle cx="28" cy="18" r="2" fill="#3E5433"/>
-      `;
-    } else if (acc.id === "non-la") {
-      art = `
-        <polygon points="28,12 8,36 48,36" fill="#EAD69B" stroke="#9C7A3C" stroke-width="1.6" stroke-linejoin="round"/>
-        <line x1="15" y1="28" x2="41" y2="28" stroke="#C5A467" stroke-width="1.2"/>
-        <line x1="21" y1="20.5" x2="35" y2="20.5" stroke="#C5A467" stroke-width="1.2"/>
-        <path d="M17 36 Q28 47 39 36" fill="none" stroke="#B83B2A" stroke-width="1.8"/>
+        <ellipse cx="19" cy="29" rx="8.1" ry="6.6" fill="rgba(186,118,38,0.44)" stroke="#5A3414" stroke-width="2.5"/>
+        <ellipse cx="37" cy="29" rx="8.1" ry="6.6" fill="rgba(186,118,38,0.44)" stroke="#5A3414" stroke-width="2.5"/>
+        <line x1="15" y1="25.5" x2="21" y2="31.5" stroke="rgba(255,244,214,0.55)" stroke-width="1.6" stroke-linecap="round"/>
+        <line x1="33" y1="25.5" x2="39" y2="31.5" stroke="rgba(255,244,214,0.55)" stroke-width="1.6" stroke-linecap="round"/>
+        <path d="M27.1 28.2 Q28 25.5 28.9 28.2" fill="none" stroke="#8C5B1F" stroke-width="2.3"/>
+        <line x1="6.8" y1="25" x2="11" y2="28" stroke="#5A3414" stroke-width="2.2" stroke-linecap="round"/>
+        <line x1="45" y1="28" x2="49.2" y2="25" stroke="#5A3414" stroke-width="2.2" stroke-linecap="round"/>
       `;
     } else {
       art = `
@@ -7407,72 +9713,43 @@
   }
 
   function renderTableItemSampleSvg(item) {
-    let art = "";
-    if (item.id === "am-tu-sa") {
-      art = `
-        <ellipse cx="28" cy="43" rx="16" ry="3.5" fill="#5C3620"/>
-        <ellipse cx="28" cy="33" rx="12" ry="9" fill="#9B4026" stroke="#5A2212" stroke-width="1.4"/>
-        <ellipse cx="28" cy="24" rx="6.5" ry="2.4" fill="#84341D"/>
-        <circle cx="28" cy="21.5" r="2" fill="#D9A441"/>
-        <path d="M39 32 Q45 27 46 23" fill="none" stroke="#9B4026" stroke-width="3.2" stroke-linecap="round"/>
-        <path d="M17 28 C11 28, 11 37, 17 37" fill="none" stroke="#9B4026" stroke-width="2.8"/>
-        <path d="M26 17 Q24 13 27 9 M31 18 Q33 14 30 10" fill="none" stroke="#B8ADA0" stroke-width="1.5" stroke-linecap="round"/>
+    const spritePos = {
+      "am-tu-sa": "0% 0%",
+      "binh-sen": "50% 0%",
+      "bonsai-mini": "100% 0%",
+      "dia-hat-dua": "0% 100%",
+      "den-dau": "50% 100%",
+      "radio-go": "100% 100%"
+    }[item.id];
+    if (spritePos) {
+      return `
+        <span class="sample-thumb" aria-hidden="true" style="display:inline-block; width:56px; height:56px; border-radius:12px; background-color:#FBF5E8; border:1px solid #D5C4AA; background-image:url('assets/tearoom-items.webp?v=20261118c'); background-size:300% 200%; background-position:${spritePos}; background-repeat:no-repeat;"></span>
       `;
-    } else if (item.id === "binh-sen") {
-      art = `
-        <path d="M22 28 L34 28 L36 44 L20 44 Z" fill="#F2EFE9" stroke="#A69F92" stroke-width="1.4" stroke-linejoin="round"/>
-        <line x1="28" y1="28" x2="28" y2="18" stroke="#2E6A44" stroke-width="2.2"/>
-        <ellipse cx="21" cy="23" rx="6" ry="3" transform="rotate(-20 21 23)" fill="#3D8453"/>
-        <ellipse cx="28" cy="15" rx="4.5" ry="7" fill="#E88CA5" stroke="#B85672" stroke-width="1.1"/>
-        <ellipse cx="23.5" cy="17" rx="3.2" ry="5.2" transform="rotate(-24 23.5 17)" fill="#F3B0C2"/>
-        <ellipse cx="32.5" cy="17" rx="3.2" ry="5.2" transform="rotate(24 32.5 17)" fill="#F3B0C2"/>
-      `;
-    } else if (item.id === "bonsai-mini") {
-      art = `
-        <polygon points="16,36 40,36 37,45 19,45" fill="#3B6E5C" stroke="#23473A" stroke-width="1.4"/>
-        <path d="M28 36 Q23 28 29 21" fill="none" stroke="#5C3A21" stroke-width="3.6" stroke-linecap="round"/>
-        <ellipse cx="31" cy="19" rx="11" ry="6.5" fill="#2F6F44"/>
-        <ellipse cx="21" cy="25" rx="8.5" ry="5" fill="#3D8453"/>
-      `;
-    } else if (item.id === "dia-hat-dua") {
-      art = `
-        <ellipse cx="28" cy="33" rx="18" ry="10" fill="#B83B2A" stroke="#742015" stroke-width="1.6"/>
-        <ellipse cx="28" cy="32" rx="13" ry="6.8" fill="#9E2E1F"/>
-        <circle cx="24" cy="31" r="2.6" fill="#F3D27A"/><circle cx="31" cy="30" r="2.6" fill="#F3D27A"/>
-        <circle cx="28" cy="34.5" r="2.6" fill="#F3D27A"/><circle cx="21" cy="34" r="2.2" fill="#FCE9B5"/>
-        <circle cx="34" cy="34" r="2.2" fill="#FCE9B5"/>
-      `;
-    } else if (item.id === "den-dau") {
-      art = `
-        <polygon points="19,36 37,36 40,45 16,45" fill="#B87D32" stroke="#784E18" stroke-width="1.4"/>
-        <path d="M23 16 L33 16 L35 36 L21 36 Z" fill="#FFF7DF" stroke="#B7A886" stroke-width="1.3"/>
-        <path d="M28 22 C24 27, 25 32, 28 32 C31 32, 32 27, 28 22 Z" fill="#FF9F1C"/>
-        <circle cx="28" cy="29" r="2" fill="#FFF3B0"/>
-      `;
-    } else {
-      art = `
-        <line x1="18" y1="22" x2="36" y2="11" stroke="#7A7A7A" stroke-width="2" stroke-linecap="round"/>
-        <rect x="11" y="21" width="34" height="23" rx="4" fill="#6B3E23" stroke="#3F2210" stroke-width="1.5"/>
-        <rect x="15" y="25" width="17" height="15" rx="2" fill="#E6D2A8"/>
-        <line x1="17" y1="29" x2="30" y2="29" stroke="#8C6B43" stroke-width="1.2"/>
-        <line x1="17" y1="33" x2="30" y2="33" stroke="#8C6B43" stroke-width="1.2"/>
-        <line x1="17" y1="37" x2="30" y2="37" stroke="#8C6B43" stroke-width="1.2"/>
-        <circle cx="38.5" cy="29" r="3.6" fill="#D9A441" stroke="#4A2D12" stroke-width="1.1"/>
-        <circle cx="38.5" cy="37.5" r="2.4" fill="#C89B54"/>
+    }
+    const extraSpritePos = {
+      "khay-trau-cau": "0% 0%",
+      "banh-dau-xanh": "50% 0%",
+      "long-chim-khuyen": "100% 0%",
+      "ban-co-ngoc": "0% 100%",
+      "lu-tram-dong": "50% 100%",
+      "tich-tra-men-lam": "100% 100%"
+    }[item.id];
+    if (extraSpritePos) {
+      return `
+        <span class="sample-thumb" aria-hidden="true" style="display:inline-block; width:56px; height:56px; border-radius:12px; background-color:#FBF5E8; border:1px solid #D5C4AA; background-image:url('assets/tearoom-items-extra.webp?v=20261118c'); background-size:300% 200%; background-position:${extraSpritePos}; background-repeat:no-repeat;"></span>
       `;
     }
     return `
       <span class="sample-thumb" aria-hidden="true">
         <svg viewBox="0 0 56 56" width="56" height="56">
           <rect x="1" y="1" width="54" height="54" rx="12" fill="#FBF5E8" stroke="#D5C4AA" stroke-width="1.4"/>
-          ${art}
         </svg>
       </span>
     `;
   }
 
   function renderTitleFrameSampleSvg(frame) {
-    const col = frame.color || "#3A2A20";
+    const col = sanitizeColorCss(frame.color || "#3A2A20", "#3A2A20");
     return `
       <span class="sample-thumb" aria-hidden="true">
         <svg viewBox="0 0 56 56" width="56" height="56">
@@ -7687,10 +9964,22 @@
         </div>
 
         <div class="surface-panel">
-          <h3>Quản trị &amp; Góp ý Quán Trà</h3>
+          <h3>Giọng đọc Tiếng Việt (Hỗ trợ máy Android cũ ngoại tuyến)</h3>
+          <p style="font-size:0.88rem; color:var(--ink-secondary);">Máy thiếu bộ giọng tiếng Việt có thể bật sẵn kho 15 tệp giọng thu ấm áp (chào sáng, lời dẫn chùa/cờ, 6 quẻ bình an).</p>
+          <div class="btn-row">
+            <button type="button" class="btn-${state.settings.voiceMode === "recorded" ? "jade" : "secondary"}" id="btn-prof-toggle-voicemode">
+              ${ico("speaker")}
+              <span>${state.settings.voiceMode === "recorded" ? "Đang ưu tiên: Giọng thu sẵn (.mp3)" : "Chế độ: Tự động (TTS + Dự phòng)"}</span>
+            </button>
+            <button type="button" class="btn-secondary" id="btn-prof-test-voice">Nghe thử</button>
+          </div>
+        </div>
+
+        <div class="surface-panel">
+          <h3>Riêng tư &amp; Góp ý Quán Trà</h3>
           <div class="btn-row">
             <button type="button" class="btn-secondary" id="btn-profile-feedback">${ico("feedback", "ico-sm")}<span>Gửi Góp ý</span></button>
-            <button type="button" class="btn-secondary" id="btn-profile-open-privacy">${ico("chart", "ico-sm")}<span>Dash Hoạt động</span></button>
+            <button type="button" class="btn-secondary" id="btn-profile-open-privacy">${ico("shield", "ico-sm")}<span>Riêng tư &amp; Admin</span></button>
           </div>
         </div>
       `
@@ -7938,6 +10227,29 @@
         activeLeaderTab = "Cay32";
         navigate("leaderboard");
       });
+      const profVoiceModeBtn = document.getElementById("btn-prof-toggle-voicemode");
+      if (profVoiceModeBtn) {
+        profVoiceModeBtn.addEventListener("click", () => {
+          state.settings.voiceMode = state.settings.voiceMode === "recorded" ? "auto" : "recorded";
+          saveState();
+          showToast(
+            state.settings.voiceMode === "recorded"
+              ? "Đã bật ưu tiên Giọng thu sẵn ngoại tuyến (.mp3)!"
+              : "Đã chuyển về chế độ Giọng đọc Tự động."
+          );
+          renderProfile();
+        });
+      }
+      const profTestVoiceBtn = document.getElementById("btn-prof-test-voice");
+      if (profTestVoiceBtn) {
+        profTestVoiceBtn.addEventListener("click", () => {
+          const clip = D.VOICE_CLIPS && D.VOICE_CLIPS["chao-buoi-sang"];
+          speak(clip ? clip.text : "Chào buổi sáng bác tại Quán Trà Tuổi Bạc!", {
+            clipId: "chao-buoi-sang",
+            announceToast: true
+          });
+        });
+      }
       const profFbBtn = document.getElementById("btn-profile-feedback");
       if (profFbBtn) profFbBtn.addEventListener("click", () => openFeedbackModal("profile"));
       document.getElementById("btn-profile-open-privacy").addEventListener("click", () => navigate("privacy"));
@@ -7949,6 +10261,9 @@
     const h = state.health;
     const disclaimer =
       "Đây là thông tin tham khảo từ trợ lý tự động, không phải bác sĩ và không thay thế việc khám bệnh. Không tự ý dùng hoặc bỏ thuốc.";
+    const contactName = (h.emergencyContactName || "Anh Hùng (Con trai)").trim();
+    const cleanFamPhone = String(h.emergencyContactPhone || "0900000000").replace(/[^0-9+]/g, "") || "0900000000";
+    const waterCups = Math.max(0, Math.min(8, Number(h.waterCups) || 0));
 
     els.main.innerHTML = `
       <h1>Trợ lý sức khỏe</h1>
@@ -7961,21 +10276,61 @@
           ? `
         <div class="surface-panel danger">
           <h2>Phát hiện dấu hiệu nguy hiểm!</h2>
-          <p style="font-weight:700;">Trò chuyện đã tạm dừng. Nếu bác đang đau ngực, khó thở, méo miệng hoặc tê yếu tay chân, hãy gọi cấp cứu ngay:</p>
+          <p style="font-weight:700;">Trò chuyện đã tạm dừng. Nếu bác đang đau ngực, khó thở, méo miệng, tê yếu tay chân hoặc huyết áp tăng vọt (≥ 180/120 mmHg), hãy gọi cấp cứu ngay:</p>
           <a class="btn-danger" href="tel:115" style="text-decoration:none;">${ico("phone")}<span>GỌI CẤP CỨU 115 NGAY</span></a>
-          <a class="btn-primary" href="tel:0900000000" style="text-decoration:none;">${ico("family")}<span>GỌI ANH HÙNG (CON TRAI)</span></a>
+          <a class="btn-primary" href="tel:${escHtml(cleanFamPhone)}" style="text-decoration:none;">${ico("family")}<span>GỌI ${escHtml(contactName.toUpperCase())}</span></a>
           <button type="button" class="btn-secondary" id="btn-clear-emergency">Tôi chỉ đang thử nghiệm — Quay lại bình thường</button>
         </div>
       `
           : `
         <div class="surface-panel">
-          <h3>Nhắc uống thuốc & Đo huyết áp hôm nay</h3>
+          <h3>Nhắc uống thuốc theo đơn hôm nay</h3>
           <button type="button" class="btn-${h.medMorning ? "jade" : "primary"}" id="btn-toggle-med">
             ${ico("check")}
-            <span>${h.medMorning ? "Đã uống thuốc sáng theo đơn bác sĩ" : "Đánh dấu: Đã uống thuốc sáng nay"}</span>
+            <span>${h.medMorning ? "Đã uống cử thuốc Sáng" : "Đánh dấu: Đã uống thuốc Sáng"}</span>
           </button>
-          <div style="font-size:0.88rem;">
-            ${h.bpReadings.map((r) => `<div>• ${escHtml(r)}</div>`).join("")}
+          <button type="button" class="btn-${h.medEvening ? "jade" : "secondary"}" id="btn-toggle-med-eve">
+            ${ico("check")}
+            <span>${h.medEvening ? "Đã uống cử thuốc Tối" : "Đánh dấu: Đã uống thuốc Tối"}</span>
+          </button>
+        </div>
+
+        <div class="surface-panel">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+            <h3>Sổ uống nước ấm trong ngày</h3>
+            <span class="badge-tag jade num">${waterCups}/8 cốc</span>
+          </div>
+          <div class="water-cups-grid" role="group" aria-label="Tiến độ 8 cốc nước ấm">
+            ${Array.from({ length: 8 })
+              .map(
+                (_, i) =>
+                  `<div class="water-cup-pill ${i < waterCups ? "is-filled" : ""}">Cốc ${i + 1}${i < waterCups ? " ✓" : ""}</div>`
+              )
+              .join("")}
+          </div>
+          <div class="btn-row">
+            <button type="button" class="btn-jade" id="btn-add-water-cup" ${waterCups >= 8 ? "disabled" : ""}>${
+              waterCups >= 8 ? "Đã uống đủ 8 cốc hôm nay" : "+1 cốc nước ấm"
+            }</button>
+            <button type="button" class="btn-secondary" id="btn-reset-water">Đặt lại</button>
+          </div>
+        </div>
+
+        <div class="surface-panel">
+          <h3>Sổ đo huyết áp tại nhà (mmHg)</h3>
+          <div class="setup-inline-fields">
+            <label class="field-label" style="flex:1;">
+              Tâm thu (số trên)
+              <input type="number" inputmode="numeric" min="70" max="250" class="input-lg num" id="bp-sys-in" placeholder="125" />
+            </label>
+            <label class="field-label" style="flex:1;">
+              Tâm trương (số dưới)
+              <input type="number" inputmode="numeric" min="40" max="160" class="input-lg num" id="bp-dia-in" placeholder="80" />
+            </label>
+          </div>
+          <button type="button" class="btn-primary" id="btn-save-bp">${ico("heart")}<span>Ghi vào sổ huyết áp</span></button>
+          <div style="font-size:0.88rem; display:flex; flex-direction:column; gap:4px;" class="num">
+            ${(h.bpReadings || []).map((r) => `<div>• ${escHtml(r)}</div>`).join("")}
           </div>
         </div>
 
@@ -8007,6 +10362,76 @@
         trackTelemetryDirect("health_med", "health", state.health.medMorning ? "checked_morning_med" : "unchecked_morning_med", {
           medMorning: state.health.medMorning
         });
+        saveState();
+        renderHealth();
+      });
+    }
+
+    const medEveBtn = document.getElementById("btn-toggle-med-eve");
+    if (medEveBtn) {
+      medEveBtn.addEventListener("click", () => {
+        state.health.medEvening = !state.health.medEvening;
+        trackTelemetryDirect("health_med", "health", state.health.medEvening ? "checked_evening_med" : "unchecked_evening_med", {
+          medEvening: state.health.medEvening
+        });
+        saveState();
+        renderHealth();
+      });
+    }
+
+    const addWaterBtn = document.getElementById("btn-add-water-cup");
+    if (addWaterBtn) {
+      addWaterBtn.addEventListener("click", () => {
+        state.health.waterCups = Math.min(8, (Number(state.health.waterCups) || 0) + 1);
+        trackTelemetryDirect("health_water", "health", "drink_warm_water", { cups: state.health.waterCups });
+        if (state.health.waterCups === 8) {
+          addXu(2, "Hoàn thành 8 cốc nước ấm tốt cho sức khỏe!");
+        } else {
+          saveState();
+          showToast(`Đã ghi nhận ${state.health.waterCups}/8 cốc nước ấm hôm nay.`);
+        }
+        renderHealth();
+      });
+    }
+
+    const resetWaterBtn = document.getElementById("btn-reset-water");
+    if (resetWaterBtn) {
+      resetWaterBtn.addEventListener("click", () => {
+        state.health.waterCups = 0;
+        saveState();
+        renderHealth();
+      });
+    }
+
+    const saveBpBtn = document.getElementById("btn-save-bp");
+    if (saveBpBtn) {
+      saveBpBtn.addEventListener("click", () => {
+        const sys = Math.round(Number(document.getElementById("bp-sys-in").value));
+        const dia = Math.round(Number(document.getElementById("bp-dia-in").value));
+        if (!Number.isFinite(sys) || !Number.isFinite(dia) || sys < 70 || sys > 250 || dia < 40 || dia > 160 || dia >= sys) {
+          showToast("Mời bác nhập đúng chỉ số Tâm thu (70–250) và Tâm trương (40–160 mmHg).");
+          return;
+        }
+        const now = new Date();
+        const hh = String(now.getHours()).padStart(2, "0");
+        const mm = String(now.getMinutes()).padStart(2, "0");
+        const note =
+          sys >= 180 || dia >= 120
+            ? "Tăng rất cao — Cần gọi y tế"
+            : sys >= 140 || dia >= 90
+            ? "Hơi cao — Nghỉ ngơi đo lại"
+            : sys < 90 || dia < 60
+            ? "Hơi thấp — Nằm nghỉ uống nước ấm"
+            : "Ổn định";
+        if (!Array.isArray(state.health.bpReadings)) state.health.bpReadings = [];
+        state.health.bpReadings.unshift(`Lúc ${hh}:${mm}: ${sys}/${dia} mmHg (${note})`);
+        state.health.bpReadings = state.health.bpReadings.slice(0, 10);
+        trackTelemetryDirect("health_bp", "health", "logged_bp_reading", { sys, dia, note });
+        if (sys >= 180 || dia >= 120) {
+          state.health.emergencyMode = true;
+        } else {
+          showToast(`Đã lưu chỉ số ${sys}/${dia} mmHg (${note}) vào sổ.`);
+        }
         saveState();
         renderHealth();
       });
@@ -8067,10 +10492,12 @@
     const shareLink = `${baseShare}?tinh=${encodeURIComponent(state.user.provinceId)}&phong=phong-tra`;
     const qrImg = makeStandaloneQrDataUrl(shareLink, `Mở quán trà cho ${state.user.name}`);
     const familyPost = `Con gửi bố/mẹ đường dẫn vào Quán Trà Tuổi Bạc (chữ to, có đọc báo sáng và bàn trà đồng hương ${prov.short}). Bố/mẹ chỉ cần chạm vào đường dẫn dưới đây là vào thẳng, không cần tạo tài khoản hay nhớ mật khẩu:\n${shareLink}`;
+    const famName = (state.health && state.health.emergencyContactName) || "Anh Hùng (Con trai)";
+    const famPhone = (state.health && state.health.emergencyContactPhone) || "0900000000";
 
     els.main.innerHTML = `
       <h1>Góc Con Cái (30–50 tuổi)</h1>
-      <p class="lead-copy">Màn hình mô phỏng góc nhìn của con cái đi làm xa: theo dõi nhẹ nhàng, không làm bố mẹ có cảm giác bị giám sát.</p>
+      <p class="lead-copy">Màn hình dành cho con cháu cài sẵn trên máy bố mẹ: theo dõi nhịp sinh hoạt nhẹ nhàng, cài số gọi khẩn cấp và gửi mã QR vào thẳng quán trà.</p>
 
       <div class="surface-panel jade">
         <h3>Trạng thái của ${escHtml(state.user.name)} · ${getUserAge()} tuổi (${escHtml(prov.short)})</h3>
@@ -8087,10 +10514,29 @@
             )
             .join("")}
         </div>
+        <p class="num" style="font-size:0.88rem; color:var(--ink-secondary);">
+          Nước ấm hôm nay: <strong>${(state.health && state.health.waterCups) || 0}/8 cốc</strong> · Thuốc sáng: <strong>${
+            state.health && state.health.medMorning ? "Đã uống" : "Chưa đánh dấu"
+          }</strong>
+        </p>
+      </div>
+
+      <div class="surface-panel warm">
+        <h3>Số điện thoại Người Thân Khẩn Cấp (Lưu riêng trên máy này)</h3>
+        <p style="font-size:0.86rem; color:var(--ink-secondary);">Chỉ lưu cục bộ trong bộ nhớ chiếc điện thoại này để nút <strong>Gọi Người Thân</strong> ở mục Sức Khỏe quay đúng số con cháu, không gửi lên mạng công cộng.</p>
+        <label class="field-label">
+          Tên người thân hiển thị trên nút gọi
+          <input type="text" class="input-lg" id="fam-contact-name" value="${escHtml(famName)}" placeholder="Ví dụ: Con trai Minh Hùng" />
+        </label>
+        <label class="field-label">
+          Số điện thoại nhận cuộc gọi khẩn
+          <input type="tel" inputmode="tel" class="input-lg num" id="fam-contact-phone" value="${escHtml(famPhone)}" placeholder="Ví dụ: 0912345678" />
+        </label>
+        <button type="button" class="btn-primary" id="btn-save-fam-contact">${ico("phone")}<span>Lưu số khẩn cấp trên máy bố mẹ</span></button>
       </div>
 
       <div class="surface-panel">
-        <h3>Mã QR & Tin nhắn gửi sẵn cho bố mẹ</h3>
+        <h3>Mã QR &amp; Tin nhắn gửi sẵn cho bố mẹ</h3>
         <p style="font-size:0.88rem; color:var(--ink-secondary);">Đưa mã QR này cho bố mẹ quét bằng Zalo hoặc sao chép tin nhắn mẫu bên dưới gửi qua Zalo / Messenger:</p>
         <img src="${qrImg}" alt="Mã QR vào quán trà cho bố mẹ" style="width:100%; max-width:280px; margin:0 auto; display:block; border-radius:12px; border:1px solid #D5C4AA;" />
         ${renderSocialShareKitHtml({
@@ -8101,6 +10547,23 @@
         })}
       </div>
     `;
+
+    const saveFamBtn = document.getElementById("btn-save-fam-contact");
+    if (saveFamBtn) {
+      saveFamBtn.addEventListener("click", () => {
+        const rawName = (document.getElementById("fam-contact-name").value || "").trim() || "Người thân";
+        const rawDigits = String(document.getElementById("fam-contact-phone").value || "").replace(/[^0-9+]/g, "");
+        if (rawDigits.replace(/\D/g, "").length < 8 || rawDigits.replace(/\D/g, "").length > 12) {
+          showToast("Vui lòng nhập số điện thoại hợp lệ (8–12 chữ số).");
+          return;
+        }
+        state.health.emergencyContactName = rawName.slice(0, 36);
+        state.health.emergencyContactPhone = rawDigits.slice(0, 15);
+        saveState();
+        showToast(`Đã lưu số khẩn cấp của ${state.health.emergencyContactName} trên máy!`);
+        renderFamilyView();
+      });
+    }
 
     bindSocialShareKit({
       prefix: "family-share",
@@ -8250,7 +10713,200 @@
     `;
   }
 
+  function bindPersonalPrivacyEvents() {
+    const voiceToggleBtn = document.getElementById("btn-priv-toggle-voicemode");
+    if (voiceToggleBtn) {
+      voiceToggleBtn.addEventListener("click", () => {
+        state.settings.voiceMode = state.settings.voiceMode === "recorded" ? "auto" : "recorded";
+        saveState();
+        showToast(
+          state.settings.voiceMode === "recorded"
+            ? "Đã bật ưu tiên Giọng người thu sẵn ngoại tuyến (.mp3)!"
+            : "Đã chuyển về chế độ Giọng đọc Tự động."
+        );
+        renderPrivacyAndMetrics();
+      });
+    }
+    const voiceSampleBtn = document.getElementById("btn-priv-sample-voice");
+    if (voiceSampleBtn) {
+      voiceSampleBtn.addEventListener("click", () => {
+        const clip = D.VOICE_CLIPS && D.VOICE_CLIPS["chao-buoi-sang"];
+        speak(clip ? clip.text : "Chào buổi sáng bác!", {
+          clipId: "chao-buoi-sang",
+          announceToast: true
+        });
+      });
+    }
+
+    const famBtn = document.getElementById("btn-toggle-consent-family");
+    if (famBtn) {
+      famBtn.addEventListener("click", () => {
+        state.privacy.consentFamilyCheckin = !state.privacy.consentFamilyCheckin;
+        saveState();
+        renderPrivacyAndMetrics();
+      });
+    }
+    const rtBtn = document.getElementById("btn-toggle-consent-rt");
+    if (rtBtn) {
+      rtBtn.addEventListener("click", () => {
+        state.privacy.consentRealtimePresence = !state.privacy.consentRealtimePresence;
+        if (!state.privacy.consentRealtimePresence && RT) {
+          RT.leaveTableChannel();
+        }
+        saveState();
+        renderPrivacyAndMetrics();
+      });
+    }
+    const dictBtn = document.getElementById("btn-toggle-consent-dict");
+    if (dictBtn) {
+      dictBtn.addEventListener("click", () => {
+        state.privacy.consentVoiceDict = !state.privacy.consentVoiceDict;
+        saveState();
+        renderPrivacyAndMetrics();
+      });
+    }
+
+    const expPersonal = document.getElementById("btn-export-personal-json");
+    if (expPersonal) {
+      expPersonal.addEventListener("click", () => {
+        const exportPayload = {
+          exportedAt: new Date().toISOString(),
+          user: state.user,
+          privacy: state.privacy,
+          analytics: state.analytics,
+          phoneticDictCount: state.phoneticDict.length
+        };
+        const blob = new Blob([JSON.stringify(exportPayload, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const aTag = document.createElement("a");
+        aTag.href = url;
+        aTag.download = "du-lieu-ca-nhan-tuoi-bac.json";
+        document.body.appendChild(aTag);
+        aTag.click();
+        document.body.removeChild(aTag);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        showToast("Đã tải bản sao dữ liệu cá nhân (.json) về máy.");
+      });
+    }
+
+    const wipeBtn = document.getElementById("btn-wipe-personal-data");
+    if (wipeBtn) {
+      wipeBtn.addEventListener("click", () => {
+        openDialog(
+          "Xác nhận xóa sạch dữ liệu cá nhân",
+          `
+          <div class="surface-panel danger">
+            <p style="font-weight:700;">Thao tác này sẽ xóa toàn bộ hồ sơ xưng hô, lịch sử điểm danh, từ điển tự học trên trình duyệt này và gỡ hiện diện trên phòng chung.</p>
+          </div>
+          <div class="btn-row">
+            <button type="button" class="btn-danger" id="btn-confirm-wipe-now">Đồng ý xóa vĩnh viễn</button>
+            <button type="button" class="btn-secondary" id="btn-cancel-wipe">Hủy bỏ</button>
+          </div>
+          `
+        );
+        document.getElementById("btn-cancel-wipe").addEventListener("click", closeDialog);
+        document.getElementById("btn-confirm-wipe-now").addEventListener("click", () => {
+          if (RT) RT.wipeMyCloudData();
+          if (TEL && typeof TEL.wipeLocalTelemetry === "function") TEL.wipeLocalTelemetry();
+          localStorage.removeItem(STORAGE_KEY);
+          localStorage.removeItem(VAULT_BACKUP_KEY);
+          state = createDefaultState();
+          pendingQueue = [];
+          closeDialog();
+          showToast("Đã xóa toàn bộ dữ liệu cá nhân về trạng thái trắng ban đầu.");
+          navigate("home");
+        });
+      });
+    }
+  }
+
+  function renderPersonalPrivacySectionHtml() {
+    return `
+      <div class="surface-panel warm">
+        <h3>Giọng Đọc Tiếng Việt Ngoại Tuyến (15 Clip Thu Sẵn)</h3>
+        <p style="font-size:0.88rem; color:var(--ink-secondary);">Dành cho điện thoại Android cũ thiếu bộ giọng tiếng Việt: phát trực tiếp tệp âm thanh thu sẵn cho lời chào sáng, dẫn Chánh Điện/Nhà Thờ Họ/Vườn Thiền, cờ dân gian và 6 quẻ lộc đầu ngày.</p>
+        <div class="btn-row">
+          <button type="button" class="btn-${state.settings.voiceMode === "recorded" ? "jade" : "secondary"}" id="btn-priv-toggle-voicemode">
+            ${ico("speaker")}
+            <span>${state.settings.voiceMode === "recorded" ? "Đang bật: Giọng thu sẵn (.mp3)" : "Chế độ: Tự động (TTS + Dự phòng)"}</span>
+          </button>
+          <button type="button" class="btn-secondary" id="btn-priv-sample-voice">Nghe thử giọng thu sẵn</button>
+        </div>
+      </div>
+
+      <div class="surface-panel">
+        <h3>Quyền Riêng Tư Cá Nhân (Nghị định 13/2023/NĐ-CP)</h3>
+        <div class="consent-toggle-card">
+          <strong>1. Báo tin Điểm danh sáng cho con cái</strong>
+          <button type="button" class="btn-${state.privacy.consentFamilyCheckin ? "jade" : "secondary"}" id="btn-toggle-consent-family">
+            ${state.privacy.consentFamilyCheckin ? "Đang bật: Báo tin bình an" : "Đang tắt: Lưu trên máy"}
+          </button>
+        </div>
+        <div class="consent-toggle-card">
+          <strong>2. Hiện tên &amp; nhân vật cùng bàn trà</strong>
+          <button type="button" class="btn-${state.privacy.consentRealtimePresence ? "jade" : "secondary"}" id="btn-toggle-consent-rt">
+            ${state.privacy.consentRealtimePresence ? "Đang bật: Tham gia trực tuyến" : "Đang tắt: Ẩn hiện diện"}
+          </button>
+        </div>
+        <div class="consent-toggle-card">
+          <strong>3. Tự học từ điển phát âm trên máy</strong>
+          <button type="button" class="btn-${state.privacy.consentVoiceDict ? "jade" : "secondary"}" id="btn-toggle-consent-dict">
+            ${state.privacy.consentVoiceDict ? "Đang bật: Tự học từ điển" : "Đang tắt: Không lưu từ mới"}
+          </button>
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn-secondary" id="btn-export-personal-json">${ico("download")}<span>Tải dữ liệu cá nhân (.json)</span></button>
+          <button type="button" class="btn-danger" id="btn-wipe-personal-data">Xóa dữ liệu trên máy này</button>
+        </div>
+      </div>
+    `;
+  }
+
   function renderPrivacyAndMetrics() {
+    const adminUnlocked = isAdminUnlocked();
+    if (!adminUnlocked) {
+      els.main.innerHTML = `
+        <h1>Quyền Riêng Tư &amp; Cài Đặt Cá Nhân</h1>
+        <p class="lead-copy">Quản lý dữ liệu riêng tư trên máy của ${getUserPronoun()}, chọn chế độ giọng đọc ngoại tuyến hoặc gửi góp ý cho Ban Chủ Nhiệm.</p>
+
+        <div class="surface-panel jade">
+          <div class="passcard-head">
+            <strong>Hòm thư Góp ý &amp; Hỗ trợ Hội viên</strong>
+            ${state.settings.uatTag ? `<span class="badge-tag amber">UAT: ${escHtml(state.settings.uatTag)}</span>` : ""}
+          </div>
+          <p style="font-size:0.88rem;">Nếu chữ nhỏ, âm thanh khó nghe hoặc muốn đề xuất tính năng mới, mời ${getUserPronoun()} bấm gửi góp ý 1 chạm:</p>
+          <div class="btn-row">
+            <button type="button" class="btn-primary" id="btn-member-open-feedback">${ico("feedback", "ico-sm")}<span>Gửi Góp ý nhanh</span></button>
+            <button type="button" class="btn-secondary" id="btn-member-pwa-guide">${ico("download", "ico-sm")}<span>Cài ra màn hình</span></button>
+          </div>
+        </div>
+
+        ${renderPersonalPrivacySectionHtml()}
+
+        <div class="surface-panel">
+          <div class="passcard-head">
+            <strong>Khu vực Quản trị viên &amp; Vận hành (Đã khóa bảo vệ)</strong>
+            <span class="badge-tag">Admin</span>
+          </div>
+          <p style="font-size:0.86rem; color:var(--ink-secondary);">Dash quản lý hoạt động toàn quán, duyệt RSS Báo Sáng, kiểm thử UAT 5–10 bác và cấu hình máy chủ Supabase được đặt mật khẩu riêng để hội viên không bấm nhầm.</p>
+          <button type="button" class="btn-secondary" id="btn-unlock-admin-console">${ico("shield")}<span>Mở khóa Dash Quản Trị (Admin)</span></button>
+        </div>
+      `;
+
+      document.getElementById("btn-member-open-feedback").addEventListener("click", () => openFeedbackModal("privacy"));
+      document.getElementById("btn-member-pwa-guide").addEventListener("click", openPwaInstallGuide);
+      document.getElementById("btn-unlock-admin-console").addEventListener("click", () => {
+        openAdminUnlockModal(() => renderPrivacyAndMetrics());
+      });
+      bindPersonalPrivacyEvents();
+
+      if (pendingAdminAutoPrompt) {
+        pendingAdminAutoPrompt = false;
+        setTimeout(() => openAdminUnlockModal(() => renderPrivacyAndMetrics()), 80);
+      }
+      return;
+    }
+
     if (activePrivacySubTab === "ai-logs") {
       activePrivacySubTab = "overview-dash";
     }
@@ -8260,9 +10916,14 @@
     const totalMsgs = quickCount + voiceTextCount;
     const zeroTokenPct = totalMsgs > 0 ? Math.round((quickCount / totalMsgs) * 100) : 100;
     const st = RT ? RT.getStatus() : { connected: false, providerName: "Cục bộ", totalOtherPeers: 0, clientId: "local" };
+    const savedSbCfg = RT ? RT.getSupabaseConfig() : null;
     const hotEvents = TEL ? TEL.getHotEvents() : [];
     const totalIdbEvents = TEL ? TEL.getTotalStoredEstimate() : hotEvents.length;
     const deepProfiles = TEL ? TEL.getMemberDeepProfiles() : [];
+    const uatReport =
+      TEL && typeof TEL.getUatAndXpCalibrationReport === "function"
+        ? TEL.getUatAndXpCalibrationReport(state.user.seniorityPoints || 28, state.user.streakDays || 1)
+        : null;
     const dash = TEL
       ? TEL.getGlobalActivityDashboard(sessionSeconds)
       : {
@@ -8310,15 +10971,24 @@
 
     const maxSvcScore = Math.max(1, ...(dash.serviceRanking || []).map((s) => s.dwellSec + s.actions * 15));
     const maxCmpCount = Math.max(1, ...(dash.complaintRanking || []).map((c) => c.count));
+    const baseShare = getPublicBaseUrl();
 
     els.main.innerHTML = `
-      <h1>Dash Quản Lý Hoạt Động &amp; Góp Ý</h1>
-      <p class="lead-copy">Theo dõi toàn bộ thời gian On-Time, dịch vụ dùng nhiều nhất, xu hướng chat chit, chủ đề phàn nàn và góp ý của hội viên.</p>
+      <h1>Dash Quản Trị Hoạt Động &amp; Vận Hành</h1>
+
+      <div class="admin-session-bar">
+        <span>${ico("shield", "ico-sm")} Đang mở phiên Quản trị viên (Admin)</span>
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+          <button type="button" class="btn-mini" id="btn-admin-change-pin">Đổi mã khóa</button>
+          <button type="button" class="btn-mini" id="btn-admin-lock-now">Khóa lại</button>
+        </div>
+      </div>
 
       <div class="temple-cam-bar" role="tablist" aria-label="Chọn khu vực quản trị hoạt động">
-        <button type="button" class="temple-cam-btn ${activePrivacySubTab === "overview-dash" ? "active" : ""}" id="btn-priv-tab-overview">Tổng Quan &amp; Dịch Vụ</button>
-        <button type="button" class="temple-cam-btn ${activePrivacySubTab === "complaints-chat" ? "active" : ""}" id="btn-priv-tab-issues">Chat &amp; Phàn Nàn (${dash.kpis.totalComplaints + dash.kpis.totalSuggestions})</button>
-        <button type="button" class="temple-cam-btn ${activePrivacySubTab === "privacy" ? "active" : ""}" id="btn-priv-tab-gdpr">Hội Viên &amp; Riêng Tư</button>
+        <button type="button" class="temple-cam-btn ${activePrivacySubTab === "overview-dash" ? "active" : ""}" id="btn-priv-tab-overview">Tổng Quan</button>
+        <button type="button" class="temple-cam-btn ${activePrivacySubTab === "complaints-chat" ? "active" : ""}" id="btn-priv-tab-issues">Chat &amp; Góp Ý (${dash.kpis.totalComplaints + dash.kpis.totalSuggestions})</button>
+        <button type="button" class="temple-cam-btn ${activePrivacySubTab === "uat-xp" ? "active" : ""}" id="btn-priv-tab-uat">UAT &amp; 23.008 XP</button>
+        <button type="button" class="temple-cam-btn ${activePrivacySubTab === "privacy" ? "active" : ""}" id="btn-priv-tab-gdpr">Supabase &amp; Kho AI</button>
       </div>
 
       ${
@@ -8330,7 +11000,7 @@
             <span class="online-status-pill"><span class="online-dot-live"></span>${st.totalOtherPeers + 1} máy mở</span>
           </div>
           <div class="btn-row">
-            <button type="button" class="btn-primary" id="btn-dash-open-feedback">${ico("feedback", "ico-sm")}<span>Gửi Góp ý mới</span></button>
+            <button type="button" class="btn-primary" id="btn-dash-open-rss-review">${ico("paper", "ico-sm")}<span>Duyệt Báo Sáng (${state.newspaper.drafts.length})</span></button>
             <button type="button" class="btn-secondary" id="btn-flush-dwell-now">Chốt On-Time ngay</button>
           </div>
         </div>
@@ -8485,7 +11155,100 @@
           </div>
         </div>
       `
+          : activePrivacySubTab === "uat-xp"
+          ? `
+        <div class="surface-panel jade">
+          <div class="passcard-head">
+            <strong>UAT Thực Tế 5–10 Cô Bác (Android tầm trung · 4G)</strong>
+            <span class="badge-tag amber num">${uatReport && Array.isArray(uatReport.uatRoster) ? uatReport.uatRoster.length : 0}/10 máy UAT</span>
+          </div>
+          <p style="font-size:0.88rem;">Gửi đường dẫn gắn nhãn <code>?uat=...</code> qua Zalo cho 5–10 cô bác dùng thử 1–2 tuần trên 4G để tự động gom số liệu cỡ chữ, mạng và tốc độ lên bậc XP:</p>
+          <div class="btn-row">
+            <button type="button" class="btn-primary copy-uat-link-btn" data-uat-code="bac01-4g">Chép link Bác 01 (4G)</button>
+            <button type="button" class="btn-secondary copy-uat-link-btn" data-uat-code="clb-huutri">Chép link Nhóm CLB</button>
+          </div>
+        </div>
+
+        ${
+          uatReport
+            ? `
+        <div class="dash-kpi-grid">
+          <div class="dash-kpi-card is-jade">
+            <small>Nhịp XP thực tế / ngày</small>
+            <strong class="num">${uatReport.measuredXpPerDay} XP/ngày</strong>
+            <small class="num">TB ${uatReport.avgDailyMinutes} phút/ngày</small>
+          </div>
+          <div class="dash-kpi-card">
+            <small>Dự phóng Bậc 32 (23.008 XP)</small>
+            <strong class="num">${uatReport.projections[0].daysToTier32} ngày</strong>
+            <small class="num">~${uatReport.projections[0].monthsToTier32} tháng · Bậc 16: ~${uatReport.projections[0].daysToTier16}n</small>
+          </div>
+          <div class="dash-kpi-card">
+            <small>Tỷ lệ bật Chữ to 24px</small>
+            <strong class="num">${uatReport.xlFontAdoptionPct}%</strong>
+            <small class="num">Đo trực tiếp trên thiết bị thật</small>
+          </div>
+          <div class="dash-kpi-card">
+            <small>Giọng thu sẵn (.mp3)</small>
+            <strong class="num">${uatReport.ttsBreakdown.recorded_mp3} lượt</strong>
+            <small class="num">Nội bộ: ${uatReport.ttsBreakdown.native_vi} · Đám mây: ${uatReport.ttsBreakdown.cloud_vi}</small>
+          </div>
+        </div>
+
+        <div class="surface-panel warm">
+          <h3>Đề xuất cân chỉnh mốc 23.008 XP (Tự động từ Telemetry)</h3>
+          <p style="font-size:0.9rem; font-weight:600; color:#5A3410;">${escHtml(uatReport.recommendation)}</p>
+          <div class="metrics-stat-list">
+            ${uatReport.projections
+              .map(
+                (pj) => `
+              <div class="metrics-stat-row">
+                <span>${escHtml(pj.label)}</span>
+                <strong class="num">~${pj.daysToTier32} ngày (${pj.monthsToTier32} tháng)</strong>
+              </div>
+            `
+              )
+              .join("")}
+          </div>
+        </div>
+
+        <div class="surface-panel">
+          <h3>Danh sách máy UAT đã ghi nhận (${uatReport.uatRoster.length})</h3>
+          ${
+            uatReport.uatRoster.length === 0
+              ? `<p style="font-size:0.88rem; color:var(--ink-secondary);">Chưa có phiên mở từ liên kết <code>?uat=...</code> trên máy này.</p>`
+              : uatReport.uatRoster
+                  .map(
+                    (ur) => `
+              <div class="province-rank-item">
+                <div>
+                  <strong>${escHtml(ur.userName)} · ${ur.age}t (${escHtml(ur.province)})</strong>
+                  <div style="font-size:0.84rem; color:var(--ink-secondary);">Mã UAT: <code>${escHtml(ur.uatTag)}</code> · Mạng: ${escHtml(ur.netType)} · ${ur.xlFont ? "Chữ 24px" : "Chữ 20px"}</div>
+                </div>
+                <span class="badge-tag jade num">${ur.eventsCount} sự kiện</span>
+              </div>
+            `
+                  )
+                  .join("")
+          }
+        </div>
+        `
+            : ""
+        }
+      `
           : `
+        <div class="surface-panel ${st.connected ? "jade" : "warm"}">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+            <strong>Máy chủ Bền Vững &amp; Realtime: ${st.connected ? "Đang trực tuyến" : "Đang nối..."}</strong>
+            <span class="badge-tag num">${escHtml(st.providerName)}</span>
+          </div>
+          <p style="font-size:0.88rem;">Thiết bị thật đang mở cùng lúc: <strong class="num">${st.totalOtherPeers}</strong> · Trạng thái Supabase: <strong>${savedSbCfg ? "Đã gắn khóa dự án" : "Đang chạy WSS công cộng"}</strong></p>
+          <div class="btn-row">
+            <button type="button" class="btn-primary" id="btn-open-rt-modal">${ico("wifi")}<span>Gắn &amp; Kiểm tra Supabase</span></button>
+            <button type="button" class="btn-secondary" id="btn-privacy-pwa">${ico("download")}<span>Cài ra màn hình</span></button>
+          </div>
+        </div>
+
         <div class="surface-panel">
           <h3>Tra Cứu Từng Thành Viên &amp; Xuất Dữ Liệu AI (${deepProfiles.length} hồ sơ)</h3>
           <div class="setup-inline-fields">
@@ -8562,18 +11325,6 @@
           </div>
         </div>
 
-        <div class="surface-panel ${st.connected ? "jade" : "warm"}">
-          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
-            <strong>Máy chủ Thời gian thực: ${st.connected ? "Đang trực tuyến" : "Đang nối..."}</strong>
-            <span class="badge-tag num">${escHtml(st.providerName)}</span>
-          </div>
-          <p style="font-size:0.88rem;">Thiết bị thật đang mở cùng lúc: <strong class="num">${st.totalOtherPeers}</strong></p>
-          <div class="btn-row">
-            <button type="button" class="btn-secondary" id="btn-open-rt-modal">${ico("wifi")}<span>Cấu hình Realtime</span></button>
-            <button type="button" class="btn-secondary" id="btn-privacy-pwa">${ico("download")}<span>Cài ra màn hình</span></button>
-          </div>
-        </div>
-
         <div class="surface-panel">
           <h3>Chỉ Số Sản Phẩm &amp; Tiết Kiệm Token</h3>
           <div class="metrics-stat-list">
@@ -8600,34 +11351,17 @@
           </div>
         </div>
 
-        <div class="surface-panel">
-          <h3>Quyền Riêng Tư (Nghị định 13/2023/NĐ-CP)</h3>
-          <div class="consent-toggle-card">
-            <strong>1. Báo tin Điểm danh sáng cho con cái</strong>
-            <button type="button" class="btn-${state.privacy.consentFamilyCheckin ? "jade" : "secondary"}" id="btn-toggle-consent-family">
-              ${state.privacy.consentFamilyCheckin ? "Đang bật: Báo tin bình an" : "Đang tắt: Lưu trên máy"}
-            </button>
-          </div>
-          <div class="consent-toggle-card">
-            <strong>2. Hiện tên &amp; nhân vật cùng bàn trà</strong>
-            <button type="button" class="btn-${state.privacy.consentRealtimePresence ? "jade" : "secondary"}" id="btn-toggle-consent-rt">
-              ${state.privacy.consentRealtimePresence ? "Đang bật: Tham gia trực tuyến" : "Đang tắt: Ẩn hiện diện"}
-            </button>
-          </div>
-          <div class="consent-toggle-card">
-            <strong>3. Tự học từ điển phát âm trên máy</strong>
-            <button type="button" class="btn-${state.privacy.consentVoiceDict ? "jade" : "secondary"}" id="btn-toggle-consent-dict">
-              ${state.privacy.consentVoiceDict ? "Đang bật: Tự học từ điển" : "Đang tắt: Không lưu từ mới"}
-            </button>
-          </div>
-          <div class="btn-row">
-            <button type="button" class="btn-secondary" id="btn-export-personal-json">${ico("download")}<span>Tải dữ liệu (.json)</span></button>
-            <button type="button" class="btn-danger" id="btn-wipe-personal-data">Xóa toàn bộ dữ liệu</button>
-          </div>
-        </div>
+        ${renderPersonalPrivacySectionHtml()}
       `
       }
     `;
+
+    document.getElementById("btn-admin-lock-now").addEventListener("click", () => {
+      lockAdminSession();
+      showToast("Đã khóa quyền Quản trị viên — quay về giao diện Hội viên.");
+      renderPrivacyAndMetrics();
+    });
+    document.getElementById("btn-admin-change-pin").addEventListener("click", openChangeAdminPinModal);
 
     document.getElementById("btn-priv-tab-overview").addEventListener("click", () => {
       activePrivacySubTab = "overview-dash";
@@ -8637,15 +11371,33 @@
       activePrivacySubTab = "complaints-chat";
       renderPrivacyAndMetrics();
     });
+    document.getElementById("btn-priv-tab-uat").addEventListener("click", () => {
+      activePrivacySubTab = "uat-xp";
+      renderPrivacyAndMetrics();
+    });
     document.getElementById("btn-priv-tab-gdpr").addEventListener("click", () => {
       activePrivacySubTab = "privacy";
       renderPrivacyAndMetrics();
     });
 
-    const dashFbBtn1 = document.getElementById("btn-dash-open-feedback");
-    if (dashFbBtn1) dashFbBtn1.addEventListener("click", () => openFeedbackModal("privacy"));
+    const rssJumpBtn = document.getElementById("btn-dash-open-rss-review");
+    if (rssJumpBtn) {
+      rssJumpBtn.addEventListener("click", () => {
+        state.newspaper.adminOpen = true;
+        saveState();
+        navigate("newspaper");
+      });
+    }
     const dashFbBtn2 = document.getElementById("btn-dash-feedback-2");
     if (dashFbBtn2) dashFbBtn2.addEventListener("click", () => openFeedbackModal("privacy"));
+
+    els.main.querySelectorAll(".copy-uat-link-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const code = btn.dataset.uatCode || "bac01";
+        const uatUrl = `${baseShare}?uat=${encodeURIComponent(code)}`;
+        copyTextSafe(uatUrl, `Đã chép link UAT (${code}) để gửi Zalo cho cô bác thử nghiệm!`);
+      });
+    });
 
     els.main.querySelectorAll("[data-issue-flt]").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -8730,72 +11482,7 @@
 
     document.getElementById("btn-open-rt-modal").addEventListener("click", openRealtimeStatusModal);
     document.getElementById("btn-privacy-pwa").addEventListener("click", openPwaInstallGuide);
-
-    document.getElementById("btn-toggle-consent-family").addEventListener("click", () => {
-      state.privacy.consentFamilyCheckin = !state.privacy.consentFamilyCheckin;
-      saveState();
-      renderPrivacyAndMetrics();
-    });
-    document.getElementById("btn-toggle-consent-rt").addEventListener("click", () => {
-      state.privacy.consentRealtimePresence = !state.privacy.consentRealtimePresence;
-      if (!state.privacy.consentRealtimePresence && RT) {
-        RT.leaveTableChannel();
-      }
-      saveState();
-      renderPrivacyAndMetrics();
-    });
-    document.getElementById("btn-toggle-consent-dict").addEventListener("click", () => {
-      state.privacy.consentVoiceDict = !state.privacy.consentVoiceDict;
-      saveState();
-      renderPrivacyAndMetrics();
-    });
-
-    document.getElementById("btn-export-personal-json").addEventListener("click", () => {
-      const exportPayload = {
-        exportedAt: new Date().toISOString(),
-        user: state.user,
-        privacy: state.privacy,
-        analytics: state.analytics,
-        phoneticDictCount: state.phoneticDict.length
-      };
-      const blob = new Blob([JSON.stringify(exportPayload, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const aTag = document.createElement("a");
-      aTag.href = url;
-      aTag.download = "du-lieu-ca-nhan-tuoi-bac.json";
-      document.body.appendChild(aTag);
-      aTag.click();
-      document.body.removeChild(aTag);
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-      showToast("Đã tải bản sao dữ liệu cá nhân (.json) về máy.");
-    });
-
-    document.getElementById("btn-wipe-personal-data").addEventListener("click", () => {
-      openDialog(
-        "Xác nhận xóa sạch dữ liệu cá nhân",
-        `
-        <div class="surface-panel danger">
-          <p style="font-weight:700;">Thao tác này sẽ xóa toàn bộ hồ sơ xưng hô, lịch sử điểm danh, từ điển tự học trên trình duyệt này và gỡ hiện diện trên phòng chung.</p>
-        </div>
-        <div class="btn-row">
-          <button type="button" class="btn-danger" id="btn-confirm-wipe-now">Đồng ý xóa vĩnh viễn</button>
-          <button type="button" class="btn-secondary" id="btn-cancel-wipe">Hủy bỏ</button>
-        </div>
-        `
-      );
-      document.getElementById("btn-cancel-wipe").addEventListener("click", closeDialog);
-      document.getElementById("btn-confirm-wipe-now").addEventListener("click", () => {
-        if (RT) RT.wipeMyCloudData();
-        if (TEL && typeof TEL.wipeLocalTelemetry === "function") TEL.wipeLocalTelemetry();
-        localStorage.removeItem(STORAGE_KEY);
-        localStorage.removeItem(VAULT_BACKUP_KEY);
-        state = createDefaultState();
-        pendingQueue = [];
-        closeDialog();
-        showToast("Đã xóa toàn bộ dữ liệu cá nhân về trạng thái trắng ban đầu.");
-        navigate("home");
-      });
-    });
+    bindPersonalPrivacyEvents();
   }
 
   // ==================== MODULE 11: HỘI ĐỒNG NGŨ, CLB, KẾT BẠN, HIỆN ONLINE & THẺ HỘI VIÊN 10 GIÂY ====================
@@ -8968,11 +11655,14 @@
   function restoreFromQrRecoveryToken(rawTok) {
     const decoded = decodeRecoveryToken(rawTok);
     if (!decoded || !decoded.h || !decoded.c) return;
+    const safeHash = String(decoded.h).trim();
+    const safeCode = String(decoded.c).trim();
+    if (!/^[a-zA-Z0-9_-]{8,48}$/.test(safeHash) || !/^TB-\d{4,6}$/.test(safeCode)) return;
     state.auth.isRegistered = true;
-    state.auth.accountHash = decoded.h;
-    state.auth.memberCode = decoded.c;
-    state.auth.phoneMasked = decoded.m || "";
-    state.auth.recoveryToken = rawTok;
+    state.auth.accountHash = safeHash;
+    state.auth.memberCode = safeCode;
+    state.auth.phoneMasked = String(decoded.m || "").replace(/[<>"'`\\]/g, "").slice(0, 20);
+    state.auth.recoveryToken = String(rawTok || "").slice(0, 360);
     if (decoded.n) {
       const hon = decoded.hon === "Chị" ? "Chị" : "Anh";
       applyUserIdentity(hon, decoded.n, decoded.a || 65, decoded.p || state.user.provinceId);
@@ -9024,7 +11714,8 @@
         typeof state.zen.userCushionIdx === "number" && Number.isFinite(state.zen.userCushionIdx)
           ? Math.max(0, Math.min(19, Math.floor(state.zen.userCushionIdx)))
           : 2;
-      return `Đang ngồi Bồ Đoàn BĐ${seatIdx + 1} Chánh Điện 3D`;
+      const spObj = (D.ZEN_SPACES && D.ZEN_SPACES[state.zen.spaceIdx]) || { name: "Sân Chùa Quê" };
+      return `Đang ngồi Chiếu ${seatIdx + 1} (${spObj.name})`;
     }
     if (state.route === "leaderboard") return "Đang xem Cây 96 Danh Hiệu";
     return "Đang ở Sảnh Quán Trà";
@@ -9827,9 +12518,20 @@
 
       document.getElementById("btn-confirm-create-group").addEventListener("click", () => {
         const cat = catSel.value;
-        const fullName = nameIn.value.trim() || "Hội Đồng Niên Mới";
-        const camp = (document.getElementById("cg-camp-in").value || "").trim();
-        const motto = (document.getElementById("cg-motto-in").value || "").trim() || "Chúc toàn hội luôn mạnh khỏe, an vui!";
+        const fullName = (nameIn.value || "").replace(/[<>]/g, "").trim() || "Hội Đồng Niên Mới";
+        const camp = (document.getElementById("cg-camp-in").value || "").replace(/[<>]/g, "").trim();
+        const motto = (document.getElementById("cg-motto-in").value || "").replace(/[<>]/g, "").trim() || "Chúc toàn hội luôn mạnh khỏe, an vui!";
+        const compClean = (compIn.value || "").replace(/[<>]/g, "").trim();
+        const batClean = (batIn.value || "").replace(/[<>]/g, "").trim();
+        const divClean = (divIn.value || "").replace(/[<>]/g, "").trim();
+        if (isUnsafeScamOrPiiText(`${fullName} ${camp} ${motto} ${compClean} ${batClean} ${divClean}`)) {
+          trackTelemetryDirect("chat_blocked", "groups", "auto_blocked_group_create", {
+            category: "safety_alert",
+            detail: "Chặn tự động SĐT, đường link hoặc từ khóa lừa đảo khi lập Hội nhóm"
+          });
+          showToast("Vì an toàn, tên hội và khẩu hiệu không được chứa số điện thoại, số tài khoản hoặc đường link.");
+          return;
+        }
         const gid = "hoi-" + Math.random().toString(36).slice(2, 8);
         const newGrp = {
           id: gid,
@@ -9839,9 +12541,9 @@
           unitSpec:
             cat === "veteran"
               ? {
-                  company: compIn.value.trim(),
-                  battalion: batIn.value.trim(),
-                  division: divIn.value.trim(),
+                  company: compClean,
+                  battalion: batClean,
+                  division: divClean,
                   campaign: camp
                 }
               : null,
@@ -9992,6 +12694,10 @@
                 <span>${isJoined ? "Đã ghi tên Quân số" : "Ghi tên vào Đơn vị"}</span>
               </button>
             </div>
+            <button type="button" class="btn-secondary" id="btn-unit-enter-chess-cup">
+              ${ico("trophy")}
+              <span>Đấu Cúp Cờ Tướng Đại Diện Đơn Vị</span>
+            </button>
           </div>
 
           <div class="surface-panel">
@@ -10360,6 +13066,24 @@
       });
     }
 
+    const enterCupFromUnitBtn = document.getElementById("btn-unit-enter-chess-cup");
+    if (enterCupFromUnitBtn) {
+      enterCupFromUnitBtn.addEventListener("click", () => {
+        const g = getGroupById(state.social.selectedGroupId);
+        if (!state.xiangqi.cup || typeof state.xiangqi.cup !== "object") {
+          state.xiangqi.cup = createDefaultState().xiangqi.cup;
+        }
+        state.xiangqi.cup.unitName = (g && (g.shortName || g.name)) || getCupUnitDisplayName();
+        if (state.xiangqi.cup.justWonTitle) {
+          state.xiangqi.cup.round = 0;
+          state.xiangqi.cup.justWonTitle = false;
+          state.xiangqi.cup.justWonRound = false;
+        }
+        switchXiangqiMode("cup");
+        navigate("xiangqi");
+      });
+    }
+
     if (tab === "units" && state.social.subView === "detail") {
       const g = getGroupById(state.social.selectedGroupId);
       const builtinMembers = (g.memberIds || [])
@@ -10392,12 +13116,21 @@
             showToast("Vui lòng nhập nội dung thông báo gửi đồng đội.");
             return;
           }
+          const safety = cleanAndApplyDictionary(txt);
+          if (safety.blocked) {
+            trackTelemetryDirect("chat_blocked", "groups", "auto_blocked_bulletin", {
+              category: "safety_alert",
+              detail: "Chặn tự động SĐT, số tài khoản hoặc đường link trên Bảng tin Đơn vị"
+            });
+            showToast(safety.reason);
+            return;
+          }
           requireMemberCard("Đăng thông báo lên Bảng tin Đơn vị", () => {
             if (!Array.isArray(g.bulletins)) g.bulletins = [];
             g.bulletins.unshift({
               author: `${state.user.name} · ${getUserAge()} tuổi`,
               time: "Vừa xong",
-              text: txt
+              text: txt.slice(0, 200)
             });
             saveState();
             if (RT) RT.publishGroup(g);
@@ -10534,10 +13267,28 @@
         <h3>Bác nghỉ mắt một chút nhé</h3>
         <p>Bác đã sinh hoạt được 20 phút rồi. Mời bác nhìn ra xa 20 giây, uống ngụm nước ấm và vươn vai nhẹ.</p>
       </div>
-      <button type="button" class="btn-jade" id="btn-ack-eyecare">Tôi đã nghỉ mắt — Tiếp tục</button>
+      <div class="btn-row">
+        <button type="button" class="btn-secondary" id="btn-listen-eyecare">${ico("speaker")}<span>Nghe lời nhắc</span></button>
+        <button type="button" class="btn-jade" id="btn-ack-eyecare">Tôi đã nghỉ mắt — Tiếp tục</button>
+      </div>
       `
     );
+    const listenEyeBtn = document.getElementById("btn-listen-eyecare");
+    if (listenEyeBtn) {
+      listenEyeBtn.addEventListener("click", () => {
+        const clip = D.VOICE_CLIPS && D.VOICE_CLIPS["nhac-nghi-mat"];
+        speak(
+          clip ? clip.text : "Bác đã sinh hoạt được hai mươi phút rồi. Mời bác nhìn ra xa hai mươi giây và uống ngụm nước ấm nhé.",
+          { clipId: "nhac-nghi-mat", announceToast: true }
+        );
+      });
+    }
+    if (state.settings && state.settings.voiceMode === "recorded") {
+      const clip = D.VOICE_CLIPS && D.VOICE_CLIPS["nhac-nghi-mat"];
+      if (clip) speak(clip.text, { clipId: "nhac-nghi-mat" });
+    }
     document.getElementById("btn-ack-eyecare").addEventListener("click", () => {
+      stopSpeaking();
       sessionSeconds = 0;
       eyeCareShownThisCycle = false;
       closeDialog();
@@ -10557,6 +13308,11 @@
     sessionSeconds += 1;
     if (sessionSeconds % 20 === 0 && TEL && typeof TEL.flushDwellHeartbeat === "function") {
       TEL.flushDwellHeartbeat(buildTelemetryUserCtx());
+    }
+    if (sessionSeconds % 60 === 0 && ensureDailyRollover(state)) {
+      saveState();
+      updateGlobalChrome();
+      if (state.route === "home") renderHome();
     }
     if (sessionSeconds >= 1200 && !eyeCareShownThisCycle) {
       showEyeRestModal();
@@ -10704,6 +13460,50 @@
       }, 160);
     });
 
+    RT.on("news", () => {
+      if (!RT || typeof RT.getApprovedArticles !== "function") return;
+      const remoteArts = RT.getApprovedArticles() || [];
+      if (!remoteArts.length || !state.newspaper || !Array.isArray(state.newspaper.articles)) return;
+      const existingIds = new Set(state.newspaper.articles.map((a) => a.id));
+      let changed = false;
+      remoteArts.forEach((ra) => {
+        if (ra && ra.id && !existingIds.has(ra.id)) {
+          state.newspaper.articles.unshift(ra);
+          existingIds.add(ra.id);
+          changed = true;
+        }
+      });
+      if (changed) {
+        saveState();
+        if (state.route === "newspaper" && !isUserTypingOrInDialog()) {
+          renderNewspaper();
+        }
+      }
+    });
+
+    RT.on("phonetics", () => {
+      if (!RT || typeof RT.getSharedPhonetics !== "function" || !Array.isArray(state.phoneticDict)) return;
+      const remotePh = RT.getSharedPhonetics() || [];
+      let changed = false;
+      remotePh.forEach((rp) => {
+        if (!rp || typeof rp.wrong !== "string" || typeof rp.right !== "string") return;
+        const w = rp.wrong.replace(/[<>]/g, "").trim();
+        const r = rp.right.replace(/[<>]/g, "").trim();
+        if (!w || !r || w.length > 40 || r.length > 60) return;
+        if (isUnsafeScamOrPiiText(w) || isUnsafeScamOrPiiText(r)) return;
+        if (!state.phoneticDict.some((d) => d.wrong === w) && state.phoneticDict.length < 180) {
+          state.phoneticDict.push({
+            wrong: w,
+            right: r,
+            hits: Math.max(1, Math.min(9999, Number(rp.hits) || 1)),
+            learnedBy: String(rp.learnedBy || "Cộng đồng").replace(/[<>]/g, "").slice(0, 32)
+          });
+          changed = true;
+        }
+      });
+      if (changed) saveState();
+    });
+
     let onlineDebounceId = null;
     RT.on("online", () => {
       updateGlobalChrome();
@@ -10836,7 +13636,7 @@
       return;
     }
     trackTelemetryDirect("tts_read", state.route, `read_${state.route}`, {});
-    speak(buildCurrentScreenSpeech(), { announceToast: true });
+    speak(buildCurrentScreenSpeech(), { announceToast: true, screenRead: true });
   });
 
   if (els.simRender) {
@@ -10971,77 +13771,9 @@
     }, 500);
   }
   render();
+  saveState();
   if (pendingReloadForfeitNotice) {
-    saveState();
     showToast(pendingReloadForfeitNotice);
     pendingReloadForfeitNotice = "";
   }
 })();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -669,7 +669,15 @@ window.TuoiBacTelemetry = (function () {
       eventType: eventType || "interaction",
       module: moduleName || currentRoute || "home",
       subAction: subAction || eventType || "click",
-      meta: Object.assign({}, metaObj || {})
+      meta: Object.assign(
+        {
+          uatTag: ctx.uatTag || "",
+          netType: ctx.netType || "wifi",
+          ttsMode: ctx.ttsMode || "auto",
+          xlFont: Boolean(ctx.xlFont)
+        },
+        metaObj || {}
+      )
     };
 
     if (ev.eventType === "chat_message" && ev.meta) {
@@ -1135,6 +1143,100 @@ window.TuoiBacTelemetry = (function () {
     return "\uFEFF" + header + "\n" + rows.join("\n");
   }
 
+  function getUatAndXpCalibrationReport(liveXp, liveStreakDays) {
+    const profiles = Object.values(habitProfiles);
+    const events = hotEvents || [];
+    let xlFontUsers = 0;
+    let totalFontEvents = 0;
+    const ttsBreakdown = { recorded_mp3: 0, native_vi: 0, cloud_vi: 0 };
+    const netBreakdown = {};
+    const uatParticipants = {};
+
+    events.forEach((ev) => {
+      const m = ev.meta || {};
+      if (ev.eventType === "font_toggle") {
+        totalFontEvents += 1;
+        if (m.xlFont) xlFontUsers += 1;
+      }
+      if (ev.eventType === "tts_read" || m.ttsMode) {
+        const tm = String(m.ttsMode || "");
+        if (tm.includes("recorded")) ttsBreakdown.recorded_mp3 += 1;
+        else if (tm.includes("native")) ttsBreakdown.native_vi += 1;
+        else ttsBreakdown.cloud_vi += 1;
+      }
+      if (m.netType) {
+        netBreakdown[m.netType] = (netBreakdown[m.netType] || 0) + 1;
+      }
+      if (m.uatTag) {
+        const tag = String(m.uatTag);
+        if (!uatParticipants[tag]) {
+          uatParticipants[tag] = {
+            uatTag: tag,
+            userName: ev.userName || "Cô/Bác UAT",
+            age: ev.age || 65,
+            province: ev.province || "VN",
+            eventsCount: 0,
+            dwellSec: 0,
+            netType: m.netType || "4g",
+            xlFont: Boolean(m.xlFont),
+            ttsMode: m.ttsMode || "auto",
+            lastSeenAt: ev.ts || Date.now()
+          };
+        }
+        uatParticipants[tag].eventsCount += 1;
+        uatParticipants[tag].dwellSec += Number(ev.dwellSec) || 0;
+        if (m.netType) uatParticipants[tag].netType = m.netType;
+        if (typeof m.xlFont === "boolean") uatParticipants[tag].xlFont = m.xlFont;
+        if (m.ttsMode) uatParticipants[tag].ttsMode = m.ttsMode;
+        uatParticipants[tag].lastSeenAt = Math.max(uatParticipants[tag].lastSeenAt, ev.ts || 0);
+      }
+    });
+
+    const curXp = Math.max(28, Number(liveXp) || 28);
+    const activeDays = Math.max(1, Number(liveStreakDays) || 6);
+    const avgDailyMinutes = Math.max(
+      8,
+      Math.round(
+        profiles.reduce((sum, p) => sum + Object.values(p.moduleDwellSec || {}).reduce((a, b) => a + (b || 0), 0), 0) /
+          Math.max(1, profiles.length) /
+          60
+      )
+    );
+    // Estimate realistic daily XP velocity from active actions + morning check-in + tea/games/zen
+    const measuredXpPerDay = Math.max(18, Math.min(180, Math.round(curXp / activeDays + avgDailyMinutes * 1.6)));
+
+    const buildProjection = (capXp, label) => ({
+      capXp,
+      label,
+      daysToTier5: Math.max(1, Math.round((132 * (capXp / 23008)) / measuredXpPerDay)),
+      daysToTier16: Math.max(7, Math.round((3492 * (capXp / 23008)) / measuredXpPerDay)),
+      daysToTier32: Math.max(30, Math.round(capXp / measuredXpPerDay)),
+      monthsToTier32: Math.round((capXp / measuredXpPerDay / 30) * 10) / 10
+    });
+
+    const recommendation =
+      measuredXpPerDay > 95
+        ? "Tốc độ tích lũy thực tế khá nhanh (>95 XP/ngày) — sau 2 tuần UAT có thể cân nhắc nâng trần Tầng 32 lên 35.000 XP để giữ động lực trên 12 tháng."
+        : measuredXpPerDay < 32
+        ? "Nhịp chơi thư thả (<32 XP/ngày) — giữ nguyên mốc chuẩn 23.008 XP giúp các bác đạt Tầng 5 sớm trong tuần đầu và gắn bó bền bỉ."
+        : "Nhịp tích lũy cân bằng chuẩn thiết kế (~35–90 XP/ngày) — mốc 23.008 XP cho Tầng 32 khớp lộ trình 10–18 tháng sinh hoạt đều đặn.";
+
+    return {
+      measuredXpPerDay,
+      avgDailyMinutes,
+      xlFontAdoptionPct: totalFontEvents > 0 ? Math.round((xlFontUsers / totalFontEvents) * 100) : 25,
+      ttsBreakdown,
+      netBreakdown,
+      uatRoster: Object.values(uatParticipants).sort((a, b) => b.lastSeenAt - a.lastSeenAt),
+      projections: [
+        buildProjection(23008, "Chuẩn hiện hành (23.008 XP)"),
+        buildProjection(35000, "Mở rộng trung hạn (35.000 XP)"),
+        buildProjection(50000, "Trường kỳ 2 năm (50.000 XP)")
+      ],
+      recommendation
+    };
+  }
+
   // Warm up IndexedDB right away
   openDb();
 
@@ -1150,6 +1252,7 @@ window.TuoiBacTelemetry = (function () {
     getAllEventsAsync,
     getMemberDeepProfiles,
     getGlobalActivityDashboard,
+    getUatAndXpCalibrationReport,
     wipeLocalTelemetry,
     buildExportJsonlString,
     buildExportFullJsonObject,

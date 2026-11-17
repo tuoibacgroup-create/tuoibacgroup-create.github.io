@@ -23,22 +23,65 @@ window.TuoiBacRealtime = (function () {
   let myGlobalOnlinePayload = null;
   let myMemberCode = "";
   let heartbeatTimer = null;
-  let subscribedMatchIds = new Set();
-  const accountLookupWaiters = {}; // { [accountHash]: [cb, ...] }
+  const subscribedMatchIds = new Set();
+  const accountLookupWaiters = Object.create(null); // { [accountHash]: [cb, ...] }
 
-  // Live synced stores
-  const presenceByTable = {}; // { [tableKey]: { [clientId]: peerObj } }
-  const onlinePeers = {};     // { [peerKey]: { clientId, memberCode, name, age, province, where, roomId, tableIdx, ts } }
-  const sharedGroups = {};    // { [groupId]: groupObj }
-  const directoryByCode = {}; // { [memberCode]: summaryObj }
-  const accountsCache = {};   // { [accountHash]: accountSnapshotObj }
-  const checkinsToday = {};   // { [clientId]: { clientId, name, age, provinceId, provinceShort, mood, ts } }
-  const matchesById = {};     // { [matchId]: matchObj }
-  const sharedPoems = {};     // { [poemId]: poemObj }
-  const memberLogsById = {};  // { [logId]: logEntry }
-  const customTablesByKey = {}; // { [tableKey]: customMetaObj }
-  const templePrayersById = {}; // { [id]: prayerObj }
+  // Live synced stores (null-prototype maps immune to __proto__ / constructor pollution)
+  const presenceByTable = Object.create(null);
+  const onlinePeers = Object.create(null);
+  const sharedGroups = Object.create(null);
+  const directoryByCode = Object.create(null);
+  const accountsCache = Object.create(null);
+  const checkinsToday = Object.create(null);
+  const matchesById = Object.create(null);
+  const sharedPoems = Object.create(null);
+  const memberLogsById = Object.create(null);
+  const customTablesByKey = Object.create(null);
+  const templePrayersById = Object.create(null);
+  const sharedArticlesById = Object.create(null);
+  const sharedPhoneticsByWrong = Object.create(null);
   const seenMsgIds = new Set();
+  const MAX_PACKET_CHARS = 24576;
+  const MAX_STORE_ENTRIES = 200;
+
+  function isSafeKey(k) {
+    if (typeof k !== "string" || !k || k.length > 96) return false;
+    return k !== "__proto__" && k !== "constructor" && k !== "prototype";
+  }
+
+  function capStoreKeys(store, maxLen) {
+    const keys = Object.keys(store);
+    const limit = maxLen || MAX_STORE_ENTRIES;
+    if (keys.length >= limit) {
+      const dropCount = keys.length - limit + 1;
+      for (let i = 0; i < dropCount; i++) {
+        delete store[keys[i]];
+      }
+    }
+  }
+
+  function safeJsonParse(rawStr) {
+    if (typeof rawStr !== "string" || !rawStr || rawStr.length > MAX_PACKET_CHARS) return null;
+    try {
+      return JSON.parse(rawStr, (key, val) => {
+        if (key === "__proto__" || key === "constructor" || key === "prototype") return undefined;
+        return val;
+      });
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function isMaliciousNetworkText(val) {
+    if (typeof val !== "string" || !val) return false;
+    if (val.length > 2000) return true;
+    const normDigits = val.replace(/[０-９]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xfee0)).replace(/[\s._()-]/g, "");
+    if (/\d{8,}/.test(normDigits)) return true;
+    if (/<\s*\/?\s*(script|iframe|object|embed|svg|img|style|link|meta)\b|javascript\s*:|on[a-z]{3,}\s*=/i.test(val)) return true;
+    if (/https?:\/\/|www\.|zalo\.me|t\.me\/|bit\.ly|\.(vn|com|net|org|xyz|top|click|apk)\b/i.test(val)) return true;
+    if (/(chuyển khoản|số tài khoản|nạp thẻ|trúng thưởng|mã otp|viện kiểm sát|khóa tài khoản)/i.test(val)) return true;
+    return false;
+  }
 
   const listeners = {
     status: [],
@@ -54,7 +97,9 @@ window.TuoiBacRealtime = (function () {
     tableLog: [],
     checkins: [],
     match: [],
-    poems: []
+    poems: [],
+    news: [],
+    phonetics: []
   };
 
   function initClientId() {
@@ -152,67 +197,95 @@ window.TuoiBacRealtime = (function () {
   }
 
   function handleIncomingPacket(kind, payload) {
-    if (!payload) return;
+    if (!payload || typeof payload !== "object") return;
     if (kind === "presence") {
       const { tableKey, peer, removed } = payload;
-      if (!tableKey || !peer || !peer.clientId) return;
-      if (!presenceByTable[tableKey]) presenceByTable[tableKey] = {};
+      if (!isSafeKey(tableKey) || !peer || !isSafeKey(peer.clientId)) return;
+      if (!presenceByTable[tableKey]) {
+        capStoreKeys(presenceByTable, 80);
+        presenceByTable[tableKey] = Object.create(null);
+      }
       if (removed) {
         delete presenceByTable[tableKey][peer.clientId];
       } else if (Date.now() - (peer.ts || Date.now()) <= PRESENCE_TTL_MS) {
+        if (isMaliciousNetworkText(peer.name || "")) return;
+        capStoreKeys(presenceByTable[tableKey], 40);
         presenceByTable[tableKey][peer.clientId] = peer;
       }
       emit("presence", getPresenceSnapshot());
     } else if (kind === "chat") {
-      if (!payload.msgId || seenMsgIds.has(payload.msgId)) return;
+      if (!isSafeKey(payload.msgId) || seenMsgIds.has(payload.msgId)) return;
+      if (isMaliciousNetworkText(payload.text || "") || isMaliciousNetworkText(payload.speaker || "")) return;
       if (seenMsgIds.size > 800) seenMsgIds.clear();
       seenMsgIds.add(payload.msgId);
       if (payload.clientId === clientId) return;
       emit("chat", payload);
     } else if (kind === "tableLog") {
-      if (!payload.tableKey || !Array.isArray(payload.lines)) return;
-      emit("tableLog", payload);
+      if (!isSafeKey(payload.tableKey) || !Array.isArray(payload.lines)) return;
+      const safeLines = payload.lines
+        .slice(-12)
+        .filter((ln) => ln && !isMaliciousNetworkText(ln.text || "") && !isMaliciousNetworkText(ln.speaker || ""));
+      emit("tableLog", { tableKey: payload.tableKey, lines: safeLines });
     } else if (kind === "checkin") {
-      if (!payload.clientId || !payload.provinceId) return;
+      if (!isSafeKey(payload.clientId) || !isSafeKey(payload.provinceId)) return;
+      if (isMaliciousNetworkText(payload.name || "") || isMaliciousNetworkText(payload.mood || "")) return;
+      capStoreKeys(checkinsToday, MAX_STORE_ENTRIES);
       checkinsToday[payload.clientId] = payload;
       emit("checkins", getCheckinsSummary());
     } else if (kind === "match") {
-      if (!payload.matchId) return;
+      if (!isSafeKey(payload.matchId)) return;
+      if (isMaliciousNetworkText(payload.statusText || "") || isMaliciousNetworkText(payload.hostName || "")) return;
       const prev = matchesById[payload.matchId];
       if (!prev || (payload.updatedAt || 0) >= (prev.updatedAt || 0)) {
+        capStoreKeys(matchesById, MAX_STORE_ENTRIES);
         matchesById[payload.matchId] = payload;
         emit("match", payload);
       }
     } else if (kind === "poem") {
-      if (!payload.id) return;
+      if (!isSafeKey(payload.id)) return;
+      const joinedLines = Array.isArray(payload.lines) ? payload.lines.join(" ") : "";
+      if (isMaliciousNetworkText(payload.title || "") || isMaliciousNetworkText(joinedLines)) return;
+      capStoreKeys(sharedPoems, MAX_STORE_ENTRIES);
       sharedPoems[payload.id] = payload;
       emit("poems", getSharedPoems());
     } else if (kind === "online") {
-      if (!payload.peerKey) return;
+      if (!isSafeKey(payload.peerKey)) return;
       if (payload.removed) {
         delete onlinePeers[payload.peerKey];
       } else if (Date.now() - (payload.ts || Date.now()) <= PRESENCE_TTL_MS) {
+        if (isMaliciousNetworkText(payload.name || "") || isMaliciousNetworkText(payload.where || "")) return;
+        capStoreKeys(onlinePeers, MAX_STORE_ENTRIES);
         onlinePeers[payload.peerKey] = payload;
-        if (payload.memberCode) {
+        if (isSafeKey(payload.memberCode)) {
+          capStoreKeys(directoryByCode, MAX_STORE_ENTRIES);
           directoryByCode[payload.memberCode] = Object.assign({}, directoryByCode[payload.memberCode] || {}, payload);
         }
       }
       emit("online", getOnlinePeers());
     } else if (kind === "group") {
-      if (!payload.id) return;
+      if (!isSafeKey(payload.id)) return;
+      if (isMaliciousNetworkText(payload.name || "") || isMaliciousNetworkText(payload.motto || "")) return;
+      if (Array.isArray(payload.bulletins)) {
+        payload.bulletins = payload.bulletins
+          .slice(0, 12)
+          .filter((b) => b && !isMaliciousNetworkText(b.text || "") && !isMaliciousNetworkText(b.author || ""));
+      }
       const prev = sharedGroups[payload.id];
       if (!prev || (payload.updatedAt || 0) >= (prev.updatedAt || 0)) {
+        capStoreKeys(sharedGroups, MAX_STORE_ENTRIES);
         sharedGroups[payload.id] = payload;
         emit("groups", getSharedGroups());
       }
     } else if (kind === "directory") {
-      if (!payload.memberCode) return;
+      if (!isSafeKey(payload.memberCode) || isMaliciousNetworkText(payload.name || "")) return;
+      capStoreKeys(directoryByCode, MAX_STORE_ENTRIES);
       directoryByCode[payload.memberCode] = payload;
     } else if (kind === "friend") {
-      if (!payload.toCode || !payload.fromCode) return;
+      if (!isSafeKey(payload.toCode) || !isSafeKey(payload.fromCode)) return;
       emit("friends", payload);
     } else if (kind === "account") {
-      if (!payload.accountHash) return;
+      if (!isSafeKey(payload.accountHash)) return;
+      capStoreKeys(accountsCache, 80);
       accountsCache[payload.accountHash] = payload;
       const waiters = accountLookupWaiters[payload.accountHash];
       if (Array.isArray(waiters) && waiters.length > 0) {
@@ -224,26 +297,51 @@ window.TuoiBacRealtime = (function () {
         });
       }
     } else if (kind === "memberLog") {
-      if (!payload.id) return;
+      if (!isSafeKey(payload.id) || isMaliciousNetworkText(payload.detail || "")) return;
+      capStoreKeys(memberLogsById, MAX_STORE_ENTRIES);
       memberLogsById[payload.id] = payload;
       emit("memberLogs", getMemberLogs());
     } else if (kind === "telemetry") {
-      if (!payload.id) return;
+      if (!isSafeKey(payload.id)) return;
       if (payload.clientId === clientId) return;
       if (window.TuoiBacTelemetry && typeof window.TuoiBacTelemetry.ingestRemoteEvent === "function") {
         window.TuoiBacTelemetry.ingestRemoteEvent(payload);
       }
       emit("telemetry", payload);
     } else if (kind === "tableMeta") {
-      if (!payload.tableKey) return;
+      if (!isSafeKey(payload.tableKey)) return;
+      if (isMaliciousNetworkText(payload.customName || "") || isMaliciousNetworkText(payload.customTopic || "")) return;
+      capStoreKeys(customTablesByKey, 80);
       customTablesByKey[payload.tableKey] = payload;
       emit("tableMeta", customTablesByKey);
     } else if (kind === "temple") {
-      if (!payload.id) return;
+      if (!isSafeKey(payload.id)) return;
       if (payload.prayerText) {
+        if (isMaliciousNetworkText(payload.prayerText)) return;
+        capStoreKeys(templePrayersById, 80);
         templePrayersById[payload.id] = payload;
       }
       emit("temple", payload);
+    } else if (kind === "news") {
+      if (!isSafeKey(payload.id) || !payload.title) return;
+      if (isMaliciousNetworkText(payload.title) || isMaliciousNetworkText(payload.body || "")) return;
+      capStoreKeys(sharedArticlesById, 60);
+      sharedArticlesById[payload.id] = payload;
+      emit("news", getApprovedArticles());
+    } else if (kind === "phonetics") {
+      const w = typeof payload.wrong === "string" ? payload.wrong.trim() : "";
+      const r = typeof payload.right === "string" ? payload.right.trim() : "";
+      if (!isSafeKey(w) || w.length < 3 || w.length > 36 || r.length < 2 || r.length > 42) return;
+      if (/\d|[<>'"`\\]|https?:|www\./i.test(w + " " + r)) return;
+      if (isMaliciousNetworkText(w) || isMaliciousNetworkText(r)) return;
+      capStoreKeys(sharedPhoneticsByWrong, 150);
+      sharedPhoneticsByWrong[w] = {
+        wrong: w,
+        right: r,
+        hits: Math.max(1, Math.min(9999, Number(payload.hits) || 1)),
+        learnedBy: String(payload.learnedBy || "Cộng đồng").slice(0, 40)
+      };
+      emit("phonetics", getSharedPhonetics());
     }
   }
 
@@ -266,6 +364,167 @@ window.TuoiBacRealtime = (function () {
     } catch (e) {}
   }
 
+  function hydratePersistentTablesFromSupabase(client) {
+    if (!client) return;
+    const dayKey = getTodayKey();
+
+    // 1. Điểm danh buổi sáng hôm nay
+    client
+      .from("morning_checkins")
+      .select("*")
+      .eq("day_key", dayKey)
+      .then(({ data }) => {
+        if (Array.isArray(data)) {
+          data.forEach((row) => {
+            checkinsToday[row.client_id] = {
+              clientId: row.client_id,
+              name: row.user_name,
+              age: row.age,
+              provinceId: row.province_id,
+              provinceShort: row.province_short,
+              mood: row.mood,
+              ts: new Date(row.updated_at).getTime()
+            };
+          });
+          emit("checkins", getCheckinsSummary());
+        }
+      })
+      .catch(() => {});
+
+    // 2. Chiếu thơ lục bát cộng đồng
+    client
+      .from("poems")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(30)
+      .then(({ data }) => {
+        if (Array.isArray(data) && data.length > 0) {
+          data.forEach((row) => {
+            sharedPoems[row.id] = {
+              id: row.id,
+              clientId: row.client_id,
+              title: row.title,
+              author: row.author,
+              reciter: row.reciter,
+              lines: Array.isArray(row.lines) ? row.lines : [],
+              flowers: row.flowers || 1,
+              ts: new Date(row.created_at).getTime()
+            };
+          });
+          emit("poems", getSharedPoems());
+        }
+      })
+      .catch(() => {});
+
+    // 3. Đơn vị đồng ngũ & CLB
+    client
+      .from("community_groups")
+      .select("*")
+      .order("updated_at", { ascending: false })
+      .limit(30)
+      .then(({ data }) => {
+        if (Array.isArray(data) && data.length > 0) {
+          data.forEach((row) => {
+            if (row.payload_json && row.id) {
+              sharedGroups[row.id] = Object.assign({}, row.payload_json, {
+                id: row.id,
+                updatedAt: new Date(row.updated_at).getTime()
+              });
+            }
+          });
+          emit("groups", getSharedGroups());
+        }
+      })
+      .catch(() => {});
+
+    // 4. Tên bàn trà tùy chỉnh
+    client
+      .from("custom_tea_tables")
+      .select("*")
+      .limit(40)
+      .then(({ data }) => {
+        if (Array.isArray(data) && data.length > 0) {
+          data.forEach((row) => {
+            customTablesByKey[row.table_key] = {
+              tableKey: row.table_key,
+              roomId: row.room_id,
+              tableIdx: row.table_idx,
+              customName: row.custom_name,
+              customTopic: row.custom_topic,
+              hostName: row.host_name,
+              hostCode: row.host_code,
+              updatedAt: new Date(row.updated_at).getTime()
+            };
+          });
+          emit("tableMeta", customTablesByKey);
+        }
+      })
+      .catch(() => {});
+
+    // 5. Sớ cầu an & thẻ đỏ Chánh Điện
+    client
+      .from("temple_prayers")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(24)
+      .then(({ data }) => {
+        if (Array.isArray(data) && data.length > 0) {
+          data.forEach((row) => {
+            templePrayersById[row.id] = {
+              id: row.id,
+              memberCode: row.member_code,
+              userName: row.user_name,
+              province: row.province,
+              ritualKind: row.ritual_kind,
+              cushionIdx: row.cushion_idx,
+              prayerText: row.prayer_text,
+              ts: new Date(row.created_at).getTime()
+            };
+          });
+          emit("temple", { hydrated: true });
+        }
+      })
+      .catch(() => {});
+
+    // 6. Sổ từ điển phương ngữ dùng chung & bài báo Admin đã duyệt
+    client
+      .from("phonetic_dictionary")
+      .select("*")
+      .limit(100)
+      .then(({ data }) => {
+        if (Array.isArray(data) && data.length > 0) {
+          data.forEach((row) => {
+            sharedPhoneticsByWrong[row.wrong_phrase] = {
+              wrong: row.wrong_phrase,
+              right: row.right_phrase,
+              hits: row.hits || 1,
+              learnedBy: row.learned_by || "Cộng đồng"
+            };
+          });
+          emit("phonetics", getSharedPhonetics());
+        }
+      })
+      .catch(() => {});
+
+    client
+      .from("analytics_events")
+      .select("*")
+      .eq("event_name", "approved_morning_article")
+      .order("created_at", { ascending: false })
+      .limit(12)
+      .then(({ data }) => {
+        if (Array.isArray(data) && data.length > 0) {
+          data.forEach((row) => {
+            if (row.meta && row.meta.id && row.meta.title) {
+              sharedArticlesById[row.meta.id] = row.meta;
+            }
+          });
+          emit("news", getApprovedArticles());
+        }
+      })
+      .catch(() => {});
+  }
+
   function connectSupabase(cfg) {
     if (!window.supabase || typeof window.supabase.createClient !== "function") {
       connectWssRelay();
@@ -273,7 +532,7 @@ window.TuoiBacRealtime = (function () {
     }
     try {
       sbClient = window.supabase.createClient(cfg.url, cfg.anonKey);
-      providerName = "Supabase Realtime";
+      providerName = "Supabase PostgreSQL + Realtime";
       sbChannel = sbClient.channel("tuoibac-main", {
         config: { presence: { key: clientId } }
       });
@@ -304,29 +563,7 @@ window.TuoiBacRealtime = (function () {
             if (myPresencePayload && activeTableKey) {
               await sbChannel.track(Object.assign({}, myPresencePayload, { tableKey: activeTableKey }));
             }
-            // Pull today's checkins & poems from Postgres if tables exist
-            const dayKey = getTodayKey();
-            sbClient
-              .from("morning_checkins")
-              .select("*")
-              .eq("day_key", dayKey)
-              .then(({ data }) => {
-                if (Array.isArray(data)) {
-                  data.forEach((row) => {
-                    checkinsToday[row.client_id] = {
-                      clientId: row.client_id,
-                      name: row.user_name,
-                      age: row.age,
-                      provinceId: row.province_id,
-                      provinceShort: row.province_short,
-                      mood: row.mood,
-                      ts: new Date(row.updated_at).getTime()
-                    };
-                  });
-                  emit("checkins", getCheckinsSummary());
-                }
-              })
-              .catch(() => {});
+            hydratePersistentTablesFromSupabase(sbClient);
           }
         });
     } catch (e) {
@@ -379,6 +616,8 @@ window.TuoiBacRealtime = (function () {
       mqttClient.subscribe(`${TOPIC_ROOT}/poems/+`, { qos: 0 });
       mqttClient.subscribe(`${TOPIC_ROOT}/tablemeta/+`, { qos: 0 });
       mqttClient.subscribe(`${TOPIC_ROOT}/temple/+`, { qos: 0 });
+      mqttClient.subscribe(`${TOPIC_ROOT}/news/+`, { qos: 0 });
+      mqttClient.subscribe(`${TOPIC_ROOT}/phonetics/+`, { qos: 0 });
       mqttClient.subscribe(`${TOPIC_ROOT}/memberlogs/+`, { qos: 0 });
       mqttClient.subscribe(`${TOPIC_ROOT}/telemetry/+`, { qos: 0 });
       if (myMemberCode) {
@@ -413,7 +652,9 @@ window.TuoiBacRealtime = (function () {
     });
 
     mqttClient.on("message", (topic, rawBuf) => {
+      if (rawBuf && rawBuf.length > MAX_PACKET_CHARS) return;
       const str = rawBuf ? rawBuf.toString() : "";
+      if (str.length > MAX_PACKET_CHARS) return;
       const rel = topic.slice(TOPIC_ROOT.length + 1);
       const parts = rel.split("/");
 
@@ -424,90 +665,65 @@ window.TuoiBacRealtime = (function () {
           handleIncomingPacket("presence", { tableKey, peer: { clientId: cid }, removed: true });
           return;
         }
-        try {
-          const peer = JSON.parse(str);
-          handleIncomingPacket("presence", { tableKey, peer, removed: false });
-        } catch (e) {}
+        const peer = safeJsonParse(str);
+        if (peer) handleIncomingPacket("presence", { tableKey, peer, removed: false });
       } else if (parts[0] === "online" && parts[1]) {
         const pkey = parts[1];
         if (!str) {
           handleIncomingPacket("online", { peerKey: pkey, removed: true });
           return;
         }
-        try {
-          handleIncomingPacket("online", JSON.parse(str));
-        } catch (e) {}
+        const parsed = safeJsonParse(str);
+        if (parsed) handleIncomingPacket("online", parsed);
       } else if (parts[0] === "groups" && parts[1]) {
-        if (!str) return;
-        try {
-          handleIncomingPacket("group", JSON.parse(str));
-        } catch (e) {}
+        const parsed = safeJsonParse(str);
+        if (parsed) handleIncomingPacket("group", parsed);
       } else if (parts[0] === "directory" && parts[1]) {
-        if (!str) return;
-        try {
-          handleIncomingPacket("directory", JSON.parse(str));
-        } catch (e) {}
+        const parsed = safeJsonParse(str);
+        if (parsed) handleIncomingPacket("directory", parsed);
       } else if (parts[0] === "friends" && parts.length >= 3) {
-        if (!str) return;
-        try {
-          handleIncomingPacket("friend", JSON.parse(str));
-        } catch (e) {}
+        const parsed = safeJsonParse(str);
+        if (parsed) handleIncomingPacket("friend", parsed);
       } else if (parts[0] === "accounts" && parts[1]) {
-        if (!str) return;
-        try {
-          handleIncomingPacket("account", JSON.parse(str));
-        } catch (e) {}
+        const parsed = safeJsonParse(str);
+        if (parsed) handleIncomingPacket("account", parsed);
       } else if (parts[0] === "chat" && parts[1]) {
-        if (!str) return;
-        try {
-          handleIncomingPacket("chat", JSON.parse(str));
-        } catch (e) {}
+        const parsed = safeJsonParse(str);
+        if (parsed) handleIncomingPacket("chat", parsed);
       } else if (parts[0] === "log" && parts[1]) {
-        if (!str) return;
-        try {
-          const lines = JSON.parse(str);
-          handleIncomingPacket("tableLog", { tableKey: parts[1], lines });
-        } catch (e) {}
+        const lines = safeJsonParse(str);
+        if (Array.isArray(lines)) handleIncomingPacket("tableLog", { tableKey: parts[1], lines });
       } else if (parts[0] === "checkins" && parts.length >= 3) {
-        if (!str) return;
-        try {
-          handleIncomingPacket("checkin", JSON.parse(str));
-        } catch (e) {}
+        const parsed = safeJsonParse(str);
+        if (parsed) handleIncomingPacket("checkin", parsed);
       } else if (parts[0] === "matches" && parts[1]) {
-        if (!str) return;
-        try {
-          handleIncomingPacket("match", JSON.parse(str));
-        } catch (e) {}
+        const parsed = safeJsonParse(str);
+        if (parsed) handleIncomingPacket("match", parsed);
       } else if (parts[0] === "poems" && parts[1]) {
-        if (!str) return;
-        try {
-          handleIncomingPacket("poem", JSON.parse(str));
-        } catch (e) {}
+        const parsed = safeJsonParse(str);
+        if (parsed) handleIncomingPacket("poem", parsed);
       } else if (parts[0] === "tablemeta" && parts[1]) {
-        if (!str) return;
-        try {
-          handleIncomingPacket("tableMeta", JSON.parse(str));
-        } catch (e) {}
+        const parsed = safeJsonParse(str);
+        if (parsed) handleIncomingPacket("tableMeta", parsed);
       } else if (parts[0] === "temple" && parts[1]) {
-        if (!str) return;
-        try {
-          handleIncomingPacket("temple", JSON.parse(str));
-        } catch (e) {}
+        const parsed = safeJsonParse(str);
+        if (parsed) handleIncomingPacket("temple", parsed);
       } else if (parts[0] === "memberlogs" && parts[1]) {
-        if (!str) return;
-        try {
-          const arr = JSON.parse(str);
-          if (Array.isArray(arr)) {
-            arr.forEach((entry) => handleIncomingPacket("memberLog", entry));
-          } else {
-            handleIncomingPacket("memberLog", arr);
-          }
-        } catch (e) {}
+        const arr = safeJsonParse(str);
+        if (Array.isArray(arr)) {
+          arr.slice(0, 15).forEach((entry) => handleIncomingPacket("memberLog", entry));
+        } else if (arr) {
+          handleIncomingPacket("memberLog", arr);
+        }
       } else if (parts[0] === "telemetry" && parts[1]) {
-        if (!str) return;
-        try {
-          handleIncomingPacket("telemetry", JSON.parse(str));
-        } catch (e) {}
+        const parsed = safeJsonParse(str);
+        if (parsed) handleIncomingPacket("telemetry", parsed);
+      } else if (parts[0] === "news" && parts[1]) {
+        const parsed = safeJsonParse(str);
+        if (parsed) handleIncomingPacket("news", parsed);
+      } else if (parts[0] === "phonetics" && parts[1]) {
+        const parsed = safeJsonParse(str);
+        if (parsed) handleIncomingPacket("phonetics", parsed);
       }
     });
   }
@@ -1266,6 +1482,114 @@ window.TuoiBacRealtime = (function () {
     }
   }
 
+  function publishApprovedArticle(articleObj) {
+    if (!articleObj || !articleObj.id || !articleObj.title) return;
+    const cleanId = String(articleObj.id).replace(/[^a-zA-Z0-9_-]/g, "_");
+    const pkt = Object.assign({}, articleObj, { id: cleanId, approvedAt: Date.now() });
+    sharedArticlesById[cleanId] = pkt;
+    if (mqttClient && connected) {
+      mqttClient.publish(`${TOPIC_ROOT}/news/${cleanId}`, JSON.stringify(pkt), { qos: 1, retain: true });
+    }
+    if (sbChannel && connected) {
+      sbChannel.send({ type: "broadcast", event: "tb_event", payload: { kind: "news", data: pkt } });
+    }
+    if (sbClient) {
+      sbClient
+        .from("analytics_events")
+        .insert({
+          client_id: clientId,
+          event_name: "approved_morning_article",
+          meta: pkt
+        })
+        .then(() => {})
+        .catch(() => {});
+    }
+    postLocalBroadcast("news", pkt);
+  }
+
+  function getApprovedArticles() {
+    return Object.values(sharedArticlesById).sort((a, b) => (b.approvedAt || 0) - (a.approvedAt || 0));
+  }
+
+  function publishPhoneticEntry(entryObj) {
+    if (!entryObj || !entryObj.wrong || !entryObj.right) return;
+    const key = String(entryObj.wrong).trim().toLowerCase();
+    if (!key) return;
+    const pkt = {
+      wrong: key,
+      right: String(entryObj.right).trim(),
+      hits: Number(entryObj.hits) || 1,
+      learnedBy: String(entryObj.learnedBy || "Cộng đồng")
+    };
+    sharedPhoneticsByWrong[key] = pkt;
+    const safeSlug = encodeURIComponent(key).replace(/%/g, "_").slice(0, 48);
+    if (mqttClient && connected) {
+      mqttClient.publish(`${TOPIC_ROOT}/phonetics/${safeSlug}`, JSON.stringify(pkt), { qos: 0, retain: true });
+    }
+    if (sbChannel && connected) {
+      sbChannel.send({ type: "broadcast", event: "tb_event", payload: { kind: "phonetics", data: pkt } });
+    }
+    if (sbClient) {
+      sbClient
+        .from("phonetic_dictionary")
+        .upsert({
+          wrong_phrase: pkt.wrong,
+          right_phrase: pkt.right,
+          hits: pkt.hits,
+          learned_by: pkt.learnedBy
+        })
+        .then(() => {})
+        .catch(() => {});
+    }
+    postLocalBroadcast("phonetics", pkt);
+  }
+
+  function getSharedPhonetics() {
+    return Object.values(sharedPhoneticsByWrong);
+  }
+
+  async function testSupabaseConnection(url, anonKey) {
+    if (!window.supabase || typeof window.supabase.createClient !== "function") {
+      return { ok: false, latencyMs: 0, checkedCount: 0, message: "Chưa nạp thư viện supabase-js trên trình duyệt." };
+    }
+    const cleanUrl = String(url || "").trim();
+    const cleanKey = String(anonKey || "").trim();
+    if (!cleanUrl || !cleanKey) {
+      return { ok: false, latencyMs: 0, checkedCount: 0, message: "Thiếu Project URL hoặc Public Key của Supabase." };
+    }
+    const t0 = Date.now();
+    try {
+      const tmp = window.supabase.createClient(cleanUrl, cleanKey);
+      const coreTables = ["morning_checkins", "async_matches", "poems", "safety_reports", "member_accounts"];
+      let okTables = 0;
+      for (const tbl of coreTables) {
+        const { error } = await tmp.from(tbl).select("*").limit(1);
+        if (error) {
+          return {
+            ok: false,
+            latencyMs: Date.now() - t0,
+            checkedCount: okTables,
+            message: `Lỗi tại bảng public.${tbl}: ${error.message} (Hãy chạy supabase_schema.sql trong SQL Editor).`
+          };
+        }
+        okTables += 1;
+      }
+      return {
+        ok: true,
+        latencyMs: Date.now() - t0,
+        checkedCount: okTables,
+        message: `Kết nối thành công ${okTables}/5 bảng cốt lõi (${Date.now() - t0}ms) — Sẵn sàng lưu trữ bền vững!`
+      };
+    } catch (err) {
+      return {
+        ok: false,
+        latencyMs: Date.now() - t0,
+        checkedCount: 0,
+        message: `Không nối được tới ${cleanUrl}: ${String((err && err.message) || err)}`
+      };
+    }
+  }
+
   function getTemplePrayers() {
     return Object.values(templePrayersById).sort((a, b) => (b.ts || 0) - (a.ts || 0));
   }
@@ -1294,6 +1618,7 @@ window.TuoiBacRealtime = (function () {
     getStatus,
     getSupabaseConfig,
     saveSupabaseConfig,
+    testSupabaseConnection,
     joinTableChannel,
     leaveTableChannel,
     getPeersAtTable,
@@ -1317,6 +1642,10 @@ window.TuoiBacRealtime = (function () {
     getMatch,
     publishPoem,
     getSharedPoems,
+    publishApprovedArticle,
+    getApprovedArticles,
+    publishPhoneticEntry,
+    getSharedPhonetics,
     publishMemberLog,
     getMemberLogs,
     publishTelemetryEvent,

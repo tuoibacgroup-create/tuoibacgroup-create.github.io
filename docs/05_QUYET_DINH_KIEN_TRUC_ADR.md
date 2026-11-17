@@ -1,6 +1,6 @@
 # 05 — Hồ Sơ Quyết Định Kiến Trúc (Architecture Decision Records — ADRs)
 
-Tài liệu này lưu lại **lý do cốt lõi (Why)** đằng sau 6 quyết định kỹ thuật quan trọng nhất của dự án **Tuổi Bạc**, giúp các lập trình viên và AI Agent về sau hiểu rõ bối cảnh, ưu nhược điểm và không vô tình quay lại các phương án đã bị loại bỏ.
+Tài liệu này lưu lại **lý do cốt lõi (Why)** đằng sau 10 quyết định kỹ thuật quan trọng nhất của dự án **Tuổi Bạc**, giúp các lập trình viên và AI Agent về sau hiểu rõ bối cảnh, ưu nhược điểm và không vô tình quay lại các phương án đã bị loại bỏ.
 
 ---
 
@@ -60,20 +60,41 @@ Tài liệu này lưu lại **lý do cốt lõi (Why)** đằng sau 6 quyết đ
 
 ---
 
-## ADR-007: Nhiếp Ảnh Đại Sảnh Chùa Cổ 20 Bồ Đoàn Kết Hợp Sprite Phật Tử Tả Thực Hành Lễ (`temple3d.js`)
+## ADR-007: Ba Không Gian Tĩnh Tâm Độc Lập 20 Chiếu Bồ Đoàn, Hoa Đăng 3 Phút & Tờ Giấy Đỏ Hồi Lượt 45s (`temple3d.js`)
 - **Trạng thái:** Đã chấp thuận & Đang vận hành (2026-11)
-- **Bối cảnh:** Khi thử nghiệm dựng Chánh Điện bằng khối hình học Three.js Low-Poly (trụ/nón) hoặc vẽ minh họa 2D bằng đường cong Canvas thuần túy, hình ảnh trông giống đồ họa hoạt hình trẻ em, thiếu sự tôn nghiêm, trầm mặc và chiều sâu văn hóa cần có đối với người Việt Nam từ 55 tuổi trở lên. Đồng thời hội viên vẫn cần thấy không khí đạo tràng đông vui nhộn nhịp và hành động bước lên thắp nhang, gõ mõ sống động.
+- **Bối cảnh:** Khi thử nghiệm dựng Chánh Điện bằng khối hình học Three.js Low-Poly hoặc dùng chung một ảnh nền chùa cho cả Từ Đường họ tộc lẫn Vườn Thiền, trải nghiệm thiếu tính chân thực và lệch ngữ cảnh văn hóa đối với người Việt Nam từ 55 tuổi trở lên. Đồng thời hội viên muốn thấy đèn Hoa Đăng thật sự nổi trôi trên mặt nước và hoạt cảnh mở tờ giấy đỏ khi rút xăm / treo thẻ ước nguyện.
 - **Quyết định:**
-  - Sử dụng bộ 3 bức ảnh kiến trúc Chùa Cổ Bắc Bộ góc đại cảnh 5 gian đã nén chuẩn nhẹ (`~130–176 KB/ảnh` tại `assets/temple-wide.jpg`, `assets/temple-altar.jpg`, `assets/temple-courtyard.jpg`) kết hợp 1 tệp Sprite Atlas nhiếp ảnh tả thực nhìn từ sau lưng `assets/temple-sprites.webp` (`44 KB`, gồm chiếu cói Bồ Đoàn và các Phật tử cao niên mặc Áo Lam / Áo Nâu ở tư thế ngồi tĩnh tọa và đứng hành lễ, đã tách nền Chroma-key khử viền xanh).
-  - Dùng `temple3d.js` sắp xếp **20 Chiếu Bồ Đoàn (`4×5`)** theo thuật toán chiều sâu Painter's Algorithm, diễn hoạt đường đi Bezier đưa nhân vật đứng dậy bước lên Lư Hương / Mõ Gỗ / Đại Hồng Chung cúi vái 3 nhịp rồi quay về chiếu, kết hợp khói trầm hương vật lý và ánh sáng `screen` ở tốc độ `28 FPS`.
-- **Hệ quả:** Vừa giữ trọn vẻ trang nghiêm chân thực như phim tư liệu kiến trúc cổ, vừa tái hiện sinh động không khí đạo tràng 20 chỗ ngồi có người đi lại hành lễ với tổng dung lượng Sprite chỉ `44 KB`.
+  - Tách riêng **3 bộ ảnh nền kiến trúc độc lập** đã nén tối ưu (`assets/temple-*.jpg` cho *Sân Chùa Quê*, `assets/ancestral-*.jpg` cho *Nhà Thờ Họ* không đặt tượng Phật mà thờ khám bài vị gia tiên + hoành phi *"ĐỨC LƯU QUANG"*, và `assets/zengarden-*.jpg` cho *Vườn Thiền Tĩnh Lặng*), kết hợp Sprite Atlas `assets/temple-sprites.webp` (`44 KB`) xếp **20 Chiếu Bồ Đoàn (`4×5`)** theo thuật toán chiều sâu Painter's Algorithm (`28 FPS`).
+  - Duy trì mảng `activeLanterns` lưu các ngọn **Hoa Đăng tỏa sáng trôi trên mặt Hồ Sen suốt 3 phút (`180.000 ms`)**, đồng thời dựng hoạt cảnh mở **Tờ Giấy Đỏ viền kim nhũ** (`@keyframes redSlipUnfurl`) kèm bộ đếm hồi lượt **`45 giây`** cho cả Ống Xăm và Cây Thẻ Đỏ.
+- **Hệ quả:** Cả 3 không gian tâm linh – truyền thống – dưỡng tâm đều đúng bản sắc văn hóa Việt Nam, giàu cảm xúc tương tác mà không thu bất kỳ khoản phí tiền thật nào.
 
 ---
 
-## ADR-008: Chuẩn Hóa Đồ Họa Quán Trà Full 2.5D Cổ Điển (TLBB) Không Nhấp Nhô (`tearoom3d.js`)
+## ADR-008: Chuẩn Hóa Đồ Họa Quán Trà Full 2.5D Cổ Điển (TLBB) Với 8 Trang Phục, 8 Phụ Kiện & 12 Đồ Bàn Trà Di Sản (`tearoom3d.js`)
 - **Trạng thái:** Đã chấp thuận & Đang vận hành (2026-11, khóa thống nhất `Full 2.5D TLBB`)
-- **Bối cảnh:** Sau khi thử nghiệm song song hai chế độ, chế độ Hybrid 3D dùng góc nhìn hình khối vẫn dễ gây chồng chéo thẻ tên và hao GPU hơn, trong khi bức tranh đẳng cự 2.5D cổ điển kiểu Thiên Long Bát Bộ mang lại cảm giác ấm cúng, đồng bộ nhất cho người cao tuổi 55+. Đồng thời cần triệt tiêu dao động bồng bềnh của nhân vật ngồi và cân tỷ lệ người lớn khớp với kích thước ghế.
+- **Bối cảnh:** Bức tranh đẳng cự 2.5D cổ điển kiểu Thiên Long Bát Bộ mang lại cảm giác ấm cúng, đồng bộ và tiết kiệm pin nhất cho người cao tuổi 55+. Các phụ kiện vẽ hình học đơn giản trước đây dễ lệch khỏi mắt/cổ góc nghiêng `3/4` và làm giảm thẩm mỹ bàn trà.
 - **Quyết định:**
-  - Sử dụng **Sprite Atlas 4×2 WebP (`assets/tearoom-sprites.webp`, `49.0 KB`)** gồm 3 tư thế ngồi đủ ống chân/giày guốc (Nam 3/4, Nữ 3/4, Góc lưng 3/4) và Chị Trà đứng bưng khay trà kết hợp hàng mặt nạ độ sáng áo coban để nhuộm động cả 5 màu trang phục (`OUTFITS`), ghép phụ kiện (`ACCESSORIES`) và huy hiệu khung danh hiệu (`TITLE_FRAMES`) một lần rồi lưu cache Canvas `220×280`.
-  - Khóa toàn bộ Quán Trà về duy nhất chế độ **Full 2.5D Cổ Điển (TLBB)** (`mode === "2.5d"` trong `tearoom3d.js`, `preferredRender === "2.5d"` trong `app.js`): khóa cố định nhân vật ngồi cân hông theo `SEAT_ANCHORS` không nhấp nhô, khôi phục lớp che mặt bàn gỗ & tựa ghế, và giữ hiệu ứng bước đi cho Chị Trà khi rời tủ chè ra mời trà.
-- **Hệ quả:** Giao diện quán trà đồng nhất 100%, giữ trọng lượng tài nguyên gọn (`~322 KB` được `sw.js` cache offline), không mở ngữ cảnh WebGL ở Quán Trà và đứng yên dễ nhìn tuyệt đối với người cao tuổi.
+  - Sử dụng **Sprite Atlas nhân vật `4×2` (`assets/tearoom-sprites.webp`)** kết hợp **2 bộ Sprite phụ kiện (`assets/tearoom-accessories.webp`, `assets/tearoom-accessories-extra.webp`)** và **2 bộ Sprite vật phẩm di sản (`assets/tearoom-items.webp`, `assets/tearoom-items-extra.webp`)** đã tách nền sạch, phục vụ **8 mẫu áo truyền thống, 8 phụ kiện khớp đầu/mắt/cổ góc `3/4` và 12 món đồ bày bàn trà di sản** (từ ấm tử sa, cơi trầu cánh phượng, bánh đậu xanh, lồng chim khuyên đến bàn cờ ngọc, đỉnh trầm đồng tỏa khói và ấm tích men lam).
+  - Khóa toàn bộ Quán Trà về chế độ **Full 2.5D Cổ Điển (TLBB)** (`mode === "2.5d"`), đặt nhân vật ngồi tĩnh cân hông trên ghế gỗ và bày vật phẩm trên thảm chiếu hoa Đông Dương + đôn gỗ gụ khảm nu vàng.
+- **Hệ quả:** Giao diện quán trà và tủ trang phục đạt độ sắc nét đồng nhất như tranh vẽ tay truyền thống, nhẹ máy và dễ quan sát tuyệt đối với mắt người lớn tuổi.
+
+---
+
+## ADR-009: Tách Quyền Quản Trị Chống Dò PIN, Điểm Báo RSS 05:30 & Gia Cố Bảo Mật 7 Lớp
+- **Trạng thái:** Đã chấp thuận & Đang vận hành (2026-11)
+- **Bối cảnh:** Khi vận hành cộng đồng thật trên trình duyệt công cộng, ứng dụng phải bảo vệ người cao tuổi trước tin nhắn lừa đảo mạo danh, ngăn người dùng thường bấm nhầm vào bảng điều khiển hệ thống và chống tấn công XSS / đầu độc gói tin MQTT / xóa bảng cơ sở dữ liệu.
+- **Quyết định:**
+  - Áp dụng `Content-Security-Policy` nghiêm ngặt (`script-src 'self' https://cdn.jsdelivr.net; worker-src 'self' blob:; object-src 'none'`) ngay trong `index.html`.
+  - Tách riêng khu vực duyệt RSS Báo Sáng (`05:30` hàng ngày qua `scripts/fetch-morning-rss.mjs` / mẫu workflow `docs/workflows/morning-rss.yml`), Dash hoạt động toàn quán, xuất `.jsonl` và cấu hình Supabase sau hộp thoại mã khóa Admin có cơ chế **khóa tạm `60 giây` sau `5` lần nhập sai** và **băm muối lặp `2.500` vòng (`v2$`)**.
+  - Kiểm tra an toàn hai lượt (`isUnsafeScamOrPiiText` trước và sau `phoneticDict`) trên toàn bộ biểu mẫu cộng đồng; dùng `Object.create(null)`, giới hạn gói tin `24 KB` / `200` khóa RAM trong `realtime.js`; siết chính sách PostgreSQL RLS tối thiểu đặc quyền trong `supabase_schema.sql` (chặn `DELETE` ẩn danh, bảng `safety_reports` chỉ cho `INSERT`).
+- **Hệ quả:** Đạt chuẩn kiểm thử thâm nhập tự động (`scripts/e2e-regression.mjs`) mà vẫn giữ thao tác 0 rào cản cho hội viên bình thường.
+
+---
+
+## ADR-010: Kho 15 Giọng Đọc Tiếng Việt Thu Sẵn Ngoại Tuyến (`.mp3`) & Đo Kiểm Thực Địa UAT `23.008 XP`
+- **Trạng thái:** Đã chấp thuận & Đang vận hành (2026-11)
+- **Bối cảnh:** Nhiều điện thoại Android tầm trung đời cũ của các bác thiếu gói giọng đọc `vi-VN` ngoại tuyến trong `window.speechSynthesis`, khiến nút `Đọc to` bị câm khi sóng 4G chập chờn. Đồng thời mốc điểm danh hiệu Bậc 32 (`23.008 XP`) cần công cụ đo tốc độ tích lũy thực tế khi thử nghiệm 5–10 máy đầu tiên.
+- **Quyết định:**
+  - Đóng gói sẵn **15 tệp âm thanh giọng đọc tiếng Việt ấm áp (`assets/audio/*.mp3`, tổng `564 KB`)** vào bộ đệm ngoại tuyến `sw.js` cho lời chào buổi sáng, điểm danh, bàn trà, 3 không gian tĩnh tâm, cờ tướng, ô ăn quan, nhắc nghỉ mắt 20 phút và 6 quẻ bình an; tự động phát dự phòng hoặc cho phép bật ưu tiên giọng thu sẵn.
+  - Tích hợp tham số `?uat=<ma_nhom>` và báo cáo `getUatAndXpCalibrationReport()` trong `telemetry.js` để đo cỡ chữ, loại mạng và dự phóng số ngày đạt Bậc 6 / 16 / 32 ngay trong Dash Admin.
+- **Hệ quả:** Máy Android cũ vẫn phát giọng tiếng Việt rõ ràng cả khi ngoại tuyến, và Ban Chủ Nhiệm có số liệu thực chứng để cân chỉnh nhịp độ thăng cấp.
