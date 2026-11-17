@@ -1166,7 +1166,7 @@
     });
 
     if (els.simRender) {
-      const activeMode = state.settings.autoFallbacked ? "2.5D (Tự hạ)" : state.settings.preferredRender === "3d" ? "Không gian 3D" : "2.5D Tĩnh";
+      const activeMode = state.settings.autoFallbacked ? "Full 2.5D (Tự hạ)" : state.settings.preferredRender === "3d" ? "Hybrid 3D+2.5D" : "Full 2.5D (TLBB)";
       els.simRender.textContent = `Đồ họa: ${activeMode}`;
       els.simRender.classList.toggle("active", state.settings.preferredRender === "2.5d");
     }
@@ -3056,6 +3056,45 @@
     }
   }
 
+  function renderGraphicsModeSwitchHtml(opts) {
+    const o = opts || {};
+    const cur = state.settings.preferredRender === "2.5d" ? "2.5d" : "3d";
+    const switchHtml = `
+      <div class="render-mode-switch" role="group" aria-label="Chọn kiểu đồ họa quán trà">
+        <button type="button" class="render-mode-opt ${cur === "2.5d" ? "active" : ""}" data-render-choice="2.5d" aria-pressed="${cur === "2.5d"}">
+          <span>Full 2.5D</span>
+          <small>Cổ điển · Nhẹ</small>
+        </button>
+        <button type="button" class="render-mode-opt ${cur === "3d" ? "active" : ""}" data-render-choice="3d" aria-pressed="${cur === "3d"}">
+          <span>Hybrid 3D+2.5D</span>
+          <small>Xoay góc</small>
+        </button>
+      </div>
+    `;
+    if (o.innerOnly) return switchHtml;
+    return `
+      <div class="tearoom-controls-row" style="flex-wrap:wrap;">
+        ${switchHtml}
+        ${o.extraHtml || ""}
+      </div>
+    `;
+  }
+
+  function bindRenderChoiceButtons(rerenderFn) {
+    document.querySelectorAll("[data-render-choice]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const nextMode = btn.dataset.renderChoice === "2.5d" ? "2.5d" : "3d";
+        if (state.settings.preferredRender === nextMode && !state.settings.autoFallbacked) return;
+        state.settings.autoFallbacked = false;
+        state.settings.preferredRender = nextMode;
+        saveState();
+        updateGlobalChrome();
+        trackTelemetryDirect("render_mode_switch", state.route, nextMode, { mode: nextMode });
+        if (typeof rerenderFn === "function") rerenderFn();
+      });
+    });
+  }
+
   function mountRoomSceneView(viewMode, room, table, recommendedIdx) {
     const stageEl = document.getElementById("tearoom-stage");
     const canvasEl = document.getElementById("tearoom-canvas");
@@ -3079,6 +3118,7 @@
         userGender: state.user.honorific === "Chị" ? "female" : "male",
         userProvince: getProvince(state.user.provinceId).short,
         userOutfitColor: outfit.color,
+        userOutfitId: outfit.id,
         userItem: state.user.itemId,
         userAccessory: state.user.accessoryId || "none",
         userTitleFrame: state.user.titleFrameId || "tri-am"
@@ -3088,19 +3128,16 @@
         state.settings.preferredRender = "2.5d";
         saveState();
         updateGlobalChrome();
-        const badge = document.getElementById("render-mode-badge");
-        if (badge) badge.textContent = "2.5D (Tự hạ cho máy yếu)";
-        showToast("Thiết bị chưa hỗ trợ WebGL mượt — đã tự động chuyển sang 2.5D nhẹ.");
+        document.querySelectorAll("[data-render-choice]").forEach((b) => {
+          const is25 = b.dataset.renderChoice === "2.5d";
+          b.classList.toggle("active", is25);
+          b.setAttribute("aria-pressed", String(is25));
+        });
+        showToast("Thiết bị chưa hỗ trợ WebGL mượt — đã tự động chuyển sang Full 2.5D nhẹ.");
       }
     );
 
-    document.getElementById("btn-toggle-render-local").addEventListener("click", () => {
-      state.settings.autoFallbacked = false;
-      state.settings.preferredRender = state.settings.preferredRender === "3d" ? "2.5d" : "3d";
-      saveState();
-      updateGlobalChrome();
-      renderTeaRoom();
-    });
+    bindRenderChoiceButtons(renderTeaRoom);
   }
 
   function renderTeaRoom() {
@@ -3184,15 +3221,9 @@
       </div>
 
       <!-- Toàn cảnh 3D / 2.5D góc rộng 5 gian (3 cột x 2 hàng, kéo ngang xoay sảnh) -->
-      <div class="tearoom-controls-row" style="flex-wrap:wrap;">
-        <span class="stage-badge" id="render-mode-badge">${
-          state.settings.preferredRender === "3d" ? "Toàn cảnh 5 Gian Góc Rộng" : "Toàn cảnh 2.5D Góc Rộng"
-        }</span>
-        <div style="display:flex; gap:6px; flex-wrap:wrap;">
-          <button type="button" class="stage-badge-btn" id="btn-toggle-overview-wide">Góc siêu rộng</button>
-          <button type="button" class="stage-badge-btn" id="btn-toggle-render-local">Đổi 3D / 2.5D</button>
-        </div>
-      </div>
+      ${renderGraphicsModeSwitchHtml({
+        extraHtml: `<button type="button" class="stage-badge-btn" id="btn-toggle-overview-wide">Góc siêu rộng</button>`
+      })}
       <div class="tearoom-stage is-overview" id="tearoom-stage" title="Kéo ngang trên hình để lia góc nhìn khắp sảnh trà 5 gian">
         <canvas class="tearoom-canvas" id="tearoom-canvas"></canvas>
         <div class="avatar-tags-layer" id="avatar-tags-layer"></div>
@@ -3411,10 +3442,7 @@
       </details>
 
       <!-- 3D / 2.5D Controls Above Stage -->
-      <div class="tearoom-controls-row">
-        <span class="stage-badge" id="render-mode-badge">${state.settings.preferredRender === "3d" ? "Không gian 3D" : "2.5D Máy yếu"}</span>
-        <button type="button" class="stage-badge-btn" id="btn-toggle-render-local">Đổi 3D / 2.5D</button>
-      </div>
+      ${renderGraphicsModeSwitchHtml()}
 
       <!-- 3D Low-poly / 2.5D Fallback Scene -->
       <div class="tearoom-stage" id="tearoom-stage">
@@ -7604,9 +7632,9 @@
         activeProfileMainTab === "wardrobe"
           ? `
         <div class="surface-panel warm" id="profile-live-card">
-          <div class="tearoom-controls-row">
+          <div class="tearoom-controls-row" style="flex-wrap:wrap;">
             <span class="stage-badge" id="profile-render-badge">${isPreviewingDraft ? "Đang xem thử mẫu" : "Mẫu đang dùng"}</span>
-            <button type="button" class="stage-badge-btn" id="btn-profile-toggle-render">Đổi 3D / 2.5D</button>
+            ${renderGraphicsModeSwitchHtml({ innerOnly: true })}
           </div>
 
           <div class="tearoom-stage profile-showcase-stage" id="profile-preview-stage">
@@ -7712,6 +7740,7 @@
             userAge: age,
             userGender: hon === "Chị" ? "female" : "male",
             userOutfitColor: activeOutfit.color,
+            userOutfitId: activeOutfit.id,
             userAccessory: activeAcc.id,
             userTitleFrame: activeFrame.id,
             userItem: activeItem.id,
@@ -7727,16 +7756,7 @@
         );
       }
 
-      const toggleRenBtn = document.getElementById("btn-profile-toggle-render");
-      if (toggleRenBtn) {
-        toggleRenBtn.addEventListener("click", () => {
-          state.settings.autoFallbacked = false;
-          state.settings.preferredRender = state.settings.preferredRender === "3d" ? "2.5d" : "3d";
-          saveState();
-          updateGlobalChrome();
-          renderProfile();
-        });
-      }
+      bindRenderChoiceButtons(renderProfile);
 
       const resetPrevBtn = document.getElementById("btn-reset-preview");
       if (resetPrevBtn) {
@@ -10826,7 +10846,9 @@
       state.settings.preferredRender = state.settings.preferredRender === "3d" ? "2.5d" : "3d";
       saveState();
       updateGlobalChrome();
+      trackTelemetryDirect("render_mode_switch", state.route, state.settings.preferredRender, { via: "sim_pill" });
       if (state.route === "tearoom") renderTeaRoom();
+      else if (state.route === "profile") renderProfile();
     });
   }
   if (els.simFont) {

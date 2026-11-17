@@ -1,4 +1,4 @@
-const CACHE_VERSION = "tuoibac-pwa-v21";
+const CACHE_VERSION = "tuoibac-pwa-v22";
 const CORE_ASSETS = [
   "./",
   "./index.html",
@@ -18,7 +18,10 @@ const CORE_ASSETS = [
   "./assets/temple-wide.jpg",
   "./assets/temple-altar.jpg",
   "./assets/temple-courtyard.jpg",
-  "./assets/temple-sprites.webp"
+  "./assets/temple-sprites.webp",
+  "./assets/tearoom-table-25d.jpg",
+  "./assets/tearoom-lobby-25d.jpg",
+  "./assets/tearoom-sprites.webp"
 ];
 
 self.addEventListener("install", (event) => {

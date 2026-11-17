@@ -22,14 +22,481 @@ window.TeaRoomScene = (function () {
   let activeStickerPop = null; // { seatIdx, label, bg, color, expiresAt }
   let overviewWideLevel = "wide"; // "wide" | "ultrawide"
   let overviewAzimuth = 0;
+  let tableAzimuth = 0;
+  let pan25DX = 0;
   let isDraggingOverview = false;
   let dragStartX = 0;
   let dragStartAzimuth = 0;
+  let dragStartPan = 0;
   let currentConfig = null;
   let onFallbackCallback = null;
+  let hybridBillboards = [];
 
   // Cached procedural CanvasTextures so room switching stays instant & zero external asset dependencies
   const texCache = {};
+
+  // Pre-rendered 2.5D painterly backdrops & chroma-keyed sprite atlas (row 0 = base, row 1 = tint mask)
+  const SPRITE_CELL_W = 220;
+  const SPRITE_CELL_H = 280;
+  const assets25D = {
+    started: false,
+    tableImg: null,
+    tableReady: false,
+    lobbyImg: null,
+    lobbyReady: false,
+    spritesImg: null,
+    spritesReady: false
+  };
+  const composedSpriteCache = new Map();
+  let tempMaskCanvas = null;
+
+  const FRAME_HEX = {
+    "tri-am": "#2e7d63",
+    "thi-huu": "#c84b38",
+    "ky-thu": "#d49a35",
+    "giu-lua": "#f0b23a",
+    "dong-ngu": "#6b8f4e",
+    "cay-cao": "#f5c242",
+    "tam-an": "#d98fa8",
+    "kien-tuong": "#ffd97d"
+  };
+
+  function refreshHybridBillboardsOnLoad() {
+    if (!assets25D.spritesReady || !hybridBillboards.length) return;
+    hybridBillboards.forEach((entry) => {
+      if (!entry || !entry.tex || !entry.spec) return;
+      const freshCanvas = composeSeniorSpriteCanvas({
+        ...entry.spec,
+        pose: entry.pose || entry.spec.pose || "front"
+      });
+      entry.tex.image = freshCanvas;
+      entry.tex.needsUpdate = true;
+    });
+  }
+
+  function triggerRenderIf25D() {
+    if (mode === "2.5d" && canvasEl && currentConfig) {
+      const now = typeof performance !== "undefined" ? performance.now() : Date.now();
+      if (currentConfig.viewMode === "overview") drawOverview25D(now);
+      else if (currentConfig.viewMode === "profile") drawProfileShowcase25D(now);
+      else drawTableCloseUp25D(now);
+    }
+  }
+
+  function ensureAssets25DLoaded() {
+    if (assets25D.started || typeof Image === "undefined") return;
+    assets25D.started = true;
+
+    const tblImg = new Image();
+    tblImg.onload = () => {
+      assets25D.tableImg = tblImg;
+      assets25D.tableReady = true;
+      triggerRenderIf25D();
+    };
+    tblImg.onerror = () => {
+      assets25D.tableReady = false;
+    };
+    tblImg.src = "./assets/tearoom-table-25d.jpg?v=20261117j";
+
+    const lobImg = new Image();
+    lobImg.onload = () => {
+      assets25D.lobbyImg = lobImg;
+      assets25D.lobbyReady = true;
+      triggerRenderIf25D();
+    };
+    lobImg.onerror = () => {
+      assets25D.lobbyReady = false;
+    };
+    lobImg.src = "./assets/tearoom-lobby-25d.jpg?v=20261117j";
+
+    const sprImg = new Image();
+    sprImg.onload = () => {
+      assets25D.spritesImg = sprImg;
+      assets25D.spritesReady = true;
+      composedSpriteCache.clear();
+      refreshHybridBillboardsOnLoad();
+      triggerRenderIf25D();
+    };
+    sprImg.onerror = () => {
+      assets25D.spritesReady = false;
+    };
+    sprImg.src = "./assets/tearoom-sprites.webp?v=20261117j";
+  }
+
+  function createCanvas2D(w, h) {
+    const c = document.createElement("canvas");
+    c.width = w;
+    c.height = h;
+    return c;
+  }
+
+  function drawSpriteAccessories(ctx, col, spec) {
+    const acc = spec.accessory || "none";
+    const frameId = spec.titleFrameId || "none";
+    const outfitId = spec.outfitId || "";
+
+    const anchors =
+      col === 1
+        ? { crownX: 95, crownY: 22, leftEyeX: 98, rightEyeX: 113, eyeY: 47, earX: 76, neckX: 96, neckY: 85, chestX: 84, chestY: 118 }
+        : col === 2
+        ? { crownX: 118, crownY: 24, leftEyeX: 112, rightEyeX: 112, eyeY: 44, earX: 100, neckX: 118, neckY: 86, chestX: 124, chestY: 118 }
+        : { crownX: 93, crownY: 22, leftEyeX: 91, rightEyeX: 106, eyeY: 44, earX: 73, neckX: 92, neckY: 79, chestX: 78, chestY: 108 };
+
+    // Outfit character touches (collar piping for ao-gam-vang / uniform pockets for ao-linh)
+    if (col < 2 && outfitId === "ao-gam-vang") {
+      ctx.save();
+      ctx.strokeStyle = "rgba(255, 232, 160, 0.85)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(anchors.neckX - 16, anchors.neckY + 2);
+      ctx.lineTo(anchors.neckX + 6, anchors.neckY + 12);
+      ctx.stroke();
+      ctx.restore();
+    } else if (col < 2 && outfitId === "ao-linh") {
+      ctx.save();
+      ctx.fillStyle = "rgba(42, 56, 30, 0.42)";
+      ctx.fillRect(anchors.chestX - 10, anchors.chestY + 18, 20, 5);
+      ctx.fillRect(anchors.chestX + 20, anchors.chestY + 15, 20, 5);
+      ctx.restore();
+    }
+
+    // Silk scarf worn around neck
+    if (acc === "scarf") {
+      ctx.save();
+      const scGrad = ctx.createLinearGradient(anchors.neckX - 24, anchors.neckY - 4, anchors.neckX + 26, anchors.neckY + 40);
+      scGrad.addColorStop(0, "#B83B2A");
+      scGrad.addColorStop(1, "#7B1F16");
+      ctx.fillStyle = scGrad;
+      ctx.strokeStyle = "#4A120D";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      if (col === 2) {
+        ctx.ellipse(anchors.neckX, anchors.neckY + 3, 21, 7, -0.1, 0, Math.PI * 2);
+      } else {
+        ctx.ellipse(anchors.neckX, anchors.neckY + 3, 22, 8.5, 0.08, 0, Math.PI * 2);
+      }
+      ctx.fill();
+      ctx.stroke();
+      if (col < 2) {
+        ctx.beginPath();
+        ctx.roundRect(anchors.neckX - 3, anchors.neckY + 6, 14, 36, 4);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = "#F5DFB6";
+        ctx.fillRect(anchors.neckX - 2, anchors.neckY + 36, 12, 3.2);
+      }
+      ctx.restore();
+    }
+
+    // Wireframe brass reading glasses calibrated to true eye pixels
+    if (acc === "glasses" && col < 2) {
+      ctx.save();
+      ctx.strokeStyle = "#C89535";
+      ctx.lineWidth = 1.9;
+      ctx.fillStyle = "rgba(255, 255, 255, 0.16)";
+      ctx.beginPath();
+      ctx.ellipse(anchors.leftEyeX, anchors.eyeY, 6.8, 4.8, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.ellipse(anchors.rightEyeX, anchors.eyeY - 0.5, 6.2, 4.6, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      // Bridge & temple back toward ear
+      ctx.beginPath();
+      ctx.moveTo(anchors.leftEyeX + 6.8, anchors.eyeY);
+      ctx.lineTo(anchors.rightEyeX - 6.2, anchors.eyeY - 0.5);
+      ctx.moveTo(anchors.leftEyeX - 6.8, anchors.eyeY);
+      ctx.lineTo(anchors.earX, anchors.eyeY + 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Military / Cloth field cap
+    if (acc === "cap") {
+      ctx.save();
+      const capGrad = ctx.createLinearGradient(anchors.crownX - 28, anchors.crownY - 12, anchors.crownX + 28, anchors.crownY + 18);
+      capGrad.addColorStop(0, "#637D4F");
+      capGrad.addColorStop(1, "#3A4E2D");
+      ctx.fillStyle = capGrad;
+      ctx.strokeStyle = "#26331D";
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.ellipse(anchors.crownX, anchors.crownY + 3, 27, 14, col === 2 ? -0.1 : 0.1, Math.PI * 0.96, Math.PI * 2.04);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      // Visor
+      ctx.fillStyle = "#334527";
+      ctx.beginPath();
+      if (col === 2) {
+        ctx.ellipse(anchors.crownX - 22, anchors.crownY + 7, 15, 5.2, -0.22, 0, Math.PI * 2);
+      } else {
+        ctx.ellipse(anchors.crownX + 18, anchors.crownY + 8, 18, 5.8, 0.22, 0, Math.PI * 2);
+      }
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Traditional Vietnamese Nón Lá conical palm hat
+    if (acc === "non-la") {
+      ctx.save();
+      const hatX = col === 2 ? anchors.crownX - 3 : anchors.crownX - 1;
+      const hatTopY = anchors.crownY - 22;
+      const brimY = anchors.crownY + 15;
+      const nonGrad = ctx.createLinearGradient(hatX - 52, hatTopY, hatX + 52, brimY);
+      nonGrad.addColorStop(0, "#F6E8BE");
+      nonGrad.addColorStop(0.55, "#E7CD8B");
+      nonGrad.addColorStop(1, "#C39E59");
+      ctx.fillStyle = nonGrad;
+      ctx.strokeStyle = "#7D5D28";
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.moveTo(hatX, hatTopY);
+      ctx.lineTo(hatX - 52, brimY);
+      ctx.quadraticCurveTo(hatX, brimY + 11, hatX + 52, brimY);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      // Subtle woven bamboo ribs
+      ctx.strokeStyle = "rgba(125, 93, 40, 0.35)";
+      ctx.lineWidth = 1;
+      for (let r = 1; r <= 3; r++) {
+        const frac = r * 0.24;
+        const ry = hatTopY + (brimY - hatTopY) * frac;
+        const rx = 50 * frac;
+        ctx.beginPath();
+        ctx.moveTo(hatX - rx, ry);
+        ctx.quadraticCurveTo(hatX, ry + 7 * frac, hatX + rx, ry);
+        ctx.stroke();
+      }
+      // Red silk chin strap hint
+      if (col < 2) {
+        ctx.strokeStyle = "#A93B2C";
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.moveTo(hatX - 18, brimY + 2);
+        ctx.quadraticCurveTo(anchors.neckX, anchors.neckY + 2, anchors.rightEyeX + 4, brimY + 3);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // Chest Title Frame Honor Rosette
+    if (col < 2 && FRAME_HEX[frameId]) {
+      ctx.save();
+      ctx.fillStyle = "#E8B74E";
+      ctx.strokeStyle = "#5F3E12";
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.arc(anchors.chestX, anchors.chestY, 7.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = FRAME_HEX[frameId];
+      ctx.beginPath();
+      ctx.arc(anchors.chestX, anchors.chestY, 4.6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  function composeSeniorSpriteCanvas(spec) {
+    ensureAssets25DLoaded();
+    const s = spec || {};
+    const pose = s.pose === "back" ? "back" : "front";
+    const col = pose === "back" ? 2 : s.gender === "female" ? 1 : 0;
+    const outfitColor = s.outfitColor || (s.isHost ? "#D98A2B" : "#2E5E4E");
+    const outfitId = s.outfitId || "";
+    const acc = s.accessory || "none";
+    const frameId = s.titleFrameId || "none";
+    const cacheKey = `${col}|${outfitColor}|${outfitId}|${acc}|${frameId}|${s.isHost ? 1 : 0}|${assets25D.spritesReady ? 1 : 0}`;
+
+    if (composedSpriteCache.has(cacheKey)) {
+      return composedSpriteCache.get(cacheKey);
+    }
+
+    const out = createCanvas2D(SPRITE_CELL_W, SPRITE_CELL_H);
+    const ctx = out.getContext("2d");
+
+    if (assets25D.spritesReady && assets25D.spritesImg) {
+      const sx = col * SPRITE_CELL_W;
+      ctx.drawImage(assets25D.spritesImg, sx, 0, SPRITE_CELL_W, SPRITE_CELL_H, 0, 0, SPRITE_CELL_W, SPRITE_CELL_H);
+
+      if (!tempMaskCanvas) {
+        tempMaskCanvas = createCanvas2D(SPRITE_CELL_W, SPRITE_CELL_H);
+      }
+      const mctx = tempMaskCanvas.getContext("2d");
+      mctx.globalCompositeOperation = "source-over";
+      mctx.clearRect(0, 0, SPRITE_CELL_W, SPRITE_CELL_H);
+      mctx.drawImage(assets25D.spritesImg, sx, SPRITE_CELL_H, SPRITE_CELL_W, SPRITE_CELL_H, 0, 0, SPRITE_CELL_W, SPRITE_CELL_H);
+      mctx.globalCompositeOperation = "source-in";
+      mctx.fillStyle = outfitColor;
+      mctx.fillRect(0, 0, SPRITE_CELL_W, SPRITE_CELL_H);
+      mctx.globalCompositeOperation = "source-over";
+
+      ctx.globalCompositeOperation = "multiply";
+      ctx.drawImage(tempMaskCanvas, 0, 0);
+      ctx.globalCompositeOperation = "source-over";
+      drawSpriteAccessories(ctx, col, { accessory: acc, titleFrameId: frameId, outfitId });
+    } else {
+      // Painterly fallback silhouette while tearoom-sprites.webp loads
+      ctx.fillStyle = outfitColor;
+      ctx.strokeStyle = "#3E291C";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.roundRect(62, 74, 96, 174, 34);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = col === 2 ? "#D8D2C8" : "#ECC2A3";
+      ctx.beginPath();
+      ctx.arc(110, 48, 25, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = "#E4DFD6";
+      ctx.beginPath();
+      ctx.arc(110, 42, 24.5, Math.PI * 0.92, Math.PI * 2.08);
+      ctx.fill();
+      drawSpriteAccessories(ctx, col, { accessory: acc, titleFrameId: frameId, outfitId });
+    }
+
+    if (composedSpriteCache.size >= 64) {
+      composedSpriteCache.clear();
+    }
+    composedSpriteCache.set(cacheKey, out);
+    return out;
+  }
+
+  function drawPainterlyTableItem25D(ctx, itemId, x, y, sc, now) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(sc, sc);
+
+    // Subtle tabletop shadow
+    ctx.fillStyle = "rgba(35, 22, 12, 0.22)";
+    ctx.beginPath();
+    ctx.ellipse(0, 12, 24, 9, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (itemId === "binh-sen") {
+      const vaseGrad = ctx.createLinearGradient(-12, -26, 12, 10);
+      vaseGrad.addColorStop(0, "#4F8F77");
+      vaseGrad.addColorStop(1, "#2A5746");
+      ctx.fillStyle = vaseGrad;
+      ctx.strokeStyle = "#1E3B2F";
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.ellipse(0, -4, 12, 15, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      // Two lotus blossoms
+      [[-8, -28], [8, -24]].forEach(([lx, ly]) => {
+        ctx.strokeStyle = "#3E7047";
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.moveTo(0, -14);
+        ctx.lineTo(lx, ly + 4);
+        ctx.stroke();
+        ctx.fillStyle = "#EFA5B9";
+        ctx.beginPath();
+        ctx.ellipse(lx, ly, 7.5, 5.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#FAD76B";
+        ctx.beginPath();
+        ctx.arc(lx, ly - 1, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    } else if (itemId === "bonsai-mini") {
+      ctx.fillStyle = "#2E6A75";
+      ctx.strokeStyle = "#1C4249";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.roundRect(-16, 0, 32, 11, 3);
+      ctx.fill();
+      ctx.stroke();
+      ctx.strokeStyle = "#5B3B24";
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(0, 1);
+      ctx.quadraticCurveTo(-8, -14, 6, -24);
+      ctx.stroke();
+      [[-10, -18, 9], [8, -26, 11], [15, -16, 7.5]].forEach(([bx, by, br]) => {
+        ctx.fillStyle = "#3E7A48";
+        ctx.beginPath();
+        ctx.ellipse(bx, by, br + 2, br * 0.72, 0, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    } else if (itemId === "dia-hat-dua" || itemId === "snack-plate") {
+      ctx.fillStyle = "#E8DFCC";
+      ctx.strokeStyle = "#8C785C";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.ellipse(0, 4, 21, 9, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      [[-6, 3, "#C9483B"], [4, 2, "#D49B3D"], [-1, -1, "#5C3A28"], [7, 5, "#C9483B"], [-7, 6, "#D49B3D"]].forEach(([sx, sy, col]) => {
+        ctx.fillStyle = col;
+        ctx.beginPath();
+        ctx.arc(sx, sy, 3.2, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    } else if (itemId === "den-dau") {
+      ctx.fillStyle = "#7D522D";
+      ctx.beginPath();
+      ctx.ellipse(0, 6, 13, 6, 0, 0, Math.PI * 2);
+      ctx.fill();
+      const glow = 0.78 + Math.sin((now || 0) * 0.008) * 0.16;
+      ctx.fillStyle = `rgba(255, 224, 128, ${glow.toFixed(2)})`;
+      ctx.beginPath();
+      ctx.ellipse(0, -14, 10, 14, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#B88438";
+      ctx.lineWidth = 1.6;
+      ctx.stroke();
+      ctx.fillStyle = "#FFF5CC";
+      ctx.beginPath();
+      ctx.ellipse(0, -13, 3.2, 5.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (itemId === "radio-go") {
+      ctx.fillStyle = "#7C4C2B";
+      ctx.strokeStyle = "#482914";
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.roundRect(-18, -16, 36, 25, 4);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#E8D3A4";
+      ctx.fillRect(-13, -11, 16, 15);
+      ctx.fillStyle = "#C99848";
+      ctx.beginPath();
+      ctx.arc(10, -6, 3.2, 0, Math.PI * 2);
+      ctx.arc(10, 3, 3.2, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      // Classic Tử Sa teapot + wooden coaster
+      ctx.fillStyle = "#4C2C18";
+      ctx.beginPath();
+      ctx.ellipse(0, 8, 22, 9, 0, 0, Math.PI * 2);
+      ctx.fill();
+      const potGrad = ctx.createRadialGradient(-4, -8, 2, 0, -2, 18);
+      potGrad.addColorStop(0, "#C85A38");
+      potGrad.addColorStop(1, "#7F2F1B");
+      ctx.fillStyle = potGrad;
+      ctx.strokeStyle = "#481C10";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.ellipse(0, -2, 13, 10.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#E2AD42";
+      ctx.beginPath();
+      ctx.arc(0, -14, 2.8, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
 
   function escHtml(str) {
     return String(str || "")
@@ -343,6 +810,10 @@ window.TeaRoomScene = (function () {
       cancelAnimationFrame(animId);
       animId = null;
     }
+    if (canvasEl) {
+      canvasEl.onpointerdown = null;
+      canvasEl.style.cursor = "";
+    }
     window.onpointermove = null;
     window.onpointerup = null;
     isDraggingOverview = false;
@@ -354,6 +825,9 @@ window.TeaRoomScene = (function () {
         if (obj.material) {
           const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
           mats.forEach((m) => {
+            if (m && m.map && m.map.userData && m.map.userData.isPerMount && typeof m.map.dispose === "function") {
+              m.map.dispose();
+            }
             if (m && typeof m.dispose === "function") m.dispose();
           });
         }
@@ -371,6 +845,7 @@ window.TeaRoomScene = (function () {
     camera = null;
     seatObjects = [];
     overviewTables = [];
+    hybridBillboards = [];
     steamParticles = [];
     hostGroup = null;
     lanternGroup = null;
@@ -442,188 +917,53 @@ window.TeaRoomScene = (function () {
     return chair;
   }
 
-  function makeLowPolySenior(member, isUser, outfitColorOverride, cushionHex, accessoryId, withChair) {
+  function makeHybrid25DSenior(member, isUser, outfitColorOverride, cushionHex, accessoryId, withChair, outfitIdOverride) {
     const g = new THREE.Group();
     const nameStr = String((member && member.name) || "");
     const isFemale = (member && member.gender === "female") || /^(Chị|Bà|Cô|Dì|Thím)/i.test(nameStr);
     const outfitColor = isUser ? outfitColorOverride || "#B83B2A" : (member && member.outfitColor) || "#2E5E4E";
-
-    const matSkin = new THREE.MeshStandardMaterial({ color: 0xf4cfb4, roughness: 0.68, metalness: 0.02 });
-    const matFace = new THREE.MeshStandardMaterial({
-      map: getSeniorFaceTex(isFemale),
-      roughness: 0.66,
-      metalness: 0.02
-    });
-    const matOutfit = new THREE.MeshStandardMaterial({ color: outfitColor, roughness: 0.72, metalness: 0.03 });
-    const matTrim = new THREE.MeshStandardMaterial({ color: 0xf5ebd6, roughness: 0.6, metalness: 0.05 });
-    const matPants = new THREE.MeshStandardMaterial({ color: 0x352923, roughness: 0.8, metalness: 0.02 });
-    const matHair = new THREE.MeshStandardMaterial({ color: 0xe6e1d8, roughness: 0.55, metalness: 0.06 });
+    const acc = accessoryId || (member && member.hat) || (isFemale ? "hair-bun" : "none");
+    const frameId = (member && member.titleFrameId) || "none";
+    const outfitId = isUser ? outfitIdOverride || "" : (member && member.outfitId) || "";
+    const isHost = Boolean(member && member.isHost);
 
     if (withChair !== false) {
       g.add(makeWoodenChair(cushionHex));
     }
 
-    // Seated trousers / lap
-    const lap = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.27, 0.24, 16), matPants);
-    lap.scale.set(1.1, 1, 1.25);
-    lap.position.set(0, 0.5, 0.06);
-    g.add(lap);
-
-    // Smooth torso (Áo bà ba / Áo lụa cổ tàu)
-    const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.28, 0.58, 20), matOutfit);
-    torso.scale.set(1.08, 1, 0.92);
-    torso.position.set(0, 0.82, -0.03);
-    torso.castShadow = true;
-    torso.receiveShadow = true;
-    g.add(torso);
-
-    // Mandarin collar & ivory front buttons
-    const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.135, 0.15, 0.08, 16), matTrim);
-    collar.position.set(0, 1.11, -0.02);
-    g.add(collar);
-
-    [0.98, 0.87, 0.76].forEach((by) => {
-      const btn = new THREE.Mesh(new THREE.SphereGeometry(0.022, 8, 8), matTrim);
-      btn.position.set(0, by, 0.2);
-      g.add(btn);
-    });
-
-    // Sculpted shoulders, sleeves & warm hands resting forward
-    [-1, 1].forEach((dir) => {
-      const armGrp = new THREE.Group();
-      armGrp.position.set(dir * 0.26, 0.98, -0.01);
-      const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.072, 0.065, 0.34, 12), matOutfit);
-      upperArm.position.set(dir * 0.03, -0.13, 0.11);
-      upperArm.rotation.x = -0.78;
-      upperArm.rotation.z = dir * -0.18;
-      upperArm.castShadow = true;
-      armGrp.add(upperArm);
-
-      const hand = new THREE.Mesh(new THREE.SphereGeometry(0.062, 12, 10), matSkin);
-      hand.position.set(dir * 0.04, -0.25, 0.25);
-      armGrp.add(hand);
-      g.add(armGrp);
-    });
-
-    // Head group so nodding moves hair, ears, and accessories together!
-    const headGroup = new THREE.Group();
-    headGroup.position.set(0, 1.35, -0.01);
-
-    const headMesh = new THREE.Mesh(new THREE.SphereGeometry(0.24, 24, 20), matFace);
-    headMesh.rotation.y = -Math.PI / 2; // Aligns UV u=0.5 directly with +Z forward
-    headMesh.castShadow = true;
-    headGroup.add(headMesh);
-
-    // Sculpted ears
-    [-0.23, 0.23].forEach((ex) => {
-      const ear = new THREE.Mesh(new THREE.SphereGeometry(0.048, 10, 10), matSkin);
-      ear.scale.set(0.55, 1, 0.8);
-      ear.position.set(ex, -0.01, 0);
-      headGroup.add(ear);
-    });
-
-    // Smooth volumetric silver-white hair cap + side locks
-    const hairCap = new THREE.Mesh(
-      new THREE.SphereGeometry(0.252, 22, 16, 0, Math.PI * 2, 0, Math.PI * 0.58),
-      matHair
-    );
-    hairCap.position.set(0, 0.02, -0.02);
-    hairCap.rotation.x = -0.16;
-    hairCap.castShadow = true;
-    headGroup.add(hairCap);
-
-    const hairBack = new THREE.Mesh(
-      new THREE.SphereGeometry(0.244, 18, 14, Math.PI * 0.15, Math.PI * 0.7, Math.PI * 0.3, Math.PI * 0.52),
-      matHair
-    );
-    hairBack.rotation.y = Math.PI;
-    hairBack.position.set(0, -0.01, -0.02);
-    headGroup.add(hairBack);
-
-    const acc = accessoryId || (member && member.hat) || (isFemale ? "hair-bun" : "none");
-    if (acc === "cap") {
-      const capMat = new THREE.MeshStandardMaterial({ color: 0x4f6842, roughness: 0.72 });
-      const crown = new THREE.Mesh(new THREE.SphereGeometry(0.258, 20, 14, 0, Math.PI * 2, 0, Math.PI * 0.48), capMat);
-      crown.position.set(0, 0.08, 0);
-      crown.castShadow = true;
-      const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.31, 0.32, 0.035, 20), capMat);
-      brim.scale.set(0.95, 1, 1.12);
-      brim.position.set(0, 0.11, 0.04);
-      headGroup.add(crown, brim);
-    } else if (acc === "non-la") {
-      const nonMat = new THREE.MeshStandardMaterial({ color: 0xe9d59b, roughness: 0.65 });
-      const cone = new THREE.Mesh(new THREE.ConeGeometry(0.48, 0.28, 24), nonMat);
-      cone.position.set(0, 0.27, 0);
-      cone.castShadow = true;
-      const rim = new THREE.Mesh(
-        new THREE.TorusGeometry(0.47, 0.014, 8, 28),
-        new THREE.MeshStandardMaterial({ color: 0xc5a467, roughness: 0.6 })
-      );
-      rim.rotation.x = Math.PI / 2;
-      rim.position.set(0, 0.13, 0);
-      headGroup.add(cone, rim);
-    } else if (acc === "scarf") {
-      const scarfMat = new THREE.MeshStandardMaterial({ color: 0x9e3426, roughness: 0.8 });
-      const scarfRing = new THREE.Mesh(new THREE.TorusGeometry(0.165, 0.055, 12, 22), scarfMat);
-      scarfRing.rotation.x = Math.PI / 2;
-      scarfRing.position.set(0, 1.1, 0.01);
-      const scarfTail = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.24, 0.045), scarfMat);
-      scarfTail.position.set(0.06, 0.96, 0.19);
-      scarfTail.rotation.z = -0.12;
-      g.add(scarfRing, scarfTail);
-    } else if (acc === "glasses") {
-      const brassMat = new THREE.MeshStandardMaterial({ color: 0xd4a243, roughness: 0.35, metalness: 0.65 });
-      const leftLens = new THREE.Mesh(new THREE.TorusGeometry(0.058, 0.012, 10, 18), brassMat);
-      leftLens.position.set(-0.085, 0.01, 0.225);
-      const rightLens = new THREE.Mesh(new THREE.TorusGeometry(0.058, 0.012, 10, 18), brassMat);
-      rightLens.position.set(0.085, 0.01, 0.225);
-      const bridge = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.009, 0.06, 8), brassMat);
-      bridge.rotation.z = Math.PI / 2;
-      bridge.position.set(0, 0.015, 0.23);
-      headGroup.add(leftLens, rightLens, bridge);
-    }
-
-    if (acc === "hair-bun" || (isFemale && acc !== "cap" && acc !== "non-la")) {
-      const bun = new THREE.Mesh(new THREE.SphereGeometry(0.115, 16, 14), matHair);
-      bun.position.set(0, 0.04, -0.25);
-      const jadePin = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.012, 0.012, 0.28, 8),
-        new THREE.MeshStandardMaterial({ color: 0x2e7d63, roughness: 0.35 })
-      );
-      jadePin.rotation.z = 1.15;
-      jadePin.position.set(0.02, 0.06, -0.27);
-      headGroup.add(bun, jadePin);
-    }
-
-    g.add(headGroup);
-
-    // 3D Honor Badge Medallion & Carved Base Ring for Title Frame (Khung danh hiệu 3D)
-    const frameId = (member && member.titleFrameId) || "none";
-    const frameColors = {
-      "tri-am": 0x2e7d63,
-      "thi-huu": 0xc84b38,
-      "ky-thu": 0xd49a35,
-      "giu-lua": 0xf0b23a,
-      "dong-ngu": 0x6b8f4e,
-      "cay-cao": 0xf5c242,
-      "tam-an": 0xd98fa8,
-      "kien-tuong": 0xffd97d
+    const spec = {
+      gender: isFemale ? "female" : "male",
+      pose: "front",
+      outfitColor,
+      outfitId,
+      accessory: acc,
+      titleFrameId: frameId,
+      isHost
     };
-    if (frameColors[frameId]) {
-      const fHex = frameColors[frameId];
-      const badgeGoldMat = new THREE.MeshStandardMaterial({ color: 0xe6b44c, roughness: 0.32, metalness: 0.68 });
+    const sprCanvas = composeSeniorSpriteCanvas(spec);
+    const tex = new THREE.CanvasTexture(sprCanvas);
+    if (THREE.SRGBColorSpace) tex.colorSpace = THREE.SRGBColorSpace;
+    tex.userData = { isPerMount: true };
+
+    const spriteMat = new THREE.MeshBasicMaterial({
+      map: tex,
+      transparent: true,
+      alphaTest: 0.14,
+      side: THREE.DoubleSide
+    });
+    // Vertical 2.5D Character Billboard resting naturally atop the 3D carved chair cushion
+    const billboard = new THREE.Mesh(new THREE.PlaneGeometry(1.08, 1.38), spriteMat);
+    billboard.position.set(0, withChair === false ? 0.88 : 0.99, withChair === false ? 0 : 0.06);
+    g.add(billboard);
+
+    const headAnchor = new THREE.Object3D();
+    headAnchor.position.set(0, withChair === false ? 1.46 : 1.56, withChair === false ? 0 : 0.06);
+    g.add(headAnchor);
+
+    // Subtle inlaid honor ring around chair base
+    if (FRAME_HEX[frameId]) {
+      const fHex = parseInt(FRAME_HEX[frameId].slice(1), 16);
       const badgeCoreMat = new THREE.MeshStandardMaterial({ color: fHex, roughness: 0.38, metalness: 0.28 });
-
-      // Pinned chest honor rosette on left tunic lapel
-      const medalRim = new THREE.Mesh(new THREE.CylinderGeometry(0.052, 0.052, 0.018, 18), badgeGoldMat);
-      medalRim.rotation.x = Math.PI / 2;
-      medalRim.position.set(-0.088, 0.96, 0.195);
-      const medalCore = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.036, 0.022, 16), badgeCoreMat);
-      medalCore.rotation.x = Math.PI / 2;
-      medalCore.position.set(-0.088, 0.96, 0.197);
-      g.add(medalRim, medalCore);
-
-      // Subtle inlaid honor ring around chair base
       const honorRing = new THREE.Mesh(new THREE.TorusGeometry(0.49, 0.022, 10, 36), badgeCoreMat);
       honorRing.rotation.x = Math.PI / 2;
       honorRing.position.y = 0.032;
@@ -642,8 +982,21 @@ window.TeaRoomScene = (function () {
     ring.position.y = 0.025;
     g.add(ring);
 
-    return { group: g, head: headGroup, ringMat };
+    const bbEntry = {
+      billboard,
+      tex,
+      spec,
+      pose: "front",
+      baseY: billboard.position.y,
+      seatGroup: g,
+      lockFrontOnly: withChair === false
+    };
+    hybridBillboards.push(bbEntry);
+
+    return { group: g, head: headAnchor, ringMat, billboard, billboardEntry: bbEntry };
   }
+
+  const makeLowPolySenior = makeHybrid25DSenior;
 
   function makeDetailedTeapot(potColorHex) {
     const grp = new THREE.Group();
@@ -1029,6 +1382,23 @@ window.TeaRoomScene = (function () {
     scene.add(dowelTop, dowelBot);
   }
 
+  function applyTableCameraPose() {
+    if (!camera || !currentConfig) return;
+    if (currentConfig.viewMode === "profile") {
+      const dist = 3.78;
+      camera.fov = 38;
+      camera.updateProjectionMatrix();
+      camera.position.set(0.04 + Math.sin(tableAzimuth) * dist, 2.28, Math.cos(tableAzimuth) * dist);
+      camera.lookAt(0.02, 1.08, 0);
+      return;
+    }
+    const radius = 5.55;
+    camera.fov = 40;
+    camera.updateProjectionMatrix();
+    camera.position.set(Math.sin(tableAzimuth) * radius, 4.02, Math.cos(tableAzimuth) * radius);
+    camera.lookAt(0, 1.04, -0.35);
+  }
+
   function applyOverviewCameraPose() {
     if (!camera) return;
     const isUltra = overviewWideLevel === "ultrawide";
@@ -1148,7 +1518,14 @@ window.TeaRoomScene = (function () {
       });
     });
 
-    const hostBuild = makeLowPolySenior({ name: "Chị Trà", gender: "female", outfitColor: "#D98A2B", hat: "hair-bun" }, false, null, theme.cushionHex, "hair-bun", false);
+    const hostBuild = makeHybrid25DSenior(
+      { name: "Trợ lý Chị Trà", gender: "female", outfitColor: "#D98A2B", hat: "hair-bun", isHost: true },
+      false,
+      null,
+      theme.cushionHex,
+      "hair-bun",
+      false
+    );
     hostGroup = hostBuild.group;
     hostGroup.scale.set(0.76, 0.76, 0.76);
     hostGroup.position.set(0, 0, -4.15);
@@ -1158,10 +1535,7 @@ window.TeaRoomScene = (function () {
 
   function init3DTableCloseUp(config) {
     const theme = config.roomTheme || {};
-    camera.fov = 40;
-    camera.updateProjectionMatrix();
-    camera.position.set(0, 4.05, 5.5);
-    camera.lookAt(0, 1.04, -0.4);
+    applyTableCameraPose();
 
     addRoomShell(theme, false);
 
@@ -1332,13 +1706,14 @@ window.TeaRoomScene = (function () {
       const m = slot.member;
       const ang = seatAngles[slot.angIdx];
       const radius = 2.04;
-      const built = makeLowPolySenior(
+      const built = makeHybrid25DSenior(
         m,
         slot.isUser,
         config.userOutfitColor,
         theme.cushionHex,
         slot.isUser ? config.userAccessory : m.hat,
-        true
+        true,
+        slot.isUser ? config.userOutfitId : m.outfitId
       );
       built.group.scale.set(1.16, 1.16, 1.16);
       built.group.position.set(Math.cos(ang) * radius, 0, Math.sin(ang) * radius);
@@ -1359,12 +1734,13 @@ window.TeaRoomScene = (function () {
         isUser: slot.isUser,
         group: built.group,
         head: built.head,
+        billboard: built.billboard,
         ringMat: built.ringMat
       });
     });
 
-    const hostBuild = makeLowPolySenior(
-      { name: "Chị Trà", gender: "female", outfitColor: "#D98A2B", hat: "hair-bun" },
+    const hostBuild = makeHybrid25DSenior(
+      { name: "Trợ lý Chị Trà", gender: "female", outfitColor: "#D98A2B", hat: "hair-bun", isHost: true },
       false,
       null,
       theme.cushionHex,
@@ -1379,10 +1755,7 @@ window.TeaRoomScene = (function () {
 
   function init3DProfileShowcase(config) {
     const theme = config.roomTheme || {};
-    camera.fov = 38;
-    camera.updateProjectionMatrix();
-    camera.position.set(0.04, 2.3, 3.78);
-    camera.lookAt(0.02, 1.1, 0);
+    applyTableCameraPose();
 
     addRoomShell(theme, false);
 
@@ -1395,20 +1768,21 @@ window.TeaRoomScene = (function () {
     rug.receiveShadow = true;
     scene.add(rug);
 
-    // User's 3D character seated on the left, angled toward camera so outfit + hat/glasses/scarf are super clear
+    // User's 2.5D character sprite mounted on 3D carved chair
     const userMember = {
       name: config.userName || "Anh Tám Vườn",
       gender: config.userGender || "male",
       hat: config.userAccessory || "glasses",
       titleFrameId: config.userTitleFrame || "none"
     };
-    const built = makeLowPolySenior(
+    const built = makeHybrid25DSenior(
       userMember,
       true,
       config.userOutfitColor || "#6E4A35",
       0x2e5e4e,
       config.userAccessory || "glasses",
-      true
+      true,
+      config.userOutfitId || ""
     );
     built.group.scale.set(1.24, 1.24, 1.24);
     built.group.position.set(-0.62, 0, -0.05);
@@ -1585,8 +1959,21 @@ window.TeaRoomScene = (function () {
     tagsLayerEl.innerHTML = html;
   }
 
+  function coverImageRect(boxX, boxY, boxW, boxH, srcW, srcH) {
+    const scale = Math.max(boxW / srcW, boxH / srcH);
+    const drawW = srcW * scale;
+    const drawH = srcH * scale;
+    return {
+      x: boxX + (boxW - drawW) * 0.5,
+      y: boxY + (boxH - drawH) * 0.5,
+      w: drawW,
+      h: drawH
+    };
+  }
+
   function drawOverview25D(now) {
     if (!canvasEl || !currentConfig) return;
+    ensureAssets25DLoaded();
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const rect = containerEl.getBoundingClientRect();
     const w = Math.max(300, Math.round(rect.width || 440));
@@ -1600,83 +1987,145 @@ window.TeaRoomScene = (function () {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     const theme = currentConfig.roomTheme || {};
-    ctx.fillStyle = theme.wall2D || "#F6ECDA";
+    const isUltraWide = overviewWideLevel === "ultrawide";
+    const panShift = -pan25DX * w * 0.65;
+    const wideRect = isUltraWide
+      ? coverImageRect(panShift * 0.45 - w * 0.04, 0, w * 1.08, h, 960, 720)
+      : coverImageRect(panShift - w * 0.10, -h * 0.04, w * 1.20, h * 1.08, 960, 720);
+
+    if (assets25D.lobbyReady && assets25D.lobbyImg) {
+      ctx.drawImage(assets25D.lobbyImg, wideRect.x, wideRect.y, wideRect.w, wideRect.h);
+    } else {
+      ctx.fillStyle = theme.wall2D || "#F6ECDA";
+      ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = theme.floor2D || "#D6B083";
+      ctx.fillRect(0, h * 0.3, w, h * 0.7);
+      ctx.fillStyle = "#6B4125";
+      ctx.fillRect(0, h * 0.28, w, h * 0.03);
+    }
+
+    // Gentle sunlit glow shimmer over ceiling lanterns
+    const shimmer = 0.14 + Math.sin((now || 0) * 0.0025) * 0.04;
+    const sunGrad = ctx.createRadialGradient(w * 0.5, h * 0.18, 10, w * 0.5, h * 0.35, w * 0.55);
+    sunGrad.addColorStop(0, `rgba(255, 226, 150, ${shimmer.toFixed(3)})`);
+    sunGrad.addColorStop(1, "rgba(255, 226, 150, 0)");
+    ctx.fillStyle = sunGrad;
     ctx.fillRect(0, 0, w, h);
 
-    ctx.fillStyle = theme.floor2D || "#DFC6A2";
-    ctx.fillRect(0, h * 0.16, w, h * 0.84);
+    // Chị Trà assistant beside the carved back tea counter
+    const hostX = wideRect.x + wideRect.w * 0.5 + Math.sin((now || 0) * 0.001) * 14;
+    const hostBottomY = wideRect.y + wideRect.h * 0.445;
+    const hostH = wideRect.h * 0.145;
+    const hostW = hostH * (SPRITE_CELL_W / SPRITE_CELL_H);
+    const hostSpr = composeSeniorSpriteCanvas({
+      gender: "female",
+      pose: "front",
+      outfitColor: "#D98A2B",
+      accessory: "hair-bun",
+      isHost: true
+    });
+    ctx.drawImage(hostSpr, hostX - hostW * 0.5, hostBottomY - hostH, hostW, hostH);
 
-    ctx.fillStyle = "#7B5233";
-    ctx.fillRect(0, h * 0.145, w, h * 0.02);
-
-    ctx.fillStyle = "rgba(184, 59, 42, 0.1)";
-    ctx.fillRect(w * 0.44, h * 0.16, w * 0.12, h * 0.84);
-
-    const slots2D = [
-      [w * 0.17, h * 0.44],
-      [w * 0.5, h * 0.32],
-      [w * 0.83, h * 0.44],
-      [w * 0.19, h * 0.78],
-      [w * 0.5, h * 0.86],
-      [w * 0.81, h * 0.78]
+    // 6 Interactive Tables across the open honey-oak floor bays
+    const normSlots = [
+      { nx: 0.21, ny: 0.56, sc: 0.80 },
+      { nx: 0.50, ny: 0.53, sc: 0.78 },
+      { nx: 0.79, ny: 0.56, sc: 0.80 },
+      { nx: 0.20, ny: 0.82, sc: 0.98 },
+      { nx: 0.50, ny: 0.84, sc: 1.00 },
+      { nx: 0.80, ny: 0.82, sc: 0.98 }
     ];
     let tagHtml = "";
 
     currentConfig.tables.slice(0, 6).forEach((tbl, tIdx) => {
-      const cx = slots2D[tIdx % slots2D.length][0];
-      const cy = slots2D[tIdx % slots2D.length][1];
+      const slot = normSlots[tIdx % normSlots.length];
+      const cx = wideRect.x + slot.nx * wideRect.w;
+      const cy = wideRect.y + slot.ny * wideRect.h;
+      const sc = slot.sc * (h / 300) * (isUltraWide ? 0.90 : 1.0);
       const isRec = tIdx === currentConfig.recommendedIdx;
 
-      // Patterned rug halo
-      ctx.fillStyle = "#F7EFE0";
+      // Woven medallion rug beneath each table
+      ctx.save();
+      ctx.fillStyle = "rgba(247, 239, 224, 0.9)";
       ctx.beginPath();
-      ctx.ellipse(cx, cy + 4, 42, 22, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx, cy + 4 * sc, 46 * sc, 21 * sc, 0, 0, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = isRec ? "#F4A836" : "#2E5E4E";
-      ctx.lineWidth = isRec ? 3.5 : 1.5;
+      ctx.strokeStyle = isRec ? "#EFA026" : "#2E5E4E";
+      ctx.lineWidth = isRec ? 3.2 : 1.5;
       ctx.stroke();
 
-      ctx.fillStyle = "rgba(35, 26, 20, 0.16)";
-      ctx.beginPath();
-      ctx.ellipse(cx, cy + 8, 31, 15, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = "#7D492A";
-      ctx.beginPath();
-      ctx.ellipse(cx, cy, 30, 15, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = isRec ? "#FFCF5C" : "#B84A2E";
-      ctx.beginPath();
-      ctx.arc(cx, cy - 3, 5.5, 0, Math.PI * 2);
-      ctx.fill();
-
-      const offsets = [
-        { dx: -33, dy: -3 },
-        { dx: 33, dy: -3 },
-        { dx: -22, dy: 18 },
-        { dx: 22, dy: 18 }
+      // Back row seated 2.5D sprites (slots 0, 1)
+      const seatOffsets = [
+        { dx: -28 * sc, dy: -4 * sc, flip: false, pose: "front" },
+        { dx: 28 * sc, dy: -4 * sc, flip: true, pose: "front" },
+        { dx: -22 * sc, dy: 14 * sc, flip: false, pose: "back" },
+        { dx: 22 * sc, dy: 14 * sc, flip: true, pose: "back" }
       ];
-      tbl.members.slice(0, 4).forEach((m, idx) => {
-        const o = offsets[idx];
-        ctx.fillStyle = m.outfitColor || "#2E5E4E";
-        ctx.beginPath();
-        ctx.arc(cx + o.dx, cy + o.dy, 7, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = "#F4CFB4";
-        ctx.beginPath();
-        ctx.arc(cx + o.dx, cy + o.dy - 5.5, 5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = "#E6E1D8";
-        ctx.beginPath();
-        ctx.arc(cx + o.dx, cy + o.dy - 7, 4.8, Math.PI, 0);
-        ctx.fill();
+      const sprH = 44 * sc;
+      const sprW = sprH * (SPRITE_CELL_W / SPRITE_CELL_H);
+
+      tbl.members.slice(0, 2).forEach((m, idx) => {
+        const o = seatOffsets[idx];
+        const spr = composeSeniorSpriteCanvas({
+          gender: m.gender || (/^(Chị|Bà|Cô|Dì|Thím)/i.test(m.name || "") ? "female" : "male"),
+          pose: o.pose,
+          outfitColor: m.outfitColor || "#2E5E4E",
+          outfitId: m.outfitId || "",
+          accessory: m.hat || "none",
+          titleFrameId: m.titleFrameId || "none"
+        });
+        ctx.save();
+        ctx.translate(cx + o.dx, cy + o.dy + 10 * sc);
+        if (o.flip) ctx.scale(-1, 1);
+        ctx.drawImage(spr, -sprW * 0.5, -sprH, sprW, sprH);
+        ctx.restore();
       });
 
+      // Carved round wooden table
+      ctx.fillStyle = "rgba(35, 22, 12, 0.25)";
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + 8 * sc, 28 * sc, 13 * sc, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      const tGrad = ctx.createRadialGradient(cx - 5 * sc, cy - 3 * sc, 2, cx, cy, 28 * sc);
+      tGrad.addColorStop(0, "#8B4E2B");
+      tGrad.addColorStop(1, "#522A14");
+      ctx.fillStyle = tGrad;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy - 1 * sc, 27 * sc, 12.5 * sc, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#3E1E0E";
+      ctx.lineWidth = 1.6;
+      ctx.stroke();
+
+      // Tiny Tử Sa pot center
+      drawPainterlyTableItem25D(ctx, isRec ? "binh-sen" : "am-tu-sa", cx, cy - 3 * sc, 0.42 * sc, now);
+
+      // Front row seated sprites (slots 2, 3)
+      tbl.members.slice(2, 4).forEach((m, mIdx) => {
+        const o = seatOffsets[2 + mIdx];
+        const spr = composeSeniorSpriteCanvas({
+          gender: m.gender || (/^(Chị|Bà|Cô|Dì|Thím)/i.test(m.name || "") ? "female" : "male"),
+          pose: o.pose,
+          outfitColor: m.outfitColor || "#2E5E4E",
+          outfitId: m.outfitId || "",
+          accessory: m.hat || "none",
+          titleFrameId: m.titleFrameId || "none"
+        });
+        ctx.save();
+        ctx.translate(cx + o.dx, cy + o.dy + 10 * sc);
+        if (o.flip) ctx.scale(-1, 1);
+        ctx.drawImage(spr, -sprW * 0.5, -sprH, sprW, sprH);
+        ctx.restore();
+      });
+      ctx.restore();
+
+      const sx = Math.max(76, Math.min(w - 76, cx));
+      const sy = Math.max(24, Math.min(h - 10, cy - 28 * sc));
       const count = tbl.members.length;
       const hostMark = tbl.isHostNamed ? " · Chủ bàn" : "";
-      const text = isRec ? `${tbl.shortLabel} · Gợi ý` : `${tbl.shortLabel}${hostMark} · ${count}/5`;
-      tagHtml += `<span class="seat-status-tag ${isRec ? "active-speaker" : ""}" style="left:${cx.toFixed(0)}px;top:${Math.max(24, cy - 22).toFixed(0)}px">${escHtml(text)}</span>`;
+      const text = isRec ? `${tbl.shortLabel} · Gợi ý (${count}/5)` : `${tbl.shortLabel}${hostMark} · ${count}/5`;
+      tagHtml += `<span class="seat-status-tag ${isRec ? "active-speaker" : ""}" style="left:${sx.toFixed(0)}px;top:${sy.toFixed(0)}px">${escHtml(text)}</span>`;
     });
 
     if (tagsLayerEl) {
@@ -1686,6 +2135,7 @@ window.TeaRoomScene = (function () {
 
   function drawTableCloseUp25D(now) {
     if (!canvasEl || !currentConfig) return;
+    ensureAssets25DLoaded();
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const rect = containerEl.getBoundingClientRect();
     const w = Math.max(300, Math.round(rect.width || 440));
@@ -1699,151 +2149,163 @@ window.TeaRoomScene = (function () {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     const theme = currentConfig.roomTheme || {};
-    ctx.fillStyle = theme.wall2D || "#F6ECDA";
+    const panShift = -pan25DX * w * 0.55;
+    const bgRect = coverImageRect(panShift - w * 0.04, 0, w * 1.08, h, 960, 720);
+
+    if (assets25D.tableReady && assets25D.tableImg) {
+      ctx.drawImage(assets25D.tableImg, bgRect.x, bgRect.y, bgRect.w, bgRect.h);
+    } else {
+      ctx.fillStyle = theme.wall2D || "#F6ECDA";
+      ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = theme.floor2D || "#DFC6A2";
+      ctx.fillRect(0, h * 0.35, w, h * 0.65);
+    }
+
+    // Subtle glowing silk lantern halo on upper-left & warm window sunbeams
+    const lanternPulse = 0.20 + Math.sin((now || 0) * 0.003) * 0.05;
+    const lx = bgRect.x + bgRect.w * 0.365;
+    const ly = bgRect.y + bgRect.h * 0.16;
+    const lg = ctx.createRadialGradient(lx, ly, 4, lx, ly, bgRect.h * 0.22);
+    lg.addColorStop(0, `rgba(255, 224, 130, ${lanternPulse.toFixed(3)})`);
+    lg.addColorStop(1, "rgba(255, 224, 130, 0)");
+    ctx.fillStyle = lg;
     ctx.fillRect(0, 0, w, h);
 
-    // Wainscoting & floor
-    ctx.fillStyle = "#8B5D3B";
-    ctx.fillRect(0, h * 0.27, w, h * 0.08);
-    ctx.fillStyle = theme.floor2D || "#DFC6A2";
-    ctx.fillRect(0, h * 0.35, w, h * 0.65);
+    // Chị Trà host beside sideboard (glides forward politely when pouring tea!)
+    const serveMix = hostServingTimer > 0 ? Math.sin(Math.min(1, hostServingTimer / 4200) * Math.PI) : 0;
+    const hostNx = 0.205 + serveMix * 0.195;
+    const hostNy = 0.445 + serveMix * 0.02;
+    const hostH = bgRect.h * (0.205 + serveMix * 0.018);
+    const hostW = hostH * (SPRITE_CELL_W / SPRITE_CELL_H);
+    const hostSpr = composeSeniorSpriteCanvas({
+      gender: "female",
+      pose: "front",
+      outfitColor: "#D98A2B",
+      accessory: "hair-bun",
+      isHost: true
+    });
+    const hx = bgRect.x + hostNx * bgRect.w;
+    const hy = bgRect.y + hostNy * bgRect.h;
+    ctx.drawImage(hostSpr, hx - hostW * 0.5, hy - hostH, hostW, hostH);
 
-    // Lattice window with bamboo
-    ctx.fillStyle = "#623C22";
-    ctx.fillRect(w * 0.07, h * 0.05, w * 0.27, h * 0.2);
-    ctx.fillStyle = "#E6F5F0";
-    ctx.fillRect(w * 0.085, h * 0.068, w * 0.24, h * 0.164);
-    ctx.strokeStyle = "#4B8B5B";
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(w * 0.15, h * 0.23);
-    ctx.lineTo(w * 0.17, h * 0.08);
-    ctx.moveTo(w * 0.22, h * 0.23);
-    ctx.lineTo(w * 0.21, h * 0.09);
-    ctx.stroke();
-
-    // Calligraphy scroll in center
-    ctx.fillStyle = "#FBF5E8";
-    ctx.fillRect(w * 0.45, h * 0.04, w * 0.1, h * 0.2);
-    ctx.strokeStyle = "#8C583A";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(w * 0.45, h * 0.04, w * 0.1, h * 0.2);
-
-    const cx = w * 0.5;
-    const cy = h * 0.6;
-
-    // Gạch bông rug ellipse
-    ctx.fillStyle = "#F7EFE0";
-    ctx.beginPath();
-    ctx.ellipse(cx, cy + 16, w * 0.38, h * 0.24, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = "#B83B2A";
-    ctx.lineWidth = 3;
-    ctx.stroke();
-
-    // Rosewood table
-    ctx.fillStyle = "rgba(35, 26, 20, 0.18)";
-    ctx.beginPath();
-    ctx.ellipse(cx, cy + 26, w * 0.24, h * 0.13, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = "#784527";
-    ctx.beginPath();
-    ctx.ellipse(cx, cy, w * 0.24, h * 0.13, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = "#522D17";
-    ctx.lineWidth = 2.5;
-    ctx.stroke();
-
-    // Teapot & 5 cups
-    ctx.fillStyle = "#A44528";
-    ctx.beginPath();
-    ctx.arc(cx, cy - 6, 11, 0, Math.PI * 2);
-    ctx.fill();
-    const pulse = Math.sin(now * 0.004) * 3;
-    ctx.strokeStyle = "rgba(255,255,255,0.85)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(cx - 2, cy - 20);
-    ctx.quadraticCurveTo(cx + pulse, cy - 29, cx - 1, cy - 38);
-    ctx.stroke();
-
-    const seatCoords = [
-      { x: w * 0.17, y: h * 0.44 },
-      { x: w * 0.5, y: h * 0.33 },
-      { x: w * 0.83, y: h * 0.44 },
-      { x: w * 0.23, y: h * 0.8 },
-      { x: w * 0.77, y: h * 0.8 }
+    // 5 exact chair slots aligned to the empty carved armchairs in tearoom-table-25d.jpg
+    const chairSlots = [
+      { nx: 0.242, ny: 0.705, hFrac: 0.30, flip: false, pose: "front", order: 2 }, // 8:30 left-front (Bạn)
+      { nx: 0.328, ny: 0.530, hFrac: 0.255, flip: false, pose: "front", order: 0 }, // 10:30 left-back
+      { nx: 0.525, ny: 0.460, hFrac: 0.245, flip: false, pose: "front", order: 0 }, // 12:00 top-center
+      { nx: 0.728, ny: 0.555, hFrac: 0.265, flip: true, pose: "front", order: 1 }, // 2:00 right-back
+      { nx: 0.695, ny: 0.880, hFrac: 0.315, flip: false, pose: "back", order: 4 } // 4:30 foreground-right (back_3q)
     ];
 
     const list = currentConfig.table.members.slice(0, 4).map((m, idx) => ({
       member: m,
-      coordIdx: idx,
+      slotIdx: idx + 1,
+      seatPosIdx: idx,
       isUser: false
     }));
-    list.push({
+    // Place user prominently at left-front chair (index 0) so outfit/accessories/face stay visible!
+    list.unshift({
       member: {
         name: currentConfig.userName,
         outfitColor: currentConfig.userOutfitColor,
+        outfitId: currentConfig.userOutfitId || "",
+        hat: currentConfig.userAccessory || "none",
+        gender: currentConfig.userGender || "male",
         titleFrameId: currentConfig.userTitleFrame || "none",
-        badge: "Bạn"
+        badge: currentConfig.userBadge || "Bạn"
       },
-      coordIdx: 4,
+      slotIdx: 0,
+      seatPosIdx: list.length,
       isUser: true
     });
 
-    let tagHtml = "";
-    list.forEach((slot, idx) => {
-      const m = slot.member;
-      const p = seatCoords[slot.coordIdx];
-      const isActive = idx === activeSeatIdx;
-
-      // Teacup on table toward each person
-      const cupX = cx + (p.x - cx) * 0.45;
-      const cupY = cy + (p.y - cy) * 0.42;
-      ctx.fillStyle = "#F4F0E4";
-      ctx.beginPath();
-      ctx.arc(cupX, cupY, 5, 0, Math.PI * 2);
-      ctx.fill();
+    function drawSeatedMember(entry) {
+      const slot = chairSlots[entry.slotIdx];
+      const m = entry.member;
+      const isActive = entry.seatPosIdx === activeSeatIdx;
+      const cx = bgRect.x + slot.nx * bgRect.w;
+      const by = bgRect.y + slot.ny * bgRect.h;
+      const bob = isActive ? Math.sin((now || 0) * 0.006) * 2.2 : Math.sin((now || 0) * 0.002 + entry.slotIdx) * 0.8;
+      const sprH = bgRect.h * slot.hFrac;
+      const sprW = sprH * (SPRITE_CELL_W / SPRITE_CELL_H);
 
       if (isActive) {
+        ctx.save();
         ctx.strokeStyle = "#F4A836";
-        ctx.lineWidth = 4;
+        ctx.lineWidth = 3;
+        ctx.fillStyle = "rgba(244, 168, 54, 0.22)";
         ctx.beginPath();
-        ctx.ellipse(p.x, p.y + 18, 28, 13, 0, 0, Math.PI * 2);
+        ctx.ellipse(cx, by - sprH * 0.08, sprW * 0.36, 11, 0, 0, Math.PI * 2);
+        ctx.fill();
         ctx.stroke();
+        ctx.restore();
       }
 
-      ctx.fillStyle = "#2E5E4E";
-      ctx.beginPath();
-      ctx.ellipse(p.x, p.y + 14, 21, 10, 0, 0, Math.PI * 2);
-      ctx.fill();
+      const spr = composeSeniorSpriteCanvas({
+        gender: m.gender || (/^(Chị|Bà|Cô|Dì|Thím)/i.test(m.name || "") ? "female" : "male"),
+        pose: slot.pose,
+        outfitColor: m.outfitColor || "#2E5E4E",
+        outfitId: m.outfitId || "",
+        accessory: m.hat || "none",
+        titleFrameId: m.titleFrameId || "none"
+      });
+      ctx.save();
+      ctx.translate(cx, by + bob);
+      if (slot.flip) ctx.scale(-1, 1);
+      ctx.drawImage(spr, -sprW * 0.5, -sprH, sprW, sprH);
+      ctx.restore();
+    }
 
-      ctx.fillStyle = m.outfitColor || "#B83B2A";
-      ctx.beginPath();
-      ctx.roundRect(p.x - 14, p.y - 8, 28, 23, 9);
-      ctx.fill();
+    // Draw back & side seats (orders 0..2) behind tabletop foreground items
+    list
+      .filter((entry) => chairSlots[entry.slotIdx].order < 3)
+      .sort((a, b) => chairSlots[a.slotIdx].order - chairSlots[b.slotIdx].order)
+      .forEach(drawSeatedMember);
 
-      ctx.fillStyle = "#F4CFB4";
-      ctx.beginPath();
-      ctx.arc(p.x, p.y - 17, 11.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = "#E6E1D8";
-      ctx.beginPath();
-      ctx.arc(p.x, p.y - 20, 11, Math.PI, 0);
-      ctx.fill();
+    // Center tabletop props on the gleaming dark rosewood table
+    const tblCx = bgRect.x + bgRect.w * 0.502;
+    const tblCy = bgRect.y + bgRect.h * 0.495;
+    const propScale = (bgRect.h / 330) * 0.96;
+    drawPainterlyTableItem25D(ctx, "snack-plate", tblCx - 28 * propScale, tblCy + 10 * propScale, propScale * 0.82, now);
+    drawPainterlyTableItem25D(ctx, "am-tu-sa", tblCx, tblCy - 4 * propScale, propScale, now);
+    if (currentConfig.userItem && currentConfig.userItem !== "am-tu-sa") {
+      drawPainterlyTableItem25D(ctx, currentConfig.userItem, tblCx + 31 * propScale, tblCy + 7 * propScale, propScale * 0.85, now);
+    }
 
-      // Eyes & smile
-      ctx.fillStyle = "#2A1C15";
+    // Rising aromatic steam wisps above the teapot
+    const steamT = (now || 0) * 0.0024;
+    for (let s = 0; s < 3; s++) {
+      const ph = (steamT + s * 2.1) % (Math.PI * 2);
+      const lift = (ph / (Math.PI * 2)) * 28 * propScale;
+      const drift = Math.sin(ph * 2 + s) * 4;
+      const alpha = Math.max(0, 0.52 * (1 - ph / (Math.PI * 2)));
+      ctx.strokeStyle = `rgba(255, 252, 244, ${alpha.toFixed(2)})`;
+      ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(p.x - 4, p.y - 17, 1.3, 0, Math.PI * 2);
-      ctx.arc(p.x + 4, p.y - 17, 1.3, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.moveTo(tblCx + drift * 0.5, tblCy - 14 * propScale - lift * 0.4);
+      ctx.quadraticCurveTo(tblCx + drift * 1.4, tblCy - 24 * propScale - lift * 0.8, tblCx - drift * 0.6, tblCy - 34 * propScale - lift);
+      ctx.stroke();
+    }
 
-      const shortName = slot.isUser ? "Bạn" : m.name;
-      const label = isActive ? `${shortName} · Nói` : m.badge === "Mời trà" ? `${shortName} · Trà` : shortName;
-      const sx = Math.max(82, Math.min(w - 82, p.x));
-      const sy = Math.max(28, p.y - 32);
+    // Foreground-right seat (order 4) occludes tabletop foreground edge realistically
+    list
+      .filter((entry) => chairSlots[entry.slotIdx].order >= 3)
+      .forEach(drawSeatedMember);
+
+    // Generate clean floating status pills & sticker pops
+    let tagHtml = "";
+    list.forEach((entry) => {
+      const slot = chairSlots[entry.slotIdx];
+      const m = entry.member;
+      const isActive = entry.seatPosIdx === activeSeatIdx;
+      const sprH = bgRect.h * slot.hFrac;
+      const cx = bgRect.x + slot.nx * bgRect.w;
+      const by = bgRect.y + slot.ny * bgRect.h;
+
+      const shortName = entry.isUser ? "Bạn" : m.name;
+      const label = isActive ? `${shortName} · Nói` : m.badge === "Mời trà" || m.badge === "Mời bánh" ? `${shortName} · ${m.badge}` : shortName;
+      const sx = Math.max(82, Math.min(w - 82, cx));
+      const sy = Math.max(26, Math.min(h - 8, by - sprH + 4));
       tagHtml += formatSeatTagHtml({
         sx,
         sy,
@@ -1852,11 +2314,16 @@ window.TeaRoomScene = (function () {
         titleFrameId: m.titleFrameId,
         isRealPeer: m.isRealPeer
       });
-      if (activeStickerPop && activeStickerPop.seatIdx === idx && activeStickerPop.expiresAt > Date.now()) {
+      const matchStickerIdx = entry.seatPosIdx;
+      if (activeStickerPop && activeStickerPop.seatIdx === matchStickerIdx && activeStickerPop.expiresAt > Date.now()) {
         const popY = Math.max(26, sy - 30);
         tagHtml += `<span class="seat-sticker-pop" style="left:${sx.toFixed(0)}px;top:${popY.toFixed(0)}px;background:${escHtml(activeStickerPop.bg)};color:${escHtml(activeStickerPop.color)};border-color:${escHtml(activeStickerPop.color)}">${escHtml(activeStickerPop.label)}</span>`;
       }
     });
+
+    if (hostServingTimer > 0) {
+      tagHtml += `<span class="seat-status-tag" style="left:${Math.max(86, Math.min(w - 86, hx)).toFixed(0)}px;top:${Math.max(24, hy - hostH + 2).toFixed(0)}px">Trợ lý Chị Trà · Rót trà</span>`;
+    }
 
     if (tagsLayerEl) {
       tagsLayerEl.innerHTML = tagHtml;
@@ -1898,8 +2365,9 @@ window.TeaRoomScene = (function () {
     tagsLayerEl.innerHTML = html;
   }
 
-  function drawProfileShowcase25D() {
+  function drawProfileShowcase25D(now) {
     if (!canvasEl || !currentConfig) return;
+    ensureAssets25DLoaded();
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const rect = containerEl.getBoundingClientRect();
     const w = Math.max(300, Math.round(rect.width || 440));
@@ -1912,93 +2380,142 @@ window.TeaRoomScene = (function () {
     if (!ctx) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    ctx.fillStyle = "#F6ECDA";
-    ctx.fillRect(0, 0, w, h);
-    ctx.fillStyle = "#8B5D3B";
-    ctx.fillRect(0, h * 0.34, w, h * 0.08);
-    ctx.fillStyle = "#DFC6A2";
-    ctx.fillRect(0, h * 0.42, w, h * 0.58);
-
-    // Rug
-    ctx.fillStyle = "#F7EFE0";
-    ctx.beginPath();
-    ctx.ellipse(w * 0.5, h * 0.72, w * 0.38, h * 0.2, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = "#B83B2A";
-    ctx.lineWidth = 3;
-    ctx.stroke();
-
-    // Seated User Avatar on left
-    const px = w * 0.32;
-    const py = h * 0.58;
-    ctx.fillStyle = "#2E5E4E";
-    ctx.beginPath();
-    ctx.ellipse(px, py + 28, 36, 15, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = currentConfig.userOutfitColor || "#6E4A35";
-    ctx.beginPath();
-    ctx.roundRect(px - 24, py - 8, 48, 38, 12);
-    ctx.fill();
-
-    ctx.fillStyle = "#F4CFB4";
-    ctx.beginPath();
-    ctx.arc(px, py - 24, 18, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#E6E1D8";
-    ctx.beginPath();
-    ctx.arc(px, py - 28, 17.5, Math.PI, 0);
-    ctx.fill();
-
-    const acc = currentConfig.userAccessory || "glasses";
-    if (acc === "cap") {
-      ctx.fillStyle = "#4F6842";
-      ctx.beginPath();
-      ctx.ellipse(px, py - 38, 22, 9, 0, Math.PI, 0);
-      ctx.fill();
-    } else if (acc === "non-la") {
-      ctx.fillStyle = "#E9D59B";
-      ctx.beginPath();
-      ctx.moveTo(px, py - 52);
-      ctx.lineTo(px - 26, py - 32);
-      ctx.lineTo(px + 26, py - 32);
-      ctx.closePath();
-      ctx.fill();
-    } else if (acc === "glasses") {
-      ctx.strokeStyle = "#8C5B1F";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(px - 11, py - 27, 8, 6);
-      ctx.strokeRect(px + 3, py - 27, 8, 6);
-    } else if (acc === "scarf") {
-      ctx.fillStyle = "#9E3426";
-      ctx.fillRect(px - 16, py - 9, 32, 8);
+    // Warm tea room corner backdrop
+    if (assets25D.tableReady && assets25D.tableImg) {
+      const bgRect = coverImageRect(0, 0, w, h, 960, 720);
+      ctx.save();
+      ctx.globalAlpha = 0.42;
+      ctx.drawImage(assets25D.tableImg, bgRect.x, bgRect.y, bgRect.w, bgRect.h);
+      ctx.restore();
+      const wash = ctx.createLinearGradient(0, 0, 0, h);
+      wash.addColorStop(0, "rgba(246, 236, 218, 0.72)");
+      wash.addColorStop(1, "rgba(223, 198, 162, 0.68)");
+      ctx.fillStyle = wash;
+      ctx.fillRect(0, 0, w, h);
+    } else {
+      ctx.fillStyle = "#F6ECDA";
+      ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = "#8B5D3B";
+      ctx.fillRect(0, h * 0.34, w, h * 0.08);
+      ctx.fillStyle = "#DFC6A2";
+      ctx.fillRect(0, h * 0.42, w, h * 0.58);
     }
 
-    // Side table & item on right
-    const tx = w * 0.7;
-    const ty = h * 0.65;
-    ctx.fillStyle = "#784527";
+    // Floral Indochine rug ellipse
+    ctx.fillStyle = "#F7EFE0";
     ctx.beginPath();
-    ctx.ellipse(tx, ty, 48, 22, 0, 0, Math.PI * 2);
+    ctx.ellipse(w * 0.5, h * 0.78, w * 0.42, h * 0.16, 0, 0, Math.PI * 2);
     ctx.fill();
+    ctx.strokeStyle = "#B83B2A";
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
 
-    ctx.fillStyle = currentConfig.itemColor || "#8B4228";
+    // Subtle carved mahogany chair armrests & jade cushion peeking gently behind portrait
+    const px = w * 0.32;
+    const baseFootY = h * 0.90;
+    ctx.save();
+    ctx.fillStyle = "rgba(35, 22, 12, 0.24)";
     ctx.beginPath();
-    ctx.arc(tx, ty - 14, 16, 0, Math.PI * 2);
+    ctx.ellipse(px, baseFootY - 4, 46, 12, 0, 0, Math.PI * 2);
     ctx.fill();
+    // Carved wood side stiles & curved top crest behind shoulders
+    ctx.strokeStyle = "#59331B";
+    ctx.fillStyle = "#6E4124";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(px - 32, baseFootY - 14);
+    ctx.lineTo(px - 34, baseFootY - h * 0.44);
+    ctx.quadraticCurveTo(px, baseFootY - h * 0.49, px + 26, baseFootY - h * 0.44);
+    ctx.lineTo(px + 28, baseFootY - 14);
+    ctx.stroke();
+    // Subtle dark-jade seat edge
+    ctx.fillStyle = "#2E5E4E";
+    ctx.beginPath();
+    ctx.ellipse(px - 2, baseFootY - 14, 34, 9, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // High-resolution 2.5D senior portrait sprite
+    const sprH = h * 0.70;
+    const sprW = sprH * (SPRITE_CELL_W / SPRITE_CELL_H);
+    const sway = Math.sin((now || 0) * 0.0022) * 1.6;
+    const spr = composeSeniorSpriteCanvas({
+      gender: currentConfig.userGender || "male",
+      pose: "front",
+      outfitColor: currentConfig.userOutfitColor || "#6E4A35",
+      outfitId: currentConfig.userOutfitId || "",
+      accessory: currentConfig.userAccessory || "glasses",
+      titleFrameId: currentConfig.userTitleFrame || "none"
+    });
+    ctx.drawImage(spr, px - sprW * 0.5, baseFootY - sprH + sway, sprW, sprH);
+
+    // Rosewood round side table & enlarged painterly Table Item on the right
+    const tx = w * 0.72;
+    const ty = h * 0.74;
+    ctx.fillStyle = "rgba(35, 22, 12, 0.24)";
+    ctx.beginPath();
+    ctx.ellipse(tx, ty + 18, 44, 15, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#542F19";
+    ctx.fillRect(tx - 10, ty - 2, 20, 20);
+    const tblGrad = ctx.createRadialGradient(tx - 10, ty - 8, 4, tx, ty - 4, 52);
+    tblGrad.addColorStop(0, "#8B4E2B");
+    tblGrad.addColorStop(1, "#522A14");
+    ctx.fillStyle = tblGrad;
+    ctx.beginPath();
+    ctx.ellipse(tx, ty - 4, 52, 22, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#3B1E0D";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    drawPainterlyTableItem25D(ctx, currentConfig.userItem || "am-tu-sa", tx, ty - 16, Math.max(1.25, h / 190), now);
 
     if (tagsLayerEl) {
+      const tagPx = Math.max(82, Math.min(w - 82, px));
+      const tagTx = Math.max(82, Math.min(w - 82, tx));
       tagsLayerEl.innerHTML =
         formatSeatTagHtml({
-          sx: px,
-          sy: Math.max(28, py - 54),
+          sx: tagPx,
+          sy: Math.max(28, baseFootY - sprH - 2),
           isActive: true,
           label: `${currentConfig.userName || "Anh Tám Vườn"} · ${currentConfig.userAge || 65}t`,
           titleFrameId: currentConfig.userTitleFrame || "none",
           isRealPeer: false
         }) +
-        `<span class="seat-status-tag" style="left:${tx.toFixed(0)}px;top:${Math.max(28, ty - 42).toFixed(0)}px">${escHtml(currentConfig.itemLabel || "Đồ bày bàn trà")}</span>`;
+        `<span class="seat-status-tag" style="left:${tagTx.toFixed(0)}px;top:${Math.max(28, ty - 56).toFixed(0)}px">${escHtml(currentConfig.itemLabel || "Đồ bày bàn trà")}</span>`;
     }
+  }
+
+  function updateHybridBillboards(now) {
+    if (!camera || !hybridBillboards.length) return;
+    const wp = new THREE.Vector3();
+    const fwd = new THREE.Vector3();
+    hybridBillboards.forEach((entry, idx) => {
+      if (!entry || !entry.billboard || !entry.seatGroup) return;
+      entry.billboard.getWorldPosition(wp);
+      entry.billboard.lookAt(camera.position.x, wp.y, camera.position.z);
+
+      // Gentle breathing bob
+      entry.billboard.position.y = entry.baseY + Math.sin(now * 0.002 + idx * 1.1) * 0.012;
+
+      if (!entry.lockFrontOnly && entry.tex && entry.spec) {
+        entry.seatGroup.getWorldDirection(fwd);
+        const toCamX = camera.position.x - wp.x;
+        const toCamZ = camera.position.z - wp.z;
+        const dot = fwd.x * toCamX + fwd.z * toCamZ;
+        const cross = fwd.x * toCamZ - fwd.z * toCamX;
+        const wantPose = dot < -0.22 ? "back" : "front";
+        if (wantPose !== entry.pose) {
+          entry.pose = wantPose;
+          entry.tex.image = composeSeniorSpriteCanvas({ ...entry.spec, pose: wantPose });
+          entry.tex.needsUpdate = true;
+        }
+        // Orient 3/4 gaze toward center of tea table relative to camera angle
+        const wantFlip = wantPose === "front" ? cross < -0.15 : cross > 0.15;
+        entry.billboard.scale.x = wantFlip ? -1 : 1;
+      }
+    });
   }
 
   function loop(now) {
@@ -2020,16 +2537,17 @@ window.TeaRoomScene = (function () {
         if (hostGroup) {
           hostGroup.position.x = Math.sin(now * 0.0008) * 0.45;
         }
+        updateHybridBillboards(now);
         renderer.render(scene, camera);
         updateOverviewTags3D();
       } else if (currentConfig && currentConfig.viewMode === "profile") {
         if (seatObjects[0]) {
           seatObjects[0].ringMat.opacity = 0.75 + Math.sin(now * 0.006) * 0.18;
-          seatObjects[0].head.rotation.y = Math.sin(now * 0.0014) * 0.18;
         }
         if (profileItemGroup) {
           profileItemGroup.rotation.y = now * 0.0009;
         }
+        updateHybridBillboards(now);
         renderer.render(scene, camera);
         updateProfileTags3D();
       } else {
@@ -2047,8 +2565,9 @@ window.TeaRoomScene = (function () {
         seatObjects.forEach((s, i) => {
           const isActive = i === activeSeatIdx;
           s.ringMat.opacity = isActive ? 0.8 + Math.sin(now * 0.008) * 0.18 : 0;
-          s.head.rotation.y = Math.sin(now * 0.0013 + i * 1.3) * (isActive ? 0.18 : 0.08);
-          s.head.rotation.x = isActive ? Math.sin(now * 0.006) * 0.06 : 0;
+          if (s.billboard) {
+            s.billboard.rotation.z = isActive ? Math.sin(now * 0.005) * 0.025 : 0;
+          }
         });
 
         if (hostGroup) {
@@ -2058,6 +2577,7 @@ window.TeaRoomScene = (function () {
           hostGroup.position.z += (targetZ - hostGroup.position.z) * 0.12;
         }
 
+        updateHybridBillboards(now);
         renderer.render(scene, camera);
         updateTagOverlays3D();
       }
@@ -2074,11 +2594,14 @@ window.TeaRoomScene = (function () {
 
   function mount(el, canvas, tagsLayer, config, fallbackCb) {
     dispose3D();
+    ensureAssets25DLoaded();
     containerEl = el;
     canvasEl = canvas;
     tagsLayerEl = tagsLayer;
     currentConfig = config;
     onFallbackCallback = fallbackCb || null;
+    tableAzimuth = 0;
+    pan25DX = 0;
     mode = config.preferredMode || "3d";
 
     if (mode === "3d") {
@@ -2089,19 +2612,31 @@ window.TeaRoomScene = (function () {
       }
     }
 
-    if (canvasEl && config && config.viewMode === "overview") {
+    if (canvasEl && config) {
+      const isOv = config.viewMode === "overview";
       canvasEl.style.cursor = "grab";
       canvasEl.onpointerdown = (ev) => {
         isDraggingOverview = true;
         dragStartX = ev.clientX;
-        dragStartAzimuth = overviewAzimuth;
+        dragStartAzimuth = isOv ? overviewAzimuth : tableAzimuth;
+        dragStartPan = pan25DX;
         canvasEl.style.cursor = "grabbing";
       };
       window.onpointermove = (ev) => {
         if (!isDraggingOverview) return;
         const dx = ev.clientX - dragStartX;
-        overviewAzimuth = Math.max(-0.48, Math.min(0.48, dragStartAzimuth - dx * 0.0045));
-        applyOverviewCameraPose();
+        if (mode === "3d") {
+          if (isOv) {
+            overviewAzimuth = Math.max(-0.48, Math.min(0.48, dragStartAzimuth - dx * 0.0045));
+            applyOverviewCameraPose();
+          } else {
+            tableAzimuth = Math.max(-0.56, Math.min(0.56, dragStartAzimuth - dx * 0.0048));
+            applyTableCameraPose();
+          }
+        } else {
+          const lim = isOv ? 0.11 : 0.045;
+          pan25DX = Math.max(-lim, Math.min(lim, dragStartPan - dx * 0.00055));
+        }
       };
       window.onpointerup = () => {
         if (isDraggingOverview) {
@@ -2111,6 +2646,8 @@ window.TeaRoomScene = (function () {
       };
     }
 
+    // Render frame 0 immediately when in 2.5D so switches & headless screenshots paint without delay
+    triggerRenderIf25D();
     lastFrame = 0;
     animId = requestAnimationFrame(loop);
   }
@@ -2118,6 +2655,7 @@ window.TeaRoomScene = (function () {
   function toggleOverviewWide() {
     overviewWideLevel = overviewWideLevel === "ultrawide" ? "wide" : "ultrawide";
     overviewAzimuth = 0;
+    pan25DX = 0;
     applyOverviewCameraPose();
     return overviewWideLevel;
   }
@@ -2145,8 +2683,12 @@ window.TeaRoomScene = (function () {
     if (seatObjects[idx]) {
       seatObjects[idx].badge = badge;
     }
-    if (currentConfig && currentConfig.table && currentConfig.table.members[idx]) {
-      currentConfig.table.members[idx].badge = badge;
+    if (currentConfig && currentConfig.table) {
+      if (idx === Math.min(4, (currentConfig.table.members || []).length)) {
+        currentConfig.userBadge = badge;
+      } else if (currentConfig.table.members && currentConfig.table.members[idx]) {
+        currentConfig.table.members[idx].badge = badge;
+      }
     }
   }
 

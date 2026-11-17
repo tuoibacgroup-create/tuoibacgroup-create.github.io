@@ -67,3 +67,13 @@ Tài liệu này lưu lại **lý do cốt lõi (Why)** đằng sau 6 quyết đ
   - Sử dụng bộ 3 bức ảnh kiến trúc Chùa Cổ Bắc Bộ góc đại cảnh 5 gian đã nén chuẩn nhẹ (`~130–176 KB/ảnh` tại `assets/temple-wide.jpg`, `assets/temple-altar.jpg`, `assets/temple-courtyard.jpg`) kết hợp 1 tệp Sprite Atlas nhiếp ảnh tả thực nhìn từ sau lưng `assets/temple-sprites.webp` (`44 KB`, gồm chiếu cói Bồ Đoàn và các Phật tử cao niên mặc Áo Lam / Áo Nâu ở tư thế ngồi tĩnh tọa và đứng hành lễ, đã tách nền Chroma-key khử viền xanh).
   - Dùng `temple3d.js` sắp xếp **20 Chiếu Bồ Đoàn (`4×5`)** theo thuật toán chiều sâu Painter's Algorithm, diễn hoạt đường đi Bezier đưa nhân vật đứng dậy bước lên Lư Hương / Mõ Gỗ / Đại Hồng Chung cúi vái 3 nhịp rồi quay về chiếu, kết hợp khói trầm hương vật lý và ánh sáng `screen` ở tốc độ `28 FPS`.
 - **Hệ quả:** Vừa giữ trọn vẻ trang nghiêm chân thực như phim tư liệu kiến trúc cổ, vừa tái hiện sinh động không khí đạo tràng 20 chỗ ngồi có người đi lại hành lễ với tổng dung lượng Sprite chỉ `44 KB`.
+
+---
+
+## ADR-008: Kiến Trúc Hai Chế Độ Đồ Họa Song Song — Full 2.5D Cổ Điển (TLBB) & Hybrid Phòng 3D Xoay + Nhân Vật 2.5D Sprite (`tearoom3d.js`)
+- **Trạng thái:** Đã chấp thuận & Đang vận hành (2026-11)
+- **Bối cảnh:** Trong Quán Trà, việc dựng nhân vật thuần Three.js Low-Poly bằng khối cầu/trụ tạo cảm giác thô cứng như đồ chơi trẻ em, kém phù hợp thẩm mỹ chững chạc của người cao tuổi 55+. Đồng thời thiết bị của hội viên rất đa dạng: máy Android đời cũ cần chế độ nhẹ không tốn WebGL để giữ pin, trong khi máy khỏe hơn lại muốn kéo ngang xoay góc phòng trà 3D.
+- **Quyết định:**
+  - Dùng chung một **Sprite Atlas 3×2 WebP (`assets/tearoom-sprites.webp`, `42.8 KB`)** gồm hàng 1 ảnh nhân vật khử nền Chroma-key và hàng 2 mặt nạ độ sáng áo coban tách riêng để nhuộm động cả 5 màu trang phục (`OUTFITS`), ghép phụ kiện (`ACCESSORIES`) và huy hiệu khung danh hiệu (`TITLE_FRAMES`) một lần rồi lưu cache Canvas `220×280`.
+  - Hỗ trợ người chơi chuyển đổi trực tiếp giữa **Full 2.5D Cổ Điển (Thiên Long Bát Bộ)** (nền tranh đẳng cự `tearoom-lobby-25d.jpg` + `tearoom-table-25d.jpg`, `0` ngữ cảnh WebGL, nhẹ CPU/GPU/pin) và **Hybrid Phòng 3D Xoay + Nhân Vật 2.5D Billboard** (giữ khung phòng gỗ/bàn ghế chạm Three.js có thể kéo xoay góc ngang ở cả Sảnh, Bàn trà và Tủ đồ, còn nhân vật dùng 2.5D Billboard trục Y tự xoay hướng camera và đổi mặt trước/sau theo góc nhìn).
+- **Hệ quả:** Xóa bỏ hoàn toàn tạo hình hình khối Low-Poly cũ, giữ dung lượng bộ tài nguyên mới gọn nhẹ (~`316 KB` cho 3 tệp tĩnh được `sw.js` cache offline) và trao quyền lựa chọn độ mượt / hiệu ứng ngay trên giao diện cho hội viên.

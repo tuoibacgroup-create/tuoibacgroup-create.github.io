@@ -10,7 +10,7 @@
 | :---: | :--- | :---: | :--- | :--- |
 | 1 | Trang chủ Mobile-First & Chế độ rút gọn 3 nút MVP | Hoàn thành | `app.js`, `styles.css` | Có cài đặt PWA ra màn hình chính & chuyển đổi chữ 20px/24px |
 | 2 | Điểm danh bình an & Bản đồ 34 đơn vị hành chính mới | Hoàn thành | `app.js`, `data.js` | Có chú thích tỉnh cũ gộp vào, xuất thiệp chúc sáng kèm QR + văn bản chia sẻ |
-| 3 | Sảnh Trà 3D 5 Gian Góc Rộng & Bàn Trà 5 Chỗ | Hoàn thành | `tearoom3d.js`, `app.js` | Xoay ngang góc nhìn, 2 mức zoom rộng/siêu rộng, tự hạ 2.5D cho máy yếu |
+| 3 | Sảnh Trà & Bàn Trà 5 Chỗ (Chuyển Đổi Full 2.5D TLBB / Hybrid 3D+2.5D) | Hoàn thành | `tearoom3d.js`, `assets/tearoom-*`, `app.js` | Bộ 2 chế độ: Full 2.5D cổ điển nhẹ pin (`assets/tearoom-*.jpg` + `tearoom-sprites.webp`) và Hybrid Phòng 3D Xoay + Nhân vật 2.5D Billboard (`28 FPS`), kéo ngang xoay góc |
 | 4 | Chủ bàn đặt tên bàn đàm đạo & Gửi 8 Sticker 1 chạm | Hoàn thành | `app.js`, `tearoom3d.js` | Bong bóng Sticker nổi trên đầu nhân vật 3D, đồng bộ qua `custom_tea_tables` |
 | 5 | Trợ lý Quán Trà tự gợi chuyện sau 60s & Nhịp nhấp trà 10s | Hoàn thành | `app.js` | Rót trà 3D tự động khi bàn yên ắng quá 60 giây |
 | 6 | Nhập liệu giọng nói & Sổ từ điển tự học phương ngữ | Hoàn thành | `app.js`, `data.js` | Xem trước câu nói chữ lớn trước khi gửi, tự sửa lỗi phát âm vùng miền |
@@ -28,6 +28,15 @@
 ---
 
 ## 2. Nhật Ký Phiên Bản Kỹ Thuật (Append-Only Engineering Log)
+
+### [2026-11-17] — Tùy Chọn Chuyển Đổi Hai Chế Độ Đồ Họa: Full 2.5D Cổ Điển (TLBB) & Hybrid Phòng 3D Xoay + Nhân Vật 2.5D (`?v=20261117j`)
+- **Tệp cập nhật:** `assets/tearoom-table-25d.jpg`, `assets/tearoom-lobby-25d.jpg`, `assets/tearoom-sprites.webp`, `tearoom3d.js`, `app.js`, `styles.css`, `index.html` (`?v=20261117j`), `sw.js` (`tuoibac-pwa-v22`), `ARCHITECTURE.md`, `docs/02_SO_DO_DU_LIEU_VA_API_NOI_BO.md`, `docs/03_TIEN_DO_VA_NHAT_KY.md`, `docs/05_QUYET_DINH_KIEN_TRUC_ADR.md`.
+- **Chi tiết nâng cấp:**
+  1. **Tạo bộ tài nguyên Quán Trà 2.5D kiểu Thiên Long Bát Bộ (`assets/`):** Nén 2 nền cảnh đẳng cự không người (`tearoom-table-25d.jpg` `130.1 KB`, `tearoom-lobby-25d.jpg` `143.4 KB`) và Sprite Atlas 3×2 tách nền Chroma-key + mặt nạ nhuộm áo dài/áo bà ba/áo lính/áo len/áo gấm động (`tearoom-sprites.webp` `42.8 KB`, gồm Nam 3/4, Nữ 3/4 và Góc lưng 3/4), vẽ thêm phụ kiện (kính, khăn, mũ, nón lá) và huy hiệu khung danh hiệu theo tọa độ neo.
+  2. **Nâng cấp `tearoom3d.js` chạy song song 2 chế độ (`mode === "2.5d"` & `mode === "3d"`):**
+     - **Full 2.5D Cổ Điển:** Vẽ cảnh Canvas 2D thuần không cần WebGL cho Sảnh 5 gian (hỗ trợ zoom rộng/siêu rộng + kéo ngang lia góc), Bàn trà 5 ghế (đặt nhân vật khớp ghế, ấm Tử Sa bốc hơi, Trợ lý Chị Trà ra rót trà theo nhịp `4.2s`, đồng bộ đủ `activeSeatIdx`, `userBadge` và bong bóng Sticker) và Tủ Trang Phục Cá Nhân.
+     - **Hybrid Phòng 3D Xoay + Nhân Vật 2.5D:** Thay toàn bộ khối Low-Poly hình cầu/trụ cũ bằng nhân vật 2.5D Billboard phẳng trục Y tự quay hướng camera kèm đổi mặt trước/sau theo góc xoay, cho phép kéo ngang xoay góc nhìn 3D ở cả Sảnh, Bàn trà tròn và Cá nhân; dọn triệt để `map.userData.isPerMount` trong `dispose3D()`.
+  3. **Thanh chuyển đổi 2 nút to dễ bấm (`styles.css`, `app.js`, `sw.js`):** Thêm `.render-mode-switch` / `.render-mode-opt` (`>= 56px`, chế độ `Full 2.5D · Cổ điển · Nhẹ` vs `Hybrid 3D+2.5D · Xoay góc`) ở Sảnh, Bàn trà, Tủ Trang Phục và thanh mô phỏng `#sim-toggle-render`; ghi telemetry `render_mode_switch` và thêm 3 tệp `assets/tearoom-*` vào `CORE_ASSETS` của `sw.js`.
 
 ### [2026-11-17] — Dash Quản Trị Mọi Hoạt Động User (On-Time, Top Dịch Vụ, Phàn Nàn Chat) & Mục Góp Ý Nhanh (`?v=20261117i`)
 - **Tệp cập nhật:** `telemetry.js`, `app.js`, `index.html` (`?v=20261117i`), `styles.css`, `realtime.js`, `sw.js` (`tuoibac-pwa-v21`), `ARCHITECTURE.md`, `docs/02_SO_DO_DU_LIEU_VA_API_NOI_BO.md`, `docs/03_TIEN_DO_VA_NHAT_KY.md`, `docs/04_CAM_NANG_FIX_BUG_VA_KIEM_THU.md`.
