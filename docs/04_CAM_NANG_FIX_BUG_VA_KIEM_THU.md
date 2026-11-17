@@ -64,6 +64,7 @@ Các tham số dưới đây được bóc tách trực tiếp từ `app.js` (tr
 | `?ketban=TB-102` | Mở mục Bạn Bè và tự động gửi/chấp nhận kết nối tâm giao với mã thẻ `TB-102`. |
 | `?hoi=d25-d3-1k2-mn75` | Mở thẳng trang chi tiết đơn vị đồng ngũ / câu lạc bộ có mã `d25-d3-1k2-mn75`. |
 | `?khoiphuc=<token>` | Khôi phục toàn bộ Thẻ Hội Viên, Xu, 96 danh hiệu, đơn vị và bạn bè trên điện thoại mới từ mã QR Ảnh Thẻ. |
+| `?dash=1` | Mở thẳng Dash Quản lý Hoạt động User (`route = "privacy"`, tab Tổng Quan & Dịch Vụ) để theo dõi On-Time, dịch vụ nổi bật và phàn nàn. |
 
 ---
 

@@ -22,12 +22,21 @@
 | 12 | Thẻ Hội Viên 10 Giây (SĐT + 4 số) & Khôi Phục Mã QR | Hoàn thành | `app.js`, `realtime.js` | Không mật khẩu phức tạp, băm ẩn SĐT một chiều, hỗ trợ Vân tay WebAuthn |
 | 13 | Hệ Thống 96 Danh Hiệu Toán Học Lồi (32 tầng chính + 8 cây chuyên môn) | Hoàn thành | `progression.js`, `app.js` | Tách biệt bảng chào đón Người mới (Tầng 1–5) và vinh danh Trưởng lão / Đại thụ |
 | 14 | Đại Sảnh Chánh Điện 20 Chiếu Bồ Đoàn & Phật Tử Tả Thực Bước Lên Hành Lễ | Hoàn thành | `temple3d.js`, `assets/temple-sprites.webp`, `app.js` | Góc đại cảnh 5 gian 20 chỗ ngồi (`14/20` bác ngồi nhộn nhịp), Phật tử Áo Lam / Áo Nâu bước lên thắp nhang / gõ mõ rồi quay về chỗ |
-| 15 | Kho AI Tracking 100% Toàn Thành Viên (`IndexedDB` + Xuất JSONL) | Hoàn thành | `telemetry.js`, `app.js` | Biểu đồ 24h, đo `dwellSec` từng màn hình, tách 4 kiểu chat, xuất `.jsonl`/`.json`/`.csv` |
+| 15 | Dash Quản Lý Mọi Hoạt Động User & Mục Góp Ý (`IndexedDB` + AI Tracking) | Hoàn thành | `telemetry.js`, `app.js`, `realtime.js` | Theo dõi On-Time 24h, xếp hạng dịch vụ dùng nhiều nhất, phát hiện phàn nàn từ chat/báo cáo, gửi Góp ý 2 chạm, xuất `.jsonl`/`.json`/`.csv` |
 | 16 | Hồ sơ Kiến trúc Studio 20 Năm & Cổng Kiểm Định Đồng Bộ Code ↔ Docs | Hoàn thành | `AGENTS.md`, `ARCHITECTURE.md`, `scripts/studio-doctor.mjs` | Tự động đối chiếu 1:1 màn hình, `state`, SQL, Deep Link và lịch sử Git giữa Code thực tế với `.md` |
 
 ---
 
 ## 2. Nhật Ký Phiên Bản Kỹ Thuật (Append-Only Engineering Log)
+
+### [2026-11-17] — Dash Quản Trị Mọi Hoạt Động User (On-Time, Top Dịch Vụ, Phàn Nàn Chat) & Mục Góp Ý Nhanh (`?v=20261117i`)
+- **Tệp cập nhật:** `telemetry.js`, `app.js`, `index.html` (`?v=20261117i`), `styles.css`, `realtime.js`, `sw.js` (`tuoibac-pwa-v21`), `ARCHITECTURE.md`, `docs/02_SO_DO_DU_LIEU_VA_API_NOI_BO.md`, `docs/03_TIEN_DO_VA_NHAT_KY.md`, `docs/04_CAM_NANG_FIX_BUG_VA_KIEM_THU.md`.
+- **Chi tiết 2 hạng mục vừa hoàn thành:**
+  1. **Nâng cấp Dash Quản Lý Mọi Hoạt Động User (`telemetry.js` → `getGlobalActivityDashboard()`, `app.js` → `renderPrivacyAndMetrics()`):**
+     - **Tab `Tổng Quan & Dịch Vụ`:** Tổng hợp 4 KPI toàn quán (Tổng phút On-Time + TB/người + máy đang mở, Dịch vụ dùng nhiều nhất & `%` thời lượng, Tổng câu Chat & tỷ lệ `0-Token`, Số phàn nàn / chặn an toàn / góp ý), biểu đồ nhịp giờ 24h toàn hệ thống, Top 5 người On-Time nhiều nhất và bảng xếp hạng đầy đủ các dịch vụ theo phút & lượt dùng.
+     - **Tab `Chat & Phàn Nàn`:** Tự động phân loại 6 nhóm vấn đề (`ui_font`, `speed_bug`, `audio_voice`, `safety_alert`, `feature_wish`, `praise`) từ cả mục Góp ý, báo cáo vi phạm, chuỗi bị bộ lọc an toàn chặn và tin nhắn chat thực tế có dấu hiệu phàn nàn; xếp hạng nhóm phàn nàn nhiều nhất, thống kê 4 kiểu chat / chủ đề / từ khóa tìm báo và bộ lọc chi tiết.
+     - **Tab `Hội Viên & Riêng Tư`:** Bổ sung bộ lọc theo từng thành viên (`#dash-member-filter`) và ô tìm kiếm dòng sự kiện (`#dash-log-search`), gắn thêm tracking đủ cho Đố vui, Phòng xem chung, Trợ lý sức khỏe, Đổi cỡ chữ, Đọc to, Báo cáo vi phạm và Tự động chặn SĐT/link. Hỗ trợ mở nhanh qua tham số `?dash=1`.
+  2. **Thêm mục `Góp ý nhanh` (`openFeedbackModal()` trong `app.js`):** Đặt nút mở tại Trang chủ (`#btn-home-feedback`), Hồ sơ cá nhân (`#btn-profile-feedback`) và trong Dash (`#btn-dash-open-feedback`) với 5 lựa chọn chạm lớn (`>= 56px`), lọc an toàn SĐT/link, ghi thẳng vào kho `feedbacks` + `IndexedDB` và tặng `+2 Xu` lượt góp ý đầu tiên trong phiên.
 
 ### [2026-11-17] — Bảo Vệ Ván Cờ Đang Đánh, Khung Danh Hiệu Chùa & Thắng Cờ, Tối Giản Bố Cục Người Cao Tuổi (`?v=20261117h`)
 - **Tệp cập nhật:** `app.js`, `data.js`, `progression.js`, `tearoom3d.js`, `styles.css`, `index.html` (`?v=20261117h`), `sw.js` (`tuoibac-pwa-v20`), `ARCHITECTURE.md`, `docs/02_SO_DO_DU_LIEU_VA_API_NOI_BO.md`, `docs/03_TIEN_DO_VA_NHAT_KY.md`, `docs/04_CAM_NANG_FIX_BUG_VA_KIEM_THU.md`.

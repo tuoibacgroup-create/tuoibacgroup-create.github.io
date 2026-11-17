@@ -18,19 +18,19 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Merriweather:ital,wght@0,400;0,700;1,400&display=swap"
     rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20261117h" />
+  <link rel="stylesheet" href="styles.css?v=20261117i" />
   <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.3/dist/mqtt.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
-  <script src="data.js?v=20261117h" defer></script>
-  <script src="progression.js?v=20261117h" defer></script>
-  <script src="telemetry.js?v=20261117h" defer></script>
-  <script src="tearoom3d.js?v=20261117h" defer></script>
-  <script src="temple3d.js?v=20261117h" defer></script>
-  <script src="xiangqi.js?v=20261117h" defer></script>
-  <script src="realtime.js?v=20261117h" defer></script>
-  <script src="app.js?v=20261117h" defer></script>
+  <script src="data.js?v=20261117i" defer></script>
+  <script src="progression.js?v=20261117i" defer></script>
+  <script src="telemetry.js?v=20261117i" defer></script>
+  <script src="tearoom3d.js?v=20261117i" defer></script>
+  <script src="temple3d.js?v=20261117i" defer></script>
+  <script src="xiangqi.js?v=20261117i" defer></script>
+  <script src="realtime.js?v=20261117i" defer></script>
+  <script src="app.js?v=20261117i" defer></script>
 </head>
 
 <body>
@@ -220,6 +220,18 @@
       <circle cx="8" cy="11" r="2" />
       <path d="M5.5 16c.6-1.5 1.5-2.2 2.5-2.2s1.9.7 2.5 2.2M13.5 10h5M13.5 14h4" />
     </symbol>
+    <symbol id="ico-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+      stroke-linejoin="round">
+      <path d="M3 20h18" />
+      <rect x="5" y="12" width="3.5" height="6" rx="1" />
+      <rect x="10.25" y="8" width="3.5" height="10" rx="1" />
+      <rect x="15.5" y="4" width="3.5" height="14" rx="1" />
+    </symbol>
+    <symbol id="ico-feedback" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+      stroke-linejoin="round">
+      <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v9A2.5 2.5 0 0 1 17.5 17H9l-5 4V5.5z" />
+      <path d="M8.5 8.5h7M8.5 12h4.5" />
+    </symbol>
   </svg>
 
   <!-- Desktop / Testing Helper Bar (hidden on narrow mobile viewports) -->
@@ -238,7 +250,7 @@
       <button type="button" class="sim-chip" id="sim-voice-sample">Thử giọng nói mẫu</button>
       <button type="button" class="sim-chip" id="sim-trigger-idle60">Thử Trợ lý gợi chuyện 60s</button>
       <button type="button" class="sim-chip" id="sim-trigger-eyecare">Thử nhắc nghỉ mắt 20 phút</button>
-      <button type="button" class="sim-chip" id="sim-open-privacy">Chỉ số &amp; Quyền riêng tư</button>
+      <button type="button" class="sim-chip" id="sim-open-privacy">Dash Quản lý Hoạt động</button>
       <button type="button" class="sim-chip" id="sim-open-family">Góc nhìn Con cái</button>
       <button type="button" class="sim-chip" id="sim-reset-demo">Đặt lại dữ liệu mẫu</button>
     </div>

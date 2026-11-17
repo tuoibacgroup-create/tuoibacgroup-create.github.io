@@ -1251,6 +1251,21 @@ window.TuoiBacRealtime = (function () {
     postLocalBroadcast("telemetry", pkt);
   }
 
+  function publishSafetyReport(reportObj) {
+    if (!reportObj) return;
+    if (sbClient) {
+      sbClient
+        .from("safety_reports")
+        .insert({
+          client_id: clientId,
+          table_key: String(reportObj.tableKey || ""),
+          reason: String(reportObj.reason || "").slice(0, 240)
+        })
+        .then(() => {})
+        .catch(() => {});
+    }
+  }
+
   function getTemplePrayers() {
     return Object.values(templePrayersById).sort((a, b) => (b.ts || 0) - (a.ts || 0));
   }
@@ -1305,6 +1320,7 @@ window.TuoiBacRealtime = (function () {
     publishMemberLog,
     getMemberLogs,
     publishTelemetryEvent,
+    publishSafetyReport,
     publishTableCustomMeta,
     getAllTableCustomMeta,
     publishTempleRitual,

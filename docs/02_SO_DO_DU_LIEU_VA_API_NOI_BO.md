@@ -115,7 +115,7 @@ state = {
   // Đầy đủ các khóa gốc còn lại trong createDefaultState() (tổng 20 khóa gốc):
   settings: { xlFont: false, preferredRender: "3d", autoFallbacked: false, homeMode: "full", pwaBannerDismissed: false },
   privacy: { consentFamilyCheckin: true, consentRealtimePresence: true, consentVoiceDict: true },
-  analytics: { session_start: 1, morning_checkin_done: 0, tea_table_joined: 0, tea_msg_quick_0token: 0, tea_msg_voice_or_text: 0, news_article_read: 0, async_game_move: 0, poem_posted: 0, share_link_created: 0, idle_prompts_triggered: 0 },
+  analytics: { session_start: 1, morning_checkin_done: 0, tea_table_joined: 0, tea_msg_quick_0token: 0, tea_msg_voice_or_text: 0, news_article_read: 0, async_game_move: 0, poem_posted: 0, share_link_created: 0, idle_prompts_triggered: 0, feedbacks: [] },
   phoneticDict: [],               // Sổ từ điển sửa lỗi phát âm tiếng Việt tự học trên máy
   replyTemplates: [],             // Ma trận mẫu câu gợi ý nhanh 0-Token theo chủ đề
   newspaper: { articles: [], drafts: [], adminOpen: false, selectedCategory: "all", searchQuery: "", liveItems: [] },
@@ -153,6 +153,7 @@ state = {
 - `ingestRemoteEvent(pkt)` → Tiếp nhận sự kiện telemetry từ thiết bị khác để làm giàu bảng phân tích chung.
 - `getAllEventsAsync()` → `Promise<Event[]>`: Đọc toàn bộ kho sự kiện từ `IndexedDB`.
 - `getMemberDeepProfiles()` → Danh sách hồ sơ thói quen sâu của từng thành viên (`hourlyHist[24]`, `chatSummary.byMethod`, `topDwellSummary`, `searchQueries`, `aiActionableInsight`).
+- `getGlobalActivityDashboard(liveSessionSec)` → Tổng hợp toàn quán: `kpis` (On-Time, cao điểm 24h, dịch vụ top, tổng chat, số phàn nàn & chặn an toàn), `serviceRanking`, `chatOverview`, `complaintRanking` (6 nhóm vấn đề), `topOnTimeMembers`, `issueFeed`.
 - `buildExportJsonlString()` / `buildExportFullJsonObject()` / `buildExportCsvString()` → Xuất dữ liệu chuẩn huấn luyện AI.
 
 ### 2.3. `window.TeaRoomScene` (`tearoom3d.js`)
@@ -182,7 +183,7 @@ state = {
 - Bàn trà: `joinTableChannel(tableKey, myPeerMeta)`, `leaveTableChannel()`, `sendTableMessage(...)`, `publishTableCustomMeta(...)`.
 - Hiện diện & Xã hội: `publishGlobalOnline(peerMeta)`, `getOnlinePeers()`, `publishGroup(groupObj)`, `publishFriendSignal(targetCode, signalObj)`.
 - Sao lưu Thẻ Hội Viên: `publishAccountBackup(accountHash, snapshotObj)`, `fetchAccountBackup(accountHash, callback)`.
-- Chuyên mục khác: `publishMorningCheckin(...)`, `publishMatchState(...)`, `publishPoem(...)`, `publishTempleRitual(...)`, `publishMemberLog(...)`, `publishTelemetryEvent(...)`.
+- Chuyên mục khác: `publishMorningCheckin(...)`, `publishMatchState(...)`, `publishPoem(...)`, `publishTempleRitual(...)`, `publishMemberLog(...)`, `publishTelemetryEvent(...)`, `publishSafetyReport(...)`.
 
 ---
 

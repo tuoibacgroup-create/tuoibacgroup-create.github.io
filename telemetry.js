@@ -19,7 +19,67 @@ window.TuoiBacTelemetry = (function () {
   const HOT_KEY = URL_SLOT ? `tuoibac_tel_hot_v1_${URL_SLOT}` : "tuoibac_tel_hot_v1";
   const HABIT_KEY = URL_SLOT ? `tuoibac_tel_habits_v1_${URL_SLOT}` : "tuoibac_tel_habits_v1";
   const SEQ_KEY = URL_SLOT ? `tuoibac_tel_seq_v1_${URL_SLOT}` : "tuoibac_tel_seq_v1";
+  const FEEDBACK_KEY = URL_SLOT ? `tuoibac_tel_feedback_v1_${URL_SLOT}` : "tuoibac_tel_feedback_v1";
   const MAX_HOT = 500;
+  const MAX_FEEDBACK = 200;
+
+  const MODULE_LABELS = {
+    home: "Sảnh chính",
+    checkin: "Điểm danh sáng",
+    tearoom: "Bàn trà 3D",
+    newspaper: "Tờ báo sáng",
+    groups: "Đồng ngũ & Bạn bè",
+    xiangqi: "Cờ tướng & Cờ thế",
+    games: "Ô ăn quan",
+    quiz: "Đố vui hôm nay",
+    poetry: "Chiếu thơ & Đàn tranh",
+    watch: "Phòng xem chung",
+    zen: "Chánh Điện 3D",
+    leaderboard: "Bảng danh hiệu",
+    profile: "Hồ sơ & Tủ đồ",
+    health: "Trợ lý sức khỏe",
+    family: "Góc con cái",
+    privacy: "Dash & Quyền riêng tư"
+  };
+
+  const COMPLAINT_CATEGORIES = [
+    {
+      id: "ui_font",
+      label: "Chữ nhỏ / Giao diện khó nhìn",
+      isComplaint: true,
+      rx: /chữ nhỏ|khó nhìn|\bmờ\b|chói|đau mắt|mỏi mắt|nhảy hình|rối mắt|\bchật\b/i
+    },
+    {
+      id: "speed_bug",
+      label: "Mạng chậm / Bàn cờ lỗi / Khó bấm",
+      isComplaint: true,
+      rx: /chậm|\blag\b|\bđơ\b|\bkẹt\b|\blỗi\b|mất kết nối|khó bấm|ấn nhầm|thoát nhầm|không bấm được|chờ lâu/i
+    },
+    {
+      id: "audio_voice",
+      label: "Âm thanh / Giọng đọc / Micro",
+      isComplaint: true,
+      rx: /không nghe|nhỏ tiếng|\brè\b|đọc nhanh|giọng đọc|micro|nhận giọng|\bồn\b/i
+    },
+    {
+      id: "safety_alert",
+      label: "Cảnh báo an toàn / Chặn SĐT & Link",
+      isComplaint: true,
+      rx: /lừa đảo|xin tiền|quảng cáo thuốc|tài khoản lạ/i
+    },
+    {
+      id: "feature_wish",
+      label: "Đề xuất thêm trò chơi / nội dung",
+      isComplaint: false,
+      rx: /\bthêm\b|mong có|nên có|ước gì|mở thêm|cờ mới|mục mới|đề xuất/i
+    },
+    {
+      id: "praise",
+      label: "Khen ngợi / Hài lòng ấm cúng",
+      isComplaint: false,
+      rx: /hài lòng|rất thích|ấm cúng|vui vẻ|dễ dùng|tuyệt vời|rõ ràng|cảm ơn/i
+    }
+  ];
 
   const TIME_BUCKETS = [
     { id: "sang_som_5_7", label: "Sáng sớm (05h–07h)", from: 5, to: 7 },
@@ -34,6 +94,7 @@ window.TuoiBacTelemetry = (function () {
   let hotEvents = loadHotEvents();
   let habitProfiles = loadHabitProfiles();
   let seqCounter = loadSeqCounter();
+  let feedbackFeed = loadFeedbackFeed();
   let sessionStartTs = Date.now();
   let currentRoute = "home";
   let currentRouteEnteredAt = Date.now();
@@ -149,8 +210,152 @@ window.TuoiBacTelemetry = (function () {
         recentSamples: []
       },
       searchQueries: [],
-      ritualCounts: {}
+      ritualCounts: {},
+      complaintCount: 0,
+      feedbackCount: 0
     };
+  }
+
+  function buildSeedFeedbackFeed() {
+    const now = Date.now();
+    return [
+      {
+        id: "seed-fb-1",
+        ts: now - 3600000 * 6,
+        userName: "Anh Minh",
+        age: 71,
+        province: "Hải Phòng",
+        memberCode: "TB-102",
+        sourceType: "user_feedback",
+        categoryId: "speed_bug",
+        categoryLabel: "Mạng chậm / Bàn cờ lỗi / Khó bấm",
+        isComplaint: true,
+        text: "Đôi lúc vào bàn cờ tối muộn tải hơi chậm, mong tối ưu thêm để đánh mượt hơn."
+      },
+      {
+        id: "seed-fb-2",
+        ts: now - 3600000 * 5,
+        userName: "Chị Lan",
+        age: 68,
+        province: "Hà Nội",
+        memberCode: "TB-204",
+        sourceType: "chat_message",
+        categoryId: "ui_font",
+        categoryLabel: "Chữ nhỏ / Giao diện khó nhìn",
+        isComplaint: true,
+        text: "Phần chú thích nhỏ trên bảng danh hiệu trước đây hơi khó nhìn, bật chữ to 24px thì rõ hẳn."
+      },
+      {
+        id: "seed-fb-3",
+        ts: now - 3600000 * 4,
+        userName: "Cụ Hòa",
+        age: 79,
+        province: "Hà Nội",
+        memberCode: "TB-309",
+        sourceType: "user_feedback",
+        categoryId: "audio_voice",
+        categoryLabel: "Âm thanh / Giọng đọc / Micro",
+        isComplaint: true,
+        text: "Giọng đọc báo buổi sáng nghe rõ, nhưng nếu nói chậm thêm một chút sẽ hợp tai hơn."
+      },
+      {
+        id: "seed-fb-4",
+        ts: now - 3600000 * 2.5,
+        userName: "Chị Lan",
+        age: 68,
+        province: "Hà Nội",
+        memberCode: "TB-204",
+        sourceType: "user_feedback",
+        categoryId: "feature_wish",
+        categoryLabel: "Đề xuất thêm trò chơi / nội dung",
+        isComplaint: false,
+        text: "Mong quán trà mở thêm mục tập dưỡng sinh theo nhịp thở buổi sáng 6 giờ."
+      },
+      {
+        id: "seed-fb-5",
+        ts: now - 3600000 * 1.2,
+        userName: "Anh Minh",
+        age: 71,
+        province: "Hải Phòng",
+        memberCode: "TB-102",
+        sourceType: "user_feedback",
+        categoryId: "praise",
+        categoryLabel: "Khen ngợi / Hài lòng ấm cúng",
+        isComplaint: false,
+        text: "Ô ăn quan thả từng viên sỏi chậm rãi rất dễ nhìn, không bị hoa mắt như trước."
+      }
+    ];
+  }
+
+  function loadFeedbackFeed() {
+    try {
+      const raw = localStorage.getItem(FEEDBACK_KEY);
+      if (!raw) {
+        const seeded = buildSeedFeedbackFeed();
+        localStorage.setItem(FEEDBACK_KEY, JSON.stringify(seeded));
+        return seeded;
+      }
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : buildSeedFeedbackFeed();
+    } catch (e) {
+      return buildSeedFeedbackFeed();
+    }
+  }
+
+  function saveFeedbackFeed() {
+    try {
+      if (feedbackFeed.length > MAX_FEEDBACK) {
+        feedbackFeed = feedbackFeed.slice(0, MAX_FEEDBACK);
+      }
+      localStorage.setItem(FEEDBACK_KEY, JSON.stringify(feedbackFeed));
+    } catch (e) {}
+  }
+
+  function classifyIssueEvent(ev) {
+    if (!ev) return null;
+    const type = ev.eventType || "";
+    const meta = ev.meta || {};
+    const rawText = String(meta.text || meta.detail || meta.reason || ev.subAction || "").trim();
+    const isDirectIssue = type === "user_feedback" || type === "safety_report" || type === "chat_blocked";
+    if (!isDirectIssue && type !== "chat_message") return null;
+
+    let matchedCat = null;
+    if (meta.category) {
+      matchedCat = COMPLAINT_CATEGORIES.find((c) => c.id === meta.category) || null;
+    }
+    if (!matchedCat && rawText) {
+      matchedCat = COMPLAINT_CATEGORIES.find((c) => c.rx.test(rawText)) || null;
+    }
+    if (!matchedCat) {
+      if (type === "safety_report" || type === "chat_blocked") {
+        matchedCat = COMPLAINT_CATEGORIES.find((c) => c.id === "safety_alert");
+      } else if (type === "user_feedback") {
+        matchedCat = COMPLAINT_CATEGORIES.find((c) => c.id === "feature_wish");
+      } else {
+        return null;
+      }
+    }
+
+    return {
+      id: ev.id || `iss_${Date.now()}`,
+      ts: ev.ts || Date.now(),
+      userName: ev.userName || "Hội viên",
+      age: ev.age || 65,
+      province: ev.province || "Việt Nam",
+      memberCode: ev.memberCode || "KH-LOCAL",
+      sourceType: type,
+      categoryId: matchedCat.id,
+      categoryLabel: matchedCat.label,
+      isComplaint: Boolean(matchedCat.isComplaint),
+      text: rawText || matchedCat.label
+    };
+  }
+
+  function pushFeedbackFeedItem(item) {
+    if (!item || !item.id) return;
+    if (feedbackFeed.some((x) => x.id === item.id)) return;
+    feedbackFeed.unshift(item);
+    saveFeedbackFeed();
   }
 
   function buildSeedHabitProfiles() {
@@ -189,6 +394,8 @@ window.TuoiBacTelemetry = (function () {
     pMinh.chatHabits.stickerCounts = { "moi-tra": 3, "dong-doi": 2 };
     pMinh.chatHabits.companionCounts = { "Anh Vĩnh": 8, "Chị Lan": 4 };
     pMinh.chatHabits.topicCounts = { "Đồng đội Sư đoàn 25": 9, "Cờ thế cổ phổ": 7 };
+    pMinh.complaintCount = 1;
+    pMinh.feedbackCount = 1;
     pMinh.lastSeenTs = now - 240000;
 
     const pLan = createEmptyHabitProfile("TB-204", {
@@ -224,6 +431,8 @@ window.TuoiBacTelemetry = (function () {
     pLan.chatHabits.companionCounts = { "Anh Tám Vườn": 5, "Anh Minh": 4 };
     pLan.chatHabits.topicCounts = { "Chánh điện cầu an": 8, "Thơ lục bát quê hương": 6 };
     pLan.ritualCounts = { incense: 5, wish_plaque: 4, muyu: 18, pond_lantern: 3 };
+    pLan.complaintCount = 1;
+    pLan.feedbackCount = 2;
     pLan.lastSeenTs = now - 180000;
 
     return {
@@ -403,6 +612,16 @@ window.TuoiBacTelemetry = (function () {
     if (ev.eventType === "temple_ritual" && meta.ritualKind) {
       if (!p.ritualCounts) p.ritualCounts = {};
       p.ritualCounts[meta.ritualKind] = (p.ritualCounts[meta.ritualKind] || 0) + 1;
+    }
+
+    const issue = classifyIssueEvent(ev);
+    if (issue) {
+      if (issue.isComplaint) {
+        p.complaintCount = (p.complaintCount || 0) + 1;
+      } else {
+        p.feedbackCount = (p.feedbackCount || 0) + 1;
+      }
+      pushFeedbackFeedItem(issue);
     }
 
     saveHabitProfiles();
@@ -670,13 +889,170 @@ window.TuoiBacTelemetry = (function () {
       });
   }
 
+  function getGlobalActivityDashboard(liveSessionSec) {
+    const profiles = Object.values(habitProfiles);
+    const liveSec = Math.max(0, Math.round(Number(liveSessionSec) || 0));
+    const globalHourlyHist = new Array(24).fill(0);
+    const modDwellTotals = {};
+    const modActionTotals = {};
+    const byMethod = { quick_0token: 0, sticker_1tap: 0, typed_text: 0, voice_speech: 0 };
+    const topicAgg = {};
+    const searchAgg = {};
+    let totalEvents = 0;
+    let totalOnTimeSec = liveSec;
+    let totalChats = 0;
+
+    profiles.forEach((p) => {
+      totalEvents += Number(p.totalEvents) || 0;
+      const hourly = Array.isArray(p.hourlyHist) ? p.hourlyHist : [];
+      for (let h = 0; h < 24; h++) {
+        globalHourlyHist[h] += Number(hourly[h]) || 0;
+      }
+      Object.entries(p.moduleDwellSec || {}).forEach(([mod, sec]) => {
+        const sVal = Math.max(0, Number(sec) || 0);
+        modDwellTotals[mod] = (modDwellTotals[mod] || 0) + sVal;
+        totalOnTimeSec += sVal;
+      });
+      Object.entries(p.moduleActions || {}).forEach(([mod, cnt]) => {
+        modActionTotals[mod] = (modActionTotals[mod] || 0) + (Number(cnt) || 0);
+      });
+      const ch = p.chatHabits || {};
+      totalChats += Number(ch.totalMessages) || 0;
+      Object.keys(byMethod).forEach((mk) => {
+        byMethod[mk] += Number((ch.byMethod && ch.byMethod[mk]) || 0);
+      });
+      Object.entries(ch.topicCounts || {}).forEach(([tp, cnt]) => {
+        topicAgg[tp] = (topicAgg[tp] || 0) + (Number(cnt) || 0);
+      });
+      (p.searchQueries || []).forEach((q) => {
+        if (q) searchAgg[q] = (searchAgg[q] || 0) + 1;
+      });
+    });
+
+    let peakHour = 6;
+    let peakVal = -1;
+    globalHourlyHist.forEach((val, h) => {
+      if (val > peakVal) {
+        peakVal = val;
+        peakHour = h;
+      }
+    });
+
+    const allModIds = new Set([...Object.keys(modDwellTotals), ...Object.keys(modActionTotals)]);
+    const sumModDwell = Object.values(modDwellTotals).reduce((s, v) => s + v, 0);
+    const sumModActions = Object.values(modActionTotals).reduce((s, v) => s + v, 0);
+    const serviceRanking = [...allModIds]
+      .map((id) => {
+        const dwellSec = modDwellTotals[id] || 0;
+        const actions = modActionTotals[id] || 0;
+        const pct =
+          sumModDwell > 0
+            ? Math.round((dwellSec / sumModDwell) * 100)
+            : sumModActions > 0
+            ? Math.round((actions / sumModActions) * 100)
+            : 0;
+        return {
+          id,
+          label: MODULE_LABELS[id] || id,
+          dwellSec,
+          dwellMin: Math.max(1, Math.round(dwellSec / 60)),
+          actions,
+          pctOfTime: pct,
+          _score: dwellSec + actions * 15
+        };
+      })
+      .filter((x) => x.dwellSec > 0 || x.actions > 0)
+      .sort((a, b) => b._score - a._score)
+      .map(({ _score, ...rest }) => rest);
+
+    const catCounts = {};
+    COMPLAINT_CATEGORIES.forEach((c) => {
+      catCounts[c.id] = 0;
+    });
+    let totalComplaints = 0;
+    let totalSuggestions = 0;
+    let totalSafetyAlerts = 0;
+    const sortedIssues = (feedbackFeed || []).slice().sort((a, b) => (b.ts || 0) - (a.ts || 0));
+    sortedIssues.forEach((it) => {
+      if (catCounts[it.categoryId] === undefined) catCounts[it.categoryId] = 0;
+      catCounts[it.categoryId] += 1;
+      if (it.isComplaint) totalComplaints += 1;
+      else totalSuggestions += 1;
+      if (it.categoryId === "safety_alert") totalSafetyAlerts += 1;
+    });
+    const totalIssuesAll = Math.max(1, sortedIssues.length);
+    const complaintRanking = COMPLAINT_CATEGORIES.map((c) => ({
+      id: c.id,
+      label: c.label,
+      isComplaint: c.isComplaint,
+      count: catCounts[c.id] || 0,
+      pct: Math.round(((catCounts[c.id] || 0) / totalIssuesAll) * 100)
+    })).sort((a, b) => b.count - a.count);
+
+    const topOnTimeMembers = profiles
+      .map((p) => {
+        const dwellSec = Object.values(p.moduleDwellSec || {}).reduce((s, v) => s + (Number(v) || 0), 0);
+        const topModEntry = Object.entries(p.moduleDwellSec || {}).sort((a, b) => b[1] - a[1])[0];
+        return {
+          userName: p.userName || "Hội viên",
+          age: p.age || 65,
+          province: p.province || "Việt Nam",
+          memberCode: p.memberCode || p.memberKey,
+          dwellSec,
+          dwellMin: Math.max(1, Math.round(dwellSec / 60)),
+          topModuleLabel: topModEntry ? MODULE_LABELS[topModEntry[0]] || topModEntry[0] : "Sảnh chính",
+          chatCount: (p.chatHabits && p.chatHabits.totalMessages) || 0,
+          complaintCount: p.complaintCount || 0
+        };
+      })
+      .sort((a, b) => b.dwellSec - a.dwellSec)
+      .slice(0, 5);
+
+    const zeroTokCount = byMethod.quick_0token + byMethod.sticker_1tap;
+    const zeroTokenPct = totalChats > 0 ? Math.round((zeroTokCount / totalChats) * 100) : 100;
+    const totalMembers = Math.max(1, profiles.length);
+    const totalOnTimeMin = Math.max(1, Math.round(totalOnTimeSec / 60));
+
+    return {
+      kpis: {
+        totalMembers: profiles.length,
+        totalEvents,
+        totalOnTimeSec,
+        totalOnTimeMin,
+        avgOnTimeMin: Math.max(1, Math.round(totalOnTimeMin / totalMembers)),
+        peakHour,
+        peakTimeBucketLabel: getTimeBucketLabel(getTimeBucketId(peakHour)),
+        totalChats,
+        zeroTokenPct,
+        totalComplaints,
+        totalSuggestions,
+        totalSafetyAlerts,
+        topService: serviceRanking[0] || { id: "tearoom", label: "Bàn trà 3D", dwellMin: 1, pctOfTime: 100 },
+        topComplaint: complaintRanking.find((x) => x.isComplaint && x.count > 0) || complaintRanking[0]
+      },
+      globalHourlyHist,
+      topOnTimeMembers,
+      serviceRanking,
+      chatOverview: {
+        totalMessages: totalChats,
+        byMethod,
+        topTopics: Object.entries(topicAgg).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([topic, count]) => ({ topic, count })),
+        topSearchQueries: Object.entries(searchAgg).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([q]) => q)
+      },
+      complaintRanking,
+      issueFeed: sortedIssues.slice(0, 60)
+    };
+  }
+
   function wipeLocalTelemetry() {
     hotEvents = [];
     habitProfiles = buildSeedHabitProfiles();
+    feedbackFeed = buildSeedFeedbackFeed();
     try {
       localStorage.removeItem(HOT_KEY);
       localStorage.removeItem(HABIT_KEY);
       localStorage.removeItem(SEQ_KEY);
+      localStorage.removeItem(FEEDBACK_KEY);
     } catch (e) {}
     openDb().then((db) => {
       if (!db) return;
@@ -699,6 +1075,7 @@ window.TuoiBacTelemetry = (function () {
       schemaVersion: "tuoibac-ai-telemetry-v2",
       exportedAt: new Date().toISOString(),
       totalEventsCount: allEvents.length,
+      globalActivityDashboard: getGlobalActivityDashboard(0),
       memberDeepHabitProfiles: getMemberDeepProfiles(),
       rawHabitMatrix: habitProfiles,
       events: allEvents
@@ -772,6 +1149,7 @@ window.TuoiBacTelemetry = (function () {
     getTotalStoredEstimate,
     getAllEventsAsync,
     getMemberDeepProfiles,
+    getGlobalActivityDashboard,
     wipeLocalTelemetry,
     buildExportJsonlString,
     buildExportFullJsonObject,

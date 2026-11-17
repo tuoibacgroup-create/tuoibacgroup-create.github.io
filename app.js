@@ -125,7 +125,8 @@
         async_game_move: 0,
         poem_posted: 0,
         share_link_created: 0,
-        idle_prompts_triggered: 0
+        idle_prompts_triggered: 0,
+        feedbacks: []
       },
       phoneticDict: D.INITIAL_PHONETIC_DICT.map((item) => Object.assign({}, item)),
       replyTemplates: D.REPLY_MATRIX.map((item) => ({
@@ -357,6 +358,7 @@
       }
       merged.user.skillPoints = Object.assign({}, def.user.skillPoints, (parsed.user && parsed.user.skillPoints) || {});
       merged.user.gameStats = Object.assign({}, def.user.gameStats, (parsed.user && parsed.user.gameStats) || {});
+      if (!Array.isArray(merged.analytics.feedbacks)) merged.analytics.feedbacks = [];
       merged.oaq.inProgress = Boolean(merged.oaq.inProgress);
       merged.oaq.forfeitedPendingReload = Boolean(merged.oaq.forfeitedPendingReload);
       merged.xiangqi.inProgress = Boolean(merged.xiangqi.inProgress);
@@ -1619,9 +1621,11 @@
           </button>
         </div>
 
-        <div class="home-utility-links">
+        <div class="btn-row" style="margin-top:4px;">
+          <button type="button" class="btn-secondary" id="btn-home-feedback">${ico("feedback", "ico-sm")}<span>Góp ý nhanh</span></button>
+          <button type="button" class="btn-secondary" data-go="privacy">${ico("chart", "ico-sm")}<span>Dash Hoạt động</span></button>
           <button type="button" class="btn-secondary" data-go="family">${ico("family", "ico-sm")}<span>Góc Con Cái</span></button>
-          <button type="button" class="btn-secondary" data-go="privacy">${ico("shield", "ico-sm")}<span>Riêng tư &amp; Dữ liệu</span></button>
+          <button type="button" class="btn-secondary" data-go="xiangqi">${ico("xiangqi", "ico-sm")}<span>Bàn Cờ 9×10</span></button>
         </div>
       </section>
     `;
@@ -1634,6 +1638,11 @@
         navigate(btn.dataset.go);
       });
     });
+
+    const homeFeedbackBtn = document.getElementById("btn-home-feedback");
+    if (homeFeedbackBtn) {
+      homeFeedbackBtn.addEventListener("click", () => openFeedbackModal("home"));
+    }
 
     const homeOpenAuth = document.getElementById("btn-home-open-auth");
     if (homeOpenAuth) {
@@ -1782,6 +1791,13 @@
   function applyUrlDeepLinkIfPresent() {
     try {
       const params = new URLSearchParams(window.location.search || "");
+      const dash = params.get("dash");
+      if (dash) {
+        activePrivacySubTab = "overview-dash";
+        state.route = "privacy";
+        saveState();
+        return;
+      }
       const tinh = params.get("tinh");
       if (tinh && D.PROVINCES.some((p) => p.id === tinh)) {
         state.user.provinceId = tinh;
@@ -3661,10 +3677,28 @@
          <button type="button" class="btn-secondary" id="confirm-report-2">Báo cáo quảng cáo thuốc / thực phẩm chức năng</button>`
       );
       document.getElementById("confirm-report-1").addEventListener("click", () => {
+        const tblId = (getCurrentTable() && getCurrentTable().id) || "";
+        trackTelemetryDirect("safety_report", "tearoom", "report_scam_money", {
+          category: "safety_alert",
+          tableId: tblId,
+          detail: "Báo cáo gửi số tài khoản / xin tiền trong bàn trà"
+        });
+        if (RT && typeof RT.publishSafetyReport === "function") {
+          RT.publishSafetyReport({ tableKey: tblId, reason: "scam_money" });
+        }
         closeDialog();
         showToast("Đã ghi nhận báo cáo an toàn. Kiểm duyệt viên sẽ xử lý ngay.");
       });
       document.getElementById("confirm-report-2").addEventListener("click", () => {
+        const tblId = (getCurrentTable() && getCurrentTable().id) || "";
+        trackTelemetryDirect("safety_report", "tearoom", "report_spam_ads", {
+          category: "safety_alert",
+          tableId: tblId,
+          detail: "Báo cáo quảng cáo thuốc / thực phẩm chức năng"
+        });
+        if (RT && typeof RT.publishSafetyReport === "function") {
+          RT.publishSafetyReport({ tableKey: tblId, reason: "spam_ads" });
+        }
         closeDialog();
         showToast("Đã ghi nhận báo cáo quảng cáo trái phép.");
       });
@@ -3707,6 +3741,10 @@
         if (!raw) return;
         const checked = cleanAndApplyDictionary(raw);
         if (checked.blocked) {
+          trackTelemetryDirect("chat_blocked", "tearoom", "auto_blocked_typed", {
+            category: "safety_alert",
+            detail: "Chặn tự động SĐT, số tài khoản hoặc đường dẫn lạ trong ô chat"
+          });
           showToast("Vì an toàn cho các bác, quán trà không gửi số điện thoại, số tài khoản hoặc đường link.");
           return;
         }
@@ -3753,6 +3791,10 @@
 
     const res = cleanAndApplyDictionary(rawText);
     if (res.blocked) {
+      trackTelemetryDirect("chat_blocked", "tearoom", "auto_blocked_voice", {
+        category: "safety_alert",
+        detail: "Chặn tự động nội dung nhạy cảm khi nhập bằng giọng nói"
+      });
       box.innerHTML = `
         <div class="surface-panel danger">
           <p style="font-weight:700;">Vì an toàn cho các bác, quán trà không gửi số điện thoại, số tài khoản hoặc đường link.</p>
@@ -4363,6 +4405,11 @@
             module: "quiz",
             gameKind: "quiz",
             score: state.quiz.score
+          });
+        } else {
+          trackTelemetryDirect("folk_game", "quiz", "quiz_wrong_try", {
+            questionIdx: qState.idx,
+            detail: `Thử câu đố vui số ${qState.idx + 1}`
           });
         }
         saveState();
@@ -6303,12 +6350,14 @@
     `;
 
     document.getElementById("btn-watch-play").addEventListener("click", () => {
+      trackTelemetryDirect("watch_play", "watch", "listen_channel", { channelIdx: state.watch.channelIdx, title: ch.title });
       speak(`${ch.title}. ${ch.subtitle}`);
     });
 
     els.main.querySelectorAll(".reaction-btn").forEach((b) => {
       b.addEventListener("click", () => {
         state.watch.reactions[b.dataset.rx] += 1;
+        trackTelemetryDirect("watch_reaction", "watch", `react_${b.dataset.rx}`, { channelIdx: state.watch.channelIdx });
         saveState();
         renderWatch();
       });
@@ -6319,6 +6368,7 @@
         const idx = Number(b.dataset.idx);
         state.watch.channelIdx = idx;
         state.watch.votes[idx] += 1;
+        trackTelemetryDirect("watch_channel", "watch", `switch_channel_${idx}`, { channelIdx: idx });
         saveState();
         showToast("Đã chuyển sang kênh bác vừa chọn!");
         renderWatch();
@@ -6787,6 +6837,10 @@
       if (!rawClean) return false;
       const safety = cleanAndApplyDictionary(rawClean);
       if (safety.blocked) {
+        trackTelemetryDirect("chat_blocked", "zen", "auto_blocked_prayer", {
+          category: "safety_alert",
+          detail: "Chặn tự động SĐT, số tài khoản hoặc đường dẫn trên Sớ cầu an"
+        });
         showToast("Vì an toàn, không đăng số điện thoại, số tài khoản hoặc đường link lên Sớ cầu an.");
         return false;
       }
@@ -7619,7 +7673,11 @@
         </div>
 
         <div class="surface-panel">
-          <button type="button" class="btn-secondary" id="btn-profile-open-privacy">${ico("shield")}<span>Chỉ số sinh hoạt &amp; Quyền riêng tư dữ liệu</span></button>
+          <h3>Quản trị &amp; Góp ý Quán Trà</h3>
+          <div class="btn-row">
+            <button type="button" class="btn-secondary" id="btn-profile-feedback">${ico("feedback", "ico-sm")}<span>Gửi Góp ý</span></button>
+            <button type="button" class="btn-secondary" id="btn-profile-open-privacy">${ico("chart", "ico-sm")}<span>Dash Hoạt động</span></button>
+          </div>
         </div>
       `
       }
@@ -7861,6 +7919,8 @@
         activeLeaderTab = "Cay32";
         navigate("leaderboard");
       });
+      const profFbBtn = document.getElementById("btn-profile-feedback");
+      if (profFbBtn) profFbBtn.addEventListener("click", () => openFeedbackModal("profile"));
       document.getElementById("btn-profile-open-privacy").addEventListener("click", () => navigate("privacy"));
     }
   }
@@ -7925,6 +7985,9 @@
     if (medBtn) {
       medBtn.addEventListener("click", () => {
         state.health.medMorning = !state.health.medMorning;
+        trackTelemetryDirect("health_med", "health", state.health.medMorning ? "checked_morning_med" : "unchecked_morning_med", {
+          medMorning: state.health.medMorning
+        });
         saveState();
         renderHealth();
       });
@@ -7934,6 +7997,7 @@
       b.addEventListener("click", () => {
         const qa = D.HEALTH_QA[Number(b.dataset.idx)];
         state.health.lastAnswer = qa.answer;
+        trackTelemetryDirect("health_qa", "health", "ask_health_qa", { question: qa.q });
         saveState();
         renderHealth();
       });
@@ -7943,7 +8007,9 @@
     if (checkBtn) {
       checkBtn.addEventListener("click", () => {
         const txt = document.getElementById("health-symptom-in").value.toLowerCase();
-        if (D.RED_FLAG_WORDS.some((w) => txt.includes(w))) {
+        const isRed = D.RED_FLAG_WORDS.some((w) => txt.includes(w));
+        trackTelemetryDirect("health_symptom", "health", isRed ? "red_flag_detected" : "symptom_checked", { redFlag: isRed });
+        if (isRed) {
           state.health.emergencyMode = true;
           saveState();
           renderHealth();
@@ -7959,6 +8025,7 @@
     if (redBtn) {
       redBtn.addEventListener("click", () => {
         state.health.emergencyMode = true;
+        trackTelemetryDirect("health_emergency", "health", "test_115_mode", {});
         saveState();
         renderHealth();
       });
@@ -8024,8 +8091,111 @@
     });
   }
 
-  // ==================== MODULE 11: ANALYTICS METRICS & DECREE 13/2023/NĐ-CP PRIVACY CENTER ====================
-  let activePrivacySubTab = "ai-logs";
+  // ==================== MODULE 11: USER ACTIVITY MANAGEMENT DASHBOARD, FEEDBACK & PRIVACY CENTER ====================
+  let activePrivacySubTab = "overview-dash";
+  let activeIssueFilter = "all";
+  let activeDashMemberFilter = "all";
+  let activeDashSearchQuery = "";
+  let feedbackRewardedThisSession = false;
+
+  const FEEDBACK_PRESETS = [
+    { id: "ui_font", label: "Chữ hoặc nút bấm hơi khó nhìn" },
+    { id: "speed_bug", label: "Bàn cờ / Mạng đôi lúc hơi chậm" },
+    { id: "audio_voice", label: "Âm thanh / Giọng đọc cần rõ hơn" },
+    { id: "feature_wish", label: "Mong thêm trò chơi / mục báo mới" },
+    { id: "praise", label: "Quán trà ấm cúng, dễ dùng" }
+  ];
+
+  function openFeedbackModal(sourceHint) {
+    let selectedCat = "";
+    let userEditedText = false;
+    openDialog(
+      "Góp ý & Báo lỗi cho Quán Trà",
+      `
+      <p style="font-size:0.9rem; color:var(--ink-secondary);">Bác chạm 1 mục có sẵn bên dưới hoặc viết vài chữ để Ban Quản Trị cải thiện quán tốt hơn mỗi ngày:</p>
+      <div class="feedback-preset-stack" role="group" aria-label="Chọn nhanh chủ đề góp ý">
+        ${FEEDBACK_PRESETS.map(
+          (p) => `<button type="button" class="feedback-preset-btn" data-fb-cat="${p.id}">${escHtml(p.label)}</button>`
+        ).join("")}
+      </div>
+      <label class="field-label" style="margin-top:8px;">
+        Lời nhắn thêm (không bắt buộc gõ nếu đã chọn mục trên)
+        <textarea class="textarea-lg" id="feedback-text-in" rows="3" placeholder="Ví dụ: Mong chữ ở mục báo sáng đậm hơn, hoặc thêm cờ thế mới..."></textarea>
+      </label>
+      <button type="button" class="btn-primary" id="btn-submit-feedback" style="margin-top:8px;">
+        ${ico("feedback", "ico-sm")}
+        <span>Gửi góp ý tới Ban Quản Trị</span>
+      </button>
+      `
+    );
+
+    const textEl = document.getElementById("feedback-text-in");
+    if (textEl) {
+      textEl.addEventListener("input", () => {
+        userEditedText = textEl.value.trim().length > 0;
+      });
+    }
+
+    document.querySelectorAll("[data-fb-cat]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        selectedCat = btn.dataset.fbCat || "";
+        document.querySelectorAll("[data-fb-cat]").forEach((b) => b.classList.toggle("selected", b === btn));
+        if (textEl && !userEditedText) {
+          textEl.value = btn.textContent.trim();
+        }
+      });
+    });
+
+    const submitBtn = document.getElementById("btn-submit-feedback");
+    if (submitBtn) {
+      submitBtn.addEventListener("click", () => {
+        const typed = textEl ? textEl.value.trim() : "";
+        const presetObj = FEEDBACK_PRESETS.find((p) => p.id === selectedCat);
+        const cleanMsg = typed || (presetObj ? presetObj.label : "");
+        if (!cleanMsg) {
+          showToast("Bác chạm chọn 1 mục hoặc gõ vài chữ góp ý nhé.");
+          return;
+        }
+        const safety = cleanAndApplyDictionary(cleanMsg);
+        if (safety.blocked) {
+          trackTelemetryDirect("chat_blocked", "privacy", "auto_blocked_feedback", {
+            category: "safety_alert",
+            detail: "Chặn tự động SĐT, số tài khoản hoặc đường dẫn trong ô Góp ý"
+          });
+          showToast("Vì an toàn, vui lòng không điền số điện thoại hay đường link lạ vào mục góp ý.");
+          return;
+        }
+        const chosenCat = selectedCat || "feature_wish";
+        if (!state.analytics) state.analytics = {};
+        if (!Array.isArray(state.analytics.feedbacks)) state.analytics.feedbacks = [];
+        state.analytics.feedbacks.unshift({
+          id: `fb_${Date.now()}`,
+          ts: Date.now(),
+          category: chosenCat,
+          text: cleanMsg.slice(0, 200)
+        });
+        if (state.analytics.feedbacks.length > 60) {
+          state.analytics.feedbacks = state.analytics.feedbacks.slice(0, 60);
+        }
+        trackTelemetryDirect("user_feedback", sourceHint || state.route || "home", chosenCat, {
+          category: chosenCat,
+          text: cleanMsg.slice(0, 200),
+          detail: cleanMsg.slice(0, 140)
+        });
+        saveState();
+        closeDialog();
+        if (!feedbackRewardedThisSession) {
+          feedbackRewardedThisSession = true;
+          addXu(2, "Cảm ơn bác đã gửi góp ý xây dựng Quán Trà");
+        } else {
+          showToast("Đã gửi góp ý tới Ban Quản Trị Quán Trà. Xin cảm ơn bác!");
+        }
+        if (state.route === "privacy") {
+          renderPrivacyAndMetrics();
+        }
+      });
+    }
+  }
 
   function renderHourlyHistogramHtml(hourly24) {
     const arr = Array.isArray(hourly24) && hourly24.length === 24 ? hourly24 : new Array(24).fill(0);
@@ -8062,6 +8232,9 @@
   }
 
   function renderPrivacyAndMetrics() {
+    if (activePrivacySubTab === "ai-logs") {
+      activePrivacySubTab = "overview-dash";
+    }
     const a = state.analytics || {};
     const quickCount = a.tea_msg_quick_0token || 0;
     const voiceTextCount = a.tea_msg_voice_or_text || 0;
@@ -8071,37 +8244,261 @@
     const hotEvents = TEL ? TEL.getHotEvents() : [];
     const totalIdbEvents = TEL ? TEL.getTotalStoredEstimate() : hotEvents.length;
     const deepProfiles = TEL ? TEL.getMemberDeepProfiles() : [];
+    const dash = TEL
+      ? TEL.getGlobalActivityDashboard(sessionSeconds)
+      : {
+          kpis: {
+            totalMembers: deepProfiles.length,
+            totalEvents: hotEvents.length,
+            totalOnTimeMin: 1,
+            avgOnTimeMin: 1,
+            peakHour: 6,
+            peakTimeBucketLabel: "Buổi sáng",
+            totalChats: 0,
+            zeroTokenPct: 100,
+            totalComplaints: 0,
+            totalSuggestions: 0,
+            totalSafetyAlerts: 0,
+            topService: { label: "Sảnh chính", dwellMin: 1, pctOfTime: 100 },
+            topComplaint: { label: "Chưa có", count: 0 }
+          },
+          globalHourlyHist: new Array(24).fill(0),
+          topOnTimeMembers: [],
+          serviceRanking: [],
+          chatOverview: { totalMessages: 0, byMethod: { quick_0token: 0, sticker_1tap: 0, typed_text: 0, voice_speech: 0 }, topTopics: [], topSearchQueries: [] },
+          complaintRanking: [],
+          issueFeed: []
+        };
+
+    const filteredIssues = (dash.issueFeed || []).filter((item) => {
+      if (activeIssueFilter === "complaints") return Boolean(item.isComplaint);
+      if (activeIssueFilter === "suggestions") return !item.isComplaint;
+      return true;
+    });
+
+    const filteredProfiles = deepProfiles.filter((p) =>
+      activeDashMemberFilter === "all" ? true : p.memberCode === activeDashMemberFilter
+    );
+
+    const searchQ = activeDashSearchQuery.trim().toLowerCase();
+    const filteredEvents = hotEvents.filter((ev) => {
+      if (activeDashMemberFilter !== "all" && ev.memberCode !== activeDashMemberFilter) return false;
+      if (!searchQ) return true;
+      const m = ev.meta || {};
+      const hay = `${ev.userName || ""} ${ev.memberCode || ""} ${ev.module || ""} ${ev.subAction || ""} ${m.detail || ""} ${m.text || ""} ${m.query || ""}`.toLowerCase();
+      return hay.includes(searchQ);
+    });
+
+    const maxSvcScore = Math.max(1, ...(dash.serviceRanking || []).map((s) => s.dwellSec + s.actions * 15));
+    const maxCmpCount = Math.max(1, ...(dash.complaintRanking || []).map((c) => c.count));
 
     els.main.innerHTML = `
-      <h1>Kho AI Tracking 100% &amp; Quyền Riêng Tư</h1>
-      <p class="lead-copy">Ghi nhận 100% nhịp sinh hoạt, khung giờ mở máy, thời lượng từng màn hình, phương thức trò chuyện và chủ đề quan tâm vào kho IndexedDB không giới hạn dung lượng để phục vụ phân tích AI lâu dài.</p>
+      <h1>Dash Quản Lý Hoạt Động &amp; Góp Ý</h1>
+      <p class="lead-copy">Theo dõi toàn bộ thời gian On-Time, dịch vụ dùng nhiều nhất, xu hướng chat chit, chủ đề phàn nàn và góp ý của hội viên.</p>
 
-      <div class="xq-top-switch" role="tablist" aria-label="Chọn Kho AI Tracking hoặc Quyền Riêng Tư">
-        <button type="button" class="xq-top-btn ${activePrivacySubTab === "ai-logs" ? "active" : ""}" id="btn-priv-tab-ai">Kho AI Tracking 100% (${totalIdbEvents} log)</button>
-        <button type="button" class="xq-top-btn ${activePrivacySubTab === "privacy" ? "active" : ""}" id="btn-priv-tab-gdpr">Chỉ Số 0-Token &amp; Quyền Riêng Tư</button>
+      <div class="temple-cam-bar" role="tablist" aria-label="Chọn khu vực quản trị hoạt động">
+        <button type="button" class="temple-cam-btn ${activePrivacySubTab === "overview-dash" ? "active" : ""}" id="btn-priv-tab-overview">Tổng Quan &amp; Dịch Vụ</button>
+        <button type="button" class="temple-cam-btn ${activePrivacySubTab === "complaints-chat" ? "active" : ""}" id="btn-priv-tab-issues">Chat &amp; Phàn Nàn (${dash.kpis.totalComplaints + dash.kpis.totalSuggestions})</button>
+        <button type="button" class="temple-cam-btn ${activePrivacySubTab === "privacy" ? "active" : ""}" id="btn-priv-tab-gdpr">Hội Viên &amp; Riêng Tư</button>
       </div>
 
       ${
-        activePrivacySubTab === "ai-logs"
+        activePrivacySubTab === "overview-dash"
           ? `
         <div class="surface-panel jade">
           <div class="passcard-head">
-            <strong>Kho Lưu Trữ 4 Lớp Bền Vững (Tracking 100%)</strong>
-            <span class="online-status-pill"><span class="online-dot-live"></span>Đang ghi 100%</span>
+            <strong>Giám sát 100% hành vi (${totalIdbEvents} sự kiện)</strong>
+            <span class="online-status-pill"><span class="online-dot-live"></span>${st.totalOtherPeers + 1} máy mở</span>
           </div>
-          <p style="font-size:0.88rem;">1. <strong>IndexedDB Không Giới Hạn</strong> (<code>tuoibac_telemetry_db_v1</code>: <strong class="num">${totalIdbEvents}</strong> bản ghi) · 2. Bộ nhớ nóng (<code>${escHtml(STORAGE_KEY)}</code>) · 3. Bản sao dự phòng (<code>_vault_bak</code>) · 4. Đám mây (${escHtml(st.providerName)}).</p>
-          <div class="temple-ritual-grid">
-            <button type="button" class="btn-primary" id="btn-export-ai-jsonl">${ico("download")}<span>Xuất Chuẩn AI (.jsonl)</span></button>
-            <button type="button" class="btn-jade" id="btn-export-ai-logs-json">${ico("download")}<span>Xuất Kho Đầy Đủ (.json)</span></button>
-            <button type="button" class="btn-secondary" id="btn-export-ai-logs-csv"><span>Xuất Bảng Excel (.csv)</span></button>
-            <button type="button" class="btn-secondary" id="btn-flush-dwell-now"><span>Chốt Thời Lượng Hiện Tại</span></button>
+          <div class="btn-row">
+            <button type="button" class="btn-primary" id="btn-dash-open-feedback">${ico("feedback", "ico-sm")}<span>Gửi Góp ý mới</span></button>
+            <button type="button" class="btn-secondary" id="btn-flush-dwell-now">Chốt On-Time ngay</button>
+          </div>
+        </div>
+
+        <div class="dash-kpi-grid">
+          <div class="dash-kpi-card is-jade">
+            <small>Tổng On-Time toàn quán</small>
+            <strong class="num">${dash.kpis.totalOnTimeMin} phút</strong>
+            <small class="num">TB ${dash.kpis.avgOnTimeMin}p/người · Cao điểm ${String(dash.kpis.peakHour).padStart(2, "0")}h</small>
+          </div>
+          <div class="dash-kpi-card">
+            <small>Dịch vụ dùng nhiều nhất</small>
+            <strong>${escHtml(dash.kpis.topService.label)}</strong>
+            <small class="num">${dash.kpis.topService.dwellMin} phút · ${dash.kpis.topService.pctOfTime}% thời lượng</small>
+          </div>
+          <div class="dash-kpi-card">
+            <small>Tổng lượt Chat toàn quán</small>
+            <strong class="num">${dash.kpis.totalChats} câu</strong>
+            <small class="num">${dash.kpis.zeroTokenPct}% dùng câu nhanh/Sticker</small>
+          </div>
+          <div class="dash-kpi-card is-warn">
+            <small>Phàn nàn &amp; An toàn</small>
+            <strong class="num">${dash.kpis.totalComplaints} phàn nàn</strong>
+            <small class="num">${dash.kpis.totalSafetyAlerts} chặn an toàn · ${dash.kpis.totalSuggestions} đề xuất</small>
           </div>
         </div>
 
         <div class="surface-panel">
-          <h3>Hồ Sơ Thói Quen Giờ Giấc &amp; Chat Chit Toàn Thành Viên (${deepProfiles.length} hồ sơ)</h3>
+          <h3>Nhịp On-Time 24h Toàn Quán (${escHtml(dash.kpis.peakTimeBucketLabel)})</h3>
+          ${renderHourlyHistogramHtml(dash.globalHourlyHist)}
+          <div class="member-log-list" style="margin-top:6px;">
+            ${(dash.topOnTimeMembers || [])
+              .map(
+                (m, idx) => `
+              <div class="province-rank-item">
+                <div>
+                  <strong>${idx + 1}. ${escHtml(m.userName)} · ${m.age}t</strong>
+                  <div style="font-size:0.84rem; color:var(--ink-secondary);">${escHtml(m.province)} · Hay ở: ${escHtml(m.topModuleLabel)} · ${m.chatCount} chat</div>
+                </div>
+                <span class="badge-tag amber num">${m.dwellMin} phút</span>
+              </div>
+            `
+              )
+              .join("")}
+          </div>
+        </div>
+
+        <div class="surface-panel">
+          <h3>Xếp Hạng Dịch Vụ Được Dùng Nhiều Nhất</h3>
+          <div class="dash-rank-list">
+            ${(dash.serviceRanking || [])
+              .map((svc, idx) => {
+                const barW = Math.max(8, Math.round(((svc.dwellSec + svc.actions * 15) / maxSvcScore) * 100));
+                return `
+                <div class="dash-rank-row">
+                  <div class="dash-rank-head">
+                    <strong>${idx + 1}. ${escHtml(svc.label)}</strong>
+                    <span class="num">${svc.dwellMin} phút (${svc.pctOfTime}%) · ${svc.actions} lượt</span>
+                  </div>
+                  <div class="dash-bar-track">
+                    <div class="dash-bar-fill ${idx === 0 ? "" : "is-amber"}" style="width:${barW}%"></div>
+                  </div>
+                </div>
+              `;
+              })
+              .join("")}
+          </div>
+        </div>
+      `
+          : activePrivacySubTab === "complaints-chat"
+          ? `
+        <div class="surface-panel">
+          <div class="passcard-head">
+            <h3>Chủ Đề Phàn Nàn &amp; Góp Ý Nhiều Nhất</h3>
+            <button type="button" class="btn-mini" id="btn-dash-feedback-2">+ Thêm góp ý</button>
+          </div>
+          <div class="dash-rank-list">
+            ${(dash.complaintRanking || [])
+              .map((cmp) => {
+                const barW = cmp.count > 0 ? Math.max(10, Math.round((cmp.count / maxCmpCount) * 100)) : 4;
+                return `
+                <div class="dash-rank-row">
+                  <div class="dash-rank-head">
+                    <strong>${escHtml(cmp.label)}</strong>
+                    <span class="num">${cmp.count} lượt (${cmp.pct}%)</span>
+                  </div>
+                  <div class="dash-bar-track">
+                    <div class="dash-bar-fill ${cmp.isComplaint ? "is-complaint" : ""}" style="width:${barW}%"></div>
+                  </div>
+                </div>
+              `;
+              })
+              .join("")}
+          </div>
+        </div>
+
+        <div class="surface-panel warm">
+          <h3>Thói Quen Chat Chit &amp; Tìm Kiếm Toàn Quán (${dash.chatOverview.totalMessages} câu)</h3>
+          <div class="chat-method-grid">
+            <div class="chat-method-chip"><span>Câu nhanh 0-Token</span><strong class="num">${dash.chatOverview.byMethod.quick_0token}</strong></div>
+            <div class="chat-method-chip"><span>Sticker 1 chạm</span><strong class="num">${dash.chatOverview.byMethod.sticker_1tap}</strong></div>
+            <div class="chat-method-chip"><span>Gõ phím chữ</span><strong class="num">${dash.chatOverview.byMethod.typed_text}</strong></div>
+            <div class="chat-method-chip"><span>Giọng nói Micro</span><strong class="num">${dash.chatOverview.byMethod.voice_speech}</strong></div>
+          </div>
+          ${
+            dash.chatOverview.topTopics.length > 0
+              ? `<p style="font-size:0.86rem;"><strong>Chủ đề bàn trà nổi bật:</strong> ${dash.chatOverview.topTopics.map((t) => `${escHtml(t.topic)} (${t.count})`).join(" · ")}</p>`
+              : ""
+          }
+          ${
+            dash.chatOverview.topSearchQueries.length > 0
+              ? `<p style="font-size:0.86rem;"><strong>Từ khóa tìm kiếm gần đây:</strong> ${dash.chatOverview.topSearchQueries.map((q) => `"${escHtml(q)}"`).join(", ")}</p>`
+              : ""
+          }
+        </div>
+
+        <div class="surface-panel">
+          <h3>Chi Tiết Phàn Nàn, Góp Ý &amp; Cảnh Báo An Toàn (${filteredIssues.length})</h3>
+          <div class="temple-cam-bar" role="group" aria-label="Lọc danh sách phàn nàn và góp ý">
+            <button type="button" class="temple-cam-btn ${activeIssueFilter === "all" ? "active" : ""}" data-issue-flt="all">Tất cả (${(dash.issueFeed || []).length})</button>
+            <button type="button" class="temple-cam-btn ${activeIssueFilter === "complaints" ? "active" : ""}" data-issue-flt="complaints">Phàn nàn (${dash.kpis.totalComplaints})</button>
+            <button type="button" class="temple-cam-btn ${activeIssueFilter === "suggestions" ? "active" : ""}" data-issue-flt="suggestions">Đề xuất &amp; Khen (${dash.kpis.totalSuggestions})</button>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            ${
+              filteredIssues.length === 0
+                ? `<p style="font-size:0.88rem; color:var(--ink-secondary);">Chưa có ghi nhận nào trong mục lọc này.</p>`
+                : filteredIssues
+                    .map((it) => {
+                      const d = new Date(it.ts || Date.now());
+                      const hhmm = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+                      const tagCls =
+                        it.categoryId === "safety_alert"
+                          ? "is-safe"
+                          : it.isComplaint
+                          ? "is-pain"
+                          : it.categoryId === "praise"
+                          ? "is-praise"
+                          : "is-wish";
+                      return `
+                      <div class="issue-feed-card">
+                        <div class="issue-feed-top">
+                          <strong>${escHtml(it.userName)} · ${it.age}t (${escHtml(it.province)}) · ${hhmm}</strong>
+                          <span class="issue-tag ${tagCls}">${escHtml(it.categoryLabel)}</span>
+                        </div>
+                        <p style="font-size:0.9rem;">${escHtml(it.text)}</p>
+                      </div>
+                    `;
+                    })
+                    .join("")
+            }
+          </div>
+        </div>
+      `
+          : `
+        <div class="surface-panel">
+          <h3>Tra Cứu Từng Thành Viên &amp; Xuất Dữ Liệu AI (${deepProfiles.length} hồ sơ)</h3>
+          <div class="setup-inline-fields">
+            <label class="field-label" style="flex:1;">
+              Chọn thành viên
+              <select class="select-lg" id="dash-member-filter">
+                <option value="all" ${activeDashMemberFilter === "all" ? "selected" : ""}>Tất cả hội viên (${deepProfiles.length})</option>
+                ${deepProfiles
+                  .map(
+                    (p) =>
+                      `<option value="${escHtml(p.memberCode)}" ${activeDashMemberFilter === p.memberCode ? "selected" : ""}>${escHtml(p.userName)} (${escHtml(p.memberCode)})</option>`
+                  )
+                  .join("")}
+              </select>
+            </label>
+            <label class="field-label" style="flex:1.2;">
+              Tìm trong log hành vi
+              <input type="text" class="input-lg" id="dash-log-search" value="${escHtml(activeDashSearchQuery)}" placeholder="Ví dụ: chat, cờ, báo..." />
+            </label>
+          </div>
+          <div class="temple-ritual-grid" style="margin-top:8px;">
+            <button type="button" class="btn-primary" id="btn-export-ai-jsonl">${ico("download")}<span>Xuất AI (.jsonl)</span></button>
+            <button type="button" class="btn-jade" id="btn-export-ai-logs-json">${ico("download")}<span>Xuất Kho (.json)</span></button>
+            <button type="button" class="btn-secondary" id="btn-export-ai-logs-csv"><span>Xuất Excel (.csv)</span></button>
+            <button type="button" class="btn-secondary" id="btn-flush-dwell-now"><span>Chốt On-Time</span></button>
+          </div>
+        </div>
+
+        <div class="surface-panel">
+          <h3>Hồ Sơ Thói Quen Từng Thành Viên (${filteredProfiles.length})</h3>
           <div style="display:flex; flex-direction:column; gap:12px;">
-            ${deepProfiles
+            ${filteredProfiles
               .map((p) => {
                 const cs = p.chatSummary;
                 return `
@@ -8110,21 +8507,11 @@
                   <strong>${escHtml(p.userName)} · ${p.age}t (${escHtml(p.province)})</strong>
                   <span class="cohort-pill ${p.seniorityLevel >= 17 ? "veteran" : p.seniorityLevel >= 6 ? "trusted" : "newcomer"}">${escHtml(p.memberCode)} · ${p.totalEvents} sự kiện</span>
                 </div>
-                <small style="font-size:0.88rem; color:#6B4208; font-weight:700;">${escHtml(p.seniorityTitle)} · Giờ hoạt động mạnh nhất: ${String(p.peakHour).padStart(2, "0")}h00 (${escHtml(p.peakTimeBucketLabel)})</small>
+                <small style="font-size:0.88rem; color:#6B4208; font-weight:700;">${escHtml(p.seniorityTitle)} · Cao điểm: ${String(p.peakHour).padStart(2, "0")}h00</small>
                 ${renderHourlyHistogramHtml(p.hourlyHist)}
-                <div style="font-size:0.88rem;"><strong>Thời lượng gắn bó theo màn hình:</strong> ${escHtml(p.topDwellSummary)}</div>
-                <div class="chat-method-grid">
-                  <div class="chat-method-chip"><span>Câu nhanh 0-Token</span><strong>${cs.byMethod.quick_0token}</strong></div>
-                  <div class="chat-method-chip"><span>Sticker 1 chạm</span><strong>${cs.byMethod.sticker_1tap}</strong></div>
-                  <div class="chat-method-chip"><span>Gõ phím chữ</span><strong>${cs.byMethod.typed_text}</strong></div>
-                  <div class="chat-method-chip"><span>Giọng nói Micro</span><strong>${cs.byMethod.voice_speech}</strong></div>
-                </div>
-                <div style="font-size:0.88rem;">
-                  <strong>Thói quen chat:</strong> Tổng <span class="num">${cs.totalMessages}</span> câu (TB <span class="num">${cs.avgWords}</span> từ/câu · Ưu tiên: ${escHtml(cs.dominantMethodLabel)})${
-                  cs.topCompanions.length > 0 ? ` · Hay trò chuyện cùng: ${escHtml(cs.topCompanions.join(", "))}` : ""
-                }${p.searchQueries.length > 0 ? ` · Từ khóa tìm báo: "${escHtml(p.searchQueries.join(", "))}"` : ""}
-                </div>
-                <div style="font-size:0.88rem; color:var(--accent-jade); font-weight:700;">Hành động gợi ý từ dữ liệu: ${escHtml(p.aiActionableInsight)}</div>
+                <div style="font-size:0.88rem;"><strong>Gắn bó theo màn hình:</strong> ${escHtml(p.topDwellSummary)}</div>
+                <div style="font-size:0.88rem;"><strong>Thói quen chat:</strong> <span class="num">${cs.totalMessages}</span> câu · ${escHtml(cs.dominantMethodLabel)}</div>
+                <div style="font-size:0.88rem; color:var(--accent-jade); font-weight:700;">Gợi ý AI: ${escHtml(p.aiActionableInsight)}</div>
               </div>
             `;
               })
@@ -8133,125 +8520,119 @@
         </div>
 
         <div class="surface-panel">
-          <h3>Dòng Sự Kiện Telemetry Chi Tiết Thời Gian Thực (${hotEvents.length} bản ghi gần nhất)</h3>
+          <h3>Dòng Sự Kiện Gần Nhất (${filteredEvents.length} bản ghi khớp)</h3>
           <div style="display:flex; flex-direction:column; gap:8px;">
-            ${hotEvents
-              .slice(0, 20)
+            ${filteredEvents
+              .slice(0, 25)
               .map((ev) => {
                 const d = new Date(ev.ts || Date.now());
                 const hms = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}`;
                 const m = ev.meta || {};
-                const methodBadge = m.inputMethod ? ` · Kiểu: ${m.inputMethod} (${m.wordCount || 0} từ)` : "";
+                const methodBadge = m.inputMethod ? ` · ${m.inputMethod}` : "";
                 return `
                   <div class="member-log-item">
-                    <div style="display:flex; justify-content:space-between; gap:8px; font-weight:700;">
+                    <div style="display:flex; justify-content:space-between; gap:8px; font-weight:700; flex-wrap:wrap;">
                       <span>[${hms}] ${escHtml(ev.userName)} (${escHtml(ev.memberCode)})</span>
                       <span style="color:var(--accent-terracotta);">${escHtml(ev.module)}/${escHtml(ev.subAction)}</span>
                     </div>
-                    <span>Lưu màn hình: ${ev.dwellSec || 0}s${escHtml(methodBadge)} · ${escHtml(m.detail || m.text || m.query || m.wishText || JSON.stringify(m).slice(0, 90))}</span>
+                    <span>On-Time: ${ev.dwellSec || 0}s${escHtml(methodBadge)} · ${escHtml(m.detail || m.text || m.query || m.wishText || JSON.stringify(m).slice(0, 90))}</span>
                   </div>
                 `;
               })
               .join("")}
           </div>
         </div>
-      `
-          : `
 
-      <div class="surface-panel ${st.connected ? "jade" : "warm"}">
-        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
-          <strong>Máy chủ Thời gian thực: ${st.connected ? "Đang trực tuyến" : "Đang nối..."}</strong>
-          <span class="badge-tag num">${escHtml(st.providerName)}</span>
-        </div>
-        <p style="font-size:0.88rem;">Số điện thoại thật khác đang mở cùng lúc: <strong class="num">${st.totalOtherPeers}</strong> thiết bị.</p>
-        <div class="btn-row">
-          <button type="button" class="btn-secondary" id="btn-open-rt-modal">${ico("wifi")}<span>Cấu hình Realtime / Supabase</span></button>
-          <button type="button" class="btn-secondary" id="btn-privacy-pwa">${ico("download")}<span>Đặt ra màn hình chính</span></button>
-        </div>
-      </div>
-
-      <div class="surface-panel">
-        <h3>Bảng đo 7 chỉ số sản phẩm &amp; Tiết kiệm Token</h3>
-        <div class="metrics-stat-list">
-          <div class="metrics-stat-row">
-            <span>Tỷ lệ dùng nút gợi ý nhanh (0 tốn Token AI)</span>
-            <strong class="num" style="color:var(--accent-jade);">${zeroTokenPct}% (${quickCount}/${totalMsgs} câu)</strong>
+        <div class="surface-panel ${st.connected ? "jade" : "warm"}">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+            <strong>Máy chủ Thời gian thực: ${st.connected ? "Đang trực tuyến" : "Đang nối..."}</strong>
+            <span class="badge-tag num">${escHtml(st.providerName)}</span>
           </div>
-          <div class="metrics-stat-row">
-            <span>Cụm từ tự học trong Sổ từ điển (<code>phonetic_dictionary</code>)</span>
-            <strong class="num">${state.phoneticDict.length} cặp từ</strong>
-          </div>
-          <div class="metrics-stat-row">
-            <span>1. Phiên mở ứng dụng (<code>session_start</code>)</span>
-            <strong class="num">${a.session_start || 1} lần</strong>
-          </div>
-          <div class="metrics-stat-row">
-            <span>2. Lượt Điểm danh bình an (<code>morning_checkin</code>)</span>
-            <strong class="num">${a.morning_checkin_done || 0} lần · Chuỗi ${state.user.streakDays} ngày</strong>
-          </div>
-          <div class="metrics-stat-row">
-            <span>3. Lượt vào Bàn trà &amp; Đàm đạo báo sáng</span>
-            <strong class="num">${a.tea_table_joined || 0} bàn · Đọc ${a.news_article_read || 0} tin</strong>
-          </div>
-          <div class="metrics-stat-row">
-            <span>4. Trợ lý tự gợi chuyện sau 60 giây im lặng</span>
-            <strong class="num">${a.idle_prompts_triggered || 0} lần rót trà gợi chuyện</strong>
-          </div>
-          <div class="metrics-stat-row">
-            <span>5. Nước đi Ván treo &amp; Bài thơ mới đăng</span>
-            <strong class="num">${a.async_game_move || 0} nước · ${a.poem_posted || 0} bài thơ</strong>
-          </div>
-          <div class="metrics-stat-row">
-            <span>6. Lượt tạo đường dẫn &amp; mã QR mời bạn</span>
-            <strong class="num">${a.share_link_created || 0} lượt chia sẻ</strong>
+          <p style="font-size:0.88rem;">Thiết bị thật đang mở cùng lúc: <strong class="num">${st.totalOtherPeers}</strong></p>
+          <div class="btn-row">
+            <button type="button" class="btn-secondary" id="btn-open-rt-modal">${ico("wifi")}<span>Cấu hình Realtime</span></button>
+            <button type="button" class="btn-secondary" id="btn-privacy-pwa">${ico("download")}<span>Cài ra màn hình</span></button>
           </div>
         </div>
-      </div>
 
-      <div class="surface-panel">
-        <h3>Quyền riêng tư dữ liệu (Nghị định 13/2023/NĐ-CP)</h3>
-        <p style="font-size:0.88rem; color:var(--ink-secondary);">Quán Trà Tuổi Bạc không thu thập danh bạ, không ghi âm ngầm (micro chỉ bật khi chính tay bấm nút), và không dùng dữ liệu sức khỏe để quảng cáo thuốc.</p>
-
-        <div class="consent-toggle-card">
-          <strong>1. Báo tin Điểm danh sáng cho con cái</strong>
-          <small style="color:var(--ink-secondary);">Chỉ gửi trạng thái khỏe khoắn / bình thường, không theo dõi vị trí GPS.</small>
-          <button type="button" class="btn-${state.privacy.consentFamilyCheckin ? "jade" : "secondary"}" id="btn-toggle-consent-family">
-            ${state.privacy.consentFamilyCheckin ? "Đang bật: Cho phép báo tin bình an" : "Đang tắt: Chỉ lưu trên máy riêng"}
-          </button>
+        <div class="surface-panel">
+          <h3>Chỉ Số Sản Phẩm &amp; Tiết Kiệm Token</h3>
+          <div class="metrics-stat-list">
+            <div class="metrics-stat-row">
+              <span>Nút gợi ý nhanh (0 tốn Token)</span>
+              <strong class="num" style="color:var(--accent-jade);">${zeroTokenPct}% (${quickCount}/${totalMsgs})</strong>
+            </div>
+            <div class="metrics-stat-row">
+              <span>Sổ từ điển tự học (<code>phonetic_dictionary</code>)</span>
+              <strong class="num">${state.phoneticDict.length} cặp từ</strong>
+            </div>
+            <div class="metrics-stat-row">
+              <span>Phiên mở app · Điểm danh sáng</span>
+              <strong class="num">${a.session_start || 1} · ${a.morning_checkin_done || 0}</strong>
+            </div>
+            <div class="metrics-stat-row">
+              <span>Vào bàn trà · Đọc báo sáng</span>
+              <strong class="num">${a.tea_table_joined || 0} · ${a.news_article_read || 0}</strong>
+            </div>
+            <div class="metrics-stat-row">
+              <span>Nước cờ treo · Thơ mới · Chia sẻ</span>
+              <strong class="num">${a.async_game_move || 0} · ${a.poem_posted || 0} · ${a.share_link_created || 0}</strong>
+            </div>
+          </div>
         </div>
 
-        <div class="consent-toggle-card">
-          <strong>2. Hiện tên &amp; nhân vật 3D cho người thật cùng bàn</strong>
-          <small style="color:var(--ink-secondary);">Giúp bạn đồng niên nhìn thấy nhau trong bàn trà thời gian thực.</small>
-          <button type="button" class="btn-${state.privacy.consentRealtimePresence ? "jade" : "secondary"}" id="btn-toggle-consent-rt">
-            ${state.privacy.consentRealtimePresence ? "Đang bật: Tham gia bàn trà trực tuyến" : "Đang tắt: Ẩn hiện diện trực tuyến"}
-          </button>
+        <div class="surface-panel">
+          <h3>Quyền Riêng Tư (Nghị định 13/2023/NĐ-CP)</h3>
+          <div class="consent-toggle-card">
+            <strong>1. Báo tin Điểm danh sáng cho con cái</strong>
+            <button type="button" class="btn-${state.privacy.consentFamilyCheckin ? "jade" : "secondary"}" id="btn-toggle-consent-family">
+              ${state.privacy.consentFamilyCheckin ? "Đang bật: Báo tin bình an" : "Đang tắt: Lưu trên máy"}
+            </button>
+          </div>
+          <div class="consent-toggle-card">
+            <strong>2. Hiện tên &amp; nhân vật cùng bàn trà</strong>
+            <button type="button" class="btn-${state.privacy.consentRealtimePresence ? "jade" : "secondary"}" id="btn-toggle-consent-rt">
+              ${state.privacy.consentRealtimePresence ? "Đang bật: Tham gia trực tuyến" : "Đang tắt: Ẩn hiện diện"}
+            </button>
+          </div>
+          <div class="consent-toggle-card">
+            <strong>3. Tự học từ điển phát âm trên máy</strong>
+            <button type="button" class="btn-${state.privacy.consentVoiceDict ? "jade" : "secondary"}" id="btn-toggle-consent-dict">
+              ${state.privacy.consentVoiceDict ? "Đang bật: Tự học từ điển" : "Đang tắt: Không lưu từ mới"}
+            </button>
+          </div>
+          <div class="btn-row">
+            <button type="button" class="btn-secondary" id="btn-export-personal-json">${ico("download")}<span>Tải dữ liệu (.json)</span></button>
+            <button type="button" class="btn-danger" id="btn-wipe-personal-data">Xóa toàn bộ dữ liệu</button>
+          </div>
         </div>
-
-        <div class="consent-toggle-card">
-          <strong>3. Tự học sửa lỗi phát âm tiếng Việt trên máy</strong>
-          <small style="color:var(--ink-secondary);">Lưu cặp từ sửa sai vào sổ từ điển để lần sau không tốn phí xử lý.</small>
-          <button type="button" class="btn-${state.privacy.consentVoiceDict ? "jade" : "secondary"}" id="btn-toggle-consent-dict">
-            ${state.privacy.consentVoiceDict ? "Đang bật: Tự học từ điển" : "Đang tắt: Không lưu từ mới"}
-          </button>
-        </div>
-
-        <div class="btn-row">
-          <button type="button" class="btn-secondary" id="btn-export-personal-json">${ico("download")}<span>Tải dữ liệu cá nhân (.json)</span></button>
-          <button type="button" class="btn-danger" id="btn-wipe-personal-data">Xóa toàn bộ dữ liệu</button>
-        </div>
-      </div>
       `
       }
     `;
 
-    document.getElementById("btn-priv-tab-ai").addEventListener("click", () => {
-      activePrivacySubTab = "ai-logs";
+    document.getElementById("btn-priv-tab-overview").addEventListener("click", () => {
+      activePrivacySubTab = "overview-dash";
+      renderPrivacyAndMetrics();
+    });
+    document.getElementById("btn-priv-tab-issues").addEventListener("click", () => {
+      activePrivacySubTab = "complaints-chat";
       renderPrivacyAndMetrics();
     });
     document.getElementById("btn-priv-tab-gdpr").addEventListener("click", () => {
       activePrivacySubTab = "privacy";
       renderPrivacyAndMetrics();
+    });
+
+    const dashFbBtn1 = document.getElementById("btn-dash-open-feedback");
+    if (dashFbBtn1) dashFbBtn1.addEventListener("click", () => openFeedbackModal("privacy"));
+    const dashFbBtn2 = document.getElementById("btn-dash-feedback-2");
+    if (dashFbBtn2) dashFbBtn2.addEventListener("click", () => openFeedbackModal("privacy"));
+
+    els.main.querySelectorAll("[data-issue-flt]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        activeIssueFilter = btn.dataset.issueFlt || "all";
+        renderPrivacyAndMetrics();
+      });
     });
 
     const triggerDownloadBlob = (blob, filename, msg) => {
@@ -8273,7 +8654,7 @@
         triggerDownloadBlob(
           new Blob([jsonlStr], { type: "application/x-ndjson;charset=utf-8" }),
           "tuoibac-ai-telemetry-100pct.jsonl",
-          "Đã xuất tệp chuẩn huấn luyện & phân tích AI (.jsonl)!"
+          "Đã xuất tệp chuẩn phân tích AI (.jsonl)!"
         );
       });
     }
@@ -8285,7 +8666,7 @@
         triggerDownloadBlob(
           new Blob([JSON.stringify(fullObj, null, 2)], { type: "application/json;charset=utf-8" }),
           "kho-ai-telemetry-toan-thanh-vien.json",
-          "Đã xuất toàn bộ Kho AI Telemetry & Ma trận thói quen (.json)!"
+          "Đã xuất toàn bộ Kho AI Telemetry & Dash (.json)!"
         );
       });
     }
@@ -8306,12 +8687,27 @@
     if (flushBtn && TEL) {
       flushBtn.addEventListener("click", () => {
         TEL.flushDwellHeartbeat(buildTelemetryUserCtx());
-        showToast("Đã chốt thời lượng lưu màn hình hiện tại vào kho AI Tracking!");
+        showToast("Đã chốt thời lượng On-Time hiện tại vào kho theo dõi!");
         renderPrivacyAndMetrics();
       });
     }
 
     if (activePrivacySubTab !== "privacy") return;
+
+    const memFilterEl = document.getElementById("dash-member-filter");
+    if (memFilterEl) {
+      memFilterEl.addEventListener("change", () => {
+        activeDashMemberFilter = memFilterEl.value || "all";
+        renderPrivacyAndMetrics();
+      });
+    }
+    const logSearchEl = document.getElementById("dash-log-search");
+    if (logSearchEl) {
+      logSearchEl.addEventListener("change", () => {
+        activeDashSearchQuery = logSearchEl.value || "";
+        renderPrivacyAndMetrics();
+      });
+    }
 
     document.getElementById("btn-open-rt-modal").addEventListener("click", openRealtimeStatusModal);
     document.getElementById("btn-privacy-pwa").addEventListener("click", openPwaInstallGuide);
@@ -10238,14 +10634,24 @@
       }
     });
 
+    const isUserTypingOrInDialog = () => {
+      const actTag = (document.activeElement && document.activeElement.tagName) || "";
+      return (
+        actTag === "INPUT" ||
+        actTag === "TEXTAREA" ||
+        actTag === "SELECT" ||
+        Boolean(els.dialog && els.dialog.open)
+      );
+    };
+
     RT.on("telemetry", () => {
-      if (state.route === "privacy" && activePrivacySubTab === "ai-logs") {
+      if (state.route === "privacy" && !isUserTypingOrInDialog()) {
         renderPrivacyAndMetrics();
       }
     });
 
     RT.on("memberLogs", () => {
-      if (state.route === "privacy" && activePrivacySubTab === "ai-logs") {
+      if (state.route === "privacy" && !isUserTypingOrInDialog()) {
         renderPrivacyAndMetrics();
       }
     });
@@ -10396,6 +10802,9 @@
 
   els.btnFont.addEventListener("click", () => {
     state.settings.xlFont = !state.settings.xlFont;
+    trackTelemetryDirect("font_toggle", state.route, state.settings.xlFont ? "enable_xl_24px" : "default_20px", {
+      xlFont: state.settings.xlFont
+    });
     saveState();
     updateGlobalChrome();
     showToast(state.settings.xlFont ? "Đã bật chế độ chữ cực lớn (24px)." : "Đã về cỡ chữ chuẩn (20px).");
@@ -10407,6 +10816,7 @@
       showToast("Đã dừng đọc.");
       return;
     }
+    trackTelemetryDirect("tts_read", state.route, `read_${state.route}`, {});
     speak(buildCurrentScreenSpeech(), { announceToast: true });
   });
 
