@@ -62,3 +62,20 @@ Trong vận hành game lâu dài, lỗi nghiêm trọng nhất là cập nhật 
    - Không đặt `white-space: nowrap` cho các nhãn có độ dài trên 18 ký tự.
 4. **Ngôn ngữ tôn trọng, ấm áp, tự nhiên:**
    - Xưng hô nhất quán theo lựa chọn của hội viên (`Anh` / `Chị` hoặc `bác`), không dùng thông báo lỗi mang tính trách phạt kỹ thuật (ví dụ thay *"Invalid input"* bằng *"Mời bác nhập đủ 4 chữ số dễ nhớ"*).
+
+---
+
+## 5. Kỷ Luật Đồng Bộ Sống Giữa Code Thực Tế & Hồ Sơ `.md` (Continuous Code-Doc Sync)
+
+Tài liệu kỹ thuật bị lệch so với code thực tế nguy hiểm hơn không có tài liệu vì nó dẫn AI sửa sai hướng. Do đó mọi phiên làm việc bắt buộc thực thi quy tắc **Đồng bộ tức thì trong cùng một lượt sửa**:
+
+| Khi thay đổi phần này trong Code thực tế | Bắt buộc cập nhật ngay tệp `.md` này trước khi báo cáo / commit |
+| :--- | :--- |
+| Thêm/xóa tệp `.js`, thêm/đổi màn hình `route`, đổi `CACHE_VERSION` trong `sw.js`, thêm bộ hẹn giờ ngầm | `ARCHITECTURE.md` |
+| Thêm/đổi khóa gốc trong `createDefaultState()`, thêm namespace `window.*`, đổi chủ đề MQTT hoặc thêm bảng trong `supabase_schema.sql` | `docs/02_SO_DO_DU_LIEU_VA_API_NOI_BO.md` |
+| Thêm/đổi tham số liên kết sâu `params.get("...")` hoặc xử lý một ca lỗi phức tạp mới | `docs/04_CAM_NANG_FIX_BUG_VA_KIEM_THU.md` |
+| Thay đổi giải pháp công nghệ, công thức toán học hoặc cơ chế lưu trữ/mạng | `docs/05_QUYET_DINH_KIEN_TRUC_ADR.md` |
+| Thay đổi bảng màu, cỡ chữ, quy tắc bố cục hoặc phạm vi tính năng sản phẩm | `DESIGN.md` / `PRODUCT.md` |
+| **Mọi lần sửa đổi `.js`, `.css`, `.html`, `.sql`** (thêm tính năng, tinh chỉnh UI, sửa bug) | `docs/03_TIEN_DO_VA_NHAT_KY.md` (cập nhật bảng tiến độ + ghi nối mục mới vào Nhật ký phiên bản) |
+
+Trình kiểm định `scripts/studio-doctor.mjs` (Cổng 7 và Cổng 9) tự động bóc tách danh sách tệp `.js`, biến `window.*`, danh sách `route`, 20 khóa gốc của `state`, 14 bảng SQL, các tham số URL và trạng thái `git status / git log` để đối chiếu trực tiếp với các tệp `.md`. Nếu thiếu bất kỳ mục nào hoặc sửa code mà chưa cập nhật tiến độ, cổng kiểm định sẽ trả mã lỗi `1` (`[FAIL]`).

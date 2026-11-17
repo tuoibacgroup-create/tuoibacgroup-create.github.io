@@ -105,14 +105,31 @@ state = {
     wishPlaquesCount: 16,
     peaceCardIdx: 0,
     prayers: []                   // Lời cầu an & thẻ đỏ ước nguyện gần nhất
-  }
-  // Các nhánh phụ khác: settings, privacy, analytics, newspaper, quiz, oaq, poems, watch, health, customTables, memberLogs
+  },
+
+  // Đầy đủ các khóa gốc còn lại trong createDefaultState() (tổng 20 khóa gốc):
+  settings: { xlFont: false, preferredRender: "3d", autoFallbacked: false, homeMode: "full", pwaBannerDismissed: false },
+  privacy: { consentFamilyCheckin: true, consentRealtimePresence: true, consentVoiceDict: true },
+  analytics: { session_start: 1, morning_checkin_done: 0, tea_table_joined: 0, tea_msg_quick_0token: 0, tea_msg_voice_or_text: 0, news_article_read: 0, async_game_move: 0, poem_posted: 0, share_link_created: 0, idle_prompts_triggered: 0 },
+  phoneticDict: [],               // Sổ từ điển sửa lỗi phát âm tiếng Việt tự học trên máy
+  replyTemplates: [],             // Ma trận mẫu câu gợi ý nhanh 0-Token theo chủ đề
+  newspaper: { articles: [], drafts: [], adminOpen: false, selectedCategory: "all", searchQuery: "", liveItems: [] },
+  quiz: { idx: 0, score: 0, selectedOpt: null, finished: false, timeLeft: 25 },
+  oaq: { cells: [], scoreP: 0, scoreAI: 0, turn: "host", mode: "ai", matchId: "", zaloInviteUrl: "" },
+  poems: [],                      // Danh sách bài thơ lục bát & số hoa được tặng
+  watch: { channelIdx: 0, votes: [], votedIdx: null, reactions: {}, clipAnswered: null },
+  memberLogs: [],                 // Bộ đệm tóm tắt hoạt động gần nhất trong state
+  customTables: {},               // Tên bàn trà đàm đạo do Chủ bàn đặt ({ [tableKey]: metaObj })
+  health: { medMorning: false, bpReadings: [], lastAnswer: "", emergencyMode: false }
 }
 ```
 
 ---
 
 ## 2. API Công Khai Của 7 Namespace Toàn Cục
+
+### 2.0. `window.TuoiBacData` (`data.js`)
+- Kho hằng số dữ liệu nền: `PROVINCES` (34 đơn vị hành chính), `ROOM_TEMPLATES` (5 phòng sinh hoạt), `MORNING_ARTICLES`, `RSS_DRAFTS`, `NEWS_CATEGORIES`, `NEWS_SUGGESTIONS`, `INITIAL_PHONETIC_DICT`, `VOICE_SAMPLES`, `REPLY_MATRIX`, `IDLE_ICEBREAKERS`, `TEA_STICKERS`, `TEMPLE_PEACE_CARDS`, `TEMPLE_PRAYER_PRESETS`, `INITIAL_GROUPS`, `SENIOR_DIRECTORY`, `POEMS`, `QUIZ_BANK`, `OUTFITS`, `ACCESSORIES`, `TABLE_ITEMS`, `TITLE_FRAMES`, `HEALTH_QA`.
 
 ### 2.1. `window.TuoiBacProgression` (`progression.js`)
 - `MAIN_TIERS`: Mảng `33` phần tử (`level 0` đến `level 32`).
@@ -164,7 +181,7 @@ state = {
 
 ---
 
-## 3. Cây Chủ Đề MQTT & 13 Bảng Cơ Sở Dữ Liệu (`supabase_schema.sql`)
+## 3. Cây Chủ Đề MQTT & 14 Bảng Cơ Sở Dữ Liệu (`supabase_schema.sql`)
 
 | Phân hệ | Chủ đề MQTT (`tuoibac/prod/v1/...`) | Bảng PostgreSQL tương ứng |
 | :--- | :--- | :--- |

@@ -23,11 +23,15 @@
 | 13 | Hệ Thống 96 Danh Hiệu Toán Học Lồi (32 tầng chính + 8 cây chuyên môn) | Hoàn thành | `progression.js`, `app.js` | Tách biệt bảng chào đón Người mới (Tầng 1–5) và vinh danh Trưởng lão / Đại thụ |
 | 14 | Chánh Điện 3D Góc Rộng, 10 Bồ Đoàn, Hồ Sen & Cây Thẻ Đỏ | Hoàn thành | `temple3d.js`, `app.js` | Three.js mái chùa đao cong, 3 góc máy, thỉnh chuông, gõ mõ, thả hoa đăng, treo thẻ đỏ |
 | 15 | Kho AI Tracking 100% Toàn Thành Viên (`IndexedDB` + Xuất JSONL) | Hoàn thành | `telemetry.js`, `app.js` | Biểu đồ 24h, đo `dwellSec` từng màn hình, tách 4 kiểu chat, xuất `.jsonl`/`.json`/`.csv` |
-| 16 | Hồ sơ Kiến trúc Studio 20 Năm & Cổng Kiểm Định Tự Động | Hoàn thành | `AGENTS.md`, `ARCHITECTURE.md`, `scripts/studio-doctor.mjs` | Hệ thống tài liệu phân tầng và script tự kiểm tra 8 cổng kỹ thuật |
+| 16 | Hồ sơ Kiến trúc Studio 20 Năm & Cổng Kiểm Định Đồng Bộ Code ↔ Docs | Hoàn thành | `AGENTS.md`, `ARCHITECTURE.md`, `scripts/studio-doctor.mjs` | Tự động đối chiếu 1:1 màn hình, `state`, SQL, Deep Link và lịch sử Git giữa Code thực tế với `.md` |
 
 ---
 
 ## 2. Nhật Ký Phiên Bản Kỹ Thuật (Append-Only Engineering Log)
+
+### [2026-11-17] — Bổ sung Bất Biến #11 & Cổng Kiểm Định Đồng Bộ Sâu Code ↔ Docs (`9/9 PASS`)
+- **Tệp cập nhật:** `AGENTS.md`, `CLAUDE.md`, `ARCHITECTURE.md`, `README.md`, `docs/01..04_*.md`, `scripts/studio-doctor.mjs`.
+- **Lý do & Nội dung:** Thiết lập quy tắc bắt buộc đồng bộ hai chiều giữa mã nguồn thực tế và toàn bộ tệp `.md` trong cùng một lượt sửa. Nâng cấp `scripts/studio-doctor.mjs` lên **9 cổng kiểm định**: tự động bóc tách 16 `route`, 7 namespace `window.*`, 20 khóa gốc `state`, 14 bảng SQL, 8 tham số URL Deep Link, phiên bản `sw.js` và lịch sử Git để chặn ngay nếu sửa code mà chưa cập nhật tài liệu tiến độ/kiến trúc.
 
 ### [2026-11-17] — Thiết lập Hệ Thống Quản Trị Kỹ Thuật Chuẩn Game Studio 20 Năm
 - **Tệp tạo mới / cập nhật:** `AGENTS.md`, `CLAUDE.md`, `ARCHITECTURE.md`, `README.md`, `docs/01..05_*.md`, `scripts/studio-doctor.mjs`, `verify.bat`, `styles.css`, `app.js`, `index.html` (`?v=20261117b`), `sw.js` (`v14`).

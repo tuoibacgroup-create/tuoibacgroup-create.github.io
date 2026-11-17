@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 /**
- * TUOI BAC GAME STUDIO — AUTOMATED QUALITY & ARCHITECTURE DRIFT DOCTOR
- * Chạy kiểm định 8 cổng kỹ thuật bắt buộc trong < 1 giây (0 phụ thuộc ngoài):
+ * TUOI BAC GAME STUDIO — AUTOMATED QUALITY & DEEP CODE <-> DOCS SYNC DOCTOR
+ * Chạy kiểm định 9 cổng kỹ thuật & đồng bộ tài liệu bắt buộc trong < 1 giây (0 phụ thuộc ngoài):
  *   node scripts/studio-doctor.mjs
  */
 
 import fs from "node:fs";
 import path from "node:path";
 import vm from "node:vm";
+import { execSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -41,6 +42,70 @@ const gates = [];
 
 function recordGate(name, ok, detail) {
   gates.push({ name, ok, detail });
+}
+
+function extractTopLevelKeysFromDefaultState(appCode) {
+  const fnIdx = appCode.indexOf("function createDefaultState()");
+  if (fnIdx < 0) return [];
+  const retIdx = appCode.indexOf("return {", fnIdx);
+  if (retIdx < 0) return [];
+
+  const openBraceIdx = appCode.indexOf("{", retIdx);
+  let depth = 0;
+  let keys = [];
+  let i = openBraceIdx;
+
+  while (i < appCode.length) {
+    const ch = appCode[i];
+    if (ch === '"' || ch === "'" || ch === "`") {
+      const quote = ch;
+      i += 1;
+      while (i < appCode.length && appCode[i] !== quote) {
+        if (appCode[i] === "\\") i += 1;
+        i += 1;
+      }
+      i += 1;
+      continue;
+    }
+    if (ch === "/" && appCode[i + 1] === "/") {
+      while (i < appCode.length && appCode[i] !== "\n") i += 1;
+      continue;
+    }
+    if (ch === "{" || ch === "[") {
+      depth += 1;
+      i += 1;
+      continue;
+    }
+    if (ch === "}" || ch === "]") {
+      depth -= 1;
+      if (depth === 0) break;
+      i += 1;
+      continue;
+    }
+    if (depth === 1) {
+      const slice = appCode.slice(i, i + 60);
+      const m = slice.match(/^\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:/);
+      if (m) {
+        if (!keys.includes(m[1])) keys.push(m[1]);
+        i += m[0].length;
+        continue;
+      }
+    }
+    i += 1;
+  }
+  return keys;
+}
+
+function extractRoutesFromRenderSwitch(appCode) {
+  const fnIdx = appCode.indexOf("function render()");
+  if (fnIdx < 0) return [];
+  const endIdx = appCode.indexOf("\n  function ", fnIdx + 20);
+  const block = appCode.slice(fnIdx, endIdx > 0 ? endIdx : fnIdx + 1800);
+  const routes = new Set(["home"]);
+  for (const m of block.matchAll(/case\s+"([a-zA-Z0-9_-]+)"\s*:/g)) {
+    routes.add(m[1]);
+  }
+  return [...routes];
 }
 
 // ============================================================================
@@ -236,7 +301,7 @@ function recordGate(name, ok, detail) {
 
   const issues = [];
   if (!has20pxRoot) issues.push("Cỡ chữ gốc html trong styles.css dưới 20px");
-  if (!has24pxXl) issues.push("Thiếu cấu hình cỡ chữ lớn 24px");
+  if (!has24pxXl) issues.push("Thiếu cấu hình cỡ chữ lớn 24px trên html.xl-font");
   if (!hasTabularNums) issues.push("Thiếu font-variant-numeric: tabular-nums");
   if (thickSideBorders.length > 0) {
     issues.push(`Phát hiện ${thickSideBorders.length} chỗ dùng border-left/right > 1px`);
@@ -252,37 +317,95 @@ function recordGate(name, ok, detail) {
 }
 
 // ============================================================================
-// GATE 7: Kiểm tra Hồ sơ Tài liệu Studio & Chống lệch Kiến trúc (Drift Check)
+// GATE 7: Đồng bộ Cấu trúc Kỹ thuật 1:1 giữa Code thực tế & Tài liệu .md
 // ============================================================================
 {
+  const issues = [];
   const missingDocs = REQUIRED_DOCS.filter((rel) => {
     const p = path.join(ROOT, rel);
     return !fs.existsSync(p) || fs.statSync(p).size < 200;
   });
+  if (missingDocs.length > 0) {
+    issues.push(`Thiếu tài liệu bắt buộc: ${missingDocs.join(", ")}`);
+  } else {
+    const archDoc = fs.readFileSync(path.join(ROOT, "ARCHITECTURE.md"), "utf8");
+    const apiDoc = fs.readFileSync(path.join(ROOT, "docs/02_SO_DO_DU_LIEU_VA_API_NOI_BO.md"), "utf8");
+    const bugDoc = fs.readFileSync(path.join(ROOT, "docs/04_CAM_NANG_FIX_BUG_VA_KIEM_THU.md"), "utf8");
+    const appCode = fs.readFileSync(path.join(ROOT, "app.js"), "utf8");
+    const swCode = fs.readFileSync(path.join(ROOT, "sw.js"), "utf8");
+    const sqlCode = fs.readFileSync(path.join(ROOT, "supabase_schema.sql"), "utf8");
 
-  const archContent = fs.existsSync(path.join(ROOT, "ARCHITECTURE.md"))
-    ? fs.readFileSync(path.join(ROOT, "ARCHITECTURE.md"), "utf8")
-    : "";
+    // 7A. Tệp .js và Namespace window.*
+    const rootJsFiles = fs
+      .readdirSync(ROOT)
+      .filter((f) => f.endsWith(".js") && fs.statSync(path.join(ROOT, f)).isFile());
+    const undocJs = rootJsFiles.filter((f) => !archDoc.includes(f));
+    if (undocJs.length > 0) issues.push(`Tệp JS chưa ghi vào ARCHITECTURE.md: ${undocJs.join(", ")}`);
 
-  const rootJsFiles = fs
-    .readdirSync(ROOT)
-    .filter((f) => f.endsWith(".js") && fs.statSync(path.join(ROOT, f)).isFile());
+    const globalNamespaces = [];
+    for (const f of rootJsFiles) {
+      const txt = fs.readFileSync(path.join(ROOT, f), "utf8");
+      for (const m of txt.matchAll(/^window\.([A-Za-z0-9_]+)\s*=/gm)) {
+        if (!globalNamespaces.includes(m[1])) globalNamespaces.push(m[1]);
+      }
+    }
+    const undocNsArch = globalNamespaces.filter((ns) => !archDoc.includes(`window.${ns}`));
+    const undocNsApi = globalNamespaces.filter((ns) => !apiDoc.includes(`window.${ns}`));
+    if (undocNsArch.length > 0) issues.push(`Namespace thiếu trong ARCHITECTURE.md: ${undocNsArch.join(", ")}`);
+    if (undocNsApi.length > 0) issues.push(`Namespace thiếu trong docs/02: ${undocNsApi.join(", ")}`);
 
-  const undocumentedJs = rootJsFiles.filter((jsFile) => !archContent.includes(jsFile));
+    // 7B. Phiên bản CACHE_VERSION trong sw.js khớp ARCHITECTURE.md
+    const swVerMatch = swCode.match(/CACHE_VERSION\s*=\s*"([^"]+)"/);
+    if (swVerMatch && !archDoc.includes(swVerMatch[1])) {
+      issues.push(`CACHE_VERSION "${swVerMatch[1]}" trong sw.js chưa được đồng bộ vào ARCHITECTURE.md`);
+    }
 
-  const issues = [];
-  if (missingDocs.length > 0) issues.push(`Thiếu tài liệu: ${missingDocs.join(", ")}`);
-  if (undocumentedJs.length > 0) {
-    issues.push(`Tệp JS mới chưa khai báo trong ARCHITECTURE.md: ${undocumentedJs.join(", ")}`);
+    // 7C. Toàn bộ Route màn hình trong render() khớp ARCHITECTURE.md
+    const liveRoutes = extractRoutesFromRenderSwitch(appCode);
+    const undocRoutes = liveRoutes.filter((r) => !archDoc.includes(`"${r}"`));
+    if (undocRoutes.length > 0) {
+      issues.push(`Route mới trong app.js chưa khai báo vào ARCHITECTURE.md: ${undocRoutes.join(", ")}`);
+    }
+
+    // 7D. Toàn bộ khóa gốc của createDefaultState() khớp docs/02
+    const liveStateKeys = extractTopLevelKeysFromDefaultState(appCode);
+    const undocStateKeys = liveStateKeys.filter((k) => !new RegExp(`\\b${k}\\s*:`).test(apiDoc));
+    if (undocStateKeys.length > 0) {
+      issues.push(`Khóa state mới trong createDefaultState() chưa đồng bộ vào docs/02: ${undocStateKeys.join(", ")}`);
+    }
+
+    // 7E. Toàn bộ bảng SQL trong supabase_schema.sql khớp docs/02
+    const sqlTables = [...sqlCode.matchAll(/create\s+table\s+if\s+not\s+exists\s+public\.([a-z0-9_]+)/gi)].map(
+      (m) => m[1]
+    );
+    const undocTables = sqlTables.filter((t) => !apiDoc.includes(t));
+    if (undocTables.length > 0) {
+      issues.push(`Bảng SQL mới trong supabase_schema.sql chưa đồng bộ vào docs/02: ${undocTables.join(", ")}`);
+    }
+
+    // 7F. Toàn bộ tham số URL Deep Link params.get("...") khớp docs/04
+    const urlParams = new Set();
+    for (const m of appCode.matchAll(/params\.get\("([a-zA-Z0-9_-]+)"\)/g)) {
+      urlParams.add(m[1]);
+    }
+    const undocParams = [...urlParams].filter(
+      (p) => !bugDoc.includes(`?${p}=`) && !bugDoc.includes(`&${p}=`)
+    );
+    if (undocParams.length > 0) {
+      issues.push(`Tham số URL mới trong app.js chưa đồng bộ vào docs/04: ${undocParams.join(", ")}`);
+    }
+
+    recordGate(
+      "7. Đồng bộ 1:1 Code <-> Tài liệu .md (Deep Contract Sync)",
+      issues.length === 0,
+      issues.length === 0
+        ? `Khớp 100%: ${rootJsFiles.length} JS, ${globalNamespaces.length} namespace, ${liveRoutes.length} route, ${liveStateKeys.length} khóa state, ${sqlTables.length} bảng SQL, ${urlParams.size} tham số URL`
+        : issues.join(" | ")
+    );
   }
-
-  recordGate(
-    "7. Hồ sơ Tài liệu Studio & Chống lệch (Drift Gate)",
-    issues.length === 0,
-    issues.length === 0
-      ? `Đủ ${REQUIRED_DOCS.length} tài liệu chuẩn Studio, khớp 100% với ${rootJsFiles.length} tệp JS trên đĩa`
-      : issues.join(" | ")
-  );
+  if (missingDocs.length > 0) {
+    recordGate("7. Đồng bộ 1:1 Code <-> Tài liệu .md (Deep Contract Sync)", false, issues.join(" | "));
+  }
 }
 
 // ============================================================================
@@ -290,9 +413,9 @@ function recordGate(name, ok, detail) {
 // ============================================================================
 {
   const secretPatterns = [
-    /eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.[A-Za-z0-9_-]{30,}\.[A-Za-z0-9_-]{20,}/, // Hardcoded JWT
-    /sk-[A-Za-z0-9]{32,}/, // OpenAI / API secret key
-    /ghp_[A-Za-z0-9]{30,}/ // GitHub PAT
+    /eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.[A-Za-z0-9_-]{30,}\.[A-Za-z0-9_-]{20,}/,
+    /sk-[A-Za-z0-9]{32,}/,
+    /ghp_[A-Za-z0-9]{30,}/
   ];
   const rootFiles = fs
     .readdirSync(ROOT)
@@ -319,10 +442,81 @@ function recordGate(name, ok, detail) {
 }
 
 // ============================================================================
+// GATE 9: Đồng bộ Tiến độ & Nhật ký Phiên bản với Thay đổi Code trên Git
+// ============================================================================
+{
+  const issues = [];
+  let statusSummary = "";
+  try {
+    const porcelain = execSync("git status --porcelain", { cwd: ROOT, encoding: "utf8" })
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter(Boolean);
+
+    const changedPaths = porcelain.map((line) => line.slice(2).trim().replace(/^"|"$/g, ""));
+    const dirtyRuntimeCode = changedPaths.filter(
+      (p) =>
+        !p.startsWith("scripts/") &&
+        (/\.(js|css|html|sql|webmanifest)$/i.test(p))
+    );
+    const progressDocTouched = changedPaths.some((p) =>
+      p.replace(/\\/g, "/").endsWith("docs/03_TIEN_DO_VA_NHAT_KY.md")
+    );
+
+    if (dirtyRuntimeCode.length > 0 && !progressDocTouched) {
+      issues.push(
+        `Đã sửa code thực tế [${dirtyRuntimeCode.join(", ")}] nhưng CHƯA cập nhật đồng bộ tiến độ vào docs/03_TIEN_DO_VA_NHAT_KY.md`
+      );
+    } else if (dirtyRuntimeCode.length > 0 && progressDocTouched) {
+      statusSummary = `Đang có thay đổi code [${dirtyRuntimeCode.join(", ")}] và đã cập nhật song hành docs/03_TIEN_DO_VA_NHAT_KY.md`;
+    } else {
+      // Cây làm việc sạch -> đối chiếu thứ tự commit giữa Code và Sổ Tiến Độ
+      const codeHead = execSync(
+        'git log -1 --format=%H -- "*.js" "*.css" "*.html" "*.sql"',
+        { cwd: ROOT, encoding: "utf8" }
+      ).trim();
+      const progressHead = execSync(
+        'git log -1 --format=%H -- "docs/03_TIEN_DO_VA_NHAT_KY.md"',
+        { cwd: ROOT, encoding: "utf8" }
+      ).trim();
+
+      if (codeHead && progressHead && codeHead !== progressHead) {
+        let progressOlderThanCode = false;
+        try {
+          execSync(`git merge-base --is-ancestor ${progressHead} ${codeHead}`, {
+            cwd: ROOT,
+            stdio: "ignore"
+          });
+          progressOlderThanCode = true;
+        } catch (e) {
+          progressOlderThanCode = false;
+        }
+        if (progressOlderThanCode) {
+          issues.push(
+            `Commit code mới nhất (${codeHead.slice(0, 7)}) mới hơn lần cập nhật cuối của docs/03_TIEN_DO_VA_NHAT_KY.md (${progressHead.slice(0, 7)})`
+          );
+        }
+      }
+      if (issues.length === 0) {
+        statusSummary = `Lịch sử Git đồng bộ: docs/03_TIEN_DO_VA_NHAT_KY.md (${progressHead.slice(0, 7)}) luôn cập nhật kịp hoặc mới hơn code (${codeHead.slice(0, 7)})`;
+      }
+    }
+  } catch (gitErr) {
+    statusSummary = "Không đọc được trạng thái Git (bỏ qua kiểm tra lịch sử commit)";
+  }
+
+  recordGate(
+    "9. Đồng bộ Tiến độ & Nhật ký Git (Progress Sync Gate)",
+    issues.length === 0,
+    issues.length === 0 ? statusSummary : issues.join(" | ")
+  );
+}
+
+// ============================================================================
 // TỔNG KẾT KẾT QUẢ
 // ============================================================================
 console.log("======================================================================");
-console.log(" TUOI BAC STUDIO DOCTOR — BAO CAO KIEM DINH CHAT LUONG KY THUAT");
+console.log(" TUOI BAC STUDIO DOCTOR — BAO CAO KIEM DINH & DONG BO CODE <-> DOCS");
 console.log("======================================================================");
 let failedCount = 0;
 for (const g of gates) {
@@ -337,6 +531,6 @@ if (failedCount > 0) {
   console.error(`KET QUA: KHONG DAT (${failedCount}/${gates.length} cong kiem dinh bi loi).`);
   process.exit(1);
 } else {
-  console.log(`KET QUA: DAT CHUAN STUDIO 100% (${gates.length}/${gates.length} cong PASS).`);
+  console.log(`KET QUA: DAT CHUAN DONG BO STUDIO 100% (${gates.length}/${gates.length} cong PASS).`);
   process.exit(0);
 }

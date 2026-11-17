@@ -41,19 +41,20 @@ Tài liệu này giúp bất kỳ AI Agent nào khi nhận báo lỗi từ Chủ
 
 ---
 
-## 3. Bảng Tham Số Liên Kết Sâu (URL Deep Links) Để Kiểm Thử Nhanh
+## 3. Bảng Tham Số Liên Kết Sâu (URL Deep Links) Khớp 1:1 Với `applyUrlDeepLinkIfPresent()`
 
-Có thể gõ trực tiếp các tham số sau vào cuối địa chỉ web để kiểm thử từng luồng chia sẻ:
+Các tham số dưới đây được bóc tách trực tiếp từ `app.js` (trình kiểm định `studio-doctor.mjs` đối chiếu tự động tên biến `params.get(...)`):
 
-| Tham số URL mẫu | Hành vi kích hoạt tự động khi mở trang |
+| Tham số URL thực tế | Hành vi kích hoạt tự động khi mở trang |
 | :--- | :--- |
-| `?may=1`, `?may=2` | Cô lập hoàn toàn bộ nhớ và định danh thiết bị để giả lập nhiều điện thoại độc lập trên cùng trình duyệt. |
-| `?ban=phong-tra__0` | Nhảy thẳng vào ngồi tại Bàn số 1 của Phòng Trà Sáng Sớm. |
-| `?vantreo=oaq_demo123` | Mở thẳng màn hình Ô Ăn Quan chế độ Ván Treo và kết nối vào mã ván `oaq_demo123`. |
-| `?cotuong=xq_demo456` | Mở thẳng bàn Cờ Tướng `9×10` chế độ Đấu Bạn Từ Xa và đồng bộ nước đi của mã ván `xq_demo456`. |
-| `?ketban=TB-102` | Tự động kết nối bạn tâm giao hai chiều với hội viên mang mã thẻ `TB-102`. |
-| `?nhom=d25-d3-1k2-mn75` | Mở thẳng trang chi tiết đơn vị *Đại đội 1K2 · Tiểu đoàn 3 · Sư đoàn 25*. |
-| `?khoiphuc=<token>` | Khôi phục toàn bộ Thẻ Hội Viên, Xu, danh hiệu, đơn vị và bạn bè trên máy điện thoại mới từ mã QR Ảnh Thẻ. |
+| `?may=1`, `?may=2` | Cô lập hoàn toàn `STORAGE_KEY`, `IndexedDB` và `clientId` để giả lập nhiều điện thoại độc lập trên cùng 1 máy. |
+| `?tinh=ha-noi` | Chọn sẵn tỉnh/thành phố quê hương cho hội viên khi mở từ liên kết thiệp mời điểm danh. |
+| `?phong=phong-tra&ban=1` | Mở thẳng phòng sinh hoạt `phong` và vào ngồi ngay tại bàn số `ban` (đánh số từ `1` trở đi; nếu bỏ trống `ban` thì mở sảnh phòng đó). |
+| `?tin=<articleId>` | Mở thẳng bàn trà đàm đạo riêng xoay quanh bài báo có mã `<articleId>`. |
+| `?van=xq-123` hoặc `?van=oaq-123` | Kết nối thẳng vào Ván treo thời gian thực: tiền tố `xq-` mở bàn Cờ Tướng `9×10`, tiền tố khác mở bàn Ô Ăn Quan. |
+| `?ketban=TB-102` | Mở mục Bạn Bè và tự động gửi/chấp nhận kết nối tâm giao với mã thẻ `TB-102`. |
+| `?hoi=d25-d3-1k2-mn75` | Mở thẳng trang chi tiết đơn vị đồng ngũ / câu lạc bộ có mã `d25-d3-1k2-mn75`. |
+| `?khoiphuc=<token>` | Khôi phục toàn bộ Thẻ Hội Viên, Xu, 96 danh hiệu, đơn vị và bạn bè trên điện thoại mới từ mã QR Ảnh Thẻ. |
 
 ---
 

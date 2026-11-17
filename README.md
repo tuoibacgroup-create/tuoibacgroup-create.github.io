@@ -19,7 +19,7 @@ Bộ tài liệu của dự án được chia nhỏ giống mô hình một Stud
 | [docs/03_TIEN_DO_VA_NHAT_KY.md](docs/03_TIEN_DO_VA_NHAT_KY.md) | **"Sổ theo dõi tiến độ & lịch sử"** — Ghi rõ 16 hạng mục nào đã xong, ngày nào nâng cấp gì, còn việc gì dự kiến làm tiếp. |
 | [docs/04_CAM_NANG_FIX_BUG_VA_KIEM_THU.md](docs/04_CAM_NANG_FIX_BUG_VA_KIEM_THU.md) | **"Sổ bắt bệnh nhanh"** — Bảng tra cứu: thấy hiện tượng lỗi gì thì mở đúng tệp nào để sửa ngay, kèm các bẫy kỹ thuật cần tránh. |
 | [docs/05_QUYET_DINH_KIEN_TRUC_ADR.md](docs/05_QUYET_DINH_KIEN_TRUC_ADR.md) | **"Lý do thiết kế"** — Giải thích vì sao chọn cách làm hiện tại để AI đời sau không tự ý đập đi làm lại sai hướng. |
-| `verify.bat` / `scripts/studio-doctor.mjs` | **"Máy khám sức khỏe tự động"** — Nhấp đúp `verify.bat` (hoặc bảo AI chạy lệnh kiểm tra), máy tự rà soát toàn bộ 8 tiêu chuẩn kỹ thuật trong 1 giây. |
+| `verify.bat` / `scripts/studio-doctor.mjs` | **"Máy khám sức khỏe & ép đồng bộ tự động"** — Nhấp đúp `verify.bat`, máy tự rà soát **9 cổng kỹ thuật**: kiểm tra lỗi code, đối chiếu từng màn hình / biến dữ liệu / bảng SQL / tham số link giữa code thực tế với các tệp `.md`, và chặn báo lỗi ngay nếu AI sửa code mà quên cập nhật sổ tiến độ. |
 
 ---
 
@@ -27,7 +27,7 @@ Bộ tài liệu của dự án được chia nhỏ giống mô hình một Stud
 
 Khi mở phiên chat mới hoặc chuyển sang dùng một công cụ AI khác để sửa lỗi hay thêm tính năng, anh chỉ cần dán đúng 1 câu ngắn này ở đầu buổi:
 
-> *"Hãy đọc AGENTS.md, ARCHITECTURE.md và tệp liên quan trong thư mục docs/ trước khi làm. Sau khi sửa xong, bắt buộc chạy `node scripts/studio-doctor.mjs` báo PASS hết và ghi nối nhật ký vào `docs/03_TIEN_DO_VA_NHAT_KY.md`."*
+> *"Hãy đọc AGENTS.md, ARCHITECTURE.md và tệp liên quan trong thư mục docs/ trước khi làm. Mọi thay đổi về tính năng, dữ liệu và tiến độ trong code thực tế bắt buộc đồng bộ ngay sang các tệp .md đối ứng, sau đó chạy `node scripts/studio-doctor.mjs` đạt đủ 9/9 cổng PASS trước khi bàn giao."*
 
 ---
 

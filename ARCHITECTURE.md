@@ -15,7 +15,7 @@ flowchart TD
     end
 
     subgraph CORE["Tầng Điều Phối Trung Tâm"]
-        APP["app.js<br/>Bộ máy trạng thái (state) + Bộ định tuyến 13 màn hình + Âm thanh WebAudio/TTS"]
+        APP["app.js<br/>Bộ máy trạng thái (state) + Bộ định tuyến 16 màn hình + Âm thanh WebAudio/TTS"]
     end
 
     subgraph ENGINES["Tầng Engine Chuyên Biệt (Độc lập, Không phụ thuộc DOM ngoài)"]
@@ -70,13 +70,13 @@ flowchart TD
 | 5 | `temple3d.js` | `window.TempleScene3D` | Đồ họa 3D Three.js cho Chánh Điện & Sân Chùa Cổ: mái ngói 2 tầng đao cong, tượng Phật đài sen, lư hương khói trầm, Đại Hồng Chung đung đưa, Mõ gỗ nảy nhịp, 10 chiếu Bồ Đoàn 3D ngồi chung, sân Hồ Sen thả hoa đăng và Cây Ước Nguyện treo thẻ đỏ. |
 | 6 | `xiangqi.js` | `window.TuoiBacXiangqi` | Engine Cờ Tướng `9×10` chuẩn 32 quân hoàn chỉnh: sinh nước đi hợp lệ cho cả 7 binh chủng, luật tướng đối mặt, kiểm tra tự chiếu/chiếu bí, AI đối thủ câu lạc bộ (Minimax + Alpha-Beta Pruning + Bảng điểm vị trí PST + Sắp xếp nước bắt quân MVV-LVA) và 6 ván Cờ Thế cổ phổ. |
 | 7 | `realtime.js` | `window.TuoiBacRealtime` | Lớp mạng thời gian thực tự phục hồi: kết nối song song `BroadcastChannel` nội bộ và `MQTT over WSS` công cộng (hoặc `Supabase` khi cấu hình khóa), quản lý hiện diện trực tuyến theo bàn và toàn quán, hàng đợi chat, ván cờ treo, thẻ hội viên đám mây, hội nhóm, kết bạn, chánh điện và luồng telemetry. |
-| 8 | `app.js` | IIFE Controller | Bộ điều phối trung tâm gắn kết tất cả module: quản lý `state`, lưu trữ kép (`localStorage` + `_vault_bak`), bộ định tuyến `navigate(route)`, xử lý Deep Link URL, tổng hợp giọng đọc tiếng Việt (Web Speech TTS + dự phòng luồng âm thanh), nhận dạng giọng nói kèm tự học từ điển phương ngữ, âm thanh nhạc cụ WebAudio (chuông chùa, mõ gỗ, quân cờ, đàn tranh) và 13 hàm dựng màn hình. |
-| 9 | `sw.js` | Service Worker | Quản lý bộ nhớ đệm PWA (`tuoibac-pwa-v13`): chiến lược *Network-First* cho mã nguồn chính để luôn nhận bản mới nhất khi có mạng và tự động dùng bản lưu sẵn khi mất sóng 4G, đồng thời bỏ qua không chặn các luồng WebSocket/TTS/RSS. |
-| — | `supabase_schema.sql` | PostgreSQL DDL | Tập lệnh SQL khởi tạo 13 bảng dữ liệu và chính sách bảo mật RLS trên gói miễn phí Supabase. |
+| 8 | `app.js` | IIFE Controller | Bộ điều phối trung tâm gắn kết tất cả module: quản lý `state`, lưu trữ kép (`localStorage` + `_vault_bak`), bộ định tuyến `navigate(route)`, xử lý Deep Link URL, tổng hợp giọng đọc tiếng Việt (Web Speech TTS + dự phòng luồng âm thanh), nhận dạng giọng nói kèm tự học từ điển phương ngữ, âm thanh nhạc cụ WebAudio (chuông chùa, mõ gỗ, quân cờ, đàn tranh) và 16 hàm dựng màn hình. |
+| 9 | `sw.js` | Service Worker | Quản lý bộ nhớ đệm PWA (`tuoibac-pwa-v14`): chiến lược *Network-First* cho mã nguồn chính để luôn nhận bản mới nhất khi có mạng và tự động dùng bản lưu sẵn khi mất sóng 4G, đồng thời bỏ qua không chặn các luồng WebSocket/TTS/RSS. |
+| — | `supabase_schema.sql` | PostgreSQL DDL | Tập lệnh SQL khởi tạo 14 bảng dữ liệu và chính sách bảo mật RLS trên gói miễn phí Supabase. |
 
 ---
 
-## 3. Bản Đồ Định Vị 13 Màn Hình (`route`) Trong `app.js`
+## 3. Bản Đồ Định Vị 16 Màn Hình (`route`) Trong `app.js`
 
 Khi cần sửa giao diện hoặc logic của một màn hình cụ thể, tra cột **Hàm dựng chính** dưới đây để nhảy thẳng tới đúng vị trí trong `app.js`:
 
@@ -107,7 +107,7 @@ Khi cần sửa giao diện hoặc logic của một màn hình cụ thể, tra 
 1. Trình duyệt tải `index.html`, dựng cây DOM tĩnh và nạp tuần tự 9 tệp `.js` có thuộc tính `defer`.
 2. `telemetry.js` mở kết nối bất đồng bộ tới cơ sở dữ liệu `IndexedDB` (`tuoibac_telemetry_db_v1`) và nạp ma trận thói quen nóng.
 3. `app.js` khởi tạo `state = loadState()` (đọc từ `STORAGE_KEY`, tự động rơi về bản sao `_vault_bak` nếu JSON lỗi, rồi hợp nhất sâu với `createDefaultState()`).
-4. `applyUrlDeepLinkIfPresent()` kiểm tra thanh địa chỉ URL để xử lý ngay các liên kết mời bạn (`?ban=`, `?vantreo=`, `?cotuong=`, `?ketban=`, `?nhom=`, `?khoiphuc=`).
+4. `applyUrlDeepLinkIfPresent()` kiểm tra thanh địa chỉ URL để xử lý ngay các liên kết mời bạn (`?phong=&ban=`, `?van=`, `?tin=`, `?tinh=`, `?ketban=`, `?hoi=`, `?khoiphuc=`, `?may=`).
 5. `RT.start()` mở kênh `BroadcastChannel` + `MQTT over WSS` (hoặc `Supabase`), sau `500ms` phát tín hiệu trực tuyến toàn cục (`syncMyGlobalOnlinePresence()`).
 6. `render()` vẽ màn hình đầu tiên và đăng ký `sw.js` khi chạy qua giao thức `http/https`.
 
