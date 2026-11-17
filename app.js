@@ -1012,6 +1012,7 @@
   }
 
   function updateGlobalChrome() {
+    document.documentElement.classList.toggle("xl-font", state.settings.xlFont);
     document.body.classList.toggle("xl-font", state.settings.xlFont);
     els.fontLabel.textContent = state.settings.xlFont ? "Chữ vừa" : "Chữ to";
 
@@ -9380,3 +9381,71 @@
   }
   render();
 })();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

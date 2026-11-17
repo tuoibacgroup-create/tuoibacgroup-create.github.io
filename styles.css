@@ -25,6 +25,8 @@
   --radius-lg: 18px;
 }
 
+html.xl-font,
+html:has(body.xl-font),
 body.xl-font {
   --base-size: 24px;
 }

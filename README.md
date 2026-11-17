@@ -1,0 +1,46 @@
+# Tuổi Bạc — Quán Trà Sinh Hoạt Người Cao Tuổi (Hồ Sơ Quản Trị Dự Án)
+
+Đây là kho mã nguồn và bộ hồ sơ kỹ thuật chuẩn Studio của dự án **Tuổi Bạc** — nền tảng sinh hoạt trực tuyến, đọc báo đàm đạo, chơi cờ tướng, kết nối đồng ngũ và tĩnh tâm 3D trên trình duyệt di động (PWA) dành cho người Việt Nam từ 55 tuổi trở lên.
+
+- **Địa chỉ chạy trực tuyến 24/7 trên điện thoại:** https://tuoibacgroup-create.github.io/
+
+---
+
+## 1. Dành Cho Chủ Dự Án (Không Cần Biết Lập Trình Vẫn Kiểm Soát Được Toàn Bộ)
+
+Bộ tài liệu của dự án được chia nhỏ giống mô hình một Studio làm game chuyên nghiệp. Anh không cần đọc code, chỉ cần nắm ý nghĩa các tệp sau:
+
+| Tệp / Thư mục | Vai trò dễ hiểu |
+| :--- | :--- |
+| [AGENTS.md](AGENTS.md) & [CLAUDE.md](CLAUDE.md) | **"Nội quy bắt buộc cho AI"** — Mọi AI lập trình (Antigravity, Claude, Cursor, ChatGPT/Codex) khi mở thư mục này sẽ tự đọc tệp này đầu tiên để biết 10 điều cấm làm hỏng game. |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | **"Bản vẽ tổng thể tòa nhà"** — Chỉ rõ game có bao nhiêu tệp, 16 màn hình nằm ở đâu, phần nào nối với phần nào để AI tìm đúng chỗ sửa trong 5 giây. |
+| [docs/01_NGUYEN_TAC_KY_THUAT_STUDIO.md](docs/01_NGUYEN_TAC_KY_THUAT_STUDIO.md) | **"Tiêu chuẩn xây dựng bền vững"** — Quy định cách giữ máy điện thoại mát pin khi chạy 3D, không mất nick/xu của người chơi cũ khi nâng cấp bản mới. |
+| [docs/02_SO_DO_DU_LIEU_VA_API_NOI_BO.md](docs/02_SO_DO_DU_LIEU_VA_API_NOI_BO.md) | **"Sổ đăng ký dữ liệu"** — Ghi rõ cấu trúc lưu điểm, danh hiệu, tin nhắn, bảng cơ sở dữ liệu đám mây để các phần khớp khít với nhau. |
+| [docs/03_TIEN_DO_VA_NHAT_KY.md](docs/03_TIEN_DO_VA_NHAT_KY.md) | **"Sổ theo dõi tiến độ & lịch sử"** — Ghi rõ 16 hạng mục nào đã xong, ngày nào nâng cấp gì, còn việc gì dự kiến làm tiếp. |
+| [docs/04_CAM_NANG_FIX_BUG_VA_KIEM_THU.md](docs/04_CAM_NANG_FIX_BUG_VA_KIEM_THU.md) | **"Sổ bắt bệnh nhanh"** — Bảng tra cứu: thấy hiện tượng lỗi gì thì mở đúng tệp nào để sửa ngay, kèm các bẫy kỹ thuật cần tránh. |
+| [docs/05_QUYET_DINH_KIEN_TRUC_ADR.md](docs/05_QUYET_DINH_KIEN_TRUC_ADR.md) | **"Lý do thiết kế"** — Giải thích vì sao chọn cách làm hiện tại để AI đời sau không tự ý đập đi làm lại sai hướng. |
+| `verify.bat` / `scripts/studio-doctor.mjs` | **"Máy khám sức khỏe tự động"** — Nhấp đúp `verify.bat` (hoặc bảo AI chạy lệnh kiểm tra), máy tự rà soát toàn bộ 8 tiêu chuẩn kỹ thuật trong 1 giây. |
+
+---
+
+## 2. Câu Lệnh Mẫu Khi Anh Giao Việc Cho Bất Kỳ AI Nào Sau Này
+
+Khi mở phiên chat mới hoặc chuyển sang dùng một công cụ AI khác để sửa lỗi hay thêm tính năng, anh chỉ cần dán đúng 1 câu ngắn này ở đầu buổi:
+
+> *"Hãy đọc AGENTS.md, ARCHITECTURE.md và tệp liên quan trong thư mục docs/ trước khi làm. Sau khi sửa xong, bắt buộc chạy `node scripts/studio-doctor.mjs` báo PASS hết và ghi nối nhật ký vào `docs/03_TIEN_DO_VA_NHAT_KY.md`."*
+
+---
+
+## 3. Khởi Chạy & Kiểm Định Nhanh Tại Máy Tính
+
+- **Mở game chạy thử tại máy:** Nhấp đúp `run.bat` (hoặc mở qua Dashboard `E:\DuAn`).
+- **Kiểm tra sức khỏe toàn bộ mã nguồn & tài liệu:** Nhấp đúp `verify.bat` hoặc chạy lệnh:
+  ```powershell
+  node scripts/studio-doctor.mjs
+  ```
+- **Đẩy bản cập nhật mới lên điện thoại (`github.io`):**
+  ```powershell
+  git add .
+  git commit -m "mo ta ngan gon thay doi"
+  git push origin main
+  ```
