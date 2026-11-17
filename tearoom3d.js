@@ -38,6 +38,12 @@ window.TeaRoomScene = (function () {
   // Pre-rendered 2.5D painterly backdrops & chroma-keyed sprite atlas (row 0 = base, row 1 = tint mask)
   const SPRITE_CELL_W = 220;
   const SPRITE_CELL_H = 280;
+  const SEAT_ANCHORS = [
+    { u: 0.418, v: 0.571 }, // 0: male_3q seated buttocks on cushion
+    { u: 0.418, v: 0.614 }, // 1: female_3q seated buttocks on cushion
+    { u: 0.564, v: 0.900 }, // 2: back_3q seated buttocks on cushion
+    { u: 0.445, v: 0.960 }  // 3: host_stand standing shoes on floor
+  ];
   const assets25D = {
     started: false,
     tableImg: null,
@@ -96,7 +102,7 @@ window.TeaRoomScene = (function () {
     tblImg.onerror = () => {
       assets25D.tableReady = false;
     };
-    tblImg.src = "./assets/tearoom-table-25d.jpg?v=20261117j";
+    tblImg.src = "./assets/tearoom-table-25d.jpg?v=20261117k";
 
     const lobImg = new Image();
     lobImg.onload = () => {
@@ -107,7 +113,7 @@ window.TeaRoomScene = (function () {
     lobImg.onerror = () => {
       assets25D.lobbyReady = false;
     };
-    lobImg.src = "./assets/tearoom-lobby-25d.jpg?v=20261117j";
+    lobImg.src = "./assets/tearoom-lobby-25d.jpg?v=20261117k";
 
     const sprImg = new Image();
     sprImg.onload = () => {
@@ -120,7 +126,7 @@ window.TeaRoomScene = (function () {
     sprImg.onerror = () => {
       assets25D.spritesReady = false;
     };
-    sprImg.src = "./assets/tearoom-sprites.webp?v=20261117j";
+    sprImg.src = "./assets/tearoom-sprites.webp?v=20261117k";
   }
 
   function createCanvas2D(w, h) {
@@ -137,10 +143,12 @@ window.TeaRoomScene = (function () {
 
     const anchors =
       col === 1
-        ? { crownX: 95, crownY: 22, leftEyeX: 98, rightEyeX: 113, eyeY: 47, earX: 76, neckX: 96, neckY: 85, chestX: 84, chestY: 118 }
+        ? { crownX: 100, crownY: 20, leftEyeX: 104, rightEyeX: 117, eyeY: 40, earX: 84, neckX: 102, neckY: 66, chestX: 90, chestY: 96 }
         : col === 2
-        ? { crownX: 118, crownY: 24, leftEyeX: 112, rightEyeX: 112, eyeY: 44, earX: 100, neckX: 118, neckY: 86, chestX: 124, chestY: 118 }
-        : { crownX: 93, crownY: 22, leftEyeX: 91, rightEyeX: 106, eyeY: 44, earX: 73, neckX: 92, neckY: 79, chestX: 78, chestY: 108 };
+          ? { crownX: 118, crownY: 24, leftEyeX: 112, rightEyeX: 112, eyeY: 44, earX: 100, neckX: 118, neckY: 86, chestX: 124, chestY: 118 }
+          : col === 3
+            ? { crownX: 100, crownY: 22, leftEyeX: 102, rightEyeX: 114, eyeY: 41, earX: 86, neckX: 98, neckY: 64, chestX: 88, chestY: 90 }
+            : { crownX: 99, crownY: 20, leftEyeX: 104, rightEyeX: 117, eyeY: 38, earX: 85, neckX: 104, neckY: 63, chestX: 88, chestY: 92 };
 
     // Outfit character touches (collar piping for ao-gam-vang / uniform pockets for ao-linh)
     if (col < 2 && outfitId === "ao-gam-vang") {
@@ -188,27 +196,35 @@ window.TeaRoomScene = (function () {
       ctx.restore();
     }
 
-    // Wireframe brass reading glasses calibrated to true eye pixels
+    // High-contrast reading glasses calibrated to true eye pixels (crisp even when scaled small at table)
     if (acc === "glasses" && col < 2) {
       ctx.save();
-      ctx.strokeStyle = "#C89535";
-      ctx.lineWidth = 1.9;
-      ctx.fillStyle = "rgba(255, 255, 255, 0.16)";
+      ctx.fillStyle = "rgba(235, 250, 255, 0.34)";
       ctx.beginPath();
-      ctx.ellipse(anchors.leftEyeX, anchors.eyeY, 6.8, 4.8, 0, 0, Math.PI * 2);
+      ctx.ellipse(anchors.leftEyeX, anchors.eyeY, 6.8, 4.9, 0, 0, Math.PI * 2);
+      ctx.ellipse(anchors.rightEyeX, anchors.eyeY - 0.5, 6.2, 4.7, 0, 0, Math.PI * 2);
       ctx.fill();
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.ellipse(anchors.rightEyeX, anchors.eyeY - 0.5, 6.2, 4.6, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-      // Bridge & temple back toward ear
-      ctx.beginPath();
-      ctx.moveTo(anchors.leftEyeX + 6.8, anchors.eyeY);
-      ctx.lineTo(anchors.rightEyeX - 6.2, anchors.eyeY - 0.5);
-      ctx.moveTo(anchors.leftEyeX - 6.8, anchors.eyeY);
-      ctx.lineTo(anchors.earX, anchors.eyeY + 2);
-      ctx.stroke();
+
+      // Dark bronze rim + bright brass inner wire
+      [
+        { color: "#4A2E0B", width: 2.8 },
+        { color: "#F2BC46", width: 1.3 }
+      ].forEach((pass) => {
+        ctx.strokeStyle = pass.color;
+        ctx.lineWidth = pass.width;
+        ctx.beginPath();
+        ctx.ellipse(anchors.leftEyeX, anchors.eyeY, 6.8, 4.9, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.ellipse(anchors.rightEyeX, anchors.eyeY - 0.5, 6.2, 4.7, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(anchors.leftEyeX + 6.8, anchors.eyeY);
+        ctx.lineTo(anchors.rightEyeX - 6.2, anchors.eyeY - 0.5);
+        ctx.moveTo(anchors.leftEyeX - 6.8, anchors.eyeY);
+        ctx.lineTo(anchors.earX, anchors.eyeY + 2);
+        ctx.stroke();
+      });
       ctx.restore();
     }
 
@@ -304,8 +320,8 @@ window.TeaRoomScene = (function () {
   function composeSeniorSpriteCanvas(spec) {
     ensureAssets25DLoaded();
     const s = spec || {};
-    const pose = s.pose === "back" ? "back" : "front";
-    const col = pose === "back" ? 2 : s.gender === "female" ? 1 : 0;
+    const pose = s.pose === "stand" || s.isHost ? "stand" : s.pose === "back" ? "back" : "front";
+    const col = pose === "stand" ? 3 : pose === "back" ? 2 : s.gender === "female" ? 1 : 0;
     const outfitColor = s.outfitColor || (s.isHost ? "#D98A2B" : "#2E5E4E");
     const outfitId = s.outfitId || "";
     const acc = s.accessory || "none";
@@ -931,9 +947,11 @@ window.TeaRoomScene = (function () {
       g.add(makeWoodenChair(cushionHex));
     }
 
+    const isStandHost = isHost || withChair === false;
+    const basePose = isStandHost ? "stand" : "front";
     const spec = {
       gender: isFemale ? "female" : "male",
-      pose: "front",
+      pose: basePose,
       outfitColor,
       outfitId,
       accessory: acc,
@@ -951,13 +969,23 @@ window.TeaRoomScene = (function () {
       alphaTest: 0.14,
       side: THREE.DoubleSide
     });
-    // Vertical 2.5D Character Billboard resting naturally atop the 3D carved chair cushion
-    const billboard = new THREE.Mesh(new THREE.PlaneGeometry(1.08, 1.38), spriteMat);
-    billboard.position.set(0, withChair === false ? 0.88 : 0.99, withChair === false ? 0 : 0.06);
-    g.add(billboard);
+    const planeW = isStandHost ? 1.14 : 1.06;
+    const planeH = isStandHost ? 1.56 : 1.38;
+    const sprCol = isStandHost ? 3 : isFemale ? 1 : 0;
+    const sprAnchor = SEAT_ANCHORS[sprCol];
+
+    const billboardPivot = new THREE.Group();
+    // Seated: anchor pelvis onto y=0.45 cushion so knees extend toward table & shoes touch floor ~0.04; standing: feet flush at floor y=0
+    const pivotY = isStandHost ? planeH * sprAnchor.v - planeH * 0.5 : 0.46 + planeH * (sprAnchor.v - 0.5);
+    billboardPivot.position.set(0, Math.max(0.74, pivotY), withChair === false ? 0 : 0.04);
+
+    const billboard = new THREE.Mesh(new THREE.PlaneGeometry(planeW, planeH), spriteMat);
+    billboard.position.set((0.5 - sprAnchor.u) * planeW, 0, 0);
+    billboardPivot.add(billboard);
+    g.add(billboardPivot);
 
     const headAnchor = new THREE.Object3D();
-    headAnchor.position.set(0, withChair === false ? 1.46 : 1.56, withChair === false ? 0 : 0.06);
+    headAnchor.position.set(0, isStandHost ? 1.46 : 1.42, withChair === false ? 0 : 0.04);
     g.add(headAnchor);
 
     // Subtle inlaid honor ring around chair base
@@ -983,17 +1011,19 @@ window.TeaRoomScene = (function () {
     g.add(ring);
 
     const bbEntry = {
+      pivot: billboardPivot,
       billboard,
+      planeW,
       tex,
       spec,
-      pose: "front",
-      baseY: billboard.position.y,
+      pose: basePose,
+      baseY: billboardPivot.position.y,
       seatGroup: g,
-      lockFrontOnly: withChair === false
+      lockFrontOnly: isStandHost
     };
     hybridBillboards.push(bbEntry);
 
-    return { group: g, head: headAnchor, ringMat, billboard, billboardEntry: bbEntry };
+    return { group: g, head: headAnchor, ringMat, billboard, billboardPivot, billboardEntry: bbEntry };
   }
 
   const makeLowPolySenior = makeHybrid25DSenior;
@@ -1682,23 +1712,26 @@ window.TeaRoomScene = (function () {
     itemMesh.position.set(0.52, 0.83, -0.34);
     scene.add(itemMesh);
 
-    // 5 Seated Seniors + 5 Individual Celadon Teacups placed right in front of each person!
-    const seatAngles = [-2.82, -1.52, -0.32, 2.34, 0.82];
+    // 5 Seated Seniors + 5 Individual Celadon Teacups spread cleanly across X so nobody overlaps from camera!
+    // User ("Bạn") sits at angIdx 0 (-2.78 open left) so outfit/accessories/rosette stay 100% visible in Hybrid 3D.
+    const seatAngles = [-2.78, -1.78, -0.78, 0.28, 1.48];
     seatObjects = [];
     const existing = config.table.members.slice(0, 4).map((m, idx) => ({
       member: m,
-      angIdx: idx,
+      angIdx: idx + 1,
       isUser: false
     }));
     existing.push({
       member: {
         name: config.userName,
+        gender: config.userGender || "male",
         province: config.userProvince,
         hat: config.userAccessory || "none",
+        outfitId: config.userOutfitId || "",
         titleFrameId: config.userTitleFrame || "none",
-        badge: "Bạn"
+        badge: config.userBadge || "Bạn"
       },
-      angIdx: 4,
+      angIdx: 0,
       isUser: true
     });
 
@@ -2012,14 +2045,14 @@ window.TeaRoomScene = (function () {
     ctx.fillStyle = sunGrad;
     ctx.fillRect(0, 0, w, h);
 
-    // Chị Trà assistant beside the carved back tea counter
+    // Chị Trà standing gracefully beside the carved back tea counter
     const hostX = wideRect.x + wideRect.w * 0.5 + Math.sin((now || 0) * 0.001) * 14;
-    const hostBottomY = wideRect.y + wideRect.h * 0.445;
-    const hostH = wideRect.h * 0.145;
+    const hostBottomY = wideRect.y + wideRect.h * 0.455;
+    const hostH = wideRect.h * 0.165;
     const hostW = hostH * (SPRITE_CELL_W / SPRITE_CELL_H);
     const hostSpr = composeSeniorSpriteCanvas({
       gender: "female",
-      pose: "front",
+      pose: "stand",
       outfitColor: "#D98A2B",
       accessory: "hair-bun",
       isHost: true
@@ -2043,6 +2076,17 @@ window.TeaRoomScene = (function () {
       const cy = wideRect.y + slot.ny * wideRect.h;
       const sc = slot.sc * (h / 300) * (isUltraWide ? 0.90 : 1.0);
       const isRec = tIdx === currentConfig.recommendedIdx;
+      const lobbyMembers = tbl.members.slice();
+      if (typeof currentConfig.activeTableIdx === "number" && tIdx === currentConfig.activeTableIdx) {
+        lobbyMembers[0] = {
+          name: currentConfig.userName || "Bạn",
+          gender: currentConfig.userGender || "male",
+          outfitColor: currentConfig.userOutfitColor || "#2E5E4E",
+          outfitId: currentConfig.userOutfitId || "",
+          hat: currentConfig.userAccessory || "none",
+          titleFrameId: currentConfig.userTitleFrame || "none"
+        };
+      }
 
       // Woven medallion rug beneath each table
       ctx.save();
@@ -2064,7 +2108,7 @@ window.TeaRoomScene = (function () {
       const sprH = 44 * sc;
       const sprW = sprH * (SPRITE_CELL_W / SPRITE_CELL_H);
 
-      tbl.members.slice(0, 2).forEach((m, idx) => {
+      lobbyMembers.slice(0, 2).forEach((m, idx) => {
         const o = seatOffsets[idx];
         const spr = composeSeniorSpriteCanvas({
           gender: m.gender || (/^(Chị|Bà|Cô|Dì|Thím)/i.test(m.name || "") ? "female" : "male"),
@@ -2102,7 +2146,7 @@ window.TeaRoomScene = (function () {
       drawPainterlyTableItem25D(ctx, isRec ? "binh-sen" : "am-tu-sa", cx, cy - 3 * sc, 0.42 * sc, now);
 
       // Front row seated sprites (slots 2, 3)
-      tbl.members.slice(2, 4).forEach((m, mIdx) => {
+      lobbyMembers.slice(2, 4).forEach((m, mIdx) => {
         const o = seatOffsets[2 + mIdx];
         const spr = composeSeniorSpriteCanvas({
           gender: m.gender || (/^(Chị|Bà|Cô|Dì|Thím)/i.test(m.name || "") ? "female" : "male"),
@@ -2171,30 +2215,72 @@ window.TeaRoomScene = (function () {
     ctx.fillStyle = lg;
     ctx.fillRect(0, 0, w, h);
 
-    // Chị Trà host beside sideboard (glides forward politely when pouring tea!)
-    const serveMix = hostServingTimer > 0 ? Math.sin(Math.min(1, hostServingTimer / 4200) * Math.PI) : 0;
-    const hostNx = 0.205 + serveMix * 0.195;
-    const hostNy = 0.445 + serveMix * 0.02;
-    const hostH = bgRect.h * (0.205 + serveMix * 0.018);
-    const hostW = hostH * (SPRITE_CELL_W / SPRITE_CELL_H);
-    const hostSpr = composeSeniorSpriteCanvas({
-      gender: "female",
-      pose: "front",
-      outfitColor: "#D98A2B",
-      accessory: "hair-bun",
-      isHost: true
-    });
-    const hx = bgRect.x + hostNx * bgRect.w;
-    const hy = bgRect.y + hostNy * bgRect.h;
-    ctx.drawImage(hostSpr, hx - hostW * 0.5, hy - hostH, hostW, hostH);
+    // Helpers for exact 2.5D pelvis-anchored seating & foreground chair/tabletop occlusion
+    function drawAnchoredSprite(spr, col, anchorNx, anchorNy, hFrac, flip, isActive, bobY) {
+      const anchor = SEAT_ANCHORS[col] || SEAT_ANCHORS[0];
+      const sprH = bgRect.h * hFrac;
+      const sprW = sprH * (SPRITE_CELL_W / SPRITE_CELL_H);
+      const ax = bgRect.x + anchorNx * bgRect.w;
+      const ay = bgRect.y + anchorNy * bgRect.h;
 
-    // 5 exact chair slots aligned to the empty carved armchairs in tearoom-table-25d.jpg
+      if (isActive) {
+        ctx.save();
+        const auraY = ay - anchor.v * sprH * 0.55;
+        const aura = ctx.createRadialGradient(ax, auraY, 6, ax, auraY, sprW * 0.48);
+        aura.addColorStop(0, "rgba(244, 176, 62, 0.44)");
+        aura.addColorStop(1, "rgba(244, 176, 62, 0)");
+        ctx.fillStyle = aura;
+        ctx.beginPath();
+        ctx.arc(ax, auraY, sprW * 0.48, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      ctx.save();
+      ctx.translate(ax, ay + (bobY || 0));
+      if (flip) ctx.scale(-1, 1);
+      ctx.drawImage(spr, -anchor.u * sprW, -anchor.v * sprH, sprW, sprH);
+      ctx.restore();
+      return {
+        cx: ax,
+        headTopY: ay - anchor.v * sprH + (bobY || 0),
+        sprH
+      };
+    }
+
+    function restoreBackdropPoly(ptsNorm) {
+      if (!assets25D.tableReady || !assets25D.tableImg) return;
+      ctx.save();
+      ctx.beginPath();
+      ptsNorm.forEach(([pxN, pyN], idx) => {
+        const px = bgRect.x + pxN * bgRect.w;
+        const py = bgRect.y + pyN * bgRect.h;
+        if (idx === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      });
+      ctx.closePath();
+      ctx.clip();
+      ctx.drawImage(assets25D.tableImg, bgRect.x, bgRect.y, bgRect.w, bgRect.h);
+      ctx.restore();
+    }
+
+    function restoreBackdropEllipse(cxN, cyN, rxN, ryN) {
+      if (!assets25D.tableReady || !assets25D.tableImg) return;
+      ctx.save();
+      ctx.beginPath();
+      ctx.ellipse(bgRect.x + cxN * bgRect.w, bgRect.y + cyN * bgRect.h, rxN * bgRect.w, ryN * bgRect.h, 0, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.drawImage(assets25D.tableImg, bgRect.x, bgRect.y, bgRect.w, bgRect.h);
+      ctx.restore();
+    }
+
+    // 5 exact cushion coordinates calibrated to the carved armchairs of tearoom-table-25d.jpg
     const chairSlots = [
-      { nx: 0.242, ny: 0.705, hFrac: 0.30, flip: false, pose: "front", order: 2 }, // 8:30 left-front (Bạn)
-      { nx: 0.328, ny: 0.530, hFrac: 0.255, flip: false, pose: "front", order: 0 }, // 10:30 left-back
-      { nx: 0.525, ny: 0.460, hFrac: 0.245, flip: false, pose: "front", order: 0 }, // 12:00 top-center
-      { nx: 0.728, ny: 0.555, hFrac: 0.265, flip: true, pose: "front", order: 1 }, // 2:00 right-back
-      { nx: 0.695, ny: 0.880, hFrac: 0.315, flip: false, pose: "back", order: 4 } // 4:30 foreground-right (back_3q)
+      { nx: 0.246, ny: 0.592, hFrac: 0.375, flip: false, pose: "front", order: 2, tagDx: -8, tagDy: 6 },   // 0: 8:30 left-front (Bạn)
+      { nx: 0.345, ny: 0.482, hFrac: 0.355, flip: false, pose: "front", order: 0, tagDx: -28, tagDy: 14 }, // 1: 10:30 left-back
+      { nx: 0.523, ny: 0.422, hFrac: 0.330, flip: false, pose: "front", order: 0, tagDx: 16, tagDy: -4 },  // 2: 12:00 top-center
+      { nx: 0.712, ny: 0.506, hFrac: 0.345, flip: true, pose: "front", order: 1, tagDx: 0, tagDy: 8 },     // 3: 2:00 right-back
+      { nx: 0.688, ny: 0.768, hFrac: 0.305, flip: false, pose: "back", order: 4, tagDx: 0, tagDy: 0 }      // 4: 4:30 foreground-right
     ];
 
     const list = currentConfig.table.members.slice(0, 4).map((m, idx) => ({
@@ -2219,57 +2305,52 @@ window.TeaRoomScene = (function () {
       isUser: true
     });
 
-    function drawSeatedMember(entry) {
+    const drawnAnchors = {};
+    function renderSeatedSlot(entry) {
       const slot = chairSlots[entry.slotIdx];
       const m = entry.member;
       const isActive = entry.seatPosIdx === activeSeatIdx;
-      const cx = bgRect.x + slot.nx * bgRect.w;
-      const by = bgRect.y + slot.ny * bgRect.h;
-      const bob = isActive ? Math.sin((now || 0) * 0.006) * 2.2 : Math.sin((now || 0) * 0.002 + entry.slotIdx) * 0.8;
-      const sprH = bgRect.h * slot.hFrac;
-      const sprW = sprH * (SPRITE_CELL_W / SPRITE_CELL_H);
-
-      if (isActive) {
-        ctx.save();
-        ctx.strokeStyle = "#F4A836";
-        ctx.lineWidth = 3;
-        ctx.fillStyle = "rgba(244, 168, 54, 0.22)";
-        ctx.beginPath();
-        ctx.ellipse(cx, by - sprH * 0.08, sprW * 0.36, 11, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        ctx.restore();
-      }
-
+      const isFem = m.gender === "female" || /^(Chị|Bà|Cô|Dì|Thím)/i.test(m.name || "");
+      const col = slot.pose === "back" ? 2 : isFem ? 1 : 0;
+      const bob = isActive ? Math.sin((now || 0) * 0.006) * 1.8 : Math.sin((now || 0) * 0.002 + entry.slotIdx) * 0.7;
       const spr = composeSeniorSpriteCanvas({
-        gender: m.gender || (/^(Chị|Bà|Cô|Dì|Thím)/i.test(m.name || "") ? "female" : "male"),
+        gender: isFem ? "female" : "male",
         pose: slot.pose,
         outfitColor: m.outfitColor || "#2E5E4E",
         outfitId: m.outfitId || "",
         accessory: m.hat || "none",
         titleFrameId: m.titleFrameId || "none"
       });
-      ctx.save();
-      ctx.translate(cx, by + bob);
-      if (slot.flip) ctx.scale(-1, 1);
-      ctx.drawImage(spr, -sprW * 0.5, -sprH, sprW, sprH);
-      ctx.restore();
+      drawnAnchors[entry.slotIdx] = drawAnchoredSprite(spr, col, slot.nx, slot.ny, slot.hFrac, slot.flip, isActive, bob);
     }
 
-    // Draw back & side seats (orders 0..2) behind tabletop foreground items
+    // 1) Draw 3 back chairs (10:30, 12:00, 2:00)
     list
-      .filter((entry) => chairSlots[entry.slotIdx].order < 3)
+      .filter((entry) => chairSlots[entry.slotIdx].order <= 1)
       .sort((a, b) => chairSlots[a.slotIdx].order - chairSlots[b.slotIdx].order)
-      .forEach(drawSeatedMember);
+      .forEach(renderSeatedSlot);
 
-    // Center tabletop props on the gleaming dark rosewood table
-    const tblCx = bgRect.x + bgRect.w * 0.502;
-    const tblCy = bgRect.y + bgRect.h * 0.495;
+    // 2) Restore Chair 2:00 outer right armrest, under-table gap & central rosewood tabletop so back knees tuck underneath!
+    restoreBackdropPoly([[0.720, 0.520], [0.785, 0.495], [0.795, 0.655], [0.700, 0.650]]);
+    restoreBackdropPoly([[0.625, 0.595], [0.695, 0.590], [0.700, 0.655], [0.625, 0.655]]);
+    restoreBackdropEllipse(0.510, 0.540, 0.174, 0.116);
+
+    // 3) Draw Chair 0 (8:30 left-front "Bạn") naturally in front of left rug
+    list.filter((entry) => entry.slotIdx === 0).forEach(renderSeatedSlot);
+
+    // 4) Center tabletop props + user's equipped table item
+    const tblCx = bgRect.x + bgRect.w * 0.506;
+    const tblCy = bgRect.y + bgRect.h * 0.508;
     const propScale = (bgRect.h / 330) * 0.96;
-    drawPainterlyTableItem25D(ctx, "snack-plate", tblCx - 28 * propScale, tblCy + 10 * propScale, propScale * 0.82, now);
+    drawPainterlyTableItem25D(ctx, "snack-plate", tblCx - 29 * propScale, tblCy + 11 * propScale, propScale * 0.80, now);
     drawPainterlyTableItem25D(ctx, "am-tu-sa", tblCx, tblCy - 4 * propScale, propScale, now);
-    if (currentConfig.userItem && currentConfig.userItem !== "am-tu-sa") {
-      drawPainterlyTableItem25D(ctx, currentConfig.userItem, tblCx + 31 * propScale, tblCy + 7 * propScale, propScale * 0.85, now);
+    if (currentConfig.userItem) {
+      if (currentConfig.userItem === "am-tu-sa") {
+        // Distinct personal warm porcelain tasting pot near user side when classic Tử Sa pot is selected
+        drawPainterlyTableItem25D(ctx, "am-tu-sa", tblCx - 34 * propScale, tblCy + 26 * propScale, propScale * 0.72, now);
+      } else {
+        drawPainterlyTableItem25D(ctx, currentConfig.userItem, tblCx + 33 * propScale, tblCy + 6 * propScale, propScale * 0.86, now);
+      }
     }
 
     // Rising aromatic steam wisps above the teapot
@@ -2287,25 +2368,78 @@ window.TeaRoomScene = (function () {
       ctx.stroke();
     }
 
-    // Foreground-right seat (order 4) occludes tabletop foreground edge realistically
-    list
-      .filter((entry) => chairSlots[entry.slotIdx].order >= 3)
-      .forEach(drawSeatedMember);
+    // 5) Draw foreground-right seat (4:30) and restore Chair 4:30 rear carved wooden backrest behind shoulder
+    list.filter((entry) => entry.slotIdx === 4).forEach(renderSeatedSlot);
+    restoreBackdropPoly([[0.735, 0.625], [0.805, 0.615], [0.800, 0.900], [0.715, 0.890]]);
 
-    // Generate clean floating status pills & sticker pops
+    // 6) Standing & walking Trợ lý Chị Trà holding tea tray: waits by left sideboard, walks to table to pour, walks back!
+    const pourDur = 4200;
+    const elapsed = hostServingTimer > 0 ? Math.max(0, pourDur - hostServingTimer) : 0;
+    const pFrac = elapsed / pourDur;
+    let hostNx = 0.115;
+    let hostNy = 0.655;
+    let hostScale = 0.335;
+    let hostFlip = false;
+    let stepBob = 0;
+    let hostActionLabel = "";
+
+    if (hostServingTimer > 0) {
+      if (pFrac < 0.36) {
+        const k = pFrac / 0.36;
+        const ease = k * k * (3 - 2 * k);
+        hostNx = 0.115 + ease * 0.290;
+        hostNy = 0.655 + Math.sin(ease * Math.PI * 0.5) * 0.185;
+        hostScale = 0.335 + ease * 0.025;
+        stepBob = -Math.abs(Math.sin((now || 0) * 0.015)) * 3.5;
+        hostActionLabel = "Trợ lý Chị Trà · Đang ra mời";
+      } else if (pFrac < 0.68) {
+        hostNx = 0.405;
+        hostNy = 0.840;
+        hostScale = 0.360;
+        stepBob = Math.sin((now || 0) * 0.004) * 1.2;
+        hostActionLabel = "Trợ lý Chị Trà · Rót trà";
+      } else {
+        const k = (pFrac - 0.68) / 0.32;
+        const ease = k * k * (3 - 2 * k);
+        hostNx = 0.405 - ease * 0.290;
+        hostNy = 0.840 - (1 - Math.cos(ease * Math.PI * 0.5)) * 0.185;
+        hostScale = 0.360 - ease * 0.025;
+        hostFlip = true;
+        stepBob = -Math.abs(Math.sin((now || 0) * 0.015)) * 3.5;
+        hostActionLabel = "Trợ lý Chị Trà · Quay lại";
+      }
+    }
+
+    const hostSpr = composeSeniorSpriteCanvas({
+      gender: "female",
+      pose: "stand",
+      outfitColor: "#D98A2B",
+      accessory: "hair-bun",
+      isHost: true
+    });
+    const hx = bgRect.x + hostNx * bgRect.w;
+    const hy = bgRect.y + hostNy * bgRect.h;
+    ctx.save();
+    ctx.fillStyle = "rgba(28, 16, 8, 0.28)";
+    ctx.beginPath();
+    ctx.ellipse(hx, hy + 2, 16 * (bgRect.h / 720) * 2, 5 * (bgRect.h / 720) * 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    const hostMetrics = drawAnchoredSprite(hostSpr, 3, hostNx, hostNy, hostScale, hostFlip, false, stepBob);
+
+    // Generate clean floating status pills & sticker pops anchored right over each person's head
     let tagHtml = "";
     list.forEach((entry) => {
       const slot = chairSlots[entry.slotIdx];
       const m = entry.member;
       const isActive = entry.seatPosIdx === activeSeatIdx;
-      const sprH = bgRect.h * slot.hFrac;
-      const cx = bgRect.x + slot.nx * bgRect.w;
-      const by = bgRect.y + slot.ny * bgRect.h;
+      const dm = drawnAnchors[entry.slotIdx];
+      if (!dm) return;
 
       const shortName = entry.isUser ? "Bạn" : m.name;
       const label = isActive ? `${shortName} · Nói` : m.badge === "Mời trà" || m.badge === "Mời bánh" ? `${shortName} · ${m.badge}` : shortName;
-      const sx = Math.max(82, Math.min(w - 82, cx));
-      const sy = Math.max(26, Math.min(h - 8, by - sprH + 4));
+      const sx = Math.max(80, Math.min(w - 80, dm.cx + slot.tagDx));
+      const sy = Math.max(24, Math.min(h - 8, dm.headTopY - 2 + slot.tagDy));
       tagHtml += formatSeatTagHtml({
         sx,
         sy,
@@ -2316,13 +2450,13 @@ window.TeaRoomScene = (function () {
       });
       const matchStickerIdx = entry.seatPosIdx;
       if (activeStickerPop && activeStickerPop.seatIdx === matchStickerIdx && activeStickerPop.expiresAt > Date.now()) {
-        const popY = Math.max(26, sy - 30);
+        const popY = Math.max(24, sy - 30);
         tagHtml += `<span class="seat-sticker-pop" style="left:${sx.toFixed(0)}px;top:${popY.toFixed(0)}px;background:${escHtml(activeStickerPop.bg)};color:${escHtml(activeStickerPop.color)};border-color:${escHtml(activeStickerPop.color)}">${escHtml(activeStickerPop.label)}</span>`;
       }
     });
 
-    if (hostServingTimer > 0) {
-      tagHtml += `<span class="seat-status-tag" style="left:${Math.max(86, Math.min(w - 86, hx)).toFixed(0)}px;top:${Math.max(24, hy - hostH + 2).toFixed(0)}px">Trợ lý Chị Trà · Rót trà</span>`;
+    if (hostServingTimer > 0 && hostMetrics) {
+      tagHtml += `<span class="seat-status-tag" style="left:${Math.max(86, Math.min(w - 86, hostMetrics.cx)).toFixed(0)}px;top:${Math.max(22, hostMetrics.headTopY - 2).toFixed(0)}px">${escHtml(hostActionLabel)}</span>`;
     }
 
     if (tagsLayerEl) {
@@ -2410,35 +2544,42 @@ window.TeaRoomScene = (function () {
     ctx.lineWidth = 2.5;
     ctx.stroke();
 
-    // Subtle carved mahogany chair armrests & jade cushion peeking gently behind portrait
+    // Carved wooden armchair scaled accurately behind full-shoe seated portrait
     const px = w * 0.32;
-    const baseFootY = h * 0.90;
+    const baseFootY = h * 0.91;
+    const sprH = h * 0.72;
+    const sprW = sprH * (SPRITE_CELL_W / SPRITE_CELL_H);
+    const sprCol = (currentConfig.userGender || "male") === "female" ? 1 : 0;
+    const anch = SEAT_ANCHORS[sprCol];
+    const cushY = baseFootY - sprH * (1 - anch.v) + 4;
+
     ctx.save();
-    ctx.fillStyle = "rgba(35, 22, 12, 0.24)";
+    // Shoe & chair shadow on floral rug
+    ctx.fillStyle = "rgba(35, 22, 12, 0.22)";
     ctx.beginPath();
-    ctx.ellipse(px, baseFootY - 4, 46, 12, 0, 0, Math.PI * 2);
+    ctx.ellipse(px + 4, baseFootY - 4, 48, 12, 0, 0, Math.PI * 2);
     ctx.fill();
-    // Carved wood side stiles & curved top crest behind shoulders
+    // Carved chair rear backrest + chair front legs down to rug
     ctx.strokeStyle = "#59331B";
-    ctx.fillStyle = "#6E4124";
+    ctx.fillStyle = "#59331B";
     ctx.lineWidth = 5;
     ctx.beginPath();
-    ctx.moveTo(px - 32, baseFootY - 14);
-    ctx.lineTo(px - 34, baseFootY - h * 0.44);
-    ctx.quadraticCurveTo(px, baseFootY - h * 0.49, px + 26, baseFootY - h * 0.44);
-    ctx.lineTo(px + 28, baseFootY - 14);
+    ctx.moveTo(px - 32, cushY + 4);
+    ctx.lineTo(px - 34, cushY - sprH * 0.36);
+    ctx.quadraticCurveTo(px - 4, cushY - sprH * 0.42, px + 26, cushY - sprH * 0.36);
+    ctx.lineTo(px + 24, cushY + 4);
     ctx.stroke();
-    // Subtle dark-jade seat edge
+    // Front chair legs beneath seat
+    ctx.fillRect(px - 32, cushY + 4, 5, baseFootY - cushY - 12);
+    ctx.fillRect(px + 18, cushY + 6, 5, baseFootY - cushY - 12);
+    // Dark jade seat cushion right beneath hips
     ctx.fillStyle = "#2E5E4E";
     ctx.beginPath();
-    ctx.ellipse(px - 2, baseFootY - 14, 34, 9, 0, 0, Math.PI * 2);
+    ctx.ellipse(px - 4, cushY + 2, 34, 10, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
 
-    // High-resolution 2.5D senior portrait sprite
-    const sprH = h * 0.70;
-    const sprW = sprH * (SPRITE_CELL_W / SPRITE_CELL_H);
-    const sway = Math.sin((now || 0) * 0.0022) * 1.6;
+    const sway = Math.sin((now || 0) * 0.0022) * 1.4;
     const spr = composeSeniorSpriteCanvas({
       gender: currentConfig.userGender || "male",
       pose: "front",
@@ -2447,7 +2588,7 @@ window.TeaRoomScene = (function () {
       accessory: currentConfig.userAccessory || "glasses",
       titleFrameId: currentConfig.userTitleFrame || "none"
     });
-    ctx.drawImage(spr, px - sprW * 0.5, baseFootY - sprH + sway, sprW, sprH);
+    ctx.drawImage(spr, px - anch.u * sprW, baseFootY - sprH + sway, sprW, sprH);
 
     // Rosewood round side table & enlarged painterly Table Item on the right
     const tx = w * 0.72;
@@ -2493,11 +2634,20 @@ window.TeaRoomScene = (function () {
     const fwd = new THREE.Vector3();
     hybridBillboards.forEach((entry, idx) => {
       if (!entry || !entry.billboard || !entry.seatGroup) return;
-      entry.billboard.getWorldPosition(wp);
-      entry.billboard.lookAt(camera.position.x, wp.y, camera.position.z);
+      const rotTarget = entry.pivot || entry.billboard;
+      rotTarget.getWorldPosition(wp);
+      rotTarget.lookAt(camera.position.x, wp.y, camera.position.z);
 
-      // Gentle breathing bob
-      entry.billboard.position.y = entry.baseY + Math.sin(now * 0.002 + idx * 1.1) * 0.012;
+      // Gentle breathing bob (and brisk walking step when Chị Trà moves to pour tea)
+      const isHostWalking =
+        entry.lockFrontOnly &&
+        hostGroup &&
+        entry.seatGroup === hostGroup &&
+        hostServingTimer > 600 &&
+        hostServingTimer < 3800;
+      const bobAmp = isHostWalking ? 0.045 : 0.012;
+      const bobFreq = isHostWalking ? 0.014 : 0.002;
+      rotTarget.position.y = entry.baseY + Math.abs(Math.sin(now * bobFreq + idx * 1.1)) * bobAmp;
 
       if (!entry.lockFrontOnly && entry.tex && entry.spec) {
         entry.seatGroup.getWorldDirection(fwd);
@@ -2511,9 +2661,14 @@ window.TeaRoomScene = (function () {
           entry.tex.image = composeSeniorSpriteCanvas({ ...entry.spec, pose: wantPose });
           entry.tex.needsUpdate = true;
         }
-        // Orient 3/4 gaze toward center of tea table relative to camera angle
+        const sprCol = wantPose === "back" ? 2 : entry.spec.gender === "female" ? 1 : 0;
+        const anch = SEAT_ANCHORS[sprCol] || SEAT_ANCHORS[0];
         const wantFlip = wantPose === "front" ? cross < -0.15 : cross > 0.15;
-        entry.billboard.scale.x = wantFlip ? -1 : 1;
+        const flipSign = wantFlip ? -1 : 1;
+        entry.billboard.scale.x = flipSign;
+        if (entry.pivot && entry.planeW) {
+          entry.billboard.position.x = flipSign * (0.5 - anch.u) * entry.planeW;
+        }
       }
     });
   }

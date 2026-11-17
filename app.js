@@ -2428,6 +2428,7 @@
       bio: state.auth && state.auth.primaryUnitLabel
         ? `${state.user.name} · ${state.auth.primaryUnitLabel}`
         : `${state.user.name} đang trực tuyến trên điện thoại thật tại bàn trà.`,
+      outfitId: state.user.outfitId,
       outfitColor: getOutfit(state.user.outfitId).color,
       hat: state.user.accessoryId || "glasses",
       item: state.user.itemId,
@@ -2435,6 +2436,13 @@
       badge: "Trực tuyến",
       isRealPeer: true
     };
+  }
+
+  function refreshRealtimeAppearance() {
+    if (!RT) return;
+    if (state.teaRoom && state.teaRoom.subView === "table") {
+      RT.joinTableChannel(getCurrentTable().id, buildMyRealtimePeerInfo(), state.privacy.consentRealtimePresence);
+    }
   }
 
   function applyCustomTableMeta(baseTable) {
@@ -3112,6 +3120,7 @@
         roomTheme: room.theme,
         tables: effectiveTables,
         recommendedIdx,
+        activeTableIdx: state.teaRoom.tableIdx,
         table: getTableWithRealPeers(table),
         userName: state.user.name,
         userAge: getUserAge(),
@@ -7650,6 +7659,7 @@
           </div>
 
           ${isPreviewingDraft ? `<button type="button" class="btn-secondary" id="btn-reset-preview">Quay về bộ đang dùng thật</button>` : ""}
+          <button type="button" class="btn-jade" id="btn-goto-tearoom-from-wardrobe">${ico("tea")}<span>Ra Bàn Trà xem trang phục ngay</span></button>
         </div>
 
         <div class="wardrobe-cat-bar" role="tablist" aria-label="Danh mục trang bị">
@@ -7765,6 +7775,15 @@
           renderProfile();
         });
       }
+      const gotoTeaBtn = document.getElementById("btn-goto-tearoom-from-wardrobe");
+      if (gotoTeaBtn) {
+        gotoTeaBtn.addEventListener("click", () => {
+          profilePreviewDraft = null;
+          state.teaRoom.subView = "table";
+          saveState();
+          navigate("tearoom");
+        });
+      }
 
       els.main.querySelectorAll("[data-wcat]").forEach((btn) => {
         btn.addEventListener("click", () => {
@@ -7825,6 +7844,7 @@
           if (profilePreviewDraft) delete profilePreviewDraft.outfitId;
           saveState();
           updateGlobalChrome();
+          refreshRealtimeAppearance();
           showToast(`Đã mặc: ${o.name}`);
           renderProfile();
           scrollShowcaseIntoView();
@@ -7852,6 +7872,7 @@
           if (profilePreviewDraft) delete profilePreviewDraft.accessoryId;
           saveState();
           updateGlobalChrome();
+          refreshRealtimeAppearance();
           showToast(`Đã trang bị: ${acc.name}`);
           renderProfile();
           scrollShowcaseIntoView();
@@ -7876,6 +7897,7 @@
           if (profilePreviewDraft) delete profilePreviewDraft.itemId;
           saveState();
           updateGlobalChrome();
+          refreshRealtimeAppearance();
           showToast(`Đã bày lên bàn trà: ${it.name}`);
           renderProfile();
           scrollShowcaseIntoView();
@@ -7903,6 +7925,7 @@
           if (profilePreviewDraft) delete profilePreviewDraft.titleFrameId;
           saveState();
           updateGlobalChrome();
+          refreshRealtimeAppearance();
           showToast(`Đã gắn khung danh hiệu 3D: ${fr.name}`);
           renderProfile();
           scrollShowcaseIntoView();

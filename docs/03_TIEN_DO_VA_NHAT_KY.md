@@ -29,6 +29,12 @@
 
 ## 2. Nhật Ký Phiên Bản Kỹ Thuật (Append-Only Engineering Log)
 
+### [2026-11-17] — Chuẩn Hóa Vị Trí Ngồi 5 Ghế Có Che Khuất 2.5D, Chị Trà Đứng Đi Rót Trà & Đồng Bộ Tủ Đồ Ra Bàn Trà (`?v=20261117k`)
+- **Tệp cập nhật:** `assets/tearoom-sprites.webp`, `tearoom3d.js`, `app.js`, `index.html` (`?v=20261117k`), `sw.js` (`tuoibac-pwa-v23`), `ARCHITECTURE.md`, `docs/03_TIEN_DO_VA_NHAT_KY.md`.
+- **Chi tiết 2 hạng mục vừa hoàn thành:**
+  1. **Căn chuẩn vị trí ngồi 5 ghế & Chị Trà đứng bước ra rót trà (`assets/tearoom-sprites.webp`, `tearoom3d.js`):** Nâng cấp Sprite Atlas lên `4×2` (`880×560`, `49 KB`) với nhân vật ngồi đủ ống chân/giày guốc và thêm cột 4 là Chị Trà đứng bưng khay trà; khóa neo hông (`SEAT_ANCHORS`) đặt nhân vật ngồi cân tâm nệm 5 ghế, khôi phục lớp che mặt bàn gỗ & tựa ghế để chân ngồi lọt dưới gầm bàn tự nhiên; nâng tương phản viền kính lão, đồng thời cho Chị Trà đứng bên tủ chè và bước đứng ra cạnh bàn rót trà theo nhịp `4.2s`.
+  2. **Đồng bộ trọn vẹn Tủ Trang Phục ra Bàn Trà & Sảnh (`app.js`, `tearoom3d.js`):** Truyền đủ `outfitId`, `activeTableIdx`, `refreshRealtimeAppearance()` khi đổi trang phục/phụ kiện/đồ bàn trà/khung tên (đồng bộ cả thiết bị khác qua Realtime), hiển thị đầy đủ tất cả đồ bàn trà (gồm ấm riêng khi chọn `am-tu-sa`), đặt ghế `"Bạn"` ở vị trí dễ nhìn trong cả Full 2.5D và Hybrid 3D+2.5D, và bổ sung nút `#btn-goto-tearoom-from-wardrobe` (`Ra Bàn Trà xem trang phục ngay`) ngay dưới tủ đồ.
+
 ### [2026-11-17] — Tùy Chọn Chuyển Đổi Hai Chế Độ Đồ Họa: Full 2.5D Cổ Điển (TLBB) & Hybrid Phòng 3D Xoay + Nhân Vật 2.5D (`?v=20261117j`)
 - **Tệp cập nhật:** `assets/tearoom-table-25d.jpg`, `assets/tearoom-lobby-25d.jpg`, `assets/tearoom-sprites.webp`, `tearoom3d.js`, `app.js`, `styles.css`, `index.html` (`?v=20261117j`), `sw.js` (`tuoibac-pwa-v22`), `ARCHITECTURE.md`, `docs/02_SO_DO_DU_LIEU_VA_API_NOI_BO.md`, `docs/03_TIEN_DO_VA_NHAT_KY.md`, `docs/05_QUYET_DINH_KIEN_TRUC_ADR.md`.
 - **Chi tiết nâng cấp:**
