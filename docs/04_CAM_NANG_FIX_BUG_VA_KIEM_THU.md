@@ -38,6 +38,8 @@ Tài liệu này giúp bất kỳ AI Agent nào khi nhận báo lỗi từ Chủ
    - Mọi tệp `.bat` (`run.bat`, `verify.bat`) bắt buộc chỉ chứa ký tự **ASCII thuần** (không gõ tiếng Việt có dấu), kết thúc dòng chuẩn **`CRLF` (`\r\n`)** và không có lệnh `chcp 65001` để tương thích 100% với `cmd.exe` và trình kiểm tra `E:\DuAn\_Dashboard\doctor.mjs`.
 8. **Lọc thông tin nhạy cảm trong ô trò chuyện (`cleanAndApplyDictionary`):**
    - Chuỗi chứa dãy từ 8 chữ số trở lên (SĐT / số tài khoản), `http://`, `https://` hoặc cụm từ vay mượn/chuyển khoản sẽ bị chặn gửi để bảo vệ các bác khỏi lừa đảo trực tuyến.
+9. **Chống giật nhảy khung hình (`Zero Layout Shift`) khi diễn hoạt Ô Ăn Quan:**
+   - Tuyệt đối không chèn thêm/xóa bỏ các khối văn bản động vào luồng DOM phía trên `.oaq-board` khi đang chạy hoạt cảnh rải sỏi; mọi thông báo trạng thái phải đẩy qua `showToast(...)` và huy hiệu đếm sỏi trên tay đặt `position: absolute` trên `.oaq-board-stage`.
 
 ---
 

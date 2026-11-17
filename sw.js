@@ -1,4 +1,4 @@
-const CACHE_VERSION = "tuoibac-pwa-v17";
+const CACHE_VERSION = "tuoibac-pwa-v18";
 const CORE_ASSETS = [
   "./",
   "./index.html",
@@ -17,7 +17,8 @@ const CORE_ASSETS = [
   "./icons/apple-touch-icon.png",
   "./assets/temple-wide.jpg",
   "./assets/temple-altar.jpg",
-  "./assets/temple-courtyard.jpg"
+  "./assets/temple-courtyard.jpg",
+  "./assets/temple-sprites.webp"
 ];
 
 self.addEventListener("install", (event) => {

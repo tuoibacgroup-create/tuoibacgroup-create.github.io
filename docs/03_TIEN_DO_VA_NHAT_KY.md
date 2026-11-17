@@ -16,18 +16,29 @@
 | 6 | Nhập liệu giọng nói & Sổ từ điển tự học phương ngữ | Hoàn thành | `app.js`, `data.js` | Xem trước câu nói chữ lớn trước khi gửi, tự sửa lỗi phát âm vùng miền |
 | 7 | Tờ Báo Sáng Quán Trà, Tìm kiếm chủ đề & Bàn đàm đạo theo tin | Hoàn thành | `app.js`, `data.js` | Tìm theo từ khóa gợi ý (lương hưu, giá vàng, thời tiết...), nghe đọc báo TTS |
 | 8 | Cờ Tướng Chuẩn `9×10` (32 quân) & Giải 6 Cờ Thế Cổ Phổ | Hoàn thành | `xiangqi.js`, `app.js` | AI Alpha-Beta 4 tầng, đấu ván treo bất đồng bộ qua liên kết mời bạn |
-| 9 | Ô Ăn Quan Dân Gian (Sỏi Cuội Suối 3D & Rải Từng Viên Như Thật) & Đố Vui | Hoàn thành | `app.js`, `styles.css`, `realtime.js` | Bàn gỗ hương khắc hốc, sỏi cuội tự nhiên 1:1 và hoạt cảnh bốc - rải từng viên qua từng ô - bốc tiếp - ăn quân |
+| 9 | Ô Ăn Quan Dân Gian (Nhịp Rải Đều 600ms, Khóa Cứng Bàn Cờ & Noti Nổi) | Hoàn thành | `app.js`, `styles.css`, `realtime.js` | Cố định tuyệt đối vị trí bàn cờ (`0px` giật nhảy), rải đều đặn `600ms/viên` không tăng tốc, toàn bộ thông báo ra Noti nổi |
 | 10 | Chiếu Thơ Lục Bát, Nhạc Đàn Tranh & Gắn Khung Danh Hiệu 3D | Hoàn thành | `app.js`, `tearoom3d.js` | Sáng tác thơ mới đồng bộ thời gian thực, mở khóa khung hào quang 3D |
 | 11 | Hội Đồng Ngũ (VD: Đại đội 1K2 · D3 · F25), Kết Bạn & Báo Online | Hoàn thành | `app.js`, `realtime.js` | Lập đơn vị mới, xem đồng đội đang ngồi ở phòng nào và bấm vào ngồi cạnh |
 | 12 | Thẻ Hội Viên 10 Giây (SĐT + 4 số) & Khôi Phục Mã QR | Hoàn thành | `app.js`, `realtime.js` | Không mật khẩu phức tạp, băm ẩn SĐT một chiều, hỗ trợ Vân tay WebAuthn |
 | 13 | Hệ Thống 96 Danh Hiệu Toán Học Lồi (32 tầng chính + 8 cây chuyên môn) | Hoàn thành | `progression.js`, `app.js` | Tách biệt bảng chào đón Người mới (Tầng 1–5) và vinh danh Trưởng lão / Đại thụ |
-| 14 | Chánh Điện Nhiếp Ảnh Chùa Cổ Việt Nam & Hiệu Ứng Khói Hương / Sóng Âm Sống | Hoàn thành | `temple3d.js`, `assets/temple-*.jpg`, `app.js` | 3 góc ảnh Chùa Cổ chân thực trang nghiêm cho người 55+, khói nhang thật, đèn dầu lung linh, Auto-Mõ & chạm trực tiếp |
+| 14 | Đại Sảnh Chánh Điện 20 Chiếu Bồ Đoàn & Phật Tử Tả Thực Bước Lên Hành Lễ | Hoàn thành | `temple3d.js`, `assets/temple-sprites.webp`, `app.js` | Góc đại cảnh 5 gian 20 chỗ ngồi (`14/20` bác ngồi nhộn nhịp), Phật tử Áo Lam / Áo Nâu bước lên thắp nhang / gõ mõ rồi quay về chỗ |
 | 15 | Kho AI Tracking 100% Toàn Thành Viên (`IndexedDB` + Xuất JSONL) | Hoàn thành | `telemetry.js`, `app.js` | Biểu đồ 24h, đo `dwellSec` từng màn hình, tách 4 kiểu chat, xuất `.jsonl`/`.json`/`.csv` |
 | 16 | Hồ sơ Kiến trúc Studio 20 Năm & Cổng Kiểm Định Đồng Bộ Code ↔ Docs | Hoàn thành | `AGENTS.md`, `ARCHITECTURE.md`, `scripts/studio-doctor.mjs` | Tự động đối chiếu 1:1 màn hình, `state`, SQL, Deep Link và lịch sử Git giữa Code thực tế với `.md` |
 
 ---
 
 ## 2. Nhật Ký Phiên Bản Kỹ Thuật (Append-Only Engineering Log)
+
+### [2026-11-17] — Khóa Cứng Bàn Ô Ăn Quan Nhịp Đều 600ms + Đại Sảnh Chánh Điện 20 Bồ Đoàn Có Phật Tử Tả Thực Bước Lên Hành Lễ (`?v=20261117f`)
+- **Tệp tạo mới / cập nhật:** `assets/temple-wide.jpg`, `assets/temple-sprites.webp` (`44 KB`), `temple3d.js`, `app.js`, `styles.css`, `index.html` (`?v=20261117f`), `sw.js` (`tuoibac-pwa-v18`), `ARCHITECTURE.md`, `docs/02_SO_DO_DU_LIEU_VA_API_NOI_BO.md`, `docs/03_TIEN_DO_VA_NHAT_KY.md`, `docs/04_CAM_NANG_FIX_BUG_VA_KIEM_THU.md`, `docs/05_QUYET_DINH_KIEN_TRUC_ADR.md`.
+- **Chi tiết kỹ thuật theo 2 hạng mục:**
+  1. **Ô Ăn Quan — Nhịp rải chậm đều `600ms/viên`, khóa cứng `0px` vị trí bàn cờ & gom toàn bộ thông báo sang Noti nổi (`app.js`, `styles.css`):**
+     - Bỏ cơ chế tăng tốc sau 10 viên; đặt nhịp thả cố định **`600ms/viên`** đều đặn từ đầu tới cuối lượt (`pickup`: `560ms`, `pickup_chain`: `720ms`, `capture`: `800ms`) giúp mắt người lớn tuổi theo dõi từng viên sỏi rơi rất êm.
+     - Loại bỏ toàn bộ các thanh chữ động nằm trên/dưới bàn cờ từng gây đẩy nhảy khung hình (`oaq-hand-live-bar` và đoạn `<p>` trạng thái); khóa chiều cao 1 dòng cho khay quân ăn được (`.oaq-basket-pebbles` `height: 22px; flex-wrap: nowrap`), chuyển bộ đếm `Trên tay: X viên` thành huy hiệu nổi `position: absolute` trên viền gỗ và chuyển tất cả thông báo bốc quân / ăn quân / đổi lượt sang **Toast Noti nổi tự tắt**.
+  2. **Đại Sảnh Chánh Điện 20 Chiếu Bồ Đoàn & Phật Tử Áo Lam / Áo Nâu Tả Thực Bước Lên Thắp Nhang / Gõ Mõ (`temple3d.js`, `assets/temple-sprites.webp`, `app.js`):**
+     - Nâng cấp ảnh nền sang **Đại Sảnh Chùa Cổ 5 Gian góc siêu rộng** với nền gạch Bát Tràng thoáng đãng chứa đủ **20 Chiếu Bồ Đoàn (`4 hàng × 5 chỗ`, luôn có ~14 bác ngồi nhộn nhịp)**.
+     - Trích xuất nền xanh chuẩn phòng thu (Chroma-key + khử ám xanh + cân chỉnh ánh nến ấm) bộ **9 Sprite nhiếp ảnh tả thực nhìn từ sau lưng** (`cushion`, nam/nữ mặc Áo Lam và Áo Nâu ở tư thế ngồi tĩnh tọa và đứng hành lễ) đóng gói gọn trong 1 tệp `assets/temple-sprites.webp` chỉ `44 KB`.
+     - Xây dựng bộ diễn hoạt đường cong Bezier lối đi (`startActorRitualWalk` + Painter's Algorithm theo chiều sâu `Y`): khi bác (hoặc các đạo hữu trong sảnh) bấm **Lên Dâng Hương / Lên Gõ Mõ / Lên Thỉnh Chuông / Xin Xăm**, nhân vật đứng dậy rời chiếu, bước nhịp nhàng theo lối đi lên trước Lư hương / Mõ gỗ / Đại Hồng Chung, cúi đầu vái lễ 3 nhịp rồi bước quay về ngồi lại trên chiếu. Khi bật **Tự Động Gõ Mõ**, nhân vật bước lên đứng cạnh Mõ gỗ gõ đều nhịp cho tới khi bác bấm về chiếu.
 
 ### [2026-11-17] — Chuyển Sang Nhiếp Ảnh Chùa Cổ Chân Thực Trang Nghiêm & Hoạt Cảnh Rải Sỏi Ô Ăn Quan Từng Viên Một (`?v=20261117e`)
 - **Tệp tạo mới / cập nhật:** `assets/temple-wide.jpg`, `assets/temple-altar.jpg`, `assets/temple-courtyard.jpg`, `temple3d.js`, `app.js`, `styles.css`, `index.html` (`?v=20261117e`), `sw.js` (`tuoibac-pwa-v17`), `ARCHITECTURE.md`, `docs/02_SO_DO_DU_LIEU_VA_API_NOI_BO.md`, `docs/03_TIEN_DO_VA_NHAT_KY.md`, `docs/05_QUYET_DINH_KIEN_TRUC_ADR.md`.

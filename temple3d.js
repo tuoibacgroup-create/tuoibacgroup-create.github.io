@@ -1,11 +1,11 @@
 window.TempleScene3D = (function () {
   // ============================================================================
-  // CHÁNH ĐIỆN & SÂN CHÙA CỔ VIỆT NAM — BỘ KẾT HỢP ẢNH KIẾN TRÚC THẬT & ÁNH SÁNG SỐNG
-  // Thiết kế trang nghiêm, chân thực dành riêng cho người cao tuổi (55+):
-  // - Nền nhiếp ảnh kiến trúc chùa cổ Bắc Bộ sắc nét (Chánh Điện, Cận cảnh Tam Bảo, Sân Hồ Sen & Cây Bồ Đề)
-  // - Hiệu ứng vật lý tinh tế: khói trầm hương uốn lượn mềm mại, ánh đèn dầu lung linh, sóng âm chuông/mõ
-  // - Vùng chạm trực tiếp chính xác lên Đại Hồng Chung, Lư Hương, Mõ Gỗ, Ống Xăm, Hồ Sen, Cây Thẻ Đỏ & Bồ Đoàn
-  // - Hoàn toàn không dùng hình vẽ hoạt hình trẻ con hay nhãn chữ đè chồng chéo lên Tam Bảo
+  // ĐẠI SẢNH CHÁNH ĐIỆN 20 BỒ ĐOÀN & ĐẠO TRÀNG HÀNH LỄ TẢ THỰC (28 FPS)
+  // - Nền nhiếp ảnh Đại Sảnh Chùa Cổ 5 Gian góc siêu rộng + Sprite Phật tử Áo Lam / Áo Nâu tả thực (nhìn từ sau lưng)
+  // - 20 Chiếu Bồ Đoàn (4 hàng × 5 chỗ) đông vui nhộn nhịp, sắp xếp chiều sâu chuẩn Painter's Algorithm
+  // - Hiệu ứng Phật tử đứng dậy từ chiếu, bước đi theo lối hành lễ lên Lư Hương thắp nhang, Mõ Gỗ gõ mõ,
+  //   Đại Hồng Chung thỉnh chuông hoặc Ống Xăm gieo quẻ, cúi vái 3 nhịp trang nghiêm rồi bước quay về chiếu
+  // - Các đạo hữu trong sảnh cũng luân phiên bước lên thắp nhang / gõ mõ tự nhiên như phiên Live thật
   // ============================================================================
 
   let mode = "3d";
@@ -31,6 +31,10 @@ window.TempleScene3D = (function () {
   let boundResize = null;
 
   let currentConfig = null;
+  let autoMuyuPinned = false;
+  let nextAmbientWalkAt = 0;
+
+  let seatActors = []; // 20 slots: { idx, row, col, nx, ny, scale, occupant, isUser, spritePrefix, walkTask }
   let smokeWisps = [];
   let dustMotes = [];
   let soundRipples = [];
@@ -43,42 +47,66 @@ window.TempleScene3D = (function () {
   let muyuPulse = 0;
   let incenseBoost = 0;
   let fortunePulse = 0;
-  let activeTicker = null;
 
   const SCENE_IMAGES = {
     wide: "./assets/temple-wide.jpg",
     cushions: "./assets/temple-altar.jpg",
-    courtyard: "./assets/temple-courtyard.jpg"
+    courtyard: "./assets/temple-courtyard.jpg",
+    sprites: "./assets/temple-sprites.webp"
+  };
+
+  const ATLAS_RECTS = {
+    cushion: { x: 6, y: 6, w: 156, h: 68 },
+    m_lam_sit: { x: 168, y: 6, w: 120, h: 168 },
+    m_nau_sit: { x: 294, y: 6, w: 120, h: 168 },
+    f_nau_sit: { x: 420, y: 6, w: 112, h: 162 },
+    f_lam_sit: { x: 538, y: 6, w: 112, h: 162 },
+    m_lam_stand: { x: 6, y: 180, w: 83, h: 224 },
+    m_nau_stand: { x: 95, y: 180, w: 83, h: 224 },
+    f_nau_stand: { x: 184, y: 180, w: 70, h: 216 },
+    f_lam_stand: { x: 260, y: 180, w: 70, h: 216 }
   };
 
   const imgCache = {};
 
-  const CUSHION_COORDS = [
-    { idx: 0, row: 0, x: -2.9, z: 0.55 },
-    { idx: 1, row: 0, x: -1.45, z: 0.55 },
-    { idx: 2, row: 0, x: 0.0, z: 0.55 },
-    { idx: 3, row: 0, x: 1.45, z: 0.55 },
-    { idx: 4, row: 0, x: 2.9, z: 0.55 },
-    { idx: 5, row: 1, x: -2.9, z: 2.15 },
-    { idx: 6, row: 1, x: -1.45, z: 2.15 },
-    { idx: 7, row: 1, x: 0.0, z: 2.15 },
-    { idx: 8, row: 1, x: 1.45, z: 2.15 },
-    { idx: 9, row: 1, x: 2.9, z: 2.15 }
+  // 20 Chiếu Bồ Đoàn (4 hàng × 5 cột) trải rộng khắp Đại Sảnh gạch Bát Tràng
+  const ROW_SPECS = [
+    { row: 0, ny: 0.684, scale: 0.48, span: 0.60 },
+    { row: 1, ny: 0.758, scale: 0.59, span: 0.70 },
+    { row: 2, ny: 0.840, scale: 0.72, span: 0.80 },
+    { row: 3, ny: 0.932, scale: 0.86, span: 0.90 }
   ];
 
-  // Tọa độ khớp chính xác với 2 hàng chiếu cói thật trên ảnh temple-wide.jpg
-  const PHOTO_MAT_SPOTS = [
-    { idx: 0, nx: 0.378, ny: 0.768, rx: 0.042, ry: 0.018 },
-    { idx: 1, nx: 0.358, ny: 0.806, rx: 0.050, ry: 0.022 },
-    { idx: 2, nx: 0.334, ny: 0.858, rx: 0.058, ry: 0.026 },
-    { idx: 3, nx: 0.295, ny: 0.928, rx: 0.068, ry: 0.032 },
-    { idx: 4, nx: 0.245, ny: 0.985, rx: 0.072, ry: 0.030 },
-    { idx: 5, nx: 0.620, ny: 0.768, rx: 0.042, ry: 0.018 },
-    { idx: 6, nx: 0.642, ny: 0.806, rx: 0.050, ry: 0.022 },
-    { idx: 7, nx: 0.666, ny: 0.858, rx: 0.058, ry: 0.026 },
-    { idx: 8, nx: 0.698, ny: 0.928, rx: 0.068, ry: 0.032 },
-    { idx: 9, nx: 0.742, ny: 0.985, rx: 0.072, ry: 0.030 }
-  ];
+  const CUSHION_COORDS = (function () {
+    const arr = [];
+    for (let r = 0; r < 4; r++) {
+      const sp = ROW_SPECS[r];
+      for (let c = 0; c < 5; c++) {
+        const idx = r * 5 + c;
+        const rel = (c - 2) / 2;
+        const nx = 0.50 + rel * (sp.span * 0.5);
+        arr.push({
+          idx,
+          row: r,
+          col: c,
+          nx,
+          ny: sp.ny,
+          scale: sp.scale,
+          x: (c - 2) * 1.45,
+          z: 0.55 + r * 1.15
+        });
+      }
+    }
+    return arr;
+  })();
+
+  // Tọa độ đứng hành lễ trước từng pháp khí trong ảnh Đại Sảnh (temple-wide.jpg)
+  const RITUAL_STATIONS = {
+    incense: { nx: 0.476, ny: 0.626, aisleX: 0.46 },
+    muyu: { nx: 0.772, ny: 0.628, aisleX: 0.72 },
+    bell: { nx: 0.208, ny: 0.618, aisleX: 0.25 },
+    peace_card: { nx: 0.706, ny: 0.630, aisleX: 0.68 }
+  };
 
   function ensureImagesLoaded() {
     if (typeof Image === "undefined") return;
@@ -88,7 +116,7 @@ window.TempleScene3D = (function () {
       img.decoding = "async";
       img.onload = () => {
         imgCache[key].loaded = true;
-        renderSanctuaryFrame(performance ? performance.now() * 0.001 : 0);
+        renderSanctuaryFrame(typeof performance !== "undefined" ? performance.now() * 0.001 : 0);
       };
       img.onerror = () => {
         imgCache[key].failed = true;
@@ -109,6 +137,50 @@ window.TempleScene3D = (function () {
     c.closePath();
   }
 
+  function chooseSpritePrefix(occ, idx) {
+    const isFem = Boolean(occ && occ.isFemale);
+    const robePref = occ && occ.robeStyle ? occ.robeStyle : idx % 2 === 0 ? "lam" : "nau";
+    if (isFem) {
+      return robePref === "lam" ? "f_lam" : "f_nau";
+    }
+    return robePref === "nau" ? "m_nau" : "m_lam";
+  }
+
+  function rebuildTwentySeatActors() {
+    const attendees = (currentConfig && currentConfig.attendees) || [];
+    const selectedIdx = Math.max(0, Math.min(19, Number(currentConfig && currentConfig.userCushionIdx) || 7));
+
+    // Giữ lại tiến trình đi bộ đang diễn ra nếu chỉ cập nhật nhẹ
+    const prevWalkByIdx = {};
+    seatActors.forEach((sa) => {
+      if (sa.walkTask) prevWalkByIdx[sa.idx] = sa.walkTask;
+    });
+
+    seatActors = CUSHION_COORDS.map((slot) => {
+      const occ = attendees.find((a) => a.cushionIdx === slot.idx) || null;
+      const isUser = Boolean(occ && occ.isUser) || slot.idx === selectedIdx;
+      return {
+        idx: slot.idx,
+        row: slot.row,
+        col: slot.col,
+        nx: slot.nx,
+        ny: slot.ny,
+        scale: slot.scale,
+        occupant: occ,
+        isUser,
+        spritePrefix: chooseSpritePrefix(occ, slot.idx),
+        walkTask: prevWalkByIdx[slot.idx] || null
+      };
+    });
+
+    if (autoMuyuPinned) {
+      const userActor = seatActors.find((a) => a.isUser);
+      if (userActor && (!userActor.walkTask || userActor.walkTask.stationKey !== "muyu")) {
+        startActorRitualWalk(userActor.idx, "muyu", null, true);
+      }
+    }
+  }
+
   function initAtmosphericParticles() {
     smokeWisps = [];
     for (let i = 0; i < 22; i++) {
@@ -117,18 +189,18 @@ window.TempleScene3D = (function () {
         speed: 0.0028 + (i % 5) * 0.00045,
         driftSeed: i * 1.37,
         spread: (i % 3 - 1) * 0.004,
-        radiusBase: 5 + (i % 4) * 3.5
+        radiusBase: 5 + (i % 4) * 3.2
       });
     }
 
     dustMotes = [];
-    for (let i = 0; i < 18; i++) {
+    for (let i = 0; i < 16; i++) {
       dustMotes.push({
-        nx: 0.12 + ((i * 37) % 76) / 100,
-        ny: 0.14 + ((i * 53) % 72) / 100,
-        vy: -0.00045 - (i % 4) * 0.00018,
+        nx: 0.10 + ((i * 37) % 80) / 100,
+        ny: 0.12 + ((i * 53) % 76) / 100,
+        vy: -0.0004 - (i % 4) * 0.00016,
         phase: i * 0.9,
-        size: 1.1 + (i % 3) * 0.65
+        size: 1.0 + (i % 3) * 0.6
       });
     }
 
@@ -145,18 +217,128 @@ window.TempleScene3D = (function () {
       { nx: 0.66, ny: 0.38, phase: 3.9 }
     ];
 
-    const wishes = (currentConfig && currentConfig.wishes) || [];
-    if (wishes.length > 0) {
-      activeTicker = {
-        speaker: wishes[0].userName || "Đạo hữu",
-        text: wishes[0].prayerText || "Cầu gia đạo bình an, thân tâm thường an lạc."
-      };
-    } else {
-      activeTicker = {
-        speaker: (currentConfig && currentConfig.userName) || "Đạo tràng Tuổi Bạc",
-        text: "Chạm trực tiếp vào Chuông đồng, Lư hương, Mõ gỗ, Ống xăm hoặc Hồ sen trên ảnh để hành lễ."
-      };
+    rebuildTwentySeatActors();
+    nextAmbientWalkAt = Date.now() + 4500;
+  }
+
+  function evalQuadraticBezier(p0, p1, p2, t) {
+    const inv = 1 - t;
+    return inv * inv * p0 + 2 * inv * t * p1 + t * t * p2;
+  }
+
+  function easeInOutQuad(t) {
+    return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  }
+
+  function perspectiveScaleAtY(ny) {
+    // Nội suy tỷ lệ phối cảnh theo chiều sâu sàn gạch (từ y=0.618 gần Tam Bảo tới y=0.95 tiền cảnh)
+    const clamped = Math.max(0.60, Math.min(0.96, ny));
+    return 0.44 + ((clamped - 0.618) / (0.932 - 0.618)) * 0.42;
+  }
+
+  function startActorRitualWalk(seatIdx, stationKey, onArriveEffect, pinAtStation) {
+    const actor = seatActors.find((a) => a.idx === seatIdx);
+    if (!actor || !actor.occupant) return;
+    const st = RITUAL_STATIONS[stationKey] || RITUAL_STATIONS.incense;
+
+    // Nếu nhân vật đang đứng sẵn ngay trạm đó (ví dụ gõ mõ liên tiếp), nhún vái thêm nhịp mà không chạy lại từ đầu
+    if (actor.walkTask && actor.walkTask.stationKey === stationKey && actor.walkTask.phase === "bow") {
+      actor.walkTask.bowStartedAt = Date.now();
+      actor.walkTask.pinned = Boolean(pinAtStation);
+      if (typeof onArriveEffect === "function") onArriveEffect();
+      return;
     }
+
+    const startX = actor.walkTask ? actor.walkTask.curX : actor.nx;
+    const startY = actor.walkTask ? actor.walkTask.curY : actor.ny;
+    // Điểm uốn lối đi để người đi lượn mượt qua lối hành lễ chứ không cắt xuyên qua đầu người hàng trước
+    const ctrlX = st.aisleX + (startX - 0.5) * 0.18;
+    const ctrlY = (startY + st.ny) * 0.5 + 0.03;
+
+    actor.walkTask = {
+      stationKey,
+      startX,
+      startY,
+      ctrlX,
+      ctrlY,
+      destX: st.nx + (actor.isUser ? 0 : ((seatIdx % 3) - 1) * 0.018),
+      destY: st.ny + (actor.isUser ? 0 : (seatIdx % 2) * 0.012),
+      curX: startX,
+      curY: startY,
+      phase: "walk_out", // "walk_out" | "bow" | "walk_back"
+      phaseStartedAt: Date.now(),
+      walkOutMs: 1450,
+      bowMs: 1850,
+      walkBackMs: 1450,
+      pinned: Boolean(pinAtStation),
+      onArriveEffect: onArriveEffect || null,
+      effectFired: false
+    };
+  }
+
+  function updateAllWalkingTasks(nowMs) {
+    // Lịch tự động cho các bác đạo hữu trong sảnh thỉnh thoảng bước lên dâng hương / gõ mõ cho nhộn nhịp
+    if (cameraView === "wide" && nowMs > nextAmbientWalkAt) {
+      const activeWalkers = seatActors.filter((a) => a.walkTask !== null).length;
+      if (activeWalkers < 2) {
+        const candidates = seatActors.filter((a) => a.occupant && !a.isUser && !a.walkTask);
+        if (candidates.length > 0) {
+          const pick = candidates[Math.floor(Math.random() * candidates.length)];
+          const kinds = ["incense", "muyu", "incense", "bell"];
+          const chosenKind = kinds[Math.floor(Math.random() * kinds.length)];
+          startActorRitualWalk(pick.idx, chosenKind, () => {
+            if (chosenKind === "incense") {
+              incenseBoost = Math.max(incenseBoost, 0.7);
+              pushSoundRipple(0.50, 0.54, "rgba(255, 224, 140, 0.72)", 48);
+            } else if (chosenKind === "muyu") {
+              muyuPulse = Math.max(muyuPulse, 0.7);
+              pushSoundRipple(0.815, 0.53, "rgba(255, 224, 140, 0.72)", 44);
+            } else {
+              bellResonance = Math.max(bellResonance, 0.65);
+              pushSoundRipple(0.155, 0.46, "rgba(255, 224, 140, 0.72)", 64);
+            }
+          });
+        }
+      }
+      nextAmbientWalkAt = nowMs + 7500 + Math.random() * 4500;
+    }
+
+    seatActors.forEach((actor) => {
+      const wt = actor.walkTask;
+      if (!wt) return;
+      const elapsed = nowMs - wt.phaseStartedAt;
+
+      if (wt.phase === "walk_out") {
+        const rawT = Math.min(1, elapsed / wt.walkOutMs);
+        const t = easeInOutQuad(rawT);
+        wt.curX = evalQuadraticBezier(wt.startX, wt.ctrlX, wt.destX, t);
+        wt.curY = evalQuadraticBezier(wt.startY, wt.ctrlY, wt.destY, t);
+        if (rawT >= 1) {
+          wt.phase = "bow";
+          wt.phaseStartedAt = nowMs;
+          wt.bowStartedAt = nowMs;
+          if (!wt.effectFired && typeof wt.onArriveEffect === "function") {
+            wt.effectFired = true;
+            wt.onArriveEffect();
+          }
+        }
+      } else if (wt.phase === "bow") {
+        wt.curX = wt.destX;
+        wt.curY = wt.destY;
+        if (!wt.pinned && nowMs - wt.bowStartedAt >= wt.bowMs) {
+          wt.phase = "walk_back";
+          wt.phaseStartedAt = nowMs;
+        }
+      } else if (wt.phase === "walk_back") {
+        const rawT = Math.min(1, elapsed / wt.walkBackMs);
+        const t = easeInOutQuad(rawT);
+        wt.curX = evalQuadraticBezier(wt.destX, wt.ctrlX, actor.nx, t);
+        wt.curY = evalQuadraticBezier(wt.destY, wt.ctrlY, actor.ny, t);
+        if (rawT >= 1) {
+          actor.walkTask = null;
+        }
+      }
+    });
   }
 
   function pushSoundRipple(nx, ny, colorStr, maxR) {
@@ -164,23 +346,22 @@ window.TempleScene3D = (function () {
       nx,
       ny,
       r: 8,
-      maxR: maxR || 86,
+      maxR: maxR || 76,
       alpha: 0.78,
       color: colorStr || "rgba(255, 222, 138, 0.9)"
     });
     if (soundRipples.length > 8) soundRipples.shift();
   }
 
-  function pushFloatingToast(nx, ny, title, subtitle) {
+  function pushFloatingToast(nx, ny, title) {
     floatingPopups.push({
       nx,
       ny,
-      vy: 0.0028,
-      title: String(title || "+1 Tâm An"),
-      subtitle: subtitle ? String(subtitle).slice(0, 28) : "",
+      vy: 0.0024,
+      title: String(title || "+1 Tâm An").slice(0, 26),
       alpha: 1.0
     });
-    if (floatingPopups.length > 6) floatingPopups.shift();
+    if (floatingPopups.length > 5) floatingPopups.shift();
   }
 
   function drawCoverPhoto(c, w, h) {
@@ -190,8 +371,7 @@ window.TempleScene3D = (function () {
     if (entry && entry.loaded && entry.img && entry.img.naturalWidth > 0) {
       const iw = entry.img.naturalWidth;
       const ih = entry.img.naturalHeight;
-      // Phóng nhẹ 1.05x để hỗ trợ kéo lia ngang mượt mà không hở viền
-      const scale = Math.max(w / iw, h / ih) * 1.05;
+      const scale = Math.max(w / iw, h / ih) * 1.04;
       const dw = iw * scale;
       const dh = ih * scale;
       const dx = (w - dw) * 0.5 + panOffsetX;
@@ -200,7 +380,6 @@ window.TempleScene3D = (function () {
       return { dx, dy, dw, dh, ready: true };
     }
 
-    // Nền chuyển sắc trang nhã trong vài chục mili-giây chờ ảnh tải lần đầu
     const fallbackGrad = c.createLinearGradient(0, 0, 0, h);
     fallbackGrad.addColorStop(0, "#1E120C");
     fallbackGrad.addColorStop(0.55, "#382115");
@@ -208,6 +387,14 @@ window.TempleScene3D = (function () {
     c.fillStyle = fallbackGrad;
     c.fillRect(0, 0, w, h);
     return { dx: 0, dy: 0, dw: w, dh: h, ready: false };
+  }
+
+  function drawAtlasSprite(c, spriteKey, destX, destY, destW, destH) {
+    const spEntry = imgCache.sprites;
+    const rect = ATLAS_RECTS[spriteKey];
+    if (!spEntry || !spEntry.loaded || !rect) return false;
+    c.drawImage(spEntry.img, rect.x, rect.y, rect.w, rect.h, destX, destY, destW, destH);
+    return true;
   }
 
   function drawSoftLightBloom(c, x, y, radius, alpha, rCol, gCol, bCol) {
@@ -233,9 +420,9 @@ window.TempleScene3D = (function () {
       const curlX =
         originX +
         sp.spread * heightSpan * p +
-        Math.sin(p * 5.2 - tSec * 1.45 + sp.driftSeed) * (4 + p * 15);
+        Math.sin(p * 5.2 - tSec * 1.45 + sp.driftSeed) * (3.5 + p * 13);
       const envAlpha = Math.sin(p * Math.PI) * (incenseBoost > 0 ? 0.16 : 0.095);
-      const rad = sp.radiusBase * (0.45 + p * 1.65);
+      const rad = sp.radiusBase * (0.45 + p * 1.55);
 
       const sGrad = c.createRadialGradient(curlX, riseY, 0, curlX, riseY, rad);
       if (incenseBoost > 0) {
@@ -255,16 +442,19 @@ window.TempleScene3D = (function () {
     c.restore();
   }
 
-  function drawSubtleHotspotHint(c, px, py, labelText, pulseStrength) {
+  function drawClampedHotspotPill(c, w, rawPx, py, labelText, pulseStrength) {
     c.save();
-    c.font = "600 10.5px 'Be Vietnam Pro', system-ui, sans-serif";
-    const tw = Math.max(58, c.measureText(labelText).width + 18);
-    const th = 20;
-    roundRectPath(c, px - tw / 2, py - th / 2, tw, th, 10);
-    c.fillStyle = pulseStrength > 0 ? "rgba(122, 46, 18, 0.92)" : "rgba(24, 14, 9, 0.74)";
+    c.font = "600 9.5px 'Be Vietnam Pro', system-ui, sans-serif";
+    const tw = Math.max(52, c.measureText(labelText).width + 14);
+    const th = 18;
+    // Kẹp biên trái/phải an toàn để nhãn không bao giờ bị cắt chữ ở mép màn hình
+    const px = Math.max(tw * 0.5 + 6, Math.min(w - tw * 0.5 - 6, rawPx));
+
+    roundRectPath(c, px - tw / 2, py - th / 2, tw, th, 9);
+    c.fillStyle = pulseStrength > 0 ? "rgba(122, 46, 18, 0.92)" : "rgba(22, 12, 8, 0.74)";
     c.fill();
-    c.strokeStyle = pulseStrength > 0 ? "#FFE082" : "rgba(242, 204, 126, 0.62)";
-    c.lineWidth = pulseStrength > 0 ? 1.4 : 1;
+    c.strokeStyle = pulseStrength > 0 ? "#FFE082" : "rgba(242, 204, 126, 0.58)";
+    c.lineWidth = pulseStrength > 0 ? 1.3 : 0.9;
     c.stroke();
 
     c.fillStyle = "#FFF8E7";
@@ -274,8 +464,164 @@ window.TempleScene3D = (function () {
     c.restore();
   }
 
+  function drawMiniSeatNameTag(c, w, rawX, rawY, text, isUser, isRealPeer) {
+    c.save();
+    c.font = `${isUser ? "700" : "600"} 8.5px 'Be Vietnam Pro', system-ui, sans-serif`;
+    const tw = Math.min(64, Math.max(36, c.measureText(text).width + 9));
+    const th = 13.5;
+    const px = Math.max(tw * 0.5 + 4, Math.min(w - tw * 0.5 - 4, rawX));
+
+    roundRectPath(c, px - tw / 2, rawY - th / 2, tw, th, 6.5);
+    c.fillStyle = isUser
+      ? "rgba(176, 52, 34, 0.95)"
+      : isRealPeer
+      ? "rgba(32, 102, 76, 0.92)"
+      : "rgba(24, 14, 9, 0.80)";
+    c.fill();
+    c.strokeStyle = isUser ? "#FFE082" : "rgba(242, 204, 126, 0.45)";
+    c.lineWidth = isUser ? 1.2 : 0.8;
+    c.stroke();
+
+    c.fillStyle = "#FFFDF7";
+    c.textAlign = "center";
+    c.textBaseline = "middle";
+    c.fillText(text, px, rawY + 0.5);
+    c.restore();
+  }
+
+  function drawTwentyCushionsAndDevotees(c, w, h, frame, tSec, nowMs) {
+    const mapX = (nx) => frame.dx + nx * frame.dw;
+    const mapY = (ny) => frame.dy + ny * frame.dh;
+    const unitScale = frame.dw / 960;
+
+    // Bước 1: Vẽ toàn bộ 20 Chiếu Bồ Đoàn cói thật kèm bóng đổ mềm trên nền gạch Bát Tràng
+    seatActors.forEach((sa) => {
+      const cx = mapX(sa.nx);
+      const cy = mapY(sa.ny);
+      const sc = sa.scale * unitScale;
+      const cw = ATLAS_RECTS.cushion.w * sc * 0.80;
+      const ch = ATLAS_RECTS.cushion.h * sc * 0.76;
+
+      // Bóng tiếp đất dưới chiếu
+      c.save();
+      c.fillStyle = "rgba(14, 7, 3, 0.42)";
+      c.beginPath();
+      c.ellipse(cx, cy + ch * 0.14, cw * 0.52, ch * 0.44, 0, 0, Math.PI * 2);
+      c.fill();
+
+      // Vòng lụa sáng đánh dấu chiếu của Bác đang chọn
+      if (sa.isUser) {
+        c.strokeStyle = "rgba(255, 222, 122, 0.90)";
+        c.lineWidth = 1.8;
+        c.beginPath();
+        c.ellipse(cx, cy + ch * 0.04, cw * 0.56, ch * 0.52, 0, 0, Math.PI * 2);
+        c.stroke();
+      }
+      c.restore();
+
+      if (!drawAtlasSprite(c, "cushion", cx - cw * 0.5, cy - ch * 0.5, cw, ch)) {
+        c.fillStyle = "#A68254";
+        c.beginPath();
+        c.ellipse(cx, cy, cw * 0.48, ch * 0.44, 0, 0, Math.PI * 2);
+        c.fill();
+      }
+
+      // Vùng chạm để đổi sang ngồi bất kỳ chiếu nào trong 20 chiếu
+      hitZones.push({
+        kind: "select_cushion",
+        payload: sa.idx,
+        x: cx - cw * 0.56,
+        y: cy - ch * 1.35,
+        w: cw * 1.12,
+        h: ch * 1.95
+      });
+    });
+
+    // Bước 2: Thu thập danh sách Phật tử đang ngồi tại chiếu VÀ đang đi hành lễ, sắp xếp theo chiều sâu Y
+    const renderQueue = [];
+    seatActors.forEach((sa) => {
+      if (!sa.occupant) return;
+      if (sa.walkTask) {
+        renderQueue.push({ kind: "walker", sa, footY: sa.walkTask.curY });
+      } else {
+        renderQueue.push({ kind: "seated", sa, footY: sa.ny });
+      }
+    });
+    renderQueue.sort((a, b) => a.footY - b.footY);
+
+    // Bước 3: Vẽ từng Phật tử tả thực theo thứ tự xa trước - gần sau
+    renderQueue.forEach((item) => {
+      const sa = item.sa;
+      const occ = sa.occupant;
+      const shortName = sa.isUser
+        ? `BĐ${sa.idx + 1}·Bạn`
+        : String(occ.shortLabel || occ.name || "Bác")
+            .replace(/^(Anh|Chị|Bác|Cụ|Chú|Cô)\s+/i, "$1 ")
+            .slice(0, 9);
+
+      if (item.kind === "seated") {
+        const cx = mapX(sa.nx);
+        const cy = mapY(sa.ny);
+        const sc = sa.scale * unitScale;
+        const sitKey = `${sa.spritePrefix}_sit`;
+        const rect = ATLAS_RECTS[sitKey];
+        const sw = rect.w * sc * 0.72;
+        const sh = rect.h * sc * 0.72;
+        const ch = ATLAS_RECTS.cushion.h * sc * 0.76;
+        // Nhịp thở tĩnh tọa rất nhẹ
+        const breathY = Math.sin(tSec * 1.7 + sa.idx * 0.8) * 0.8;
+
+        drawAtlasSprite(c, sitKey, cx - sw * 0.5, cy - sh + ch * 0.24 + breathY, sw, sh);
+        drawMiniSeatNameTag(c, w, cx, cy + ch * 0.52, shortName, sa.isUser, Boolean(occ.isRealPeer));
+      } else {
+        // Nhân vật đang bước đi lên thắp nhang / gõ mõ / thỉnh chuông hoặc đang cúi vái hành lễ
+        const wt = sa.walkTask;
+        const wx = mapX(wt.curX);
+        const wy = mapY(wt.curY);
+        const dynScale = perspectiveScaleAtY(wt.curY) * unitScale;
+        const standKey = `${sa.spritePrefix}_stand`;
+        const rect = ATLAS_RECTS[standKey];
+        const baseW = rect.w * dynScale * 0.76;
+        const baseH = rect.h * dynScale * 0.76;
+
+        let stepBobY = 0;
+        let swayRot = 0;
+        let bowScaleY = 1.0;
+
+        if (wt.phase === "walk_out" || wt.phase === "walk_back") {
+          stepBobY = -Math.abs(Math.sin(tSec * 8.6 + sa.idx)) * 2.4;
+          swayRot = Math.sin(tSec * 4.3 + sa.idx) * 0.016;
+        } else if (wt.phase === "bow") {
+          // Cúi đầu vái lễ 3 nhịp trang nghiêm hướng lên Tam Bảo
+          const bowElapsed = (nowMs - (wt.bowStartedAt || wt.phaseStartedAt)) * 0.001;
+          const bowWave = Math.max(0, Math.sin(bowElapsed * 4.8));
+          bowScaleY = 1.0 - bowWave * 0.065;
+          stepBobY = bowWave * 2.5;
+        }
+
+        // Bóng chân tiếp đất trên gạch Bát Tràng khi di chuyển
+        c.save();
+        c.fillStyle = "rgba(14, 7, 3, 0.44)";
+        c.beginPath();
+        c.ellipse(wx, wy + 1.5, baseW * 0.42, baseW * 0.16, 0, 0, Math.PI * 2);
+        c.fill();
+
+        c.translate(wx, wy);
+        c.rotate(swayRot);
+        c.scale(1, bowScaleY);
+        drawAtlasSprite(c, standKey, -baseW * 0.5, -baseH + stepBobY, baseW, baseH);
+        c.restore();
+
+        drawMiniSeatNameTag(c, w, wx, wy + 9, shortName, sa.isUser, Boolean(occ.isRealPeer));
+      }
+    });
+  }
+
   function renderSanctuaryFrame(tSec) {
     if (!canvasEl || !ctx || !containerEl) return;
+    const nowMs = Date.now();
+    updateAllWalkingTasks(nowMs);
+
     const w = Math.max(300, containerEl.clientWidth || 358);
     const h = Math.max(245, containerEl.clientHeight || 295);
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -289,12 +635,10 @@ window.TempleScene3D = (function () {
     ctx.scale(dpr, dpr);
     hitZones = [];
 
-    // 1. Vẽ nền nhiếp ảnh Chùa Cổ Việt Nam sắc nét
     const frame = drawCoverPhoto(ctx, w, h);
     const mapX = (nx) => frame.dx + nx * frame.dw;
     const mapY = (ny) => frame.dy + ny * frame.dh;
 
-    // Phủ lớp sắc thái ánh sáng nhẹ theo Không gian tĩnh tâm (Sân Chùa / Nhà Thờ Họ / Vườn Thiền)
     const spaceIdx = Number(currentConfig && currentConfig.spaceIdx) || 0;
     if (spaceIdx === 1) {
       ctx.fillStyle = "rgba(88, 42, 12, 0.10)";
@@ -304,33 +648,31 @@ window.TempleScene3D = (function () {
       ctx.fillRect(0, 0, w, h);
     }
 
-    // 2. Lớp ánh sáng vật lý lung linh (Screen Blend) & Khói hương lụa thật
+    // Ánh sáng vật lý lung linh trên đèn dầu & hào quang tượng Phật
     ctx.save();
     ctx.globalCompositeOperation = "screen";
 
     if (cameraView === "wide") {
-      // Hào quang ấm sau tượng Phật & 4 ngọn đèn dầu trên bàn thờ Tam Bảo
       const haloBreath = 0.12 + Math.sin(tSec * 1.8) * 0.035;
-      drawSoftLightBloom(ctx, mapX(0.50), mapY(0.42), frame.dw * 0.13, haloBreath, 255, 208, 112);
+      drawSoftLightBloom(ctx, mapX(0.50), mapY(0.32), frame.dw * 0.12, haloBreath, 255, 208, 112);
 
       [
-        [0.443, 0.508],
-        [0.560, 0.508],
-        [0.396, 0.476],
-        [0.610, 0.476]
+        [0.405, 0.402],
+        [0.598, 0.402],
+        [0.376, 0.422],
+        [0.632, 0.422]
       ].forEach(([lx, ly], idx) => {
-        const flk = 0.18 + Math.sin(tSec * 6.5 + idx * 1.9) * 0.05;
-        drawSoftLightBloom(ctx, mapX(lx), mapY(ly), 22, flk, 255, 196, 92);
+        const flk = 0.18 + Math.sin(tSec * 6.2 + idx * 1.9) * 0.05;
+        drawSoftLightBloom(ctx, mapX(lx), mapY(ly), 20, flk, 255, 196, 92);
       });
 
       if (bellResonance > 0.01) {
-        drawSoftLightBloom(ctx, mapX(0.108), mapY(0.53), 68, bellResonance * 0.45, 255, 214, 120);
+        drawSoftLightBloom(ctx, mapX(0.155), mapY(0.45), 65, bellResonance * 0.42, 255, 214, 120);
       }
       if (muyuPulse > 0.01) {
-        drawSoftLightBloom(ctx, mapX(0.698), mapY(0.625), 52, muyuPulse * 0.45, 255, 208, 110);
+        drawSoftLightBloom(ctx, mapX(0.815), mapY(0.53), 55, muyuPulse * 0.45, 255, 208, 110);
       }
     } else if (cameraView === "cushions") {
-      // Hào quang tròn sau Đức Phật & đôi đèn dầu lưu ly cận cảnh
       const haloBreath = 0.15 + Math.sin(tSec * 1.7) * 0.04;
       drawSoftLightBloom(ctx, mapX(0.505), mapY(0.245), frame.dw * 0.16, haloBreath, 255, 216, 128);
 
@@ -343,15 +685,7 @@ window.TempleScene3D = (function () {
         const flk = 0.22 + Math.sin(tSec * 6.2 + idx * 2.1) * 0.06;
         drawSoftLightBloom(ctx, mapX(lx), mapY(ly), 30, flk, 255, 202, 104);
       });
-
-      if (bellResonance > 0.01) {
-        drawSoftLightBloom(ctx, mapX(0.145), mapY(0.58), 80, bellResonance * 0.45, 255, 214, 120);
-      }
-      if (muyuPulse > 0.01) {
-        drawSoftLightBloom(ctx, mapX(0.865), mapY(0.71), 68, muyuPulse * 0.48, 255, 208, 110);
-      }
     } else {
-      // Góc Sân Chùa: Ánh sáng Hoa Đăng lung linh trên mặt Hồ Sen & đốm sáng trên Cây Thẻ Đỏ
       [
         [0.208, 0.892],
         [0.300, 0.888],
@@ -369,19 +703,18 @@ window.TempleScene3D = (function () {
         drawSoftLightBloom(ctx, mapX(driftX), mapY(driftY), 18, glowA, 255, 176, 125);
       });
 
-      extraTreeGlints.forEach((tg, idx) => {
+      extraTreeGlints.forEach((tg) => {
         const glintA = 0.14 + Math.max(0, Math.sin(tSec * 2.4 + tg.phase)) * 0.18;
         drawSoftLightBloom(ctx, mapX(tg.nx), mapY(tg.ny), 16, glintA, 255, 210, 115);
       });
     }
 
-    // Hạt bụi vàng li ti bay nhẹ trong nắng / ánh nến Chánh Điện
     dustMotes.forEach((dm) => {
       dm.ny += dm.vy;
       if (dm.ny < 0.08) dm.ny = 0.92;
       const mx = mapX(dm.nx + Math.sin(tSec * 0.9 + dm.phase) * 0.012);
       const my = mapY(dm.ny);
-      const ma = 0.18 + Math.sin(tSec * 2.5 + dm.phase) * 0.12;
+      const ma = 0.16 + Math.sin(tSec * 2.5 + dm.phase) * 0.10;
       ctx.fillStyle = `rgba(255, 228, 158, ${Math.max(0.04, ma)})`;
       ctx.beginPath();
       ctx.arc(mx, my, dm.size, 0, Math.PI * 2);
@@ -389,72 +722,45 @@ window.TempleScene3D = (function () {
     });
     ctx.restore();
 
-    // 3. Làn khói hương trầm mảnh mai bay lên từ đúng đỉnh 3 nén hương trong ảnh thật
+    // Làn khói hương trầm bay lên từ đỉnh lư hương
     if (cameraView === "wide") {
-      drawRealisticIncenseSmoke(ctx, mapX(0.504), mapY(0.562), frame.dh * 0.22, tSec);
+      drawRealisticIncenseSmoke(ctx, mapX(0.502), mapY(0.495), frame.dh * 0.22, tSec);
     } else if (cameraView === "cushions") {
       drawRealisticIncenseSmoke(ctx, mapX(0.505), mapY(0.655), frame.dh * 0.30, tSec);
     }
 
-    // 4. Vùng tương tác trực tiếp & Nhãn dẫn hướng tinh gọn (Không bao giờ đè lên tượng Phật)
     const muyuTotal = Number(currentConfig && currentConfig.muyuCount) || 0;
     const shownLanterns = Number(currentConfig && currentConfig.lanternCount) || 18;
     const shownWishes = Number(currentConfig && currentConfig.totalWishCount) || 16;
-    const userCushionIdx = Math.max(0, Math.min(9, Number(currentConfig && currentConfig.userCushionIdx) || 2));
 
     if (cameraView === "wide") {
-      // Viền sáng lụa vàng dịu quanh đúng chiếc chiếu cói Bồ Đoàn mà bác đang chọn ngồi
-      const spot = PHOTO_MAT_SPOTS[userCushionIdx] || PHOTO_MAT_SPOTS[2];
-      const sx = mapX(spot.nx);
-      const sy = mapY(spot.ny);
-      const srx = spot.rx * frame.dw;
-      const sry = spot.ry * frame.dh;
+      // Vẽ 20 Chiếu Bồ Đoàn và các bác Phật tử ngồi tĩnh tọa + bước đi hành lễ
+      drawTwentyCushionsAndDevotees(ctx, w, h, frame, tSec, nowMs);
 
-      ctx.save();
-      ctx.beginPath();
-      ctx.ellipse(sx, sy, srx * 1.08, sry * 1.18, 0, 0, Math.PI * 2);
-      ctx.strokeStyle = "rgba(255, 220, 120, 0.88)";
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      ctx.restore();
-
-      drawSubtleHotspotHint(ctx, sx, Math.min(h - 38, sy - sry - 10), `BĐ${userCushionIdx + 1} · Chỗ của bác`, 0);
-      drawSubtleHotspotHint(ctx, mapX(0.115), mapY(0.655), "Chuông đồng", bellResonance);
-      drawSubtleHotspotHint(ctx, mapX(0.504), mapY(0.745), "Dâng hương", incenseBoost);
-      drawSubtleHotspotHint(
+      // Nhãn dẫn hướng pháp khí gọn gàng, kẹp biên chống cắt chữ
+      drawClampedHotspotPill(ctx, w, mapX(0.155), mapY(0.32), "Chuông đồng", bellResonance);
+      drawClampedHotspotPill(ctx, w, mapX(0.502), mapY(0.46), "Dâng hương", incenseBoost);
+      drawClampedHotspotPill(
         ctx,
-        mapX(0.715),
-        mapY(0.555),
+        w,
+        mapX(0.825),
+        mapY(0.44),
         muyuTotal > 0 ? `Gõ mõ (${muyuTotal})` : "Gõ mõ +1",
         muyuPulse
       );
 
-      // Đăng ký vùng chạm trên ảnh Toàn Cảnh
-      hitZones.push({ kind: "bell", x: mapX(0.04), y: mapY(0.36), w: frame.dw * 0.16, h: frame.dh * 0.36 });
-      hitZones.push({ kind: "incense", x: mapX(0.42), y: mapY(0.53), w: frame.dw * 0.17, h: frame.dh * 0.24 });
-      hitZones.push({ kind: "muyu", x: mapX(0.63), y: mapY(0.54), w: frame.dw * 0.15, h: frame.dh * 0.17 });
-      hitZones.push({ kind: "peace_card", x: mapX(0.66), y: mapY(0.69), w: frame.dw * 0.11, h: frame.dh * 0.15 });
-
-      PHOTO_MAT_SPOTS.forEach((ms) => {
-        const cx = mapX(ms.nx);
-        const cy = mapY(ms.ny);
-        const rw = ms.rx * frame.dw * 1.25;
-        const rh = ms.ry * frame.dh * 1.45;
-        hitZones.push({
-          kind: "select_cushion",
-          payload: ms.idx,
-          x: cx - rw,
-          y: cy - rh,
-          w: rw * 2,
-          h: rh * 2
-        });
-      });
+      // Vùng chạm pháp khí trên ảnh Đại Sảnh (đặt sau chiếu để ưu tiên chạm pháp khí phía trên)
+      hitZones.push({ kind: "bell", x: mapX(0.06), y: mapY(0.28), w: frame.dw * 0.18, h: frame.dh * 0.32 });
+      hitZones.push({ kind: "incense", x: mapX(0.41), y: mapY(0.43), w: frame.dw * 0.18, h: frame.dh * 0.20 });
+      hitZones.push({ kind: "peace_card", x: mapX(0.69), y: mapY(0.50), w: frame.dw * 0.06, h: frame.dh * 0.14 });
+      hitZones.push({ kind: "muyu", x: mapX(0.75), y: mapY(0.44), w: frame.dw * 0.16, h: frame.dh * 0.19 });
     } else if (cameraView === "cushions") {
-      drawSubtleHotspotHint(ctx, mapX(0.145), mapY(0.74), "Thỉnh chuông", bellResonance);
-      drawSubtleHotspotHint(ctx, mapX(0.505), mapY(0.86), "Dâng hương", incenseBoost);
-      drawSubtleHotspotHint(ctx, mapX(0.722), mapY(0.68), "Ống xăm", fortunePulse);
-      drawSubtleHotspotHint(
+      drawClampedHotspotPill(ctx, w, mapX(0.145), mapY(0.74), "Thỉnh chuông", bellResonance);
+      drawClampedHotspotPill(ctx, w, mapX(0.505), mapY(0.86), "Dâng hương", incenseBoost);
+      drawClampedHotspotPill(ctx, w, mapX(0.722), mapY(0.68), "Ống xăm", fortunePulse);
+      drawClampedHotspotPill(
         ctx,
+        w,
         mapX(0.865),
         mapY(0.57),
         muyuTotal > 0 ? `Gõ mõ (${muyuTotal})` : "Gõ mõ +1",
@@ -466,17 +772,17 @@ window.TempleScene3D = (function () {
       hitZones.push({ kind: "peace_card", x: mapX(0.67), y: mapY(0.68), w: frame.dw * 0.10, h: frame.dh * 0.26 });
       hitZones.push({ kind: "muyu", x: mapX(0.77), y: mapY(0.56), w: frame.dw * 0.21, h: frame.dh * 0.34 });
     } else {
-      drawSubtleHotspotHint(ctx, mapX(0.24), mapY(0.82), `Hồ Sen (${shownLanterns} đèn)`, 0);
-      drawSubtleHotspotHint(ctx, mapX(0.79), mapY(0.54), `Cây Thẻ Đỏ (${shownWishes})`, 0);
+      drawClampedHotspotPill(ctx, w, mapX(0.24), mapY(0.84), `Hồ Sen (${shownLanterns} đèn)`, 0);
+      drawClampedHotspotPill(ctx, w, mapX(0.79), mapY(0.54), `Cây Thẻ Đỏ (${shownWishes})`, 0);
 
       hitZones.push({ kind: "pond_lantern", x: mapX(0.02), y: mapY(0.54), w: frame.dw * 0.45, h: frame.dh * 0.42 });
       hitZones.push({ kind: "wish_plaque", x: mapX(0.60), y: mapY(0.22), w: frame.dw * 0.38, h: frame.dh * 0.58 });
     }
 
-    // 5. Vòng sóng âm vàng kim lan nhẹ khi thỉnh chuông / gõ mõ / thả đèn
+    // Vòng sóng âm đồng tâm
     for (let i = soundRipples.length - 1; i >= 0; i--) {
       const rp = soundRipples[i];
-      rp.r += 2.1;
+      rp.r += 2.0;
       rp.alpha -= 0.022;
       if (rp.alpha <= 0.02 || rp.r > rp.maxR) {
         soundRipples.splice(i, 1);
@@ -485,71 +791,66 @@ window.TempleScene3D = (function () {
       ctx.save();
       ctx.globalAlpha = Math.max(0, rp.alpha);
       ctx.strokeStyle = rp.color;
-      ctx.lineWidth = 1.8;
+      ctx.lineWidth = 1.7;
       ctx.beginPath();
-      ctx.ellipse(mapX(rp.nx), mapY(rp.ny), rp.r, rp.r * 0.58, 0, 0, Math.PI * 2);
+      ctx.ellipse(mapX(rp.nx), mapY(rp.ny), rp.r, rp.r * 0.56, 0, 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
     }
 
-    // 6. Thẻ thông báo công đức / tâm an bay lên trang nhã
+    // Noti nổi nhỏ gọn bay lên ngay tại pháp khí rồi tự tan (không chiếm diện tích giao diện)
     for (let i = floatingPopups.length - 1; i >= 0; i--) {
       const fp = floatingPopups[i];
       fp.ny -= fp.vy;
-      fp.alpha -= 0.017;
+      fp.alpha -= 0.018;
       if (fp.alpha <= 0.02) {
         floatingPopups.splice(i, 1);
         continue;
       }
-      const fx = Math.max(76, Math.min(w - 76, mapX(fp.nx)));
-      const fy = Math.max(36, mapY(fp.ny));
+      const fx = Math.max(68, Math.min(w - 68, mapX(fp.nx)));
+      const fy = Math.max(34, mapY(fp.ny));
 
       ctx.save();
       ctx.globalAlpha = Math.max(0, fp.alpha);
-      ctx.font = "700 12.5px 'Be Vietnam Pro', system-ui, sans-serif";
-      const boxW = Math.max(106, ctx.measureText(fp.title).width + 24);
-      const boxH = fp.subtitle ? 34 : 24;
-      roundRectPath(ctx, fx - boxW / 2, fy - boxH / 2, boxW, boxH, 12);
-      ctx.fillStyle = "rgba(32, 16, 10, 0.90)";
+      ctx.font = "700 11.5px 'Be Vietnam Pro', system-ui, sans-serif";
+      const boxW = Math.max(92, ctx.measureText(fp.title).width + 20);
+      roundRectPath(ctx, fx - boxW / 2, fy - 11, boxW, 22, 11);
+      ctx.fillStyle = "rgba(28, 14, 9, 0.88)";
       ctx.fill();
       ctx.strokeStyle = "#F2C96B";
-      ctx.lineWidth = 1.2;
+      ctx.lineWidth = 1.1;
       ctx.stroke();
 
       ctx.fillStyle = "#FFE699";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(fp.title, fx, fp.subtitle ? fy - 6 : fy + 0.5);
-
-      if (fp.subtitle) {
-        ctx.fillStyle = "#F7EFE2";
-        ctx.font = "500 10px 'Be Vietnam Pro', system-ui, sans-serif";
-        ctx.fillText(fp.subtitle, fx, fy + 8.5);
-      }
+      ctx.fillText(fp.title, fx, fy + 0.5);
       ctx.restore();
     }
 
-    // 7. Thanh trạng thái Phiên Hành Lễ Trực Tuyến & Dải Lời Cầu An gọn gàng ở 2 mép
+    // Hai huy hiệu mỏng gọn ở góc trên (không còn dải chữ đáy che mất chiếu hàng cuối)
     ctx.save();
-    const livePeersCount = Math.max(7, ((currentConfig && currentConfig.attendees) || []).length);
-    roundRectPath(ctx, 8, 8, 166, 23, 11.5);
+    const seatedCount = seatActors.filter((a) => Boolean(a.occupant)).length;
+    const leftText = `Đạo tràng · ${seatedCount}/20 chiếu`;
+    ctx.font = "600 10px 'Be Vietnam Pro', system-ui, sans-serif";
+    const lw = Math.max(138, ctx.measureText(leftText).width + 26);
+    roundRectPath(ctx, 8, 8, lw, 22, 11);
     ctx.fillStyle = "rgba(20, 11, 7, 0.78)";
     ctx.fill();
-    ctx.strokeStyle = "rgba(242, 201, 107, 0.52)";
+    ctx.strokeStyle = "rgba(242, 201, 107, 0.50)";
     ctx.lineWidth = 1;
     ctx.stroke();
 
     const dotGlow = 0.65 + Math.sin(tSec * 3.6) * 0.3;
     ctx.fillStyle = `rgba(235, 87, 62, ${dotGlow})`;
     ctx.beginPath();
-    ctx.arc(19, 19.5, 3.8, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.arc(18, 19, 3.6, 0, Math.PI * 2);
+    c_fill(ctx);
 
     ctx.fillStyle = "#FFFDF7";
-    ctx.font = "600 10.5px 'Be Vietnam Pro', system-ui, sans-serif";
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
-    ctx.fillText(`Đạo tràng trực tuyến · ${livePeersCount}`, 28, 20);
+    ctx.fillText(leftText, 26, 19.5);
 
     const totalMerit =
       muyuTotal +
@@ -557,36 +858,15 @@ window.TempleScene3D = (function () {
       shownLanterns +
       shownWishes;
     const meritLabel = `Tâm An: ${totalMerit}`;
-    ctx.font = "700 10.5px 'Be Vietnam Pro', system-ui, sans-serif";
-    const mw = Math.max(86, ctx.measureText(meritLabel).width + 20);
-    roundRectPath(ctx, w - mw - 8, 8, mw, 23, 11.5);
+    const mw = Math.max(82, ctx.measureText(meritLabel).width + 18);
+    roundRectPath(ctx, w - mw - 8, 8, mw, 22, 11);
     ctx.fillStyle = "rgba(44, 22, 10, 0.84)";
     ctx.fill();
-    ctx.strokeStyle = "rgba(242, 201, 107, 0.75)";
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(242, 201, 107, 0.72)";
     ctx.stroke();
     ctx.fillStyle = "#FFE699";
     ctx.textAlign = "center";
-    ctx.fillText(meritLabel, w - mw / 2 - 8, 20);
-
-    if (activeTicker && activeTicker.text) {
-      const barH = 24;
-      const barY = h - barH - 6;
-      roundRectPath(ctx, 8, barY, w - 16, barH, 8);
-      ctx.fillStyle = "rgba(20, 11, 7, 0.82)";
-      ctx.fill();
-      ctx.strokeStyle = "rgba(242, 201, 107, 0.48)";
-      ctx.lineWidth = 1;
-      ctx.stroke();
-
-      const fullStr = `${activeTicker.speaker}: "${activeTicker.text}"`;
-      const trimmed = fullStr.length > 52 ? fullStr.slice(0, 50) + "..." : fullStr;
-      ctx.fillStyle = "#F7E6BE";
-      ctx.font = "500 10.5px 'Be Vietnam Pro', system-ui, sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(trimmed, w * 0.5, barY + barH / 2 + 0.5);
-    }
+    ctx.fillText(meritLabel, w - mw / 2 - 8, 19.5);
     ctx.restore();
 
     ctx.restore();
@@ -596,6 +876,10 @@ window.TempleScene3D = (function () {
     if (muyuPulse > 0.01) muyuPulse = Math.max(0, muyuPulse - 0.08);
     if (incenseBoost > 0.01) incenseBoost = Math.max(0, incenseBoost - 0.03);
     if (fortunePulse > 0.01) fortunePulse = Math.max(0, fortunePulse - 0.06);
+  }
+
+  function c_fill(c) {
+    c.fill();
   }
 
   function animateLoop(ts) {
@@ -640,7 +924,7 @@ window.TempleScene3D = (function () {
       if (!isDragging) return;
       const dx = clientX - dragStartX;
       pointerMovedDist = Math.max(pointerMovedDist, Math.abs(dx));
-      panOffsetX = Math.max(-18, Math.min(18, dragStartPan + dx * 0.18));
+      panOffsetX = Math.max(-14, Math.min(14, dragStartPan + dx * 0.16));
     };
     const stopDrag = (clientX, clientY) => {
       if (!isDragging) return;
@@ -684,10 +968,12 @@ window.TempleScene3D = (function () {
   }
 
   function mount(container, config, onFallback) {
+    const prevWalkSnapshot = seatActors.map((sa) => ({ idx: sa.idx, walkTask: sa.walkTask }));
     dispose();
     containerEl = container;
     currentConfig = config || {};
     cameraView = (config && config.cameraView) || cameraView || "wide";
+    autoMuyuPinned = Boolean(config && config.autoMuyuActive);
     mode = config && config.preferredRender === "2.5d" ? "2.5d" : "3d";
     panOffsetX = 0;
 
@@ -713,6 +999,14 @@ window.TempleScene3D = (function () {
       };
 
       initAtmosphericParticles();
+      // Khôi phục hành trình đi bộ nếu renderZen() vừa gọi lại
+      prevWalkSnapshot.forEach((snap) => {
+        if (snap.walkTask) {
+          const found = seatActors.find((a) => a.idx === snap.idx);
+          if (found && found.occupant) found.walkTask = snap.walkTask;
+        }
+      });
+
       bindInteractiveGestures(canvasEl);
       renderSanctuaryFrame(0);
 
@@ -733,53 +1027,103 @@ window.TempleScene3D = (function () {
     return cameraView;
   }
 
+  function setAutoMuyuMode(active) {
+    autoMuyuPinned = Boolean(active);
+    const userActor = seatActors.find((a) => a.isUser);
+    if (!userActor) return;
+    if (autoMuyuPinned) {
+      startActorRitualWalk(userActor.idx, "muyu", null, true);
+    } else if (userActor.walkTask && userActor.walkTask.stationKey === "muyu") {
+      userActor.walkTask.pinned = false;
+      userActor.walkTask.phase = "walk_back";
+      userActor.walkTask.phaseStartedAt = Date.now();
+    }
+  }
+
+  function findActorIndexBySpeaker(speakerName) {
+    const userActor = seatActors.find((a) => a.isUser);
+    if (!speakerName) return userActor ? userActor.idx : 7;
+    const clean = String(speakerName).toLowerCase();
+    const matched = seatActors.find(
+      (a) => a.occupant && String(a.occupant.name || "").toLowerCase().includes(clean)
+    );
+    if (matched) return matched.idx;
+    return userActor ? userActor.idx : 7;
+  }
+
   function triggerIncense(speakerName) {
-    incenseBoost = 1.0;
     if (currentConfig) {
       currentConfig.incenseCount = (Number(currentConfig.incenseCount) || 14) + 1;
     }
-    const ry = cameraView === "cushions" ? 0.68 : 0.58;
-    pushSoundRipple(0.504, ry, "rgba(255, 224, 140, 0.9)", 72);
-    pushFloatingToast(0.504, ry - 0.10, "Dâng Hương Tâm Thành", `${speakerName || "Bác"} kính lễ Tam Bảo`);
-    activeTicker = {
-      speaker: speakerName || "Đạo hữu",
-      text: "Thành tâm dâng nén hương trầm cầu gia đạo bình an, sức khỏe dồi dào."
+    const actorIdx = findActorIndexBySpeaker(speakerName);
+    const fireFx = () => {
+      incenseBoost = 1.0;
+      const ry = cameraView === "cushions" ? 0.68 : 0.50;
+      pushSoundRipple(0.502, ry, "rgba(255, 224, 140, 0.9)", 68);
+      pushFloatingToast(0.502, ry - 0.08, "Dâng Hương Tâm Thành");
     };
+    if (cameraView === "wide") {
+      startActorRitualWalk(actorIdx, "incense", fireFx, false);
+    } else {
+      fireFx();
+    }
   }
 
   function triggerMuyu(count) {
-    muyuPulse = 1.0;
+    const nextCnt = count || (Number(currentConfig && currentConfig.muyuCount) || 0) + 1;
     if (currentConfig) {
-      currentConfig.muyuCount = count || (Number(currentConfig.muyuCount) || 0) + 1;
+      currentConfig.muyuCount = nextCnt;
     }
-    const rx = cameraView === "cushions" ? 0.85 : cameraView === "courtyard" ? 0.5 : 0.70;
-    const ry = cameraView === "cushions" ? 0.68 : cameraView === "courtyard" ? 0.45 : 0.60;
-    pushSoundRipple(rx, ry, "rgba(255, 224, 140, 0.88)", 62);
-    pushFloatingToast(rx, ry - 0.10, `+1 Tâm An (${count || 1})`, "Tiếng mõ tĩnh tâm");
+    const userActor = seatActors.find((a) => a.isUser);
+    const actorIdx = userActor ? userActor.idx : 7;
+    const fireFx = () => {
+      muyuPulse = 1.0;
+      const rx = cameraView === "cushions" ? 0.85 : cameraView === "courtyard" ? 0.5 : 0.815;
+      const ry = cameraView === "cushions" ? 0.68 : cameraView === "courtyard" ? 0.45 : 0.50;
+      pushSoundRipple(rx, ry, "rgba(255, 224, 140, 0.88)", 58);
+      pushFloatingToast(rx, ry - 0.08, `+1 Tâm An (${nextCnt})`);
+    };
+    if (cameraView === "wide") {
+      startActorRitualWalk(actorIdx, "muyu", fireFx, autoMuyuPinned);
+    } else {
+      fireFx();
+    }
   }
 
   function triggerBell(speakerName) {
-    bellResonance = 1.0;
-    const rx = cameraView === "cushions" ? 0.15 : cameraView === "courtyard" ? 0.5 : 0.115;
-    const ry = cameraView === "cushions" ? 0.56 : cameraView === "courtyard" ? 0.42 : 0.52;
-    pushSoundRipple(rx, ry, "rgba(255, 220, 130, 0.92)", 105);
-    pushSoundRipple(0.5, 0.52, "rgba(255, 232, 165, 0.65)", 125);
-    pushFloatingToast(rx + 0.08, ry - 0.08, "Đại Hồng Chung Ngân Vang", `${speakerName || "Chánh Điện"} thỉnh chuông`);
-    activeTicker = {
-      speaker: speakerName || "Chánh Điện",
-      text: "Thỉnh tiếng Đại Hồng Chung ngân vang, cầu quốc thái dân an, mọi nhà hạnh phúc."
+    const actorIdx = findActorIndexBySpeaker(speakerName);
+    const fireFx = () => {
+      bellResonance = 1.0;
+      const rx = cameraView === "cushions" ? 0.15 : cameraView === "courtyard" ? 0.5 : 0.155;
+      const ry = cameraView === "cushions" ? 0.56 : cameraView === "courtyard" ? 0.42 : 0.45;
+      pushSoundRipple(rx, ry, "rgba(255, 220, 130, 0.92)", 95);
+      pushFloatingToast(rx + 0.06, ry - 0.08, "Đại Hồng Chung Ngân Vang");
     };
+    if (cameraView === "wide") {
+      startActorRitualWalk(actorIdx, "bell", fireFx, false);
+    } else {
+      fireFx();
+    }
   }
 
   function triggerFortuneStick(cardCode) {
-    fortunePulse = 1.0;
-    const rx = cameraView === "cushions" ? 0.72 : 0.71;
-    const ry = cameraView === "cushions" ? 0.74 : 0.72;
-    pushSoundRipple(rx, ry, "rgba(255, 220, 130, 0.9)", 58);
-    pushFloatingToast(rx - 0.06, ry - 0.12, cardCode || "Quẻ Thiện Lành", "Rút Thẻ An Lạc đầu ngày");
+    const userActor = seatActors.find((a) => a.isUser);
+    const actorIdx = userActor ? userActor.idx : 7;
+    const fireFx = () => {
+      fortunePulse = 1.0;
+      const rx = cameraView === "cushions" ? 0.72 : 0.72;
+      const ry = cameraView === "cushions" ? 0.74 : 0.55;
+      pushSoundRipple(rx, ry, "rgba(255, 220, 130, 0.9)", 54);
+      pushFloatingToast(rx - 0.05, ry - 0.10, cardCode || "Quẻ Thiện Lành");
+    };
+    if (cameraView === "wide") {
+      startActorRitualWalk(actorIdx, "peace_card", fireFx, false);
+    } else {
+      fireFx();
+    }
   }
 
-  function spawnWishPlaque(speakerName, isVeteranGold, wishText) {
+  function spawnWishPlaque(speakerName, isVeteranGold) {
     if (currentConfig) {
       currentConfig.totalWishCount = (Number(currentConfig.totalWishCount) || 16) + 1;
     }
@@ -790,22 +1134,21 @@ window.TempleScene3D = (function () {
     });
     if (extraTreeGlints.length > 9) extraTreeGlints.shift();
 
-    const rx = cameraView === "courtyard" ? 0.78 : 0.72;
-    const ry = cameraView === "courtyard" ? 0.44 : 0.48;
-    pushSoundRipple(rx, ry, "rgba(255, 196, 120, 0.9)", 76);
-    pushFloatingToast(
-      rx,
-      ry - 0.08,
-      isVeteranGold ? "Thẻ Vàng Ước Nguyện" : "Treo Thẻ Đỏ Cầu An",
-      `Của ${String(speakerName || "Bác").slice(0, 18)}`
-    );
-    activeTicker = {
-      speaker: speakerName || "Đạo hữu",
-      text: wishText || "Treo Thẻ Đỏ ước nguyện lên cây Bồ Đề cổ thụ ngoài sân chùa."
+    const actorIdx = findActorIndexBySpeaker(speakerName);
+    const fireFx = () => {
+      const rx = cameraView === "courtyard" ? 0.78 : 0.502;
+      const ry = cameraView === "courtyard" ? 0.44 : 0.50;
+      pushSoundRipple(rx, ry, "rgba(255, 196, 120, 0.9)", 70);
+      pushFloatingToast(rx, ry - 0.08, isVeteranGold ? "+1 Thẻ Vàng Cầu An" : "+1 Thẻ Đỏ Cầu An");
     };
+    if (cameraView === "wide") {
+      startActorRitualWalk(actorIdx, "incense", fireFx, false);
+    } else {
+      fireFx();
+    }
   }
 
-  function spawnPondLantern(speakerName, wishText) {
+  function spawnPondLantern(speakerName) {
     if (currentConfig) {
       currentConfig.lanternCount = (Number(currentConfig.lanternCount) || 18) + 1;
     }
@@ -816,14 +1159,18 @@ window.TempleScene3D = (function () {
     });
     if (extraPondLights.length > 8) extraPondLights.shift();
 
-    const rx = cameraView === "courtyard" ? 0.25 : 0.28;
-    const ry = cameraView === "courtyard" ? 0.76 : 0.78;
-    pushSoundRipple(rx, ry, "rgba(180, 245, 232, 0.88)", 78);
-    pushFloatingToast(rx, ry - 0.12, "Thả Hoa Đăng Bình An", `Đèn của ${String(speakerName || "Bác").slice(0, 16)}`);
-    activeTicker = {
-      speaker: speakerName || "Đạo hữu",
-      text: wishText || "Thả ngọn Hoa Đăng sáng lung linh trên mặt Hồ Sen cầu an lạc."
+    const actorIdx = findActorIndexBySpeaker(speakerName);
+    const fireFx = () => {
+      const rx = cameraView === "courtyard" ? 0.25 : 0.502;
+      const ry = cameraView === "courtyard" ? 0.76 : 0.50;
+      pushSoundRipple(rx, ry, "rgba(180, 245, 232, 0.88)", 72);
+      pushFloatingToast(rx, ry - 0.10, "+1 Hoa Đăng Bình An");
     };
+    if (cameraView === "wide") {
+      startActorRitualWalk(actorIdx, "incense", fireFx, false);
+    } else {
+      fireFx();
+    }
   }
 
   function dispose() {
@@ -880,6 +1227,7 @@ window.TempleScene3D = (function () {
     mount,
     setCameraView,
     getCameraView,
+    setAutoMuyuMode,
     triggerIncense,
     triggerMuyu,
     triggerBell,

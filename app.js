@@ -4433,20 +4433,18 @@
       newlyDroppedCell: null,
       capturedCell: null,
       slapEmptyCell: null,
-      delayMs: 250,
-      statusText: `${actorName} bốc ${hand} viên sỏi từ ${getOaqCellLabel(startIdx)} để rải sang ${dirLabel}...`
+      delayMs: 560,
+      notiText: `${actorName} bốc ${hand} viên ở ${getOaqCellLabel(startIdx)} (${dirLabel})`
     });
 
     let pos = startIdx;
-    let totalVisualDrops = 0;
 
     while (true) {
       while (hand > 0) {
         pos = stepNext(pos);
         cells[pos] += 1;
         hand -= 1;
-        totalVisualDrops += 1;
-        if (frames.length < 64) {
+        if (frames.length < 72) {
           frames.push({
             kind: "drop",
             cells: cells.slice(),
@@ -4457,11 +4455,8 @@
             newlyDroppedCell: pos,
             capturedCell: null,
             slapEmptyCell: null,
-            delayMs: totalVisualDrops <= 10 ? 270 : 145,
-            statusText:
-              hand > 0
-                ? `${actorName} thả 1 viên vào ${getOaqCellLabel(pos)} (trên tay còn ${hand} viên)...`
-                : `${actorName} thả viên cuối cùng trên tay vào ${getOaqCellLabel(pos)}.`
+            delayMs: 600,
+            notiText: ""
           });
         }
       }
@@ -4478,8 +4473,8 @@
           newlyDroppedCell: null,
           capturedCell: null,
           slapEmptyCell: null,
-          delayMs: 240,
-          statusText: `Gặp ${getOaqCellLabel(next)} phía trước — dừng lượt rải.`
+          delayMs: 520,
+          notiText: `Dừng lượt trước ${getOaqCellLabel(next)}`
         });
         break;
       }
@@ -4488,7 +4483,7 @@
         hand = cells[next];
         cells[next] = 0;
         pos = next;
-        if (frames.length < 64) {
+        if (frames.length < 72) {
           frames.push({
             kind: "pickup_chain",
             cells: cells.slice(),
@@ -4499,8 +4494,8 @@
             newlyDroppedCell: null,
             capturedCell: null,
             slapEmptyCell: null,
-            delayMs: 360,
-            statusText: `Bốc nối tiếp ${hand} viên sỏi ở ${getOaqCellLabel(next)} để rải tiếp!`
+            delayMs: 720,
+            notiText: `${actorName} bốc tiếp ${hand} viên ở ${getOaqCellLabel(next)}`
           });
         }
       } else {
@@ -4521,8 +4516,8 @@
             newlyDroppedCell: null,
             capturedCell: null,
             slapEmptyCell: checkEmpty,
-            delayMs: 260,
-            statusText: `Chập ô trống ${getOaqCellLabel(checkEmpty)}!`
+            delayMs: 520,
+            notiText: ""
           });
 
           cells[after] = 0;
@@ -4539,8 +4534,8 @@
             newlyDroppedCell: null,
             capturedCell: after,
             slapEmptyCell: null,
-            delayMs: 460,
-            statusText: `${actorName} ăn được ${capAmt} viên sỏi từ ${getOaqCellLabel(after)}!`
+            delayMs: 800,
+            notiText: `${actorName} ăn được ${capAmt} viên sỏi từ ${getOaqCellLabel(after)}!`
           });
 
           checkEmpty = stepNext(after);
@@ -4559,8 +4554,8 @@
             newlyDroppedCell: null,
             capturedCell: null,
             slapEmptyCell: next,
-            delayMs: 220,
-            statusText: `Gặp hai ô trống liên tiếp — hết lượt rải.`
+            delayMs: 480,
+            notiText: "Gặp hai ô trống — dừng lượt rải"
           });
         }
         break;
@@ -4581,8 +4576,8 @@
         newlyDroppedCell: null,
         capturedCell: null,
         slapEmptyCell: null,
-        delayMs: 280,
-        statusText: "Hàng dưới hết quân Dân — tự động rải 5 viên tiếp sức."
+        delayMs: 560,
+        notiText: "Hàng dưới hết quân — rải 5 viên tiếp sức"
       });
     }
     const aiSum = cells.slice(6, 11).reduce((a, b) => a + b, 0);
@@ -4598,8 +4593,8 @@
         newlyDroppedCell: null,
         capturedCell: null,
         slapEmptyCell: null,
-        delayMs: 280,
-        statusText: "Hàng trên hết quân Dân — tự động rải 5 viên tiếp sức."
+        delayMs: 560,
+        notiText: "Hàng trên hết quân — rải 5 viên tiếp sức"
       });
     }
 
@@ -4678,7 +4673,10 @@
       state.oaq.cells = fr.cells.slice();
       state.oaq.scoreP = fr.scoreP;
       state.oaq.scoreAI = fr.scoreAI;
-      state.oaq.statusText = fr.statusText;
+      if (fr.notiText) {
+        state.oaq.statusText = fr.notiText;
+        showToast(fr.notiText);
+      }
 
       if (fr.kind === "drop") {
         playOaqPebbleDropSound(idx, false);
@@ -4694,7 +4692,7 @@
       }
 
       oaqAnimState.stepIdx += 1;
-      oaqAnimTimerId = setTimeout(advanceStep, fr.delayMs || 260);
+      oaqAnimTimerId = setTimeout(advanceStep, fr.delayMs || 600);
     };
 
     advanceStep();
@@ -4841,13 +4839,14 @@
 
   function renderOaqCapturedBasketSvg(score, seedOffset) {
     const n = Math.max(0, Math.floor(Number(score) || 0));
+    const off = Math.max(0, Math.floor(Number(seedOffset) || 0));
     if (n === 0) {
-      return `<span class="oaq-basket-empty">Chưa ăn quân nào</span>`;
+      return `<div class="oaq-basket-pebbles"><span class="oaq-basket-empty">Chưa ăn quân nào</span></div>`;
     }
-    const visibleStones = Math.min(n, 28);
+    const visibleStones = Math.min(n, 12);
     const items = [];
     for (let i = 0; i < visibleStones; i++) {
-      const pal = PEBBLE_PALETTE[(i + seedOffset) % PEBBLE_PALETTE.length];
+      const pal = PEBBLE_PALETTE[(i + off) % PEBBLE_PALETTE.length];
       items.push(
         `<span class="oaq-mini-stone" style="background:${pal.cssBg};border-color:${pal.rim};" title="Viên sỏi thứ ${i + 1}"></span>`
       );
@@ -4899,7 +4898,7 @@
           <button type="button" class="btn-secondary" id="oaq-mode-async" ${isAnimating ? "disabled" : ""} style="${o.mode === "async" ? "background:var(--accent-jade);color:#fff;" : ""}">Ván treo thật (Qua link)</button>
         </div>
 
-        <!-- Khay mây tre đựng sỏi đã ăn của Hàng Trên (Đối thủ / Máy) -->
+        <!-- Khay mây tre đựng sỏi đã ăn của Hàng Trên (cố định đúng 1 dòng không làm nhảy bàn cờ) -->
         <div class="oaq-score-tray">
           <div class="oaq-score-tray-head">
             <span>Hàng trên (${escHtml(guestLabel)})</span>
@@ -4908,19 +4907,14 @@
           ${renderOaqCapturedBasketSvg(o.scoreAI, 2)}
         </div>
 
-        ${
-          isAnimating && animFrame
-            ? `
-          <div class="oaq-hand-live-bar num">
-            <span>${escHtml(animFrame.statusText)}</span>
-            ${animFrame.hand > 0 ? `<strong class="oaq-hand-pill">Trên tay: ${animFrame.hand} viên</strong>` : ""}
-          </div>
-        `
-            : ""
-        }
-
-        <!-- Bàn Gỗ Hương Khắc Hốc Truyền Thống & Sỏi Cuội Suối 3D Thực Tế -->
-        <div class="oaq-board" role="group" aria-label="Bàn cờ Ô ăn quan bằng gỗ kèm viên sỏi cuội thực tế">
+        <!-- Khung bàn Gỗ Hương cố định tuyệt đối tọa độ, huy hiệu đếm sỏi trên tay nổi nhẹ trên viền -->
+        <div class="oaq-board-stage">
+          ${
+            isAnimating && animFrame && animFrame.hand > 0
+              ? `<div class="oaq-floating-hand-badge num" aria-live="polite">Trên tay: ${animFrame.hand} viên</div>`
+              : ""
+          }
+          <div class="oaq-board" role="group" aria-label="Bàn cờ Ô ăn quan bằng gỗ kèm viên sỏi cuội thực tế">
           <div class="oaq-quan oaq-quan-left ${renderCellStateClasses(11)}" aria-label="Quan Trái còn ${o.cells[11]} quân">
             <span class="oaq-count-pill num">${o.cells[11]}${isNewlyDroppedAt(11) ? " +1" : ""}</span>
             ${renderOaqCellPebblesSvg(o.cells[11], true, 11, isNewlyDroppedAt(11))}
@@ -4986,6 +4980,7 @@
             ${renderOaqCellPebblesSvg(o.cells[5], true, 5, isNewlyDroppedAt(5))}
             <small>Q.Phải</small>
           </div>
+          </div>
         </div>
 
         <!-- Khay mây tre đựng sỏi đã ăn của Hàng Dưới (Bác) -->
@@ -4997,16 +4992,23 @@
           ${renderOaqCapturedBasketSvg(o.scoreP, 0)}
         </div>
 
-        <p style="font-weight:600; color:var(--accent-terracotta);">${isGameOver ? "Ván cờ đã kết thúc — cả hai Quan đều đã ăn hết!" : escHtml(o.statusText)}</p>
+        <!-- Khe thao tác chiều cao ổn định bên dưới bàn cờ (không đẩy bàn cờ dịch chuyển) -->
+        <div class="oaq-action-slot">
+          ${
+            o.selectedCell !== null && isMyTurn && !isGameOver
+              ? `
+            <div class="btn-row">
+              <button type="button" class="btn-primary" id="oaq-dir-left">← Rải sang Trái</button>
+              <button type="button" class="btn-jade" id="oaq-dir-right">Rải sang Phải →</button>
+            </div>
+          `
+              : `<button type="button" class="btn-secondary" id="oaq-reset">${isAnimating ? "Bỏ qua rải &amp; Xếp ván mới" : "Xếp lại bàn cờ mới"}</button>`
+          }
+        </div>
 
         ${
           o.selectedCell !== null && isMyTurn && !isGameOver
-            ? `
-          <div class="btn-row">
-            <button type="button" class="btn-primary" id="oaq-dir-left">← Rải từng viên sang Trái</button>
-            <button type="button" class="btn-jade" id="oaq-dir-right">Rải từng viên sang Phải →</button>
-          </div>
-        `
+            ? `<button type="button" class="btn-secondary" id="oaq-reset">Xếp lại bàn cờ mới</button>`
             : ""
         }
 
@@ -5029,8 +5031,6 @@
         `
             : ""
         }
-
-        <button type="button" class="btn-secondary" id="oaq-reset">${isAnimating ? "Bỏ qua hiệu ứng &amp; Xếp ván mới" : "Xếp lại bàn cờ mới"}</button>
       </div>
     `;
 
@@ -5039,7 +5039,7 @@
         if (oaqAnimState) return;
         playWoodPieceClack(false);
         state.oaq.selectedCell = Number(btn.dataset.cell);
-        state.oaq.statusText = `Đã chọn Ô ${state.oaq.selectedCell + 1} (${state.oaq.cells[state.oaq.selectedCell]} viên sỏi). Bác bấm rải sang Trái hay sang Phải?`;
+        showToast(`Đã chọn Ô ${state.oaq.selectedCell + 1} (${state.oaq.cells[state.oaq.selectedCell]} viên) — mời chọn hướng rải`);
         renderGames();
       });
     });
@@ -5105,13 +5105,14 @@
         // Kiểm tra nếu cả hai ô Quan đã hết sạch quân sau nước của bác
         if (state.oaq.cells[5] === 0 && state.oaq.cells[11] === 0) {
           state.oaq.turn = "host";
+          showToast("Ván cờ kết thúc — cả hai Quan đều đã ăn hết!");
           saveState();
           if (state.route === "games") renderGames();
           return;
         }
 
         state.oaq.turn = "ai";
-        state.oaq.statusText = "Đến lượt Máy (đối thủ tự động) chuẩn bị bốc sỏi...";
+        showToast("Đến lượt Máy rải sỏi...");
         saveState();
         if (state.route === "games") renderGames();
 
@@ -5120,7 +5121,7 @@
           const validAiCells = [6, 7, 8, 9, 10].filter((idx) => state.oaq.cells[idx] > 0);
           if (validAiCells.length === 0) {
             state.oaq.turn = "host";
-            state.oaq.statusText = "Đến lượt bác chọn một ô hàng dưới.";
+            showToast("Đến lượt bác chọn một ô hàng dưới");
             saveState();
             renderGames();
             return;
@@ -5139,11 +5140,15 @@
           );
           runOaqSowingAnimation(aiTimeline, () => {
             state.oaq.turn = "host";
-            state.oaq.statusText = "Máy đã rải xong. Đến lượt bác chọn một ô hàng dưới.";
+            if (state.oaq.cells[5] === 0 && state.oaq.cells[11] === 0) {
+              showToast("Ván cờ kết thúc — cả hai Quan đều đã ăn hết!");
+            } else {
+              showToast("Máy đã rải xong — đến lượt bác chọn ô");
+            }
             saveState();
             if (state.route === "games") renderGames();
           });
-        }, 520);
+        }, 750);
       });
     };
 
@@ -6134,7 +6139,8 @@
   }
 
   function buildTempleTenCushionAttendees() {
-    const myCushion = Math.max(0, Math.min(9, Number(state.zen.userCushionIdx) || 2));
+    const rawSeat = typeof state.zen.userCushionIdx === "number" ? state.zen.userCushionIdx : 7;
+    const myCushion = Math.max(0, Math.min(19, rawSeat));
     const prog = getSeniorityProgress();
     const occupiedMap = {};
 
@@ -6142,6 +6148,7 @@
       cushionIdx: myCushion,
       name: state.user.name,
       shortLabel: "Bạn",
+      robeStyle: state.user.honorific === "Chị" ? "lam" : "lam",
       outfitColor: getOutfit(state.user.outfitId).color,
       isFemale: state.user.honorific === "Chị",
       seniorityLevel: prog.current ? prog.current.level : 0,
@@ -6152,22 +6159,23 @@
     const livePeers = RT ? RT.getOnlinePeers() : [];
     let nextFree = 0;
     const takeFreeSlot = (preferred) => {
-      if (typeof preferred === "number" && preferred >= 0 && preferred <= 9 && !occupiedMap[preferred]) {
+      if (typeof preferred === "number" && preferred >= 0 && preferred <= 19 && !occupiedMap[preferred]) {
         return preferred;
       }
-      while (nextFree < 10 && occupiedMap[nextFree]) nextFree += 1;
-      return nextFree < 10 ? nextFree : -1;
+      while (nextFree < 20 && occupiedMap[nextFree]) nextFree += 1;
+      return nextFree < 20 ? nextFree : -1;
     };
 
-    livePeers.slice(0, 4).forEach((lp) => {
+    livePeers.slice(0, 8).forEach((lp, idx) => {
       const slot = takeFreeSlot(typeof lp.cushionIdx === "number" ? lp.cushionIdx : undefined);
       if (slot >= 0) {
         occupiedMap[slot] = {
           cushionIdx: slot,
           name: lp.name || "Bạn trực tuyến",
-          shortLabel: String(lp.name || "Bạn thật").replace(/^(Anh|Chị|Bác)\s+/i, "").slice(0, 10),
+          shortLabel: String(lp.name || "Bạn thật").slice(0, 9),
+          robeStyle: idx % 2 === 0 ? "lam" : "nau",
           outfitColor: lp.outfitColor || "#2E5E4E",
-          isFemale: /^Chị/i.test(lp.name || ""),
+          isFemale: /^(Chị|Cô|Bà)/i.test(lp.name || ""),
           seniorityLevel: lp.seniorityLevel || 6,
           isUser: false,
           isRealPeer: true
@@ -6175,18 +6183,27 @@
       }
     });
 
+    // 13 đạo hữu cao niên ngồi rải đều khắp 4 hàng (giữ lại ~6 chiếu trống để các bác tùy ý đổi chỗ)
     const companionSeeds = [
-      { pref: 0, name: "Cụ Hòa", shortLabel: "Cụ Hòa", outfitColor: "#7A4B1E", isFemale: false, seniorityLevel: 26 },
-      { pref: 1, name: "Chị Lan", shortLabel: "Chị Lan", outfitColor: "#2E5E4E", isFemale: true, seniorityLevel: 14 },
-      { pref: 3, name: "Anh Minh", shortLabel: "Anh Minh", outfitColor: "#556B45", isFemale: false, seniorityLevel: 18 },
-      { pref: 4, name: "Chị Hạnh", shortLabel: "Chị Hạnh", outfitColor: "#8A3F22", isFemale: true, seniorityLevel: 23 },
-      { pref: 6, name: "Anh Vĩnh", shortLabel: "Anh Vĩnh", outfitColor: "#4F6842", isFemale: false, seniorityLevel: 15 },
-      { pref: 8, name: "Chị Mai", shortLabel: "Chị Mai", outfitColor: "#6E4A35", isFemale: true, seniorityLevel: 9 }
+      { pref: 0, name: "Cụ Hòa", shortLabel: "Cụ Hòa", robeStyle: "nau", isFemale: false, seniorityLevel: 26 },
+      { pref: 1, name: "Chị Lan", shortLabel: "Chị Lan", robeStyle: "lam", isFemale: true, seniorityLevel: 14 },
+      { pref: 2, name: "Bác Phúc", shortLabel: "Bác Phúc", robeStyle: "lam", isFemale: false, seniorityLevel: 21 },
+      { pref: 4, name: "Chị Hạnh", shortLabel: "Chị Hạnh", robeStyle: "nau", isFemale: true, seniorityLevel: 23 },
+      { pref: 5, name: "Anh Minh", shortLabel: "Anh Minh", robeStyle: "lam", isFemale: false, seniorityLevel: 18 },
+      { pref: 8, name: "Cô Thảo", shortLabel: "Cô Thảo", robeStyle: "nau", isFemale: true, seniorityLevel: 12 },
+      { pref: 9, name: "Anh Vĩnh", shortLabel: "Anh Vĩnh", robeStyle: "nau", isFemale: false, seniorityLevel: 15 },
+      { pref: 10, name: "Chị Mai", shortLabel: "Chị Mai", robeStyle: "lam", isFemale: true, seniorityLevel: 9 },
+      { pref: 12, name: "Chú Sơn", shortLabel: "Chú Sơn", robeStyle: "lam", isFemale: false, seniorityLevel: 16 },
+      { pref: 13, name: "Cô Dung", shortLabel: "Cô Dung", robeStyle: "nau", isFemale: true, seniorityLevel: 11 },
+      { pref: 15, name: "Bác Tùng", shortLabel: "Bác Tùng", robeStyle: "nau", isFemale: false, seniorityLevel: 19 },
+      { pref: 16, name: "Chị Liên", shortLabel: "Chị Liên", robeStyle: "lam", isFemale: true, seniorityLevel: 10 },
+      { pref: 19, name: "Anh Khải", shortLabel: "Anh Khải", robeStyle: "lam", isFemale: false, seniorityLevel: 13 }
     ];
 
     companionSeeds.forEach((sc) => {
+      if (Object.keys(occupiedMap).length >= 14) return;
       const slot = takeFreeSlot(sc.pref);
-      if (slot >= 0 && Object.keys(occupiedMap).length < 8) {
+      if (slot >= 0) {
         occupiedMap[slot] = Object.assign({ cushionIdx: slot, isUser: false, isRealPeer: false }, sc);
       }
     });
@@ -6201,13 +6218,12 @@
     const prayers = getMergedTemplePrayers();
     const attendees = buildTempleTenCushionAttendees();
     const camMode = state.zen.cameraView || "wide";
-    const myCushion = Math.max(0, Math.min(9, Number(state.zen.userCushionIdx) || 2));
+    const myCushion = Math.max(0, Math.min(19, typeof state.zen.userCushionIdx === "number" ? state.zen.userCushionIdx : 7));
     const plaqueTitles = ["TÂM AN VẠN SỰ AN", "HƯƠNG SEN TĨNH TẠI", "ĐẠI HỒNG CHUNG AN LẠC"];
     const isAutoMuyuActive = Boolean(autoMuyuTimerId);
 
     els.main.innerHTML = `
-      <h1>Chánh Điện Online &amp; Đạo Tràng Tĩnh Tâm</h1>
-      <p class="lead-copy">Phong cách Chùa Online trực tiếp: chạm thẳng vào Mõ gỗ, Đại Hồng Chung, Lư hương, Hồ sen hoa đăng hoặc Cây Bồ Đề thẻ đỏ trên màn hình để hành lễ và tích lũy Tâm An (100% miễn phí, không thu tiền).</p>
+      <h1>Chánh Điện &amp; Đạo Tràng 20 Bồ Đoàn</h1>
 
       <div class="temple-cam-bar" role="tablist" aria-label="Chọn không gian tĩnh tâm">
         ${D.ZEN_SPACES.map(
@@ -6215,59 +6231,54 @@
         ).join("")}
       </div>
 
-      <!-- Chọn 3 góc nhìn Đạo Tràng 2.5D -->
+      <!-- Chọn 3 góc máy: Đại sảnh 20 Chiếu / Cận cảnh Tam Bảo / Sân Hồ Sen & Cây Thẻ Đỏ -->
       <div class="temple-cam-bar" role="group" aria-label="Chọn góc nhìn Chánh Điện">
-        <button type="button" class="temple-cam-btn ${camMode === "wide" ? "active" : ""}" data-tcam="wide">Toàn cảnh Chùa &amp; Sân</button>
-        <button type="button" class="temple-cam-btn ${camMode === "cushions" ? "active" : ""}" data-tcam="cushions">Cận cảnh 10 Bồ Đoàn</button>
+        <button type="button" class="temple-cam-btn ${camMode === "wide" ? "active" : ""}" data-tcam="wide">Đại sảnh 20 Chiếu</button>
+        <button type="button" class="temple-cam-btn ${camMode === "cushions" ? "active" : ""}" data-tcam="cushions">Cận cảnh Tam Bảo</button>
         <button type="button" class="temple-cam-btn ${camMode === "courtyard" ? "active" : ""}" data-tcam="courtyard">Hồ Sen &amp; Cây Thẻ Đỏ</button>
       </div>
 
-      <div class="temple-sanctuary-wrap" id="temple-3d-stage" aria-label="Không gian Chánh Điện và Đạo Tràng trực tiếp"></div>
+      <div class="temple-sanctuary-wrap" id="temple-3d-stage" aria-label="Đại sảnh Chánh Điện 20 chiếu Bồ Đoàn có các bác bước lên dâng hương và gõ mõ"></div>
 
-      <div class="temple-live-stats-strip num">
-        <span>Thẻ đỏ: <strong id="zen-wish-counter">${state.zen.wishPlaquesCount || 16}</strong> · Hoa đăng: <strong id="zen-lantern-counter">${state.zen.lanternsReleased || 18}</strong></span>
-        <span>Hương trầm: <strong id="zen-incense-counter">${state.zen.incenseCount || 14}</strong> · Nhịp mõ: <strong id="zen-muyu-counter">${state.zen.muyuCount || 0}</strong></span>
-      </div>
-
-      <!-- Nút Bật/Tắt Tự Động Gõ Mõ Tĩnh Tâm (Chuẩn phiên Live Chùa Online TikTok) -->
+      <!-- Nút Bật/Tắt Tự Động Gõ Mõ Tĩnh Tâm (Nhân vật của bác bước lên đứng cạnh Mõ gỗ gõ đều nhịp) -->
       <button type="button" class="btn-${isAutoMuyuActive ? "primary" : "jade"}" id="btn-temple-auto-muyu">
         ${ico("bell")}
-        <span id="auto-muyu-label">${isAutoMuyuActive ? "Đang Tự Gõ Mõ Tĩnh Tâm (Chạm để dừng)" : "Bật Tự Động Gõ Mõ Đều Nhịp (Như Phiên Live)"}</span>
+        <span id="auto-muyu-label">${isAutoMuyuActive ? "Đang Đứng Gõ Mõ Đều Nhịp (Chạm để về chiếu)" : "Bật Tự Động Lên Gõ Mõ Đều Nhịp"}</span>
       </button>
 
-      <!-- 6 Nghi thức Chánh Điện & Sân Chùa 1 chạm -->
+      <!-- 6 Nghi thức hành lễ 1 chạm (nhân vật bước từ chiếu lên hành lễ rồi quay về chỗ) -->
       <div class="temple-ritual-grid" role="group" aria-label="Nghi thức Chánh Điện và Sân Chùa">
-        <button type="button" class="btn-primary" id="btn-temple-hang-wish">
-          ${ico("award")}
-          <span>Treo Thẻ Đỏ Lên Cây</span>
+        <button type="button" class="btn-primary" id="btn-temple-incense">
+          <span>Lên Dâng Hương</span>
         </button>
-        <button type="button" class="btn-jade" id="btn-temple-pond-lantern">
-          ${ico("lotus")}
-          <span>Thả Hoa Đăng Hồ Sen</span>
-        </button>
-        <button type="button" class="btn-secondary" id="btn-temple-incense">
-          <span>Dâng Hương Tam Bảo</span>
-        </button>
-        <button type="button" class="btn-secondary" id="btn-temple-muyu">
-          <span>Gõ Mõ Tĩnh Tâm (+1)</span>
+        <button type="button" class="btn-jade" id="btn-temple-muyu">
+          <span>Lên Gõ Mõ (+1)</span>
         </button>
         <button type="button" class="btn-secondary" id="btn-ring-bell">
           ${ico("bell")}
-          <span>Thỉnh Đại Hồng Chung</span>
+          <span>Lên Thỉnh Chuông</span>
         </button>
         <button type="button" class="btn-secondary" id="btn-draw-peace-card">
-          <span>Lắc Ống Xăm / Quẻ Mới</span>
+          <span>Lên Xin Xăm / Quẻ</span>
+        </button>
+        <button type="button" class="btn-secondary" id="btn-temple-pond-lantern">
+          ${ico("lotus")}
+          <span>Thả Hoa Đăng (${state.zen.lanternsReleased || 18})</span>
+        </button>
+        <button type="button" class="btn-secondary" id="btn-temple-hang-wish">
+          ${ico("award")}
+          <span>Treo Thẻ Đỏ (${state.zen.wishPlaquesCount || 16})</span>
         </button>
       </div>
 
-      <!-- Chọn 1 trong 10 Chiếu Bồ Đoàn để ngồi tĩnh tâm cùng bạn -->
-      <div class="surface-panel">
-        <div class="passcard-head">
-          <strong>Chọn Chiếu Bồ Đoàn (Đang ngồi BĐ${myCushion + 1})</strong>
-          <span class="badge-tag jade num">${attendees.length}/10 chiếu có người</span>
-        </div>
-        <div class="cushion-pick-grid" role="group" aria-label="Chọn vị trí chiếu Bồ Đoàn từ 1 đến 10">
-          ${Array.from({ length: 10 }, (_, idx) => {
+      <!-- Bảng chọn 20 Chiếu Bồ Đoàn thu gọn gọn gàng (hoặc chạm trực tiếp lên chiếu trên ảnh) -->
+      <details class="surface-panel">
+        <summary style="cursor:pointer; font-weight:700; display:flex; justify-content:space-between; align-items:center; gap:8px;">
+          <span>Đổi chỗ trong 20 Chiếu Bồ Đoàn (Đang ngồi BĐ${myCushion + 1})</span>
+          <span class="badge-tag jade num">${attendees.length}/20 bác</span>
+        </summary>
+        <div class="cushion-pick-grid" role="group" aria-label="Chọn vị trí chiếu Bồ Đoàn từ 1 đến 20" style="margin-top:10px;">
+          ${Array.from({ length: 20 }, (_, idx) => {
             const occ = attendees.find((a) => a.cushionIdx === idx);
             const isMe = idx === myCushion;
             const sub = isMe ? "Bạn ngồi" : occ ? occ.shortLabel : "Trống";
@@ -6279,7 +6290,7 @@
             `;
           }).join("")}
         </div>
-      </div>
+      </details>
 
       ${
         curCard
@@ -6339,9 +6350,10 @@
     const doMuyuStep = (fromAuto) => {
       playWoodenFishSound();
       state.zen.muyuCount = (state.zen.muyuCount || 0) + 1;
-      const cntEl = document.getElementById("zen-muyu-counter");
-      if (cntEl) cntEl.textContent = String(state.zen.muyuCount);
       if (window.TempleScene3D) window.TempleScene3D.triggerMuyu(state.zen.muyuCount);
+      if (!fromAuto) {
+        showToast(`Đã lên gõ mõ tĩnh tâm (+1 Tâm An · tổng ${state.zen.muyuCount})`);
+      }
       if (!fromAuto || state.zen.muyuCount % 5 === 0) {
         awardSeniorityPoints(1, "temple_muyu", "chua-online", `Gõ mõ tĩnh tâm (${state.zen.muyuCount} nhịp)`, {
           eventType: "temple_ritual",
@@ -6371,14 +6383,17 @@
         ritualKind: "bell",
         cushionIdx: myCushion
       });
-      showToast("Tiếng Đại Hồng Chung ngân vang khắp Chánh Điện.");
+      showToast("Đang bước lên thỉnh Đại Hồng Chung ngân vang...");
     };
 
     const doPondLanternStep = () => {
       playWoodenFishSound();
       state.zen.lanternsReleased = (state.zen.lanternsReleased || 18) + 1;
-      const lEl = document.getElementById("zen-lantern-counter");
-      if (lEl) lEl.textContent = String(state.zen.lanternsReleased);
+      const btnLantern = document.getElementById("btn-temple-pond-lantern");
+      if (btnLantern) {
+        const spEl = btnLantern.querySelector("span");
+        if (spEl) spEl.textContent = `Thả Hoa Đăng (${state.zen.lanternsReleased})`;
+      }
       if (window.TempleScene3D) {
         window.TempleScene3D.spawnPondLantern(state.user.name);
       }
@@ -6391,7 +6406,7 @@
         ritualKind: "pond_lantern",
         cushionIdx: myCushion
       });
-      showToast("Đã thả thêm một ngọn Hoa Đăng trôi nhẹ trên mặt Hồ Sen!");
+      showToast("Đã thành tâm thả Hoa Đăng bình an!");
     };
 
     const doDrawPeaceCardStep = () => {
@@ -6403,7 +6418,7 @@
         module: "zen",
         ritualKind: "peace_card"
       });
-      showToast(`Ống xăm vừa gieo được ${nextCard ? nextCard.code : "Thẻ An Lạc mới"}!`);
+      showToast(`Đã gieo được ${nextCard ? nextCard.code : "Thẻ An Lạc mới"}!`);
       renderZen();
       if (window.TempleScene3D && typeof window.TempleScene3D.triggerFortuneStick === "function") {
         window.TempleScene3D.triggerFortuneStick(nextCard ? nextCard.code : "Quẻ Đại Cát");
@@ -6460,8 +6475,8 @@
       }
       showToast(
         ritualKind === "wish_plaque"
-          ? "Đã treo Thẻ Đỏ ước nguyện lên cây Bồ Đề ngoài sân chùa!"
-          : "Đã dâng nén hương trầm thơm ấm tại Tam Bảo Chánh Điện!"
+          ? "Đang bước lên kính lễ & treo Thẻ Đỏ ước nguyện..."
+          : "Đang bước lên Lư hương thành tâm dâng nhang..."
       );
     };
 
@@ -6473,6 +6488,7 @@
           preferredRender: state.settings.preferredRender,
           cameraView: camMode,
           spaceIdx: state.zen.spaceIdx || 0,
+          autoMuyuActive: isAutoMuyuActive,
           plaqueTitle: plaqueTitles[state.zen.spaceIdx % plaqueTitles.length],
           userName: state.user.name,
           userCushionIdx: myCushion,
@@ -6500,15 +6516,17 @@
             } else if (kind === "peace_card") {
               doDrawPeaceCardStep();
             } else if (kind === "select_cushion" && typeof payload === "number") {
-              const cIdx = Math.max(0, Math.min(9, payload));
+              const cIdx = Math.max(0, Math.min(19, payload));
               if (cIdx !== state.zen.userCushionIdx) {
                 state.zen.userCushionIdx = cIdx;
                 saveState();
                 syncMyGlobalOnlinePresence();
-                showToast(`Bác đã chuyển sang ngồi Chiếu Bồ Đoàn số ${cIdx + 1}.`);
+                showToast(`Đã chuyển sang ngồi Chiếu Bồ Đoàn số ${cIdx + 1}`);
                 renderZen();
               } else {
-                doMuyuStep(false);
+                const presets = D.TEMPLE_PRAYER_PRESETS || [];
+                const chosen = presets[(state.zen.incenseCount || 0) % Math.max(1, presets.length)] || sp.quote;
+                publishWishOrIncense(chosen, "incense");
               }
             }
           }
@@ -6541,13 +6559,13 @@
 
     els.main.querySelectorAll("[data-cushion]").forEach((b) => {
       b.addEventListener("click", () => {
-        const cIdx = Math.max(0, Math.min(9, Number(b.dataset.cushion) || 0));
+        const cIdx = Math.max(0, Math.min(19, Number(b.dataset.cushion) || 0));
         state.zen.userCushionIdx = cIdx;
         awardSkillPoints("temple_zen", 2);
         trackTelemetryDirect("temple_ritual", "zen", "select_cushion", { ritualKind: "cushion_select", cushionIdx: cIdx });
         saveState();
         syncMyGlobalOnlinePresence();
-        showToast(`Bác đã chuyển sang ngồi Chiếu Bồ Đoàn số ${cIdx + 1}.`);
+        showToast(`Đã chuyển sang ngồi Chiếu Bồ Đoàn số ${cIdx + 1}`);
         renderZen();
       });
     });
@@ -6555,11 +6573,22 @@
     const autoMuyuBtn = document.getElementById("btn-temple-auto-muyu");
     if (autoMuyuBtn) {
       autoMuyuBtn.addEventListener("click", () => {
+        const lbl = document.getElementById("auto-muyu-label");
         if (autoMuyuTimerId) {
           clearInterval(autoMuyuTimerId);
           autoMuyuTimerId = null;
-          showToast("Đã dừng tự động gõ mõ.");
+          autoMuyuBtn.className = "btn-jade";
+          if (lbl) lbl.textContent = "Bật Tự Động Lên Gõ Mõ Đều Nhịp";
+          if (window.TempleScene3D && typeof window.TempleScene3D.setAutoMuyuMode === "function") {
+            window.TempleScene3D.setAutoMuyuMode(false);
+          }
+          showToast("Đã dừng gõ mõ — nhân vật đang bước về chiếu ngồi.");
         } else {
+          autoMuyuBtn.className = "btn-primary";
+          if (lbl) lbl.textContent = "Đang Đứng Gõ Mõ Đều Nhịp (Chạm để về chiếu)";
+          if (window.TempleScene3D && typeof window.TempleScene3D.setAutoMuyuMode === "function") {
+            window.TempleScene3D.setAutoMuyuMode(true);
+          }
           doMuyuStep(true);
           autoMuyuTimerId = setInterval(() => {
             if (state.route !== "zen") {
@@ -6568,10 +6597,9 @@
               return;
             }
             doMuyuStep(true);
-          }, 2100);
-          showToast("Đã bật Tự Động Gõ Mõ Tĩnh Tâm đều nhịp!");
+          }, 2200);
+          showToast("Nhân vật đang bước lên đứng cạnh Mõ gỗ gõ đều nhịp!");
         }
-        renderZen();
       });
     }
 
