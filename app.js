@@ -105,7 +105,7 @@
       },
       settings: {
         xlFont: false,
-        preferredRender: "3d",
+        preferredRender: "2.5d",
         autoFallbacked: false,
         homeMode: "full",
         pwaBannerDismissed: false
@@ -335,6 +335,8 @@
         health: Object.assign({}, def.health, parsed.health || {}),
         customTables: Object.assign({}, def.customTables, parsed.customTables || {})
       });
+      merged.settings.preferredRender = "2.5d";
+      merged.settings.autoFallbacked = false;
       if (!Array.isArray(merged.memberLogs)) {
         merged.memberLogs = [];
       }
@@ -1166,9 +1168,8 @@
     });
 
     if (els.simRender) {
-      const activeMode = state.settings.autoFallbacked ? "Full 2.5D (Tự hạ)" : state.settings.preferredRender === "3d" ? "Hybrid 3D+2.5D" : "Full 2.5D (TLBB)";
-      els.simRender.textContent = `Đồ họa: ${activeMode}`;
-      els.simRender.classList.toggle("active", state.settings.preferredRender === "2.5d");
+      els.simRender.textContent = "Đồ họa: Full 2.5D (TLBB)";
+      els.simRender.classList.add("active");
     }
     if (els.simFont) {
       els.simFont.textContent = `Cỡ chữ: ${state.settings.xlFont ? "24px (Cực lớn)" : "20px (Chuẩn)"}`;
@@ -3066,42 +3067,17 @@
 
   function renderGraphicsModeSwitchHtml(opts) {
     const o = opts || {};
-    const cur = state.settings.preferredRender === "2.5d" ? "2.5d" : "3d";
-    const switchHtml = `
-      <div class="render-mode-switch" role="group" aria-label="Chọn kiểu đồ họa quán trà">
-        <button type="button" class="render-mode-opt ${cur === "2.5d" ? "active" : ""}" data-render-choice="2.5d" aria-pressed="${cur === "2.5d"}">
-          <span>Full 2.5D</span>
-          <small>Cổ điển · Nhẹ</small>
-        </button>
-        <button type="button" class="render-mode-opt ${cur === "3d" ? "active" : ""}" data-render-choice="3d" aria-pressed="${cur === "3d"}">
-          <span>Hybrid 3D+2.5D</span>
-          <small>Xoay góc</small>
-        </button>
-      </div>
-    `;
-    if (o.innerOnly) return switchHtml;
+    const badgeHtml = `<span class="stage-badge" id="render-mode-badge">Đồ họa: Full 2.5D (TLBB)</span>`;
+    if (o.innerOnly) return badgeHtml;
     return `
       <div class="tearoom-controls-row" style="flex-wrap:wrap;">
-        ${switchHtml}
+        ${badgeHtml}
         ${o.extraHtml || ""}
       </div>
     `;
   }
 
-  function bindRenderChoiceButtons(rerenderFn) {
-    document.querySelectorAll("[data-render-choice]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const nextMode = btn.dataset.renderChoice === "2.5d" ? "2.5d" : "3d";
-        if (state.settings.preferredRender === nextMode && !state.settings.autoFallbacked) return;
-        state.settings.autoFallbacked = false;
-        state.settings.preferredRender = nextMode;
-        saveState();
-        updateGlobalChrome();
-        trackTelemetryDirect("render_mode_switch", state.route, nextMode, { mode: nextMode });
-        if (typeof rerenderFn === "function") rerenderFn();
-      });
-    });
-  }
+  function bindRenderChoiceButtons() {}
 
   function mountRoomSceneView(viewMode, room, table, recommendedIdx) {
     const stageEl = document.getElementById("tearoom-stage");
@@ -7620,7 +7596,7 @@
           previewCls: "preview-frame-btn",
           equipCls: "equip-frame-btn",
           activeLabel: "Đang gắn",
-          ownedLabel: "Gắn lên 3D"
+          ownedLabel: "Gắn khung tên"
         }
       ]
     };
@@ -7913,7 +7889,7 @@
           if (!state.user.unlockedTitleFrames.includes(fr.id)) {
             if (state.user.xu < fr.cost) {
               profilePreviewDraft = Object.assign({}, profilePreviewDraft || {}, { titleFrameId: fr.id });
-              showToast(`Chưa đủ ${fr.cost} Xu — đã gắn thử khung "${fr.name}" lên nhân vật 3D!`);
+              showToast(`Chưa đủ ${fr.cost} Xu — đã gắn thử khung "${fr.name}" để ${pron} ngắm trước!`);
               renderProfile();
               scrollShowcaseIntoView();
               return;
@@ -7926,7 +7902,7 @@
           saveState();
           updateGlobalChrome();
           refreshRealtimeAppearance();
-          showToast(`Đã gắn khung danh hiệu 3D: ${fr.name}`);
+          showToast(`Đã gắn khung danh hiệu: ${fr.name}`);
           renderProfile();
           scrollShowcaseIntoView();
         });
@@ -10866,12 +10842,10 @@
   if (els.simRender) {
     els.simRender.addEventListener("click", () => {
       state.settings.autoFallbacked = false;
-      state.settings.preferredRender = state.settings.preferredRender === "3d" ? "2.5d" : "3d";
+      state.settings.preferredRender = "2.5d";
       saveState();
       updateGlobalChrome();
-      trackTelemetryDirect("render_mode_switch", state.route, state.settings.preferredRender, { via: "sim_pill" });
-      if (state.route === "tearoom") renderTeaRoom();
-      else if (state.route === "profile") renderProfile();
+      showToast("Đang chạy chuẩn Đồ họa: Full 2.5D (TLBB) sắc nét, nhẹ máy.");
     });
   }
   if (els.simFont) {

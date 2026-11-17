@@ -157,7 +157,7 @@ state = {
 - `buildExportJsonlString()` / `buildExportFullJsonObject()` / `buildExportCsvString()` → Xuất dữ liệu chuẩn huấn luyện AI.
 
 ### 2.3. `window.TeaRoomScene` (`tearoom3d.js`)
-- `mount(el, canvas, tagsLayer, config, fallbackCb)`: Dựng sảnh trà 5 gian (`viewMode: "overview"`), cận cảnh bàn tròn (`viewMode: "table"` mặc định) hoặc sân khấu thử đồ (`viewMode: "profile"`). Hỗ trợ chuyển đổi song song `preferredMode`: `"2.5d"` (**Full 2.5D Cổ Điển TLBB** dùng `assets/tearoom-lobby-25d.jpg`, `assets/tearoom-table-25d.jpg`, Sprite Atlas `assets/tearoom-sprites.webp` và `userOutfitId`) hoặc `"3d"` (**Hybrid Phòng 3D Xoay + Nhân Vật 2.5D Billboard** xoay góc ngang ở cả 3 chế độ xem).
+- `mount(el, canvas, tagsLayer, config, fallbackCb)`: Dựng sảnh trà 5 gian (`viewMode: "overview"`), cận cảnh bàn tròn (`viewMode: "table"` mặc định) hoặc sân khấu thử đồ (`viewMode: "profile"`). Chạy cố định chuẩn **Full 2.5D Cổ Điển (TLBB)** (`mode === "2.5d"`) dùng `assets/tearoom-lobby-25d.jpg`, `assets/tearoom-table-25d.jpg`, Sprite Atlas `4×2` `assets/tearoom-sprites.webp` và `userOutfitId`, `activeTableIdx` với tỷ lệ ngồi cân ghế đứng yên không nhấp nhô.
 - `setSpeaker(idx)` / `setSeatBadge(idx, badge)` / `triggerTeaService()` / `showSeatSticker(seatIdx, label, bg, color)`.
 - `toggleOverviewWide()` / `getOverviewWideLevel()` / `getActiveMode()`.
 - `exportPostcardPng(opts)` / `drawQrToCanvas(ctx, text, x, y, size)`.

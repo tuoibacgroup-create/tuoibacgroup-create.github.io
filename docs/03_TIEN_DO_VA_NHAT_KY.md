@@ -10,7 +10,7 @@
 | :---: | :--- | :---: | :--- | :--- |
 | 1 | Trang chủ Mobile-First & Chế độ rút gọn 3 nút MVP | Hoàn thành | `app.js`, `styles.css` | Có cài đặt PWA ra màn hình chính & chuyển đổi chữ 20px/24px |
 | 2 | Điểm danh bình an & Bản đồ 34 đơn vị hành chính mới | Hoàn thành | `app.js`, `data.js` | Có chú thích tỉnh cũ gộp vào, xuất thiệp chúc sáng kèm QR + văn bản chia sẻ |
-| 3 | Sảnh Trà & Bàn Trà 5 Chỗ (Chuyển Đổi Full 2.5D TLBB / Hybrid 3D+2.5D) | Hoàn thành | `tearoom3d.js`, `assets/tearoom-*`, `app.js` | Bộ 2 chế độ: Full 2.5D cổ điển nhẹ pin (`assets/tearoom-*.jpg` + `tearoom-sprites.webp`) và Hybrid Phòng 3D Xoay + Nhân vật 2.5D Billboard (`28 FPS`), kéo ngang xoay góc |
+| 3 | Sảnh Trà & Bàn Trà 5 Chỗ — Đồ Họa Full 2.5D (TLBB) | Hoàn thành | `tearoom3d.js`, `assets/tearoom-*`, `app.js` | Khóa chuẩn Full 2.5D cổ điển (`28 FPS`), người ngồi cân tỷ lệ ghế đứng yên không nhấp nhô, Chị Trà đứng đi mời trà |
 | 4 | Chủ bàn đặt tên bàn đàm đạo & Gửi 8 Sticker 1 chạm | Hoàn thành | `app.js`, `tearoom3d.js` | Bong bóng Sticker nổi trên đầu nhân vật 3D, đồng bộ qua `custom_tea_tables` |
 | 5 | Trợ lý Quán Trà tự gợi chuyện sau 60s & Nhịp nhấp trà 10s | Hoàn thành | `app.js` | Rót trà 3D tự động khi bàn yên ắng quá 60 giây |
 | 6 | Nhập liệu giọng nói & Sổ từ điển tự học phương ngữ | Hoàn thành | `app.js`, `data.js` | Xem trước câu nói chữ lớn trước khi gửi, tự sửa lỗi phát âm vùng miền |
@@ -28,6 +28,12 @@
 ---
 
 ## 2. Nhật Ký Phiên Bản Kỹ Thuật (Append-Only Engineering Log)
+
+### [2026-11-17] — Khóa Chuẩn Đồ Họa Full 2.5D (TLBB), Cố Định Chống Nhấp Nhô & Cân Chỉnh Tỷ Lệ Người Ngồi Khớp Ghế (`?v=20261117l`)
+- **Tệp cập nhật:** `tearoom3d.js`, `app.js`, `index.html` (`?v=20261117l`), `sw.js` (`tuoibac-pwa-v24`), `ARCHITECTURE.md`, `docs/02_SO_DO_DU_LIEU_VA_API_NOI_BO.md`, `docs/03_TIEN_DO_VA_NHAT_KY.md`, `docs/05_QUYET_DINH_KIEN_TRUC_ADR.md`.
+- **Chi tiết 2 hạng mục vừa hoàn thành:**
+  1. **Khử dứt điểm nhấp nhô & cân lại tỷ lệ người ngồi khớp 5 ghế (`tearoom3d.js`):** Loại bỏ dao động `Math.sin` theo trục dọc trên toàn bộ 5 nhân vật ngồi (`drawTableCloseUp25D`, `drawProfileShowcase25D` và Chị Trà lúc đứng nghỉ tại sảnh/tủ chè) để cả thân người và nhãn tên đứng yên tuyệt đối; tăng tỷ lệ cơ thể người lớn khớp đúng lưng tựa và nệm ghế (`0.415..0.475` kèm bù tỷ lệ nữ `0.92`, bàn chân chạm sàn thảm thật, mở rộng vùng che dưới gầm bàn và giữ bước đi nhẹ cho Chị Trà khi di chuyển rót trà).
+  2. **Tắt Hybrid 3D, khóa thống nhất `Đồ họa: Full 2.5D (TLBB)` (`tearoom3d.js`, `app.js`, `index.html`, `sw.js`):** Khóa `mode = "2.5d"` trong `TeaRoomScene.mount()` và `preferredRender = "2.5d"` trong `createDefaultState()` + `loadState()`; thay thanh 2 nút chuyển đổi bằng huy hiệu cố định `Đồ họa: Full 2.5D (TLBB)` và cập nhật `#sim-toggle-render`.
 
 ### [2026-11-17] — Chuẩn Hóa Vị Trí Ngồi 5 Ghế Có Che Khuất 2.5D, Chị Trà Đứng Đi Rót Trà & Đồng Bộ Tủ Đồ Ra Bàn Trà (`?v=20261117k`)
 - **Tệp cập nhật:** `assets/tearoom-sprites.webp`, `tearoom3d.js`, `app.js`, `index.html` (`?v=20261117k`), `sw.js` (`tuoibac-pwa-v23`), `ARCHITECTURE.md`, `docs/03_TIEN_DO_VA_NHAT_KY.md`.

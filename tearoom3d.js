@@ -1,5 +1,5 @@
 window.TeaRoomScene = (function () {
-  let mode = "3d"; // "3d" | "2.5d"
+  let mode = "2.5d"; // Khóa chuẩn Full 2.5D Cổ Điển (Thiên Long Bát Bộ)
   let animId = null;
   let lastFrame = 0;
   const FPS_INTERVAL = 1000 / 28;
@@ -102,7 +102,7 @@ window.TeaRoomScene = (function () {
     tblImg.onerror = () => {
       assets25D.tableReady = false;
     };
-    tblImg.src = "./assets/tearoom-table-25d.jpg?v=20261117k";
+    tblImg.src = "./assets/tearoom-table-25d.jpg?v=20261117l";
 
     const lobImg = new Image();
     lobImg.onload = () => {
@@ -113,7 +113,7 @@ window.TeaRoomScene = (function () {
     lobImg.onerror = () => {
       assets25D.lobbyReady = false;
     };
-    lobImg.src = "./assets/tearoom-lobby-25d.jpg?v=20261117k";
+    lobImg.src = "./assets/tearoom-lobby-25d.jpg?v=20261117l";
 
     const sprImg = new Image();
     sprImg.onload = () => {
@@ -126,7 +126,7 @@ window.TeaRoomScene = (function () {
     sprImg.onerror = () => {
       assets25D.spritesReady = false;
     };
-    sprImg.src = "./assets/tearoom-sprites.webp?v=20261117k";
+    sprImg.src = "./assets/tearoom-sprites.webp?v=20261117l";
   }
 
   function createCanvas2D(w, h) {
@@ -196,32 +196,31 @@ window.TeaRoomScene = (function () {
       ctx.restore();
     }
 
-    // High-contrast reading glasses calibrated to true eye pixels (crisp even when scaled small at table)
+    // Crisp reading glasses calibrated to adult eye pixels
     if (acc === "glasses" && col < 2) {
       ctx.save();
-      ctx.fillStyle = "rgba(235, 250, 255, 0.34)";
+      ctx.fillStyle = "rgba(235, 250, 255, 0.24)";
       ctx.beginPath();
-      ctx.ellipse(anchors.leftEyeX, anchors.eyeY, 6.8, 4.9, 0, 0, Math.PI * 2);
-      ctx.ellipse(anchors.rightEyeX, anchors.eyeY - 0.5, 6.2, 4.7, 0, 0, Math.PI * 2);
+      ctx.ellipse(anchors.leftEyeX, anchors.eyeY, 6.4, 4.6, 0, 0, Math.PI * 2);
+      ctx.ellipse(anchors.rightEyeX, anchors.eyeY - 0.5, 5.9, 4.4, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // Dark bronze rim + bright brass inner wire
       [
-        { color: "#4A2E0B", width: 2.8 },
-        { color: "#F2BC46", width: 1.3 }
+        { color: "#4A2E0B", width: 2.1 },
+        { color: "#F2BC46", width: 1.05 }
       ].forEach((pass) => {
         ctx.strokeStyle = pass.color;
         ctx.lineWidth = pass.width;
         ctx.beginPath();
-        ctx.ellipse(anchors.leftEyeX, anchors.eyeY, 6.8, 4.9, 0, 0, Math.PI * 2);
+        ctx.ellipse(anchors.leftEyeX, anchors.eyeY, 6.4, 4.6, 0, 0, Math.PI * 2);
         ctx.stroke();
         ctx.beginPath();
-        ctx.ellipse(anchors.rightEyeX, anchors.eyeY - 0.5, 6.2, 4.7, 0, 0, Math.PI * 2);
+        ctx.ellipse(anchors.rightEyeX, anchors.eyeY - 0.5, 5.9, 4.4, 0, 0, Math.PI * 2);
         ctx.stroke();
         ctx.beginPath();
-        ctx.moveTo(anchors.leftEyeX + 6.8, anchors.eyeY);
-        ctx.lineTo(anchors.rightEyeX - 6.2, anchors.eyeY - 0.5);
-        ctx.moveTo(anchors.leftEyeX - 6.8, anchors.eyeY);
+        ctx.moveTo(anchors.leftEyeX + 6.4, anchors.eyeY);
+        ctx.lineTo(anchors.rightEyeX - 5.9, anchors.eyeY - 0.5);
+        ctx.moveTo(anchors.leftEyeX - 6.4, anchors.eyeY);
         ctx.lineTo(anchors.earX, anchors.eyeY + 2);
         ctx.stroke();
       });
@@ -2045,10 +2044,10 @@ window.TeaRoomScene = (function () {
     ctx.fillStyle = sunGrad;
     ctx.fillRect(0, 0, w, h);
 
-    // Chị Trà standing gracefully beside the carved back tea counter
-    const hostX = wideRect.x + wideRect.w * 0.5 + Math.sin((now || 0) * 0.001) * 14;
-    const hostBottomY = wideRect.y + wideRect.h * 0.455;
-    const hostH = wideRect.h * 0.165;
+    // Chị Trà standing calmly beside the carved back tea counter
+    const hostX = wideRect.x + wideRect.w * 0.50;
+    const hostBottomY = wideRect.y + wideRect.h * 0.46;
+    const hostH = wideRect.h * 0.19;
     const hostW = hostH * (SPRITE_CELL_W / SPRITE_CELL_H);
     const hostSpr = composeSeniorSpriteCanvas({
       gender: "female",
@@ -2105,7 +2104,7 @@ window.TeaRoomScene = (function () {
         { dx: -22 * sc, dy: 14 * sc, flip: false, pose: "back" },
         { dx: 22 * sc, dy: 14 * sc, flip: true, pose: "back" }
       ];
-      const sprH = 44 * sc;
+      const sprH = 50 * sc;
       const sprW = sprH * (SPRITE_CELL_W / SPRITE_CELL_H);
 
       lobbyMembers.slice(0, 2).forEach((m, idx) => {
@@ -2216,7 +2215,7 @@ window.TeaRoomScene = (function () {
     ctx.fillRect(0, 0, w, h);
 
     // Helpers for exact 2.5D pelvis-anchored seating & foreground chair/tabletop occlusion
-    function drawAnchoredSprite(spr, col, anchorNx, anchorNy, hFrac, flip, isActive, bobY) {
+    function drawAnchoredSprite(spr, col, anchorNx, anchorNy, hFrac, flip, isActive, walkOffsetY) {
       const anchor = SEAT_ANCHORS[col] || SEAT_ANCHORS[0];
       const sprH = bgRect.h * hFrac;
       const sprW = sprH * (SPRITE_CELL_W / SPRITE_CELL_H);
@@ -2226,24 +2225,26 @@ window.TeaRoomScene = (function () {
       if (isActive) {
         ctx.save();
         const auraY = ay - anchor.v * sprH * 0.55;
-        const aura = ctx.createRadialGradient(ax, auraY, 6, ax, auraY, sprW * 0.48);
-        aura.addColorStop(0, "rgba(244, 176, 62, 0.44)");
+        const pulseAlpha = 0.34 + Math.sin((now || 0) * 0.005) * 0.10;
+        const aura = ctx.createRadialGradient(ax, auraY, 6, ax, auraY, sprW * 0.46);
+        aura.addColorStop(0, `rgba(244, 176, 62, ${pulseAlpha.toFixed(2)})`);
         aura.addColorStop(1, "rgba(244, 176, 62, 0)");
         ctx.fillStyle = aura;
         ctx.beginPath();
-        ctx.arc(ax, auraY, sprW * 0.48, 0, Math.PI * 2);
+        ctx.arc(ax, auraY, sprW * 0.46, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       }
 
+      const dy = walkOffsetY || 0;
       ctx.save();
-      ctx.translate(ax, ay + (bobY || 0));
+      ctx.translate(ax, ay + dy);
       if (flip) ctx.scale(-1, 1);
       ctx.drawImage(spr, -anchor.u * sprW, -anchor.v * sprH, sprW, sprH);
       ctx.restore();
       return {
         cx: ax,
-        headTopY: ay - anchor.v * sprH + (bobY || 0),
+        headTopY: ay - anchor.v * sprH + dy,
         sprH
       };
     }
@@ -2274,13 +2275,13 @@ window.TeaRoomScene = (function () {
       ctx.restore();
     }
 
-    // 5 exact cushion coordinates calibrated to the carved armchairs of tearoom-table-25d.jpg
+    // 5 exact cushion coordinates with dignified adult chair proportions (0 bobbing!)
     const chairSlots = [
-      { nx: 0.246, ny: 0.592, hFrac: 0.375, flip: false, pose: "front", order: 2, tagDx: -8, tagDy: 6 },   // 0: 8:30 left-front (Bạn)
-      { nx: 0.345, ny: 0.482, hFrac: 0.355, flip: false, pose: "front", order: 0, tagDx: -28, tagDy: 14 }, // 1: 10:30 left-back
-      { nx: 0.523, ny: 0.422, hFrac: 0.330, flip: false, pose: "front", order: 0, tagDx: 16, tagDy: -4 },  // 2: 12:00 top-center
-      { nx: 0.712, ny: 0.506, hFrac: 0.345, flip: true, pose: "front", order: 1, tagDx: 0, tagDy: 8 },     // 3: 2:00 right-back
-      { nx: 0.688, ny: 0.768, hFrac: 0.305, flip: false, pose: "back", order: 4, tagDx: 0, tagDy: 0 }      // 4: 4:30 foreground-right
+      { nx: 0.252, ny: 0.602, hFrac: 0.475, flip: false, pose: "front", order: 2, tagDx: -6, tagDy: 4 },   // 0: 8:30 left-front (Bạn)
+      { nx: 0.346, ny: 0.484, hFrac: 0.435, flip: false, pose: "front", order: 0, tagDx: -28, tagDy: 12 }, // 1: 10:30 left-back
+      { nx: 0.523, ny: 0.424, hFrac: 0.415, flip: false, pose: "front", order: 0, tagDx: 16, tagDy: 2 },   // 2: 12:00 top-center
+      { nx: 0.708, ny: 0.512, hFrac: 0.445, flip: true, pose: "front", order: 1, tagDx: 0, tagDy: 8 },     // 3: 2:00 right-back
+      { nx: 0.684, ny: 0.782, hFrac: 0.355, flip: false, pose: "back", order: 4, tagDx: 0, tagDy: 2 }      // 4: 4:30 foreground-right
     ];
 
     const list = currentConfig.table.members.slice(0, 4).map((m, idx) => ({
@@ -2312,7 +2313,7 @@ window.TeaRoomScene = (function () {
       const isActive = entry.seatPosIdx === activeSeatIdx;
       const isFem = m.gender === "female" || /^(Chị|Bà|Cô|Dì|Thím)/i.test(m.name || "");
       const col = slot.pose === "back" ? 2 : isFem ? 1 : 0;
-      const bob = isActive ? Math.sin((now || 0) * 0.006) * 1.8 : Math.sin((now || 0) * 0.002 + entry.slotIdx) * 0.7;
+      const scaleAdjust = isFem && slot.pose !== "back" ? 0.92 : 1.0;
       const spr = composeSeniorSpriteCanvas({
         gender: isFem ? "female" : "male",
         pose: slot.pose,
@@ -2321,7 +2322,8 @@ window.TeaRoomScene = (function () {
         accessory: m.hat || "none",
         titleFrameId: m.titleFrameId || "none"
       });
-      drawnAnchors[entry.slotIdx] = drawAnchoredSprite(spr, col, slot.nx, slot.ny, slot.hFrac, slot.flip, isActive, bob);
+      // Zero vertical bobbing so seated members sit rock-solid on their chairs
+      drawnAnchors[entry.slotIdx] = drawAnchoredSprite(spr, col, slot.nx, slot.ny, slot.hFrac * scaleAdjust, slot.flip, isActive, 0);
     }
 
     // 1) Draw 3 back chairs (10:30, 12:00, 2:00)
@@ -2330,10 +2332,11 @@ window.TeaRoomScene = (function () {
       .sort((a, b) => chairSlots[a.slotIdx].order - chairSlots[b.slotIdx].order)
       .forEach(renderSeatedSlot);
 
-    // 2) Restore Chair 2:00 outer right armrest, under-table gap & central rosewood tabletop so back knees tuck underneath!
-    restoreBackdropPoly([[0.720, 0.520], [0.785, 0.495], [0.795, 0.655], [0.700, 0.650]]);
-    restoreBackdropPoly([[0.625, 0.595], [0.695, 0.590], [0.700, 0.655], [0.625, 0.655]]);
-    restoreBackdropEllipse(0.510, 0.540, 0.174, 0.116);
+    // 2) Restore Chair 2:00 outer right armrest, under-table shadows & central rosewood tabletop so knees tuck naturally underneath!
+    restoreBackdropPoly([[0.718, 0.520], [0.790, 0.495], [0.800, 0.695], [0.698, 0.690]]);
+    restoreBackdropPoly([[0.610, 0.590], [0.702, 0.585], [0.705, 0.700], [0.610, 0.700]]);
+    restoreBackdropPoly([[0.335, 0.545], [0.415, 0.545], [0.415, 0.665], [0.335, 0.665]]);
+    restoreBackdropEllipse(0.510, 0.542, 0.174, 0.118);
 
     // 3) Draw Chair 0 (8:30 left-front "Bạn") naturally in front of left rug
     list.filter((entry) => entry.slotIdx === 0).forEach(renderSeatedSlot);
@@ -2372,13 +2375,13 @@ window.TeaRoomScene = (function () {
     list.filter((entry) => entry.slotIdx === 4).forEach(renderSeatedSlot);
     restoreBackdropPoly([[0.735, 0.625], [0.805, 0.615], [0.800, 0.900], [0.715, 0.890]]);
 
-    // 6) Standing & walking Trợ lý Chị Trà holding tea tray: waits by left sideboard, walks to table to pour, walks back!
+    // 6) Standing & walking Trợ lý Chị Trà holding tea tray: calm at left sideboard when idle, walks steadily to pour!
     const pourDur = 4200;
     const elapsed = hostServingTimer > 0 ? Math.max(0, pourDur - hostServingTimer) : 0;
     const pFrac = elapsed / pourDur;
-    let hostNx = 0.115;
-    let hostNy = 0.655;
-    let hostScale = 0.335;
+    let hostNx = 0.112;
+    let hostNy = 0.675;
+    let hostScale = 0.425;
     let hostFlip = false;
     let stepBob = 0;
     let hostActionLabel = "";
@@ -2387,25 +2390,25 @@ window.TeaRoomScene = (function () {
       if (pFrac < 0.36) {
         const k = pFrac / 0.36;
         const ease = k * k * (3 - 2 * k);
-        hostNx = 0.115 + ease * 0.290;
-        hostNy = 0.655 + Math.sin(ease * Math.PI * 0.5) * 0.185;
-        hostScale = 0.335 + ease * 0.025;
-        stepBob = -Math.abs(Math.sin((now || 0) * 0.015)) * 3.5;
+        hostNx = 0.112 + ease * 0.293;
+        hostNy = 0.675 + Math.sin(ease * Math.PI * 0.5) * 0.185;
+        hostScale = 0.425 + ease * 0.035;
+        stepBob = -Math.abs(Math.sin((now || 0) * 0.013)) * 2.2;
         hostActionLabel = "Trợ lý Chị Trà · Đang ra mời";
       } else if (pFrac < 0.68) {
         hostNx = 0.405;
-        hostNy = 0.840;
-        hostScale = 0.360;
-        stepBob = Math.sin((now || 0) * 0.004) * 1.2;
+        hostNy = 0.860;
+        hostScale = 0.460;
+        stepBob = 0;
         hostActionLabel = "Trợ lý Chị Trà · Rót trà";
       } else {
         const k = (pFrac - 0.68) / 0.32;
         const ease = k * k * (3 - 2 * k);
-        hostNx = 0.405 - ease * 0.290;
-        hostNy = 0.840 - (1 - Math.cos(ease * Math.PI * 0.5)) * 0.185;
-        hostScale = 0.360 - ease * 0.025;
+        hostNx = 0.405 - ease * 0.293;
+        hostNy = 0.860 - (1 - Math.cos(ease * Math.PI * 0.5)) * 0.185;
+        hostScale = 0.460 - ease * 0.035;
         hostFlip = true;
-        stepBob = -Math.abs(Math.sin((now || 0) * 0.015)) * 3.5;
+        stepBob = -Math.abs(Math.sin((now || 0) * 0.013)) * 2.2;
         hostActionLabel = "Trợ lý Chị Trà · Quay lại";
       }
     }
@@ -2544,10 +2547,10 @@ window.TeaRoomScene = (function () {
     ctx.lineWidth = 2.5;
     ctx.stroke();
 
-    // Carved wooden armchair scaled accurately behind full-shoe seated portrait
+    // Carved wooden armchair scaled accurately behind full-shoe adult seated portrait
     const px = w * 0.32;
-    const baseFootY = h * 0.91;
-    const sprH = h * 0.72;
+    const baseFootY = h * 0.92;
+    const sprH = h * 0.78;
     const sprW = sprH * (SPRITE_CELL_W / SPRITE_CELL_H);
     const sprCol = (currentConfig.userGender || "male") === "female" ? 1 : 0;
     const anch = SEAT_ANCHORS[sprCol];
@@ -2579,7 +2582,6 @@ window.TeaRoomScene = (function () {
     ctx.fill();
     ctx.restore();
 
-    const sway = Math.sin((now || 0) * 0.0022) * 1.4;
     const spr = composeSeniorSpriteCanvas({
       gender: currentConfig.userGender || "male",
       pose: "front",
@@ -2588,7 +2590,7 @@ window.TeaRoomScene = (function () {
       accessory: currentConfig.userAccessory || "glasses",
       titleFrameId: currentConfig.userTitleFrame || "none"
     });
-    ctx.drawImage(spr, px - anch.u * sprW, baseFootY - sprH + sway, sprW, sprH);
+    ctx.drawImage(spr, px - anch.u * sprW, baseFootY - sprH, sprW, sprH);
 
     // Rosewood round side table & enlarged painterly Table Item on the right
     const tx = w * 0.72;
@@ -2757,15 +2759,8 @@ window.TeaRoomScene = (function () {
     onFallbackCallback = fallbackCb || null;
     tableAzimuth = 0;
     pan25DX = 0;
-    mode = config.preferredMode || "3d";
-
-    if (mode === "3d") {
-      const ok = init3DScene(config);
-      if (!ok) {
-        mode = "2.5d";
-        if (onFallbackCallback) onFallbackCallback("auto-fallback");
-      }
-    }
+    // Khóa chuẩn Đồ họa: Full 2.5D (TLBB) cho toàn Quán Trà
+    mode = "2.5d";
 
     if (canvasEl && config) {
       const isOv = config.viewMode === "overview";

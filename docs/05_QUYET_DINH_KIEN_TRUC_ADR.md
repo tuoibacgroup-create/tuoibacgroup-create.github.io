@@ -70,10 +70,10 @@ Tài liệu này lưu lại **lý do cốt lõi (Why)** đằng sau 6 quyết đ
 
 ---
 
-## ADR-008: Kiến Trúc Hai Chế Độ Đồ Họa Song Song — Full 2.5D Cổ Điển (TLBB) & Hybrid Phòng 3D Xoay + Nhân Vật 2.5D Sprite (`tearoom3d.js`)
-- **Trạng thái:** Đã chấp thuận & Đang vận hành (2026-11)
-- **Bối cảnh:** Trong Quán Trà, việc dựng nhân vật thuần Three.js Low-Poly bằng khối cầu/trụ tạo cảm giác thô cứng như đồ chơi trẻ em, kém phù hợp thẩm mỹ chững chạc của người cao tuổi 55+. Đồng thời thiết bị của hội viên rất đa dạng: máy Android đời cũ cần chế độ nhẹ không tốn WebGL để giữ pin, trong khi máy khỏe hơn lại muốn kéo ngang xoay góc phòng trà 3D.
+## ADR-008: Chuẩn Hóa Đồ Họa Quán Trà Full 2.5D Cổ Điển (TLBB) Không Nhấp Nhô (`tearoom3d.js`)
+- **Trạng thái:** Đã chấp thuận & Đang vận hành (2026-11, khóa thống nhất `Full 2.5D TLBB`)
+- **Bối cảnh:** Sau khi thử nghiệm song song hai chế độ, chế độ Hybrid 3D dùng góc nhìn hình khối vẫn dễ gây chồng chéo thẻ tên và hao GPU hơn, trong khi bức tranh đẳng cự 2.5D cổ điển kiểu Thiên Long Bát Bộ mang lại cảm giác ấm cúng, đồng bộ nhất cho người cao tuổi 55+. Đồng thời cần triệt tiêu dao động bồng bềnh của nhân vật ngồi và cân tỷ lệ người lớn khớp với kích thước ghế.
 - **Quyết định:**
-  - Dùng chung một **Sprite Atlas 3×2 WebP (`assets/tearoom-sprites.webp`, `42.8 KB`)** gồm hàng 1 ảnh nhân vật khử nền Chroma-key và hàng 2 mặt nạ độ sáng áo coban tách riêng để nhuộm động cả 5 màu trang phục (`OUTFITS`), ghép phụ kiện (`ACCESSORIES`) và huy hiệu khung danh hiệu (`TITLE_FRAMES`) một lần rồi lưu cache Canvas `220×280`.
-  - Hỗ trợ người chơi chuyển đổi trực tiếp giữa **Full 2.5D Cổ Điển (Thiên Long Bát Bộ)** (nền tranh đẳng cự `tearoom-lobby-25d.jpg` + `tearoom-table-25d.jpg`, `0` ngữ cảnh WebGL, nhẹ CPU/GPU/pin) và **Hybrid Phòng 3D Xoay + Nhân Vật 2.5D Billboard** (giữ khung phòng gỗ/bàn ghế chạm Three.js có thể kéo xoay góc ngang ở cả Sảnh, Bàn trà và Tủ đồ, còn nhân vật dùng 2.5D Billboard trục Y tự xoay hướng camera và đổi mặt trước/sau theo góc nhìn).
-- **Hệ quả:** Xóa bỏ hoàn toàn tạo hình hình khối Low-Poly cũ, giữ dung lượng bộ tài nguyên mới gọn nhẹ (~`316 KB` cho 3 tệp tĩnh được `sw.js` cache offline) và trao quyền lựa chọn độ mượt / hiệu ứng ngay trên giao diện cho hội viên.
+  - Sử dụng **Sprite Atlas 4×2 WebP (`assets/tearoom-sprites.webp`, `49.0 KB`)** gồm 3 tư thế ngồi đủ ống chân/giày guốc (Nam 3/4, Nữ 3/4, Góc lưng 3/4) và Chị Trà đứng bưng khay trà kết hợp hàng mặt nạ độ sáng áo coban để nhuộm động cả 5 màu trang phục (`OUTFITS`), ghép phụ kiện (`ACCESSORIES`) và huy hiệu khung danh hiệu (`TITLE_FRAMES`) một lần rồi lưu cache Canvas `220×280`.
+  - Khóa toàn bộ Quán Trà về duy nhất chế độ **Full 2.5D Cổ Điển (TLBB)** (`mode === "2.5d"` trong `tearoom3d.js`, `preferredRender === "2.5d"` trong `app.js`): khóa cố định nhân vật ngồi cân hông theo `SEAT_ANCHORS` không nhấp nhô, khôi phục lớp che mặt bàn gỗ & tựa ghế, và giữ hiệu ứng bước đi cho Chị Trà khi rời tủ chè ra mời trà.
+- **Hệ quả:** Giao diện quán trà đồng nhất 100%, giữ trọng lượng tài nguyên gọn (`~322 KB` được `sw.js` cache offline), không mở ngữ cảnh WebGL ở Quán Trà và đứng yên dễ nhìn tuyệt đối với người cao tuổi.
