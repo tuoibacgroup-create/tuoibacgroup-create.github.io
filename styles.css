@@ -1109,21 +1109,21 @@ p {
   color: var(--danger);
 }
 
-/* Ô ăn quan Board — Bàn Gỗ Khắc Hốc & Sỏi Cuội Thực Tế 1:1 */
+/* Ô ăn quan Board — Bàn Gỗ Hương Khắc Hốc & Sỏi Cuội Suối 3D Thực Tế */
 .oaq-score-tray {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 9px 11px;
+  padding: 10px 12px;
   border-radius: 14px;
-  background-color: #F4E8D1;
-  border: 1px solid #B59264;
-  box-shadow: inset 0 2px 5px rgba(74, 46, 20, 0.12);
+  background-color: #EFE4CF;
+  border: 1px solid #B79C78;
+  box-shadow: inset 0 2px 4px rgba(32, 22, 14, 0.10);
 }
 
 .oaq-score-tray.is-player {
-  background-color: #FDF3DF;
-  border-color: #C87D4B;
+  background-color: #FBF2E1;
+  border-color: #B88652;
 }
 
 .oaq-score-tray-head {
@@ -1141,21 +1141,21 @@ p {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   min-height: 22px;
 }
 
 .oaq-mini-stone {
   display: inline-block;
-  width: 14px;
-  height: 11px;
+  width: 15px;
+  height: 11.5px;
   border-radius: 50%;
-  border: 1px solid #6E5238;
-  box-shadow: inset -1px -1px 2px rgba(25, 15, 8, 0.25), 0 1px 2px rgba(25, 15, 8, 0.2);
+  border: 1px solid rgba(35, 24, 16, 0.35);
+  box-shadow: 0 1px 2px rgba(20, 14, 8, 0.25);
 }
 
 .oaq-mini-more {
-  font-size: 0.82rem;
+  font-size: 0.84rem;
   font-weight: 700;
   color: var(--accent-terracotta);
   padding-left: 2px;
@@ -1167,23 +1167,48 @@ p {
   font-style: italic;
 }
 
+.oaq-hand-live-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background-color: #FFF6E0;
+  border: 1px solid #C8923B;
+  color: #4A2810;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.oaq-hand-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background-color: #5A3016;
+  color: #FFE8A3;
+  font-size: 0.84rem;
+}
+
 .oaq-board {
-  background: linear-gradient(180deg, #C6935B 0%, #A8733E 52%, #8F5E2E 100%);
-  border: 1px solid #5C3818;
+  background: linear-gradient(180deg, #683E23 0%, #522E18 52%, #3E2110 100%);
+  border: 1px solid #2E170A;
   border-radius: 26px;
-  padding: 8px 5px;
+  padding: 9px 6px;
   display: grid;
   grid-template-columns: 48px repeat(5, minmax(0, 1fr)) 48px;
   grid-template-rows: 1fr 1fr;
-  gap: 4px;
+  gap: 5px;
   align-items: stretch;
-  box-shadow: inset 0 2px 6px rgba(255, 236, 200, 0.35), 0 6px 14px rgba(45, 26, 12, 0.18);
+  box-shadow: 0 6px 14px rgba(24, 16, 10, 0.22);
 }
 
 .oaq-quan {
   grid-row: 1 / 3;
-  background: linear-gradient(180deg, #DFBE8F 0%, #C89F68 100%);
-  border: 1px solid #5C3818;
+  background: linear-gradient(180deg, #7E4E2E 0%, #5E371D 100%);
+  border: 1px solid rgba(226, 184, 126, 0.36);
   border-radius: 999px;
   display: flex;
   flex-direction: column;
@@ -1192,8 +1217,9 @@ p {
   gap: 2px;
   padding: 6px 2px;
   font-weight: 700;
-  box-shadow: inset 0 3px 8px rgba(58, 34, 14, 0.35);
+  box-shadow: inset 0 2px 6px rgba(16, 8, 4, 0.45);
   min-width: 0;
+  transition: transform 0.16s ease-out, border-color 0.16s ease-out;
 }
 
 .oaq-quan-left {
@@ -1211,18 +1237,19 @@ p {
   min-width: 28px;
   padding: 1px 6px;
   border-radius: 999px;
-  background-color: #4A2810;
-  color: #FFE89E;
-  font-size: 0.88rem;
+  background-color: rgba(24, 12, 6, 0.72);
+  border: 1px solid rgba(242, 204, 132, 0.45);
+  color: #FFF4D2;
+  font-size: 0.86rem;
   font-weight: 800;
   line-height: 1.2;
 }
 
 .oaq-cell {
-  min-height: 86px;
+  min-height: 88px;
   min-width: 0;
-  background: linear-gradient(180deg, #F6E7CE 0%, #E5CCA4 100%);
-  border: 1px solid #6E4724;
+  background: linear-gradient(180deg, #875534 0%, #6B4023 100%);
+  border: 1px solid rgba(226, 184, 126, 0.34);
   border-radius: 14px;
   display: flex;
   flex-direction: column;
@@ -1231,19 +1258,39 @@ p {
   gap: 2px;
   font-weight: 700;
   padding: 4px 2px 3px;
-  box-shadow: inset 0 2px 6px rgba(68, 40, 16, 0.25);
+  box-shadow: inset 0 2px 5px rgba(18, 9, 4, 0.38);
+  transition: transform 0.16s ease-out, border-color 0.16s ease-out, background 0.16s ease-out;
 }
 
 .oaq-cell.player-side {
-  background: linear-gradient(180deg, #FFF9EC 0%, #F4DFB9 100%);
-  border-color: #B83B2A;
+  background: linear-gradient(180deg, #9A643F 0%, #7A4B2A 100%);
+  border-color: rgba(247, 212, 148, 0.62);
 }
 
 .oaq-cell.selected {
-  background: linear-gradient(180deg, #D95338 0%, #A82E1C 100%);
-  border-color: #FFE082;
+  background: linear-gradient(180deg, #B8432E 0%, #8C2B1B 100%);
+  border-color: #FFE49C;
   color: #FFFFFF;
-  box-shadow: 0 3px 8px rgba(35, 26, 20, 0.24);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(24, 16, 10, 0.28);
+}
+
+.oaq-cell.is-sowing-active,
+.oaq-quan.is-sowing-active {
+  border-color: #FFE49C;
+  background: linear-gradient(180deg, #A86B38 0%, #7E4B22 100%);
+  transform: translateY(-1px);
+}
+
+.oaq-cell.is-captured-flash,
+.oaq-quan.is-captured-flash {
+  border-color: #A8F0C6;
+  background: linear-gradient(180deg, #2E6E56 0%, #1F4E3C 100%);
+}
+
+.oaq-cell.is-slap-empty {
+  border-color: #FFD166;
+  background: linear-gradient(180deg, #70492C 0%, #4E301B 100%);
 }
 
 .oaq-cell-head {
@@ -1258,12 +1305,14 @@ p {
 .oaq-count-num {
   font-size: 0.96rem;
   font-weight: 800;
-  color: #2A160B;
+  color: #FFF8EB;
 }
 
-.oaq-cell.selected .oaq-count-num,
-.oaq-cell.selected small {
-  color: #FFFDF7;
+.oaq-plus-one {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #FFE484;
+  margin-left: 1px;
 }
 
 .oaq-pit-svg {
@@ -1278,11 +1327,30 @@ p {
   height: 112px;
 }
 
+@keyframes oaqPebbleDropIn {
+  0% {
+    opacity: 0.25;
+    transform: translateY(-13px) scale(1.28);
+  }
+  70% {
+    opacity: 1;
+    transform: translateY(1.5px) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.oaq-pebble.is-newly-dropped ellipse {
+  animation: oaqPebbleDropIn 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 .oaq-cell small,
 .oaq-quan small {
   font-size: 12px;
-  font-weight: 700;
-  color: #4E3018;
+  font-weight: 600;
+  color: #EDD9BE;
   white-space: nowrap;
 }
 

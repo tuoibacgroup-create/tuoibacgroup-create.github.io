@@ -241,6 +241,8 @@
   let teaQueueTimerId = null;
   let cooldownTickId = null;
   let autoMuyuTimerId = null;
+  let oaqAnimTimerId = null;
+  let oaqAnimState = null;
   let pendingQueue = [];
   let pendingVoiceDraft = null;
   let activeGameTab = "oaq";
@@ -1064,6 +1066,9 @@
     clearInterval(cooldownTickId);
     if ((state.route === "tearoom" || state.route === "profile") && route !== state.route) {
       window.TeaRoomScene.dispose();
+    }
+    if (state.route === "games" && route !== "games") {
+      cancelOrCommitOaqAnimation(true);
     }
     if (state.route === "zen" && route !== "zen") {
       if (autoMuyuTimerId) {
@@ -4372,14 +4377,354 @@
     }
   }
 
+  // Sỏi cuội suối tự nhiên (Trắng thạch anh, Đen bazan, Nâu cát sông, Xám đá phiến — không màu kẹo ngọt trẻ con)
   const PEBBLE_PALETTE = [
-    { body: "#F2EAE0", rim: "#8C7D6B", sheen: "#FFFFFF" }, // Sỏi cuội trắng ngà
-    { body: "#DEB887", rim: "#7A5835", sheen: "#FFF6E5" }, // Sỏi cát vàng ấm
-    { body: "#80AD98", rim: "#3B6654", sheen: "#D8F3E6" }, // Sỏi ngọc bích nhạt
-    { body: "#96A2AE", rim: "#49545E", sheen: "#E8F0F8" }, // Sỏi đá xanh xám
-    { body: "#D4886A", rim: "#7A3E28", sheen: "#FFE5D9" }, // Sỏi đất nung đỏ ấm
-    { body: "#E5B454", rim: "#825B12", sheen: "#FFF7CC" }  // Sỏi hổ phách
+    { id: "quartz", hi: "#FAF7F0", mid: "#DDD5C5", low: "#9C9282", cssBg: "radial-gradient(circle at 32% 30%, #FAF7F0 0%, #DDD5C5 56%, #9C9282 100%)", rim: "#7A7062" },
+    { id: "basalt", hi: "#787E85", mid: "#3B4046", low: "#1B1E22", cssBg: "radial-gradient(circle at 32% 30%, #787E85 0%, #3B4046 58%, #1B1E22 100%)", rim: "#181A1D" },
+    { id: "jasper", hi: "#EAD2B0", mid: "#B48C60", low: "#6B4C2B", cssBg: "radial-gradient(circle at 32% 30%, #EAD2B0 0%, #B48C60 58%, #6B4C2B 100%)", rim: "#593E22" },
+    { id: "slate", hi: "#D6D3CB", mid: "#938E84", low: "#534F48", cssBg: "radial-gradient(circle at 32% 30%, #D6D3CB 0%, #938E84 58%, #534F48 100%)", rim: "#46423C" }
   ];
+
+  function playOaqPebbleDropSound(stepCount, isCapture) {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    try {
+      const ctx = new AudioCtx();
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = isCapture ? "sine" : "triangle";
+      const baseFreq = isCapture ? 520 : 370 + ((stepCount || 0) % 5) * 26;
+      osc.frequency.setValueAtTime(baseFreq, now);
+      osc.frequency.exponentialRampToValueAtTime(isCapture ? 240 : 120, now + (isCapture ? 0.12 : 0.055));
+      gain.gain.setValueAtTime(isCapture ? 0.24 : 0.15, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + (isCapture ? 0.13 : 0.065));
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + (isCapture ? 0.14 : 0.07));
+    } catch (e) {}
+  }
+
+  function getOaqCellLabel(idx) {
+    if (idx === 11) return "Quan Trái";
+    if (idx === 5) return "Quan Phải";
+    return `Ô ${idx + 1}`;
+  }
+
+  function buildOaqMoveTimeline(initialCells, startScoreP, startScoreAI, startIdx, dirStep, isPlayer, actorName, dirLabel) {
+    const cells = initialCells.slice();
+    let scoreP = startScoreP;
+    let scoreAI = startScoreAI;
+    let hand = cells[startIdx];
+    if (hand <= 0) return null;
+
+    const frames = [];
+    const stepNext = (idx) => (idx + dirStep + 12) % 12;
+
+    cells[startIdx] = 0;
+    frames.push({
+      kind: "pickup",
+      cells: cells.slice(),
+      scoreP,
+      scoreAI,
+      hand,
+      activeCell: startIdx,
+      newlyDroppedCell: null,
+      capturedCell: null,
+      slapEmptyCell: null,
+      delayMs: 250,
+      statusText: `${actorName} bốc ${hand} viên sỏi từ ${getOaqCellLabel(startIdx)} để rải sang ${dirLabel}...`
+    });
+
+    let pos = startIdx;
+    let totalVisualDrops = 0;
+
+    while (true) {
+      while (hand > 0) {
+        pos = stepNext(pos);
+        cells[pos] += 1;
+        hand -= 1;
+        totalVisualDrops += 1;
+        if (frames.length < 64) {
+          frames.push({
+            kind: "drop",
+            cells: cells.slice(),
+            scoreP,
+            scoreAI,
+            hand,
+            activeCell: pos,
+            newlyDroppedCell: pos,
+            capturedCell: null,
+            slapEmptyCell: null,
+            delayMs: totalVisualDrops <= 10 ? 270 : 145,
+            statusText:
+              hand > 0
+                ? `${actorName} thả 1 viên vào ${getOaqCellLabel(pos)} (trên tay còn ${hand} viên)...`
+                : `${actorName} thả viên cuối cùng trên tay vào ${getOaqCellLabel(pos)}.`
+          });
+        }
+      }
+
+      const next = stepNext(pos);
+      if (next === 5 || next === 11) {
+        frames.push({
+          kind: "stop_quan",
+          cells: cells.slice(),
+          scoreP,
+          scoreAI,
+          hand: 0,
+          activeCell: next,
+          newlyDroppedCell: null,
+          capturedCell: null,
+          slapEmptyCell: null,
+          delayMs: 240,
+          statusText: `Gặp ${getOaqCellLabel(next)} phía trước — dừng lượt rải.`
+        });
+        break;
+      }
+
+      if (cells[next] > 0) {
+        hand = cells[next];
+        cells[next] = 0;
+        pos = next;
+        if (frames.length < 64) {
+          frames.push({
+            kind: "pickup_chain",
+            cells: cells.slice(),
+            scoreP,
+            scoreAI,
+            hand,
+            activeCell: next,
+            newlyDroppedCell: null,
+            capturedCell: null,
+            slapEmptyCell: null,
+            delayMs: 360,
+            statusText: `Bốc nối tiếp ${hand} viên sỏi ở ${getOaqCellLabel(next)} để rải tiếp!`
+          });
+        }
+      } else {
+        let after = stepNext(next);
+        let checkEmpty = next;
+        let anyCaptured = false;
+
+        while (cells[checkEmpty] === 0 && cells[after] > 0) {
+          anyCaptured = true;
+          const capAmt = cells[after];
+          frames.push({
+            kind: "slap_empty",
+            cells: cells.slice(),
+            scoreP,
+            scoreAI,
+            hand: 0,
+            activeCell: checkEmpty,
+            newlyDroppedCell: null,
+            capturedCell: null,
+            slapEmptyCell: checkEmpty,
+            delayMs: 260,
+            statusText: `Chập ô trống ${getOaqCellLabel(checkEmpty)}!`
+          });
+
+          cells[after] = 0;
+          if (isPlayer) scoreP += capAmt;
+          else scoreAI += capAmt;
+
+          frames.push({
+            kind: "capture",
+            cells: cells.slice(),
+            scoreP,
+            scoreAI,
+            hand: 0,
+            activeCell: after,
+            newlyDroppedCell: null,
+            capturedCell: after,
+            slapEmptyCell: null,
+            delayMs: 460,
+            statusText: `${actorName} ăn được ${capAmt} viên sỏi từ ${getOaqCellLabel(after)}!`
+          });
+
+          checkEmpty = stepNext(after);
+          if (checkEmpty === 5 || checkEmpty === 11) break;
+          after = stepNext(checkEmpty);
+        }
+
+        if (!anyCaptured) {
+          frames.push({
+            kind: "stop_empty",
+            cells: cells.slice(),
+            scoreP,
+            scoreAI,
+            hand: 0,
+            activeCell: next,
+            newlyDroppedCell: null,
+            capturedCell: null,
+            slapEmptyCell: next,
+            delayMs: 220,
+            statusText: `Gặp hai ô trống liên tiếp — hết lượt rải.`
+          });
+        }
+        break;
+      }
+    }
+
+    // Rải cứu bàn nếu một bên hết sạch 5 ô Dân khi vẫn còn Quan
+    const pSum = cells.slice(0, 5).reduce((a, b) => a + b, 0);
+    if (pSum === 0 && (cells[5] > 0 || cells[11] > 0)) {
+      for (let i = 0; i < 5; i++) cells[i] = 1;
+      frames.push({
+        kind: "refill",
+        cells: cells.slice(),
+        scoreP,
+        scoreAI,
+        hand: 0,
+        activeCell: null,
+        newlyDroppedCell: null,
+        capturedCell: null,
+        slapEmptyCell: null,
+        delayMs: 280,
+        statusText: "Hàng dưới hết quân Dân — tự động rải 5 viên tiếp sức."
+      });
+    }
+    const aiSum = cells.slice(6, 11).reduce((a, b) => a + b, 0);
+    if (aiSum === 0 && (cells[5] > 0 || cells[11] > 0)) {
+      for (let i = 6; i < 11; i++) cells[i] = 1;
+      frames.push({
+        kind: "refill",
+        cells: cells.slice(),
+        scoreP,
+        scoreAI,
+        hand: 0,
+        activeCell: null,
+        newlyDroppedCell: null,
+        capturedCell: null,
+        slapEmptyCell: null,
+        delayMs: 280,
+        statusText: "Hàng trên hết quân Dân — tự động rải 5 viên tiếp sức."
+      });
+    }
+
+    return {
+      frames,
+      finalSnapshot: {
+        cells: cells.slice(),
+        scoreP,
+        scoreAI
+      }
+    };
+  }
+
+  function cancelOrCommitOaqAnimation(commitFinal) {
+    if (oaqAnimTimerId) {
+      clearTimeout(oaqAnimTimerId);
+      oaqAnimTimerId = null;
+    }
+    if (oaqAnimState) {
+      const pending = oaqAnimState;
+      oaqAnimState = null;
+      if (commitFinal && pending.finalSnapshot) {
+        state.oaq.cells = pending.finalSnapshot.cells.slice();
+        state.oaq.scoreP = pending.finalSnapshot.scoreP;
+        state.oaq.scoreAI = pending.finalSnapshot.scoreAI;
+        state.oaq.selectedCell = null;
+        if (typeof pending.onSettled === "function") {
+          pending.onSettled(true);
+        } else {
+          saveState();
+        }
+      }
+    }
+  }
+
+  function runOaqSowingAnimation(timeline, onComplete) {
+    cancelOrCommitOaqAnimation(false);
+    if (!timeline || !Array.isArray(timeline.frames) || timeline.frames.length === 0) {
+      if (typeof onComplete === "function") onComplete();
+      return;
+    }
+
+    state.oaq.selectedCell = null;
+    oaqAnimState = {
+      stepIdx: 0,
+      frames: timeline.frames,
+      finalSnapshot: timeline.finalSnapshot,
+      currentFrame: timeline.frames[0],
+      onSettled: (wasAborted) => {
+        if (!wasAborted && typeof onComplete === "function") {
+          onComplete();
+        } else {
+          state.oaq.turn = "host";
+          saveState();
+        }
+      }
+    };
+
+    const advanceStep = () => {
+      if (!oaqAnimState) return;
+      const idx = oaqAnimState.stepIdx;
+      if (idx >= oaqAnimState.frames.length) {
+        state.oaq.cells = oaqAnimState.finalSnapshot.cells.slice();
+        state.oaq.scoreP = oaqAnimState.finalSnapshot.scoreP;
+        state.oaq.scoreAI = oaqAnimState.finalSnapshot.scoreAI;
+        const doneCb = onComplete;
+        oaqAnimState = null;
+        oaqAnimTimerId = null;
+        saveState();
+        if (typeof doneCb === "function") doneCb();
+        return;
+      }
+
+      const fr = oaqAnimState.frames[idx];
+      oaqAnimState.currentFrame = fr;
+      state.oaq.cells = fr.cells.slice();
+      state.oaq.scoreP = fr.scoreP;
+      state.oaq.scoreAI = fr.scoreAI;
+      state.oaq.statusText = fr.statusText;
+
+      if (fr.kind === "drop") {
+        playOaqPebbleDropSound(idx, false);
+      } else if (fr.kind === "capture") {
+        playOaqPebbleDropSound(idx, true);
+      } else if (fr.kind === "pickup" || fr.kind === "pickup_chain") {
+        playWoodPieceClack(false);
+      }
+
+      if (state.route === "games" && activeGameTab === "oaq") {
+        const body = document.getElementById("game-tab-body");
+        if (body) renderOaqTab(body);
+      }
+
+      oaqAnimState.stepIdx += 1;
+      oaqAnimTimerId = setTimeout(advanceStep, fr.delayMs || 260);
+    };
+
+    advanceStep();
+  }
+
+  function renderOaqStoneGradientDefs() {
+    return `
+      <defs>
+        ${PEBBLE_PALETTE.map(
+          (p) => `
+          <radialGradient id="oaq-grad-${p.id}" cx="34%" cy="30%" r="68%">
+            <stop offset="0%" stop-color="${p.hi}" />
+            <stop offset="56%" stop-color="${p.mid}" />
+            <stop offset="100%" stop-color="${p.low}" />
+          </radialGradient>
+        `
+        ).join("")}
+        <radialGradient id="oaq-grad-mandarin" cx="34%" cy="28%" r="70%">
+          <stop offset="0%" stop-color="#FFF4C8" />
+          <stop offset="45%" stop-color="#D99032" />
+          <stop offset="100%" stop-color="#6B370A" />
+        </radialGradient>
+        <radialGradient id="oaq-pit-wood" cx="50%" cy="44%" r="58%">
+          <stop offset="0%" stop-color="#4A2B16" />
+          <stop offset="72%" stop-color="#361E0E" />
+          <stop offset="100%" stop-color="#241207" />
+        </radialGradient>
+      </defs>
+    `;
+  }
 
   function computePebblePositions(count, isQuan, cellSeed) {
     const n = Math.max(0, Math.floor(Number(count) || 0));
@@ -4387,10 +4732,9 @@
     const out = [];
 
     if (isQuan) {
-      // Hốc Bán Nguyệt Ô Quan (viewBox 88x164, tâm (44, 82))
       const hasMandarinGem = n >= 10;
       if (hasMandarinGem) {
-        out.push({ x: 44, y: 80, rx: 16.5, ry: 12.2, rot: -12, isMandarin: true, colorIdx: 5 });
+        out.push({ x: 44, y: 80, rx: 16.5, ry: 12.2, rot: -12, isMandarin: true, colorIdx: 0 });
       }
       const rem = hasMandarinGem ? n - 1 : n;
       const rStone = rem <= 8 ? 7.8 : rem <= 14 ? 6.8 : 5.8;
@@ -4414,7 +4758,6 @@
       return out;
     }
 
-    // Hốc Ô Dân (viewBox 100x68, tâm (50, 35)) — Sắp xếp tự nhiên, đếm được từng viên 1:1
     const presetCoords = {
       1: [[50, 35, 11.2]],
       2: [[34, 35, 10.2], [66, 35, 10.2]],
@@ -4462,31 +4805,32 @@
     return out;
   }
 
-  function renderOaqCellPebblesSvg(count, isQuan, cellSeed) {
+  function renderOaqCellPebblesSvg(count, isQuan, cellSeed, highlightNewStone) {
     const stones = computePebblePositions(count, isQuan, cellSeed);
     const vb = isQuan ? "0 0 88 164" : "0 0 100 68";
     const pitShape = isQuan
-      ? `<rect x="6" y="6" width="76" height="152" rx="38" fill="rgba(58, 34, 16, 0.24)" stroke="rgba(92, 56, 28, 0.42)" stroke-width="1.6" />`
-      : `<ellipse cx="50" cy="35" rx="45" ry="29" fill="rgba(58, 34, 16, 0.22)" stroke="rgba(92, 56, 28, 0.38)" stroke-width="1.5" />`;
+      ? `<rect x="6" y="6" width="76" height="152" rx="38" fill="url(#oaq-pit-wood)" stroke="rgba(218, 174, 112, 0.32)" stroke-width="1.4" />`
+      : `<ellipse cx="50" cy="35" rx="45" ry="29" fill="url(#oaq-pit-wood)" stroke="rgba(218, 174, 112, 0.30)" stroke-width="1.3" />`;
 
     const stonesSvg = stones
-      .map((st) => {
+      .map((st, idx) => {
+        const isLastAdded = Boolean(highlightNewStone && idx === stones.length - 1);
+        const animCls = isLastAdded ? " is-newly-dropped" : "";
         if (st.isMandarin) {
           return `
-            <g class="oaq-pebble is-mandarin" transform="translate(${st.x.toFixed(1)},${st.y.toFixed(1)}) rotate(${st.rot})">
-              <ellipse cx="1.2" cy="2.2" rx="${st.rx.toFixed(1)}" ry="${st.ry.toFixed(1)}" fill="rgba(28, 16, 8, 0.36)" />
-              <ellipse cx="0" cy="0" rx="${st.rx.toFixed(1)}" ry="${st.ry.toFixed(1)}" fill="#D9822B" stroke="#5C2D0C" stroke-width="1.5" />
-              <ellipse cx="-1" cy="-1" rx="${(st.rx * 0.72).toFixed(1)}" ry="${(st.ry * 0.68).toFixed(1)}" fill="#F5B841" />
-              <ellipse cx="-4.5" cy="-3.5" rx="${(st.rx * 0.32).toFixed(1)}" ry="${(st.ry * 0.25).toFixed(1)}" fill="rgba(255, 252, 235, 0.82)" />
+            <g class="oaq-pebble is-mandarin${animCls}" transform="translate(${st.x.toFixed(1)},${st.y.toFixed(1)}) rotate(${st.rot})">
+              <ellipse cx="1.6" cy="2.6" rx="${st.rx.toFixed(1)}" ry="${st.ry.toFixed(1)}" fill="rgba(12, 6, 2, 0.55)" />
+              <ellipse cx="0" cy="0" rx="${st.rx.toFixed(1)}" ry="${st.ry.toFixed(1)}" fill="url(#oaq-grad-mandarin)" stroke="rgba(92, 45, 12, 0.55)" stroke-width="0.9" />
+              <ellipse cx="-4.2" cy="-3.4" rx="${(st.rx * 0.30).toFixed(1)}" ry="${(st.ry * 0.22).toFixed(1)}" fill="rgba(255, 252, 240, 0.55)" />
             </g>
           `;
         }
         const pal = PEBBLE_PALETTE[st.colorIdx % PEBBLE_PALETTE.length];
         return `
-          <g class="oaq-pebble" transform="translate(${st.x.toFixed(1)},${st.y.toFixed(1)}) rotate(${st.rot})">
-            <ellipse cx="0.9" cy="1.6" rx="${st.rx.toFixed(1)}" ry="${st.ry.toFixed(1)}" fill="rgba(30, 18, 10, 0.32)" />
-            <ellipse cx="0" cy="0" rx="${st.rx.toFixed(1)}" ry="${st.ry.toFixed(1)}" fill="${pal.body}" stroke="${pal.rim}" stroke-width="1.2" />
-            <ellipse cx="${(-st.rx * 0.28).toFixed(1)}" cy="${(-st.ry * 0.28).toFixed(1)}" rx="${(st.rx * 0.34).toFixed(1)}" ry="${(st.ry * 0.26).toFixed(1)}" fill="${pal.sheen}" opacity="0.78" />
+          <g class="oaq-pebble${animCls}" transform="translate(${st.x.toFixed(1)},${st.y.toFixed(1)}) rotate(${st.rot})">
+            <ellipse cx="1.2" cy="2.0" rx="${st.rx.toFixed(1)}" ry="${st.ry.toFixed(1)}" fill="rgba(12, 6, 2, 0.52)" />
+            <ellipse cx="0" cy="0" rx="${st.rx.toFixed(1)}" ry="${st.ry.toFixed(1)}" fill="url(#oaq-grad-${pal.id})" stroke="rgba(35, 24, 14, 0.35)" stroke-width="0.7" />
+            ${isLastAdded ? `<ellipse cx="0" cy="0" rx="${(st.rx + 2.4).toFixed(1)}" ry="${(st.ry + 2.2).toFixed(1)}" fill="none" stroke="#FFE082" stroke-width="1.6" />` : ""}
           </g>
         `;
       })
@@ -4505,7 +4849,7 @@
     for (let i = 0; i < visibleStones; i++) {
       const pal = PEBBLE_PALETTE[(i + seedOffset) % PEBBLE_PALETTE.length];
       items.push(
-        `<span class="oaq-mini-stone" style="background:${pal.body};border-color:${pal.rim};" title="Viên sỏi thứ ${i + 1}"></span>`
+        `<span class="oaq-mini-stone" style="background:${pal.cssBg};border-color:${pal.rim};" title="Viên sỏi thứ ${i + 1}"></span>`
       );
     }
     if (n > visibleStones) {
@@ -4519,60 +4863,91 @@
     if (o.mode !== "async" && o.turn !== "host" && o.turn !== "ai") {
       o.turn = "host";
     }
-    const isGameOver = o.cells[5] === 0 && o.cells[11] === 0;
+    const isAnimating = Boolean(oaqAnimState);
+    const animFrame = oaqAnimState ? oaqAnimState.currentFrame : null;
+    const isGameOver = !isAnimating && o.cells[5] === 0 && o.cells[11] === 0;
     const topCells = [10, 9, 8, 7, 6]; // Guest / AI side
     const bottomCells = [0, 1, 2, 3, 4]; // Host / Player side
     const isGuestAsync = o.mode === "async" && o.myRole === "guest";
-    const isMyTurn = o.mode === "ai" ? o.turn === "host" : o.turn === o.myRole;
+    const isMyTurn = !isAnimating && (o.mode === "ai" ? o.turn === "host" : o.turn === o.myRole);
     const hostLabel = o.mode === "async" ? o.hostName || `${state.user.name}` : `${state.user.name}`;
     const guestLabel =
       o.mode === "ai"
         ? "Máy (Đối thủ tự động)"
         : o.guestName || "Bạn cờ qua link (Đang chờ)";
 
+    const renderCellStateClasses = (idx) => {
+      const cls = [];
+      if (o.selectedCell === idx) cls.push("selected");
+      if (animFrame && animFrame.activeCell === idx) cls.push("is-sowing-active");
+      if (animFrame && animFrame.capturedCell === idx) cls.push("is-captured-flash");
+      if (animFrame && animFrame.slapEmptyCell === idx) cls.push("is-slap-empty");
+      return cls.join(" ");
+    };
+
+    const isNewlyDroppedAt = (idx) => Boolean(animFrame && animFrame.newlyDroppedCell === idx);
+
     container.innerHTML = `
       <div class="surface-panel">
+        <!-- SVG Gradient Definitions dùng chung cho các viên sỏi cuội suối 3D -->
+        <svg width="0" height="0" style="position:absolute;pointer-events:none;" aria-hidden="true">
+          ${renderOaqStoneGradientDefs()}
+        </svg>
+
         <div class="btn-row">
-          <button type="button" class="btn-secondary" id="oaq-mode-ai" style="${o.mode === "ai" ? "background:var(--accent-jade);color:#fff;" : ""}">Đấu với Máy</button>
-          <button type="button" class="btn-secondary" id="oaq-mode-async" style="${o.mode === "async" ? "background:var(--accent-jade);color:#fff;" : ""}">Ván treo thật (Qua link)</button>
+          <button type="button" class="btn-secondary" id="oaq-mode-ai" ${isAnimating ? "disabled" : ""} style="${o.mode === "ai" ? "background:var(--accent-jade);color:#fff;" : ""}">Đấu với Máy</button>
+          <button type="button" class="btn-secondary" id="oaq-mode-async" ${isAnimating ? "disabled" : ""} style="${o.mode === "async" ? "background:var(--accent-jade);color:#fff;" : ""}">Ván treo thật (Qua link)</button>
         </div>
 
-        <!-- Khay tre đựng sỏi đã ăn của Hàng Trên (Đối thủ / Máy) -->
+        <!-- Khay mây tre đựng sỏi đã ăn của Hàng Trên (Đối thủ / Máy) -->
         <div class="oaq-score-tray">
           <div class="oaq-score-tray-head">
             <span>Hàng trên (${escHtml(guestLabel)})</span>
             <strong class="badge-tag num">${o.scoreAI} quân</strong>
           </div>
-          ${renderOaqCapturedBasketSvg(o.scoreAI, 3)}
+          ${renderOaqCapturedBasketSvg(o.scoreAI, 2)}
         </div>
 
-        <!-- Bàn gỗ Ô Ăn Quan khắc hốc truyền thống kèm sỏi cuội thực tế 1:1 -->
-        <div class="oaq-board" role="group" aria-label="Bàn cờ Ô ăn quan bằng gỗ kèm viên sỏi thực tế">
-          <div class="oaq-quan oaq-quan-left" aria-label="Quan Trái còn ${o.cells[11]} quân">
-            <span class="oaq-count-pill num">${o.cells[11]}</span>
-            ${renderOaqCellPebblesSvg(o.cells[11], true, 11)}
+        ${
+          isAnimating && animFrame
+            ? `
+          <div class="oaq-hand-live-bar num">
+            <span>${escHtml(animFrame.statusText)}</span>
+            ${animFrame.hand > 0 ? `<strong class="oaq-hand-pill">Trên tay: ${animFrame.hand} viên</strong>` : ""}
+          </div>
+        `
+            : ""
+        }
+
+        <!-- Bàn Gỗ Hương Khắc Hốc Truyền Thống & Sỏi Cuội Suối 3D Thực Tế -->
+        <div class="oaq-board" role="group" aria-label="Bàn cờ Ô ăn quan bằng gỗ kèm viên sỏi cuội thực tế">
+          <div class="oaq-quan oaq-quan-left ${renderCellStateClasses(11)}" aria-label="Quan Trái còn ${o.cells[11]} quân">
+            <span class="oaq-count-pill num">${o.cells[11]}${isNewlyDroppedAt(11) ? " +1" : ""}</span>
+            ${renderOaqCellPebblesSvg(o.cells[11], true, 11, isNewlyDroppedAt(11))}
             <small>Q.Trái</small>
           </div>
 
           ${topCells
             .map((idx) => {
               const count = o.cells[idx];
+              const newly = isNewlyDroppedAt(idx);
+              const extraCls = renderCellStateClasses(idx);
               const innerHtml = `
                 <div class="oaq-cell-head">
-                  <span class="oaq-count-num num">${count}</span>
+                  <span class="oaq-count-num num">${count}${newly ? '<sup class="oaq-plus-one">+1</sup>' : ""}</span>
                   <small>Ô${idx + 1}</small>
                 </div>
-                ${renderOaqCellPebblesSvg(count, false, idx)}
+                ${renderOaqCellPebblesSvg(count, false, idx, newly)}
               `;
               if (isGuestAsync) {
                 return `
-                  <button type="button" class="oaq-cell player-side ${o.selectedCell === idx ? "selected" : ""}" data-cell="${idx}" style="grid-row:1;" aria-label="Ô ${idx + 1} có ${count} viên sỏi" ${!isMyTurn || count === 0 || isGameOver ? "disabled" : ""}>
+                  <button type="button" class="oaq-cell player-side ${extraCls}" data-cell="${idx}" style="grid-row:1;" aria-label="Ô ${idx + 1} có ${count} viên sỏi" ${!isMyTurn || count === 0 || isGameOver ? "disabled" : ""}>
                     ${innerHtml}
                   </button>
                 `;
               }
               return `
-                <div class="oaq-cell opponent-side" style="grid-row:1;" aria-label="Ô ${idx + 1} có ${count} viên sỏi">
+                <div class="oaq-cell opponent-side ${extraCls}" style="grid-row:1;" aria-label="Ô ${idx + 1} có ${count} viên sỏi">
                   ${innerHtml}
                 </div>
               `;
@@ -4582,42 +4957,44 @@
           ${bottomCells
             .map((idx) => {
               const count = o.cells[idx];
+              const newly = isNewlyDroppedAt(idx);
+              const extraCls = renderCellStateClasses(idx);
               const innerHtml = `
                 <div class="oaq-cell-head">
-                  <span class="oaq-count-num num">${count}</span>
+                  <span class="oaq-count-num num">${count}${newly ? '<sup class="oaq-plus-one">+1</sup>' : ""}</span>
                   <small>Ô${idx + 1}</small>
                 </div>
-                ${renderOaqCellPebblesSvg(count, false, idx)}
+                ${renderOaqCellPebblesSvg(count, false, idx, newly)}
               `;
               if (isGuestAsync) {
                 return `
-                  <div class="oaq-cell opponent-side" style="grid-row:2;" aria-label="Ô ${idx + 1} có ${count} viên sỏi">
+                  <div class="oaq-cell opponent-side ${extraCls}" style="grid-row:2;" aria-label="Ô ${idx + 1} có ${count} viên sỏi">
                     ${innerHtml}
                   </div>
                 `;
               }
               return `
-                <button type="button" class="oaq-cell player-side ${o.selectedCell === idx ? "selected" : ""}" data-cell="${idx}" style="grid-row:2;" aria-label="Ô ${idx + 1} có ${count} viên sỏi" ${!isMyTurn || count === 0 || isGameOver ? "disabled" : ""}>
+                <button type="button" class="oaq-cell player-side ${extraCls}" data-cell="${idx}" style="grid-row:2;" aria-label="Ô ${idx + 1} có ${count} viên sỏi" ${!isMyTurn || count === 0 || isGameOver ? "disabled" : ""}>
                   ${innerHtml}
                 </button>
               `;
             })
             .join("")}
 
-          <div class="oaq-quan oaq-quan-right" aria-label="Quan Phải còn ${o.cells[5]} quân">
-            <span class="oaq-count-pill num">${o.cells[5]}</span>
-            ${renderOaqCellPebblesSvg(o.cells[5], true, 5)}
+          <div class="oaq-quan oaq-quan-right ${renderCellStateClasses(5)}" aria-label="Quan Phải còn ${o.cells[5]} quân">
+            <span class="oaq-count-pill num">${o.cells[5]}${isNewlyDroppedAt(5) ? " +1" : ""}</span>
+            ${renderOaqCellPebblesSvg(o.cells[5], true, 5, isNewlyDroppedAt(5))}
             <small>Q.Phải</small>
           </div>
         </div>
 
-        <!-- Khay tre đựng sỏi đã ăn của Hàng Dưới (Bác) -->
+        <!-- Khay mây tre đựng sỏi đã ăn của Hàng Dưới (Bác) -->
         <div class="oaq-score-tray is-player">
           <div class="oaq-score-tray-head">
             <span>Hàng dưới (${escHtml(hostLabel)})</span>
             <strong class="badge-tag amber num">${o.scoreP} quân</strong>
           </div>
-          ${renderOaqCapturedBasketSvg(o.scoreP, 1)}
+          ${renderOaqCapturedBasketSvg(o.scoreP, 0)}
         </div>
 
         <p style="font-weight:600; color:var(--accent-terracotta);">${isGameOver ? "Ván cờ đã kết thúc — cả hai Quan đều đã ăn hết!" : escHtml(o.statusText)}</p>
@@ -4626,8 +5003,8 @@
           o.selectedCell !== null && isMyTurn && !isGameOver
             ? `
           <div class="btn-row">
-            <button type="button" class="btn-primary" id="oaq-dir-left">← Rải sỏi sang Trái</button>
-            <button type="button" class="btn-jade" id="oaq-dir-right">Rải sỏi sang Phải →</button>
+            <button type="button" class="btn-primary" id="oaq-dir-left">← Rải từng viên sang Trái</button>
+            <button type="button" class="btn-jade" id="oaq-dir-right">Rải từng viên sang Phải →</button>
           </div>
         `
             : ""
@@ -4653,27 +5030,39 @@
             : ""
         }
 
-        <button type="button" class="btn-secondary" id="oaq-reset">Xếp lại bàn cờ mới</button>
+        <button type="button" class="btn-secondary" id="oaq-reset">${isAnimating ? "Bỏ qua hiệu ứng &amp; Xếp ván mới" : "Xếp lại bàn cờ mới"}</button>
       </div>
     `;
 
     container.querySelectorAll("[data-cell]").forEach((btn) => {
       btn.addEventListener("click", () => {
+        if (oaqAnimState) return;
         playWoodPieceClack(false);
         state.oaq.selectedCell = Number(btn.dataset.cell);
-        state.oaq.statusText = `Đã bốc Ô ${state.oaq.selectedCell + 1} (${state.oaq.cells[state.oaq.selectedCell]} viên sỏi). Bác chọn rải sang Trái hay sang Phải?`;
+        state.oaq.statusText = `Đã chọn Ô ${state.oaq.selectedCell + 1} (${state.oaq.cells[state.oaq.selectedCell]} viên sỏi). Bác bấm rải sang Trái hay sang Phải?`;
         renderGames();
       });
     });
 
     const doPlayerDir = (dir) => {
       const chosen = state.oaq.selectedCell;
-      if (chosen === null) return;
-      playWoodPieceClack(true);
+      if (chosen === null || oaqAnimState) return;
       const isHostSide = !isGuestAsync;
       // On top row (guest), visual Left corresponds to +1 index around board, Right to -1
       const actualStep = isHostSide ? dir : -dir;
-      executeOaqMove(chosen, actualStep, isHostSide);
+      const dirLabel = dir > 0 ? "bên Phải" : "bên Trái";
+      const timeline = buildOaqMoveTimeline(
+        state.oaq.cells,
+        state.oaq.scoreP,
+        state.oaq.scoreAI,
+        chosen,
+        actualStep,
+        isHostSide,
+        state.user.name,
+        dirLabel
+      );
+      if (!timeline) return;
+
       awardSeniorityPoints(2, "oaq_move", "dan-gian", `Rải quân Ô ăn quan ô số ${chosen + 1}`, {
         eventType: "folk_game",
         module: "games",
@@ -4681,55 +5070,81 @@
         cellIdx: chosen
       });
 
-      if (state.oaq.mode === "async") {
-        ensureOaqAsyncMatch();
-        const nextTurn = isHostSide ? "guest" : "host";
-        state.oaq.turn = nextTurn;
-        state.oaq.statusText = `${state.user.name} vừa rải Ô ${chosen + 1}. Đang chờ đối thủ đi lượt tiếp theo...`;
-        trackEvent("async_game_move");
-        if (RT) {
-          const existing = RT.getMatch(state.oaq.matchId) || {};
-          RT.publishMatchState({
-            matchId: state.oaq.matchId,
-            kind: "oaq",
-            hostId: existing.hostId || RT.getClientId(),
-            hostName: state.oaq.hostName || `${state.user.name} · ${getUserAge()}t`,
-            guestId: isGuestAsync ? RT.getClientId() : existing.guestId || "",
-            guestName: isGuestAsync ? `${state.user.name} · ${getUserAge()}t` : state.oaq.guestName || "",
-            turn: nextTurn,
-            statusText: `${state.user.name} vừa đi Ô ${chosen + 1} — mời đi tiếp!`,
-            payload: {
-              cells: state.oaq.cells.slice(),
-              scoreHost: state.oaq.scoreP,
-              scoreGuest: state.oaq.scoreAI
-            },
-            moveCount: (existing.moveCount || 0) + 1
-          });
+      runOaqSowingAnimation(timeline, () => {
+        if (state.oaq.mode === "async") {
+          ensureOaqAsyncMatch();
+          const nextTurn = isHostSide ? "guest" : "host";
+          state.oaq.turn = nextTurn;
+          state.oaq.statusText = `${state.user.name} vừa rải xong Ô ${chosen + 1}. Đang chờ đối thủ đi lượt tiếp theo...`;
+          trackEvent("async_game_move");
+          if (RT) {
+            const existing = RT.getMatch(state.oaq.matchId) || {};
+            RT.publishMatchState({
+              matchId: state.oaq.matchId,
+              kind: "oaq",
+              hostId: existing.hostId || RT.getClientId(),
+              hostName: state.oaq.hostName || `${state.user.name} · ${getUserAge()}t`,
+              guestId: isGuestAsync ? RT.getClientId() : existing.guestId || "",
+              guestName: isGuestAsync ? `${state.user.name} · ${getUserAge()}t` : state.oaq.guestName || "",
+              turn: nextTurn,
+              statusText: `${state.user.name} vừa đi Ô ${chosen + 1} — mời đi tiếp!`,
+              payload: {
+                cells: state.oaq.cells.slice(),
+                scoreHost: state.oaq.scoreP,
+                scoreGuest: state.oaq.scoreAI
+              },
+              moveCount: (existing.moveCount || 0) + 1
+            });
+          }
+          saveState();
+          addXu(3, "Đi nước cờ ván treo thật");
+          if (state.route === "games") renderGames();
+          return;
         }
+
+        // Kiểm tra nếu cả hai ô Quan đã hết sạch quân sau nước của bác
+        if (state.oaq.cells[5] === 0 && state.oaq.cells[11] === 0) {
+          state.oaq.turn = "host";
+          saveState();
+          if (state.route === "games") renderGames();
+          return;
+        }
+
+        state.oaq.turn = "ai";
+        state.oaq.statusText = "Đến lượt Máy (đối thủ tự động) chuẩn bị bốc sỏi...";
         saveState();
-        addXu(3, "Đi nước cờ ván treo thật");
-        renderGames();
-        return;
-      }
+        if (state.route === "games") renderGames();
 
-      state.oaq.turn = "ai";
-      state.oaq.statusText = "Đến lượt Máy (đối thủ máy) đang suy nghĩ...";
-      saveState();
-      renderGames();
-
-      setTimeout(() => {
-        if (state.route !== "games") return;
-        const validAiCells = [6, 7, 8, 9, 10].filter((idx) => state.oaq.cells[idx] > 0);
-        if (validAiCells.length > 0) {
+        oaqAnimTimerId = setTimeout(() => {
+          if (state.route !== "games") return;
+          const validAiCells = [6, 7, 8, 9, 10].filter((idx) => state.oaq.cells[idx] > 0);
+          if (validAiCells.length === 0) {
+            state.oaq.turn = "host";
+            state.oaq.statusText = "Đến lượt bác chọn một ô hàng dưới.";
+            saveState();
+            renderGames();
+            return;
+          }
           const pick = validAiCells[Math.floor(Math.random() * validAiCells.length)];
           const aiDir = Math.random() > 0.5 ? 1 : -1;
-          executeOaqMove(pick, aiDir, false);
-        }
-        state.oaq.turn = "host";
-        state.oaq.statusText = "Máy đã đi xong. Đến lượt bác chọn một ô hàng dưới.";
-        saveState();
-        renderGames();
-      }, 850);
+          const aiTimeline = buildOaqMoveTimeline(
+            state.oaq.cells,
+            state.oaq.scoreP,
+            state.oaq.scoreAI,
+            pick,
+            aiDir,
+            false,
+            "Máy",
+            aiDir === -1 ? "bên Phải" : "bên Trái"
+          );
+          runOaqSowingAnimation(aiTimeline, () => {
+            state.oaq.turn = "host";
+            state.oaq.statusText = "Máy đã rải xong. Đến lượt bác chọn một ô hàng dưới.";
+            saveState();
+            if (state.route === "games") renderGames();
+          });
+        }, 520);
+      });
     };
 
     const btnL = document.getElementById("oaq-dir-left");
@@ -4738,6 +5153,7 @@
     if (btnR) btnR.addEventListener("click", () => doPlayerDir(1));
 
     document.getElementById("oaq-mode-ai").addEventListener("click", () => {
+      if (oaqAnimState) return;
       state.oaq.mode = "ai";
       state.oaq.turn = "host";
       state.oaq.statusText = "Đang đấu với Máy (luôn ghi rõ là Máy).";
@@ -4746,6 +5162,7 @@
     });
 
     document.getElementById("oaq-mode-async").addEventListener("click", () => {
+      if (oaqAnimState) return;
       state.oaq.mode = "async";
       ensureOaqAsyncMatch();
       state.oaq.statusText = "Chế độ Ván treo thật: gửi link bên dưới cho điện thoại thứ 2 để đánh trực tiếp.";
@@ -4763,6 +5180,7 @@
     }
 
     document.getElementById("oaq-reset").addEventListener("click", () => {
+      cancelOrCommitOaqAnimation(false);
       const keepMode = state.oaq.mode;
       state.oaq = Object.assign({}, createDefaultState().oaq, { mode: keepMode });
       if (keepMode === "async") ensureOaqAsyncMatch();
@@ -6054,6 +6472,7 @@
         {
           preferredRender: state.settings.preferredRender,
           cameraView: camMode,
+          spaceIdx: state.zen.spaceIdx || 0,
           plaqueTitle: plaqueTitles[state.zen.spaceIdx % plaqueTitles.length],
           userName: state.user.name,
           userCushionIdx: myCushion,

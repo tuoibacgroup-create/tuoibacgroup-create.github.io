@@ -57,3 +57,13 @@ Tài liệu này lưu lại **lý do cốt lõi (Why)** đằng sau 6 quyết đ
 - **Bối cảnh:** Mọi dữ liệu thói quen giờ giấc mở máy, thời lượng dừng ở từng màn hình (`dwellSec`), kiểu trò chuyện (`quick_0token`, `sticker_1tap`, `typed_text`, `voice_speech`), đối tượng trò chuyện cùng và chủ đề quan tâm đều cần lưu giữ đầy đủ 100% để phục vụ huấn luyện và cá nhân hóa AI về sau.
 - **Quyết định:** Thiết kế `telemetry.js` ghi toàn bộ sự kiện nguyên bản vào `IndexedDB` (`tuoibac_telemetry_db_v1`) không bị giới hạn 5 MB của `localStorage`, duy trì song song bảng tổng hợp thói quen 24h để hiển thị tức thì và cung cấp nút xuất thẳng ra định dạng `.jsonl` (Newline-Delimited JSON — chuẩn đầu vào trực tiếp của các đường ống phân tích dữ liệu và huấn luyện mô hình ngôn ngữ).
 - **Hệ quả:** Không bao giờ mất mát dữ liệu hành vi do tràn bộ nhớ trình duyệt, đồng thời vẫn minh bạch cho phép hội viên kiểm tra và tải dữ liệu theo đúng quy định bảo vệ dữ liệu cá nhân.
+
+---
+
+## ADR-007: Nhiếp Ảnh Kiến Trúc Chùa Cổ Việt Nam Kết Hợp Ánh Sáng & Khói Trầm Vật Lý Cho Chánh Điện (`temple3d.js`)
+- **Trạng thái:** Đã chấp thuận & Đang vận hành (2026-11)
+- **Bối cảnh:** Khi thử nghiệm dựng Chánh Điện bằng khối hình học Three.js Low-Poly (trụ/nón) hoặc vẽ minh họa 2D bằng đường cong Canvas thuần túy, hình ảnh trông giống đồ họa hoạt hình trẻ em, thiếu sự tôn nghiêm, trầm mặc và chiều sâu văn hóa cần có đối với người Việt Nam từ 55 tuổi trở lên.
+- **Quyết định:**
+  - Sử dụng bộ 3 bức ảnh kiến trúc Chùa Cổ Bắc Bộ chân thực đã nén chuẩn nhẹ (`~130–160 KB/ảnh` tại `assets/temple-wide.jpg`, `assets/temple-altar.jpg`, `assets/temple-courtyard.jpg`, lưu sẵn trong `CORE_ASSETS` của `sw.js`).
+  - Dùng `temple3d.js` làm bộ kết hợp hiệu ứng vật lý thời gian thực (`28 FPS`) ngay trên tọa độ thực của bức ảnh: hòa trộn ánh sáng `screen` cho ngọn đèn dầu lưu ly và hào quang tượng Phật, vẽ làn khói hương mảnh mai uốn lượn bay lên từ đúng đầu 3 nén nhang, sóng âm đồng tâm và định vị vùng chạm trực tiếp trên Đại Hồng Chung, Lư Hương, Mõ Gỗ, Ống Xăm, Hồ Sen, Cây Bồ Đề và 10 Chiếu Bồ Đoàn.
+- **Hệ quả:** Mang lại cảm giác trang nghiêm, ấm cúng như đang xem máy quay trực tiếp tại ngôi chùa cổ thật ngoài đời, dung lượng tải nhẹ dưới `450 KB` cho cả 3 góc máy và loại bỏ hoàn toàn các chi tiết hoạt hình rối mắt.

@@ -159,12 +159,12 @@ state = {
 
 ### 2.4. `window.TempleScene3D` (`temple3d.js`)
 - `CUSHION_COORDS`: Mảng 10 tọa độ chiếu Bồ Đoàn.
-- `mount(container, config, onFallback)`: Dựng Chánh Điện Online 2.5D phong cách TikTok Live (`tiktok-live-temple-rpc`), 10 chiếu Bồ Đoàn với Phật tử Áo Lam chắp tay vái lạy, sân Hồ Sen cá Koi thả hoa đăng, Cây Bồ Đề treo thẻ đỏ và hỗ trợ chạm trực tiếp vào pháp khí trên màn hình (`onInteractiveAction`).
+- `mount(container, config, onFallback)`: Kết hợp 3 bức ảnh kiến trúc Chùa Cổ Việt Nam chân thực (`./assets/temple-wide.jpg`, `./assets/temple-altar.jpg`, `./assets/temple-courtyard.jpg`) với lớp ánh sáng đèn dầu vật lý (`screen` blend), khói trầm hương mảnh mai uốn lượn từ đỉnh 3 nén nhang, sóng âm chuông/mõ và vùng chạm trực tiếp trên ảnh (`onInteractiveAction`).
 - `setCameraView("wide" | "cushions" | "courtyard")` / `getCameraView()`.
 - `triggerIncense(speakerName)` / `triggerMuyu(count)` / `triggerBell(speakerName)` / `triggerFortuneStick(cardCode)`.
-- `spawnWishPlaque(speakerName, isVeteranGold, wishText)`: Treo thêm một thẻ đỏ (hoặc thẻ vàng cho bậc từ Tầng 23) đung đưa trên cây Bồ Đề sân chùa.
-- `spawnPondLantern(speakerName, wishText)`: Thả thêm một ngọn hoa đăng trôi trên mặt hồ sen.
-- `dispose()`: Giải phóng toàn bộ tài nguyên Chánh Điện và gỡ bỏ listener kéo chuột khỏi `window`.
+- `spawnWishPlaque(speakerName, isVeteranGold, wishText)`: Thắp sáng và ghi nhận thêm thẻ đỏ/thẻ vàng ước nguyện trên Cây Bồ Đề cổ thụ ngoài sân chùa.
+- `spawnPondLantern(speakerName, wishText)`: Thả thêm ánh đèn hoa đăng lung linh trên mặt Hồ Sen.
+- `dispose()`: Giải phóng toàn bộ tài nguyên Canvas/Renderer Chánh Điện và gỡ bỏ listener kéo chuột khỏi `window`.
 
 ### 2.5. `window.TuoiBacXiangqi` (`xiangqi.js`)
 - Hằng số & dữ liệu: `PIECE_LABELS`, `PUZZLES` (6 thế cờ cổ phổ đã kiểm chứng lời giải).

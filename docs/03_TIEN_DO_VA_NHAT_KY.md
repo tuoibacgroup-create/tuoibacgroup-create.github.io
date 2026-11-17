@@ -16,18 +16,28 @@
 | 6 | Nhập liệu giọng nói & Sổ từ điển tự học phương ngữ | Hoàn thành | `app.js`, `data.js` | Xem trước câu nói chữ lớn trước khi gửi, tự sửa lỗi phát âm vùng miền |
 | 7 | Tờ Báo Sáng Quán Trà, Tìm kiếm chủ đề & Bàn đàm đạo theo tin | Hoàn thành | `app.js`, `data.js` | Tìm theo từ khóa gợi ý (lương hưu, giá vàng, thời tiết...), nghe đọc báo TTS |
 | 8 | Cờ Tướng Chuẩn `9×10` (32 quân) & Giải 6 Cờ Thế Cổ Phổ | Hoàn thành | `xiangqi.js`, `app.js` | AI Alpha-Beta 4 tầng, đấu ván treo bất đồng bộ qua liên kết mời bạn |
-| 9 | Ô Ăn Quan Dân Gian (Bàn Gỗ & Sỏi Cuội Thực Tế 1:1) & Đố Vui | Hoàn thành | `app.js`, `styles.css`, `realtime.js` | Bàn gỗ khắc hốc hiển thị số kèm đúng số lượng viên sỏi cuội thực tế 1:1 & khay tre đựng quân ăn được |
+| 9 | Ô Ăn Quan Dân Gian (Sỏi Cuội Suối 3D & Rải Từng Viên Như Thật) & Đố Vui | Hoàn thành | `app.js`, `styles.css`, `realtime.js` | Bàn gỗ hương khắc hốc, sỏi cuội tự nhiên 1:1 và hoạt cảnh bốc - rải từng viên qua từng ô - bốc tiếp - ăn quân |
 | 10 | Chiếu Thơ Lục Bát, Nhạc Đàn Tranh & Gắn Khung Danh Hiệu 3D | Hoàn thành | `app.js`, `tearoom3d.js` | Sáng tác thơ mới đồng bộ thời gian thực, mở khóa khung hào quang 3D |
 | 11 | Hội Đồng Ngũ (VD: Đại đội 1K2 · D3 · F25), Kết Bạn & Báo Online | Hoàn thành | `app.js`, `realtime.js` | Lập đơn vị mới, xem đồng đội đang ngồi ở phòng nào và bấm vào ngồi cạnh |
 | 12 | Thẻ Hội Viên 10 Giây (SĐT + 4 số) & Khôi Phục Mã QR | Hoàn thành | `app.js`, `realtime.js` | Không mật khẩu phức tạp, băm ẩn SĐT một chiều, hỗ trợ Vân tay WebAuthn |
 | 13 | Hệ Thống 96 Danh Hiệu Toán Học Lồi (32 tầng chính + 8 cây chuyên môn) | Hoàn thành | `progression.js`, `app.js` | Tách biệt bảng chào đón Người mới (Tầng 1–5) và vinh danh Trưởng lão / Đại thụ |
-| 14 | Chánh Điện Online 2.5D Phong Cách TikTok Live, 10 Bồ Đoàn, Hồ Sen & Cây Thẻ Đỏ | Hoàn thành | `temple3d.js`, `app.js` | Gian Tam Bảo tranh vẽ 2.5D sắc nét, Phật tử áo lam vái lạy, Auto-Mõ bay chữ `+1 Tâm An`, lắc ống xăm, chạm trực tiếp trên màn hình |
+| 14 | Chánh Điện Nhiếp Ảnh Chùa Cổ Việt Nam & Hiệu Ứng Khói Hương / Sóng Âm Sống | Hoàn thành | `temple3d.js`, `assets/temple-*.jpg`, `app.js` | 3 góc ảnh Chùa Cổ chân thực trang nghiêm cho người 55+, khói nhang thật, đèn dầu lung linh, Auto-Mõ & chạm trực tiếp |
 | 15 | Kho AI Tracking 100% Toàn Thành Viên (`IndexedDB` + Xuất JSONL) | Hoàn thành | `telemetry.js`, `app.js` | Biểu đồ 24h, đo `dwellSec` từng màn hình, tách 4 kiểu chat, xuất `.jsonl`/`.json`/`.csv` |
 | 16 | Hồ sơ Kiến trúc Studio 20 Năm & Cổng Kiểm Định Đồng Bộ Code ↔ Docs | Hoàn thành | `AGENTS.md`, `ARCHITECTURE.md`, `scripts/studio-doctor.mjs` | Tự động đối chiếu 1:1 màn hình, `state`, SQL, Deep Link và lịch sử Git giữa Code thực tế với `.md` |
 
 ---
 
 ## 2. Nhật Ký Phiên Bản Kỹ Thuật (Append-Only Engineering Log)
+
+### [2026-11-17] — Chuyển Sang Nhiếp Ảnh Chùa Cổ Chân Thực Trang Nghiêm & Hoạt Cảnh Rải Sỏi Ô Ăn Quan Từng Viên Một (`?v=20261117e`)
+- **Tệp tạo mới / cập nhật:** `assets/temple-wide.jpg`, `assets/temple-altar.jpg`, `assets/temple-courtyard.jpg`, `temple3d.js`, `app.js`, `styles.css`, `index.html` (`?v=20261117e`), `sw.js` (`tuoibac-pwa-v17`), `ARCHITECTURE.md`, `docs/02_SO_DO_DU_LIEU_VA_API_NOI_BO.md`, `docs/03_TIEN_DO_VA_NHAT_KY.md`, `docs/05_QUYET_DINH_KIEN_TRUC_ADR.md`.
+- **Lý do & Chi tiết kỹ thuật:**
+  1. **Loại bỏ hoàn toàn nét vẽ hoạt hình trẻ con tại Chánh Điện — Chuyển sang Nhiếp Ảnh Kiến Trúc Chùa Cổ Việt Nam + Lớp Ánh Sáng & Khói Trầm Vật Lý (`temple3d.js`, `assets/temple-*.jpg`):**
+     - Thay vì tự vẽ tượng Phật, cột chùa và nhân vật bằng hình khối vector/3D trông giả và trẻ con, hệ thống sử dụng 3 bức ảnh kiến trúc Chùa Cổ Bắc Bộ độ phân giải cao đã nén tối ưu (`128–163 KB/ảnh`, đệm ngoại tuyến trong `sw.js`): **Toàn cảnh Chánh Điện chiếu cói**, **Cận cảnh Tam Bảo - Đại Hồng Chung - Mõ gỗ - Ống xăm**, và **Sân gạch Bát Tràng - Hồ Sen Hoa Đăng - Cây Bồ Đề Thẻ Đỏ**.
+     - Trên nền ảnh thật, `temple3d.js` phủ lớp ánh sáng vật lý (`globalCompositeOperation = "screen"`) làm ngọn đèn dầu lưu ly và hào quang thở nhẹ tự nhiên, khói trầm mảnh mai uốn lượn bay lên từ đúng đầu 3 nén nhang trong ảnh, hạt bụi nắng li ti, vòng sóng âm vàng kim và vùng chạm chính xác lên từng pháp khí mà không có bất kỳ nhãn chữ hay hình người hoạt hình nào che khuất Tam Bảo.
+  2. **Sỏi Cuội Suối Tự Nhiên 3D & Hoạt Cảnh Rải Sỏi Từng Viên Qua Từng Ô Trong Ô Ăn Quan (`app.js`, `styles.css`):**
+     - Đổi bảng màu sỏi từ các màu pastel tươi sang **4 chất liệu đá cuội suối thật** (`radialGradient` thạch anh trắng ngà, đá bazan đen bóng, sỏi nâu cát sông, đá phiến xám tro và đá Quan hổ phách) nằm trong hốc bàn **Gỗ Hương chạm khắc trầm ấm**.
+     - Xây dựng bộ máy diễn hoạt `buildOaqMoveTimeline(...)` + `runOaqSowingAnimation(...)`: khi bác chọn 1 ô (ví dụ có `5` viên sỏi) và bấm rải sang Trái hoặc Phải, bàn cờ diễn hoạt đúng như ngoài đời thật — bốc sỏi lên tay (`Trên tay: 5 viên`), lần lượt thả **từng viên một (`270ms/viên`)** vào từng ô kế tiếp kèm hiệu ứng viên sỏi mới rơi nảy nhẹ vào hốc gỗ (`@keyframes oaqPebbleDropIn`), nhãn `+1` và tiếng sỏi chạm gỗ; nếu gặp ô có quân thì tự động dừng nhịp `360ms` bốc nối tiếp rải tiếp; nếu gặp ô trống thì diễn hoạt nhịp **chập ô trống — ăn quân** bỏ vào khay. Lượt của Máy cũng rải từng viên một để các bác dễ dàng quan sát.
 
 ### [2026-11-17] — Nâng Cấp Bàn Ô Ăn Quan Sỏi Cuội Thực Tế 1:1 & Tái Thiết Chánh Điện Online Phong Cách TikTok Live (`?v=20261117d`)
 - **Tệp cập nhật:** `app.js`, `temple3d.js`, `styles.css`, `index.html` (`?v=20261117d`), `sw.js` (`tuoibac-pwa-v16`), `ARCHITECTURE.md`, `docs/02_SO_DO_DU_LIEU_VA_API_NOI_BO.md`, `docs/03_TIEN_DO_VA_NHAT_KY.md`.
