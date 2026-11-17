@@ -1,4 +1,4 @@
-const CACHE_VERSION = "tuoibac-pwa-v15";
+const CACHE_VERSION = "tuoibac-pwa-v16";
 const CORE_ASSETS = [
   "./",
   "./index.html",

@@ -16,18 +16,29 @@
 | 6 | Nhập liệu giọng nói & Sổ từ điển tự học phương ngữ | Hoàn thành | `app.js`, `data.js` | Xem trước câu nói chữ lớn trước khi gửi, tự sửa lỗi phát âm vùng miền |
 | 7 | Tờ Báo Sáng Quán Trà, Tìm kiếm chủ đề & Bàn đàm đạo theo tin | Hoàn thành | `app.js`, `data.js` | Tìm theo từ khóa gợi ý (lương hưu, giá vàng, thời tiết...), nghe đọc báo TTS |
 | 8 | Cờ Tướng Chuẩn `9×10` (32 quân) & Giải 6 Cờ Thế Cổ Phổ | Hoàn thành | `xiangqi.js`, `app.js` | AI Alpha-Beta 4 tầng, đấu ván treo bất đồng bộ qua liên kết mời bạn |
-| 9 | Ô Ăn Quan Dân Gian & Đố Vui Minh Mẫn Hôm Nay | Hoàn thành | `app.js`, `realtime.js` | Đấu Máy hoặc Ván treo qua liên kết Zalo, đố vui không trừ điểm người chậm |
+| 9 | Ô Ăn Quan Dân Gian (Bàn Gỗ & Sỏi Cuội Thực Tế 1:1) & Đố Vui | Hoàn thành | `app.js`, `styles.css`, `realtime.js` | Bàn gỗ khắc hốc hiển thị số kèm đúng số lượng viên sỏi cuội thực tế 1:1 & khay tre đựng quân ăn được |
 | 10 | Chiếu Thơ Lục Bát, Nhạc Đàn Tranh & Gắn Khung Danh Hiệu 3D | Hoàn thành | `app.js`, `tearoom3d.js` | Sáng tác thơ mới đồng bộ thời gian thực, mở khóa khung hào quang 3D |
 | 11 | Hội Đồng Ngũ (VD: Đại đội 1K2 · D3 · F25), Kết Bạn & Báo Online | Hoàn thành | `app.js`, `realtime.js` | Lập đơn vị mới, xem đồng đội đang ngồi ở phòng nào và bấm vào ngồi cạnh |
 | 12 | Thẻ Hội Viên 10 Giây (SĐT + 4 số) & Khôi Phục Mã QR | Hoàn thành | `app.js`, `realtime.js` | Không mật khẩu phức tạp, băm ẩn SĐT một chiều, hỗ trợ Vân tay WebAuthn |
 | 13 | Hệ Thống 96 Danh Hiệu Toán Học Lồi (32 tầng chính + 8 cây chuyên môn) | Hoàn thành | `progression.js`, `app.js` | Tách biệt bảng chào đón Người mới (Tầng 1–5) và vinh danh Trưởng lão / Đại thụ |
-| 14 | Chánh Điện 3D Góc Rộng, 10 Bồ Đoàn, Hồ Sen & Cây Thẻ Đỏ | Hoàn thành | `temple3d.js`, `app.js` | Three.js mái chùa đao cong, 3 góc máy, thỉnh chuông, gõ mõ, thả hoa đăng, treo thẻ đỏ |
+| 14 | Chánh Điện Online 2.5D Phong Cách TikTok Live, 10 Bồ Đoàn, Hồ Sen & Cây Thẻ Đỏ | Hoàn thành | `temple3d.js`, `app.js` | Gian Tam Bảo tranh vẽ 2.5D sắc nét, Phật tử áo lam vái lạy, Auto-Mõ bay chữ `+1 Tâm An`, lắc ống xăm, chạm trực tiếp trên màn hình |
 | 15 | Kho AI Tracking 100% Toàn Thành Viên (`IndexedDB` + Xuất JSONL) | Hoàn thành | `telemetry.js`, `app.js` | Biểu đồ 24h, đo `dwellSec` từng màn hình, tách 4 kiểu chat, xuất `.jsonl`/`.json`/`.csv` |
 | 16 | Hồ sơ Kiến trúc Studio 20 Năm & Cổng Kiểm Định Đồng Bộ Code ↔ Docs | Hoàn thành | `AGENTS.md`, `ARCHITECTURE.md`, `scripts/studio-doctor.mjs` | Tự động đối chiếu 1:1 màn hình, `state`, SQL, Deep Link và lịch sử Git giữa Code thực tế với `.md` |
 
 ---
 
 ## 2. Nhật Ký Phiên Bản Kỹ Thuật (Append-Only Engineering Log)
+
+### [2026-11-17] — Nâng Cấp Bàn Ô Ăn Quan Sỏi Cuội Thực Tế 1:1 & Tái Thiết Chánh Điện Online Phong Cách TikTok Live (`?v=20261117d`)
+- **Tệp cập nhật:** `app.js`, `temple3d.js`, `styles.css`, `index.html` (`?v=20261117d`), `sw.js` (`tuoibac-pwa-v16`), `ARCHITECTURE.md`, `docs/02_SO_DO_DU_LIEU_VA_API_NOI_BO.md`, `docs/03_TIEN_DO_VA_NHAT_KY.md`.
+- **Chi tiết 2 hạng mục nâng cấp lớn:**
+  1. **Bàn Ô Ăn Quan bằng gỗ khắc hốc kèm viên sỏi cuội thực tế 1:1 (`app.js`, `styles.css`):**
+     - Thiết kế lại bàn cờ `.oaq-board` theo chất liệu gỗ trắc khắc hốc lõm tự nhiên kèm 2 khay tre đựng quân đã ăn (`oaq-score-tray`) cho cả Hàng trên và Hàng dưới.
+     - Bổ sung hàm `renderOaqCellPebblesSvg(count, isQuan, cellSeed)` và `computePebblePositions(...)` vẽ chính xác từng viên sỏi cuội nhỏ (đủ 6 sắc độ đá tự nhiên, bóng đổ và điểm phản quang) với **số lượng viên sỏi khớp 1:1 tuyệt đối với con số hiển thị trong từng ô** (kể cả viên Đá Quan lớn trong 2 ô Quan bán nguyệt và các viên sỏi trong khay quân ăn được).
+  2. **Tái thiết hoàn toàn Chánh Điện Online theo phong cách TikTok Live (`tiktok-live-temple-rpc` / Chùa Linh Ứng Online 2.5D trong `temple3d.js`, `app.js`):**
+     - Thay thế các khối hình trụ/nón 3D thô và các nhãn chữ to che khuất màn hình bằng **Engine Đồ Họa Chánh Điện 2.5D & Hạt Ánh Sáng Cao Cấp (28 FPS)**: Gian Tam Bảo cửa võng son thếp vàng, Hoành phi - Câu đối, đèn lồng cung đình, Tượng Phật Vàng ngồi đài sen hồng 3 tầng với gương mặt từ bi và Hào quang Mandala 12 cánh sen xoay chậm.
+     - Vẽ 10 Chiếu Bồ Đoàn thêu hoa sen cùng các Phật tử mặc Áo Lam / Áo Tràng chắp tay thực hiện **động tác cúi lạy 3 nhịp uyển chuyển** khi hành lễ; bảng tên nhỏ gọn gắn ngay sát đế chiếu không bao giờ đè lên nhau hay che tượng Phật.
+     - Hỗ trợ **chạm trực tiếp lên màn hình Chánh Điện** (vào Mõ gỗ, Đại Hồng Chung, Lư hương, Ống xăm tre, Hồ sen cá Koi, Cây Bồ Đề thẻ đỏ, hoặc từng Chiếu Bồ Đoàn), bổ sung chế độ **Bật Tự Động Gõ Mõ Đều Nhịp (Auto Mõ)** bay chữ vàng **`+1 Tâm An`**, dải sớ cầu nguyện chạy trực tiếp và nút nghe giọng đọc AI (TTS) xướng lời cầu an.
 
 ### [2026-11-17] — Tổng Rà Soát Toàn Hệ Thống, Vá Lỗi Xóa Vault, Rò Rỉ WebGL/Event & Khớp API Export
 - **Tệp cập nhật:** `app.js`, `tearoom3d.js`, `temple3d.js`, `realtime.js`, `styles.css`, `index.html` (`?v=20261117c`), `sw.js` (`tuoibac-pwa-v15`), `ARCHITECTURE.md`, `docs/02_SO_DO_DU_LIEU_VA_API_NOI_BO.md`, `scripts/studio-doctor.mjs`.
