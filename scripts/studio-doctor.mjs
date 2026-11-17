@@ -395,11 +395,43 @@ function extractRoutesFromRenderSwitch(appCode) {
       issues.push(`Tham số URL mới trong app.js chưa đồng bộ vào docs/04: ${undocParams.join(", ")}`);
     }
 
+    // 7G. Khớp tên hàm/thuộc tính xuất khẩu thực tế của các Engine với docs/02
+    const exportedChecks = [
+      { file: "tearoom3d.js", symbols: ["exportPostcardPng", "toggleOverviewWide", "showSeatSticker", "drawQrToCanvas", "dispose"] },
+      { file: "temple3d.js", symbols: ["CUSHION_COORDS", "setCameraView", "spawnWishPlaque", "spawnPondLantern", "dispose"] },
+      { file: "xiangqi.js", symbols: ["applyMoveClone", "getLegalMovesForSquare", "getAllLegalMoves", "pickAiMove", "suggestBestMove", "formatMoveLabel", "renderBoardSvg"] },
+      { file: "progression.js", symbols: ["MAIN_TIERS", "SKILL_TREES", "evaluateMainProgress", "evaluateSkillTree"] },
+      { file: "telemetry.js", symbols: ["recordRouteChange", "flushDwellHeartbeat", "getMemberDeepProfiles", "buildExportJsonlString"] }
+    ];
+    for (const chk of exportedChecks) {
+      const code = fs.readFileSync(path.join(ROOT, chk.file), "utf8");
+      for (const sym of chk.symbols) {
+        if (!code.includes(sym)) {
+          issues.push(`Hàm ${sym} biến mất khỏi ${chk.file}`);
+        } else if (!apiDoc.includes(sym)) {
+          issues.push(`Hàm ${sym} của ${chk.file} chưa được ghi đúng tên vào docs/02`);
+        }
+      }
+    }
+
+    // 7H. Không còn hàm hay listener rò rỉ trong module 3D & xóa đủ Vault khi wipe
+    const templeCode = fs.readFileSync(path.join(ROOT, "temple3d.js"), "utf8");
+    const teaCode = fs.readFileSync(path.join(ROOT, "tearoom3d.js"), "utf8");
+    if (templeCode.includes("window.addEventListener(") && !templeCode.includes("window.removeEventListener(")) {
+      issues.push("temple3d.js thiếu window.removeEventListener() trong dispose()");
+    }
+    if (!teaCode.includes("scene.traverse")) {
+      issues.push("tearoom3d.js thiếu scene.traverse() giải phóng Geometry/Material trong dispose3D()");
+    }
+    if ((appCode.match(/localStorage\.removeItem\(VAULT_BACKUP_KEY\)/g) || []).length < 2) {
+      issues.push("app.js thiếu xóa VAULT_BACKUP_KEY khi wipe dữ liệu hoặc đặt lại dữ liệu mẫu");
+    }
+
     recordGate(
       "7. Đồng bộ 1:1 Code <-> Tài liệu .md (Deep Contract Sync)",
       issues.length === 0,
       issues.length === 0
-        ? `Khớp 100%: ${rootJsFiles.length} JS, ${globalNamespaces.length} namespace, ${liveRoutes.length} route, ${liveStateKeys.length} khóa state, ${sqlTables.length} bảng SQL, ${urlParams.size} tham số URL`
+        ? `Khớp 100%: ${rootJsFiles.length} JS, ${globalNamespaces.length} namespace, ${liveRoutes.length} route, ${liveStateKeys.length} khóa state, ${sqlTables.length} bảng SQL, ${urlParams.size} tham số URL & API export`
         : issues.join(" | ")
     );
   }

@@ -165,6 +165,7 @@ window.TuoiBacRealtime = (function () {
       emit("presence", getPresenceSnapshot());
     } else if (kind === "chat") {
       if (!payload.msgId || seenMsgIds.has(payload.msgId)) return;
+      if (seenMsgIds.size > 800) seenMsgIds.clear();
       seenMsgIds.add(payload.msgId);
       if (payload.clientId === clientId) return;
       emit("chat", payload);
@@ -813,6 +814,7 @@ window.TuoiBacRealtime = (function () {
 
   function wipeMyCloudData() {
     clearMyPresence();
+    clearGlobalOnline();
     const dayKey = getTodayKey();
     delete checkinsToday[clientId];
     if (mqttClient && connected) {

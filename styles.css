@@ -228,8 +228,8 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 10px 14px;
+  gap: 6px;
+  padding: 8px 10px;
   background-color: var(--bg-card);
   border-bottom: 1px solid var(--border-subtle);
 }
@@ -239,6 +239,7 @@ button {
   align-items: center;
   gap: 8px;
   min-width: 0;
+  flex: 1;
 }
 
 .btn-back {
@@ -249,11 +250,12 @@ button {
   background-color: var(--bg-paper);
   color: var(--ink-primary);
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: clamp(16px, 0.88rem, 18px);
   white-space: nowrap;
+  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
 }
 
 .btn-back:hover {
@@ -263,18 +265,18 @@ button {
 .brand-compact {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
 }
 
 .brand-mark {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
   background-color: var(--accent-terracotta);
   color: #FFFFFF;
   font-weight: 700;
-  font-size: 0.95rem;
+  font-size: clamp(16px, 0.88rem, 18px);
   display: grid;
   place-items: center;
   flex-shrink: 0;
@@ -287,12 +289,13 @@ button {
 }
 
 .brand-text strong {
-  font-size: 1.05rem;
+  font-size: clamp(17px, 0.95rem, 20px);
   line-height: 1.2;
+  white-space: nowrap;
 }
 
 .brand-text small {
-  font-size: 0.88rem;
+  font-size: clamp(14px, 0.78rem, 17px);
   color: var(--ink-secondary);
   white-space: nowrap;
   overflow: hidden;
@@ -302,23 +305,23 @@ button {
 .topbar-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   flex-shrink: 0;
 }
 
 .btn-tool {
   min-height: 56px;
-  padding: 8px 10px;
+  padding: 8px 8px;
   border-radius: var(--radius-md);
   border: 1px solid var(--border-subtle);
   background-color: var(--bg-paper);
   color: var(--ink-primary);
-  font-size: 0.88rem;
+  font-size: clamp(16px, 0.88rem, 18px);
   font-weight: 600;
   white-space: nowrap;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
 }
 
 .btn-tool.speaking {
@@ -332,33 +335,35 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 8px 14px;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 10px;
   background-color: var(--bg-newsprint);
   border-bottom: 1px solid var(--border-subtle);
 }
 
 .user-pill {
+  flex: 1 1 165px;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   border: 1px solid var(--border-subtle);
   background-color: var(--bg-card);
   border-radius: 999px;
-  padding: 4px 12px 4px 6px;
+  padding: 4px 10px 4px 6px;
   min-height: 56px;
   text-align: left;
-  min-width: 0;
+  min-width: 145px;
 }
 
 .avatar-dot {
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   border-radius: 999px;
   background-color: var(--accent-jade);
   color: #FFFFFF;
   font-weight: 700;
-  font-size: 0.85rem;
+  font-size: clamp(16px, 0.88rem, 18px);
   display: grid;
   place-items: center;
   flex-shrink: 0;
@@ -371,7 +376,7 @@ button {
 }
 
 .user-pill-info strong {
-  font-size: 0.82rem;
+  font-size: clamp(16px, 0.88rem, 18px);
   line-height: 1.15;
   white-space: nowrap;
   overflow: hidden;
@@ -379,7 +384,7 @@ button {
 }
 
 .user-pill-info small {
-  font-size: 0.88rem;
+  font-size: clamp(14px, 0.78rem, 17px);
   color: var(--ink-secondary);
   white-space: nowrap;
   overflow: hidden;
@@ -389,7 +394,7 @@ button {
 .strip-counters {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   flex-shrink: 0;
 }
 
@@ -398,11 +403,11 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 6px 10px;
+  padding: 6px 8px;
   border-radius: 999px;
   background-color: var(--bg-card);
   border: 1px solid var(--border-subtle);
-  font-size: 0.88rem;
+  font-size: clamp(15px, 0.85rem, 18px);
   font-weight: 700;
 }
 
@@ -1321,21 +1326,22 @@ p {
 /* Tabs & Chips */
 .tab-bar {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
-  overflow-x: auto;
-  padding-bottom: 2px;
 }
 
 .tab-btn {
   min-height: 56px;
-  padding: 8px 14px;
+  padding: 8px 10px;
   border-radius: 12px;
   border: 1px solid var(--border-strong);
   background-color: var(--bg-card);
-  font-size: 0.85rem;
+  font-size: 0.88rem;
   font-weight: 700;
-  white-space: nowrap;
-  flex: 1;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.22;
+  flex: 1 1 42%;
 }
 
 .tab-btn.active {
@@ -1383,21 +1389,23 @@ p {
 /* Replicable Multi-Table Rooms & Smart Matchmaker */
 .room-strip {
   display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  padding-bottom: 4px;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .room-tab-btn {
   min-height: 56px;
-  padding: 8px 14px;
+  padding: 8px 10px;
   border-radius: var(--radius-md);
   border: 1px solid var(--border-strong);
   background-color: var(--bg-card);
   font-size: 0.88rem;
   font-weight: 700;
-  white-space: nowrap;
-  flex-shrink: 0;
+  white-space: normal;
+  text-align: center;
+  line-height: 1.22;
+  flex: 1 1 45%;
+  min-width: 124px;
 }
 
 .room-tab-btn.active {
@@ -1901,16 +1909,16 @@ p {
 /* ==================== NHÓM A & NHÓM B: PWA, REALTIME, 9x10 XIANGQI, BADGE FRAMES, ANALYTICS & PRIVACY ==================== */
 .rt-pill {
   min-height: 56px;
-  padding: 6px 10px;
+  padding: 6px 8px;
   border-radius: 12px;
   border: 1px solid var(--border-subtle);
   background-color: var(--bg-card);
   color: var(--ink-primary);
-  font-size: 0.88rem;
+  font-size: clamp(15px, 0.85rem, 18px);
   font-weight: 700;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   font-variant-numeric: tabular-nums;
 }
 

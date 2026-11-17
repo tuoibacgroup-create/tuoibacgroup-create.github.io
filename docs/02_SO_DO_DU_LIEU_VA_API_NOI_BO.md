@@ -151,26 +151,26 @@ state = {
 - `buildExportJsonlString()` / `buildExportFullJsonObject()` / `buildExportCsvString()` → Xuất dữ liệu chuẩn huấn luyện AI.
 
 ### 2.3. `window.TeaRoomScene` (`tearoom3d.js`)
-- `mount(container, config, onFallback)`: Dựng sảnh trà 5 gian (`viewType: "overview"`) hoặc cận cảnh bàn tròn (`viewType: "table"`) hoặc sân khấu thử đồ (`viewType: "showcase"`).
-- `setSpeaker(seatIdx)` / `triggerTeaService()` / `showSeatSticker(seatIdx, label, bg, color)`.
-- `setOverviewWideLevel("wide" | "ultrawide")`.
-- `capturePostcardPng(meta)` / `drawInviteCardPng(meta)` / `drawQrToCanvas(ctx, url, x, y, size)`.
-- `dispose()`: Hủy ngữ cảnh WebGL và dừng vòng lặp vẽ.
+- `mount(el, canvas, tagsLayer, config, fallbackCb)`: Dựng sảnh trà 5 gian (`viewMode: "overview"`), cận cảnh bàn tròn (`viewMode: "table"` mặc định) hoặc sân khấu thử đồ (`viewMode: "profile"`).
+- `setSpeaker(idx)` / `setSeatBadge(idx, badge)` / `triggerTeaService()` / `showSeatSticker(seatIdx, label, bg, color)`.
+- `toggleOverviewWide()` / `getOverviewWideLevel()` / `getActiveMode()`.
+- `exportPostcardPng(opts)` / `drawQrToCanvas(ctx, text, x, y, size)`.
+- `dispose()`: Hủy ngữ cảnh WebGL, giải phóng hình học/vật liệu, dọn trình nghe pointer và dừng vòng lặp vẽ.
 
 ### 2.4. `window.TempleScene3D` (`temple3d.js`)
+- `CUSHION_COORDS`: Mảng 10 tọa độ chiếu Bồ Đoàn 3D.
 - `mount(container, config, onFallback)`: Dựng Chánh Điện 3D góc rộng, 10 chiếu Bồ Đoàn, sân Hồ Sen và Cây Thẻ Đỏ.
 - `setCameraView("wide" | "cushions" | "courtyard")` / `getCameraView()`.
 - `triggerIncense(speakerName)` / `triggerMuyu(count)` / `triggerBell(speakerName)`.
 - `spawnWishPlaque(speakerName, isVeteranGold)`: Treo thêm một thẻ đỏ (hoặc thẻ vàng cho bậc từ Tầng 23) đung đưa trên cây sân chùa.
 - `spawnPondLantern(speakerName)`: Thả thêm một ngọn hoa đăng trôi trên mặt hồ sen.
-- `dispose()`: Giải phóng toàn bộ tài nguyên 3D Chánh Điện.
+- `dispose()`: Giải phóng toàn bộ tài nguyên 3D Chánh Điện và gỡ bỏ listener kéo chuột khỏi `window`.
 
 ### 2.5. `window.TuoiBacXiangqi` (`xiangqi.js`)
-- `PUZZLES`: Mảng 6 thế cờ cổ phổ đã kiểm chứng lời giải.
-- `createInitialBoard()` / `cloneBoard(b)` / `parseFen(fen)`.
-- `generateLegalMoves(board, side)` / `applyMove(board, mv)` / `isInCheck(board, side)`.
-- `chooseAiMove(board, side, depthLevel)`: AI đối thủ máy (`easy` hoặc `club` 4 tầng Alpha-Beta).
-- `formatMoveViet(board, mv)`: Đọc tên nước cờ theo thuật ngữ cờ tướng Việt Nam (ví dụ: *"Pháo Đỏ bình 5"*).
+- Hằng số & dữ liệu: `PIECE_LABELS`, `PUZZLES` (6 thế cờ cổ phổ đã kiểm chứng lời giải).
+- Trạng thái & nước đi: `createInitialBoard()`, `buildBoardFromList(list)`, `cloneBoard(b)`, `applyMoveClone(board, move)`, `isInCheck(board, side)`.
+- Luật & gợi ý: `getLegalMovesForSquare(board, r, c)`, `getAllLegalMoves(board, side)`, `pickAiMove(board, aiSide, levelOrPuzzle)`, `suggestBestMove(board, side)`.
+- Hiển thị: `getCapturedPieces(board)`, `formatMoveLabel(board, mv)`, `renderBoardSvg(opts)`.
 
 ### 2.6. `window.TuoiBacRealtime` (`realtime.js`)
 - Kết nối & trạng thái: `start()`, `reconnect()`, `getStatus()`, `on(event, fn)`.

@@ -1057,16 +1057,10 @@
     }
   }
 
-  let templeAnimId = null;
-
   function navigate(route) {
     stopSpeaking();
     clearInterval(quizTimerId);
     clearInterval(cooldownTickId);
-    if (templeAnimId) {
-      cancelAnimationFrame(templeAnimId);
-      templeAnimId = null;
-    }
     if ((state.route === "tearoom" || state.route === "profile") && route !== state.route) {
       window.TeaRoomScene.dispose();
     }
@@ -7281,6 +7275,7 @@
         if (RT) RT.wipeMyCloudData();
         if (TEL && typeof TEL.wipeLocalTelemetry === "function") TEL.wipeLocalTelemetry();
         localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(VAULT_BACKUP_KEY);
         state = createDefaultState();
         pendingQueue = [];
         closeDialog();
@@ -9361,6 +9356,8 @@
   if (els.simReset) {
     els.simReset.addEventListener("click", () => {
       localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(VAULT_BACKUP_KEY);
+      if (TEL && typeof TEL.wipeLocalTelemetry === "function") TEL.wipeLocalTelemetry();
       state = createDefaultState();
       sessionSeconds = 0;
       pendingQueue = [];

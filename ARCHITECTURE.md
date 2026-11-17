@@ -71,7 +71,7 @@ flowchart TD
 | 6 | `xiangqi.js` | `window.TuoiBacXiangqi` | Engine Cờ Tướng `9×10` chuẩn 32 quân hoàn chỉnh: sinh nước đi hợp lệ cho cả 7 binh chủng, luật tướng đối mặt, kiểm tra tự chiếu/chiếu bí, AI đối thủ câu lạc bộ (Minimax + Alpha-Beta Pruning + Bảng điểm vị trí PST + Sắp xếp nước bắt quân MVV-LVA) và 6 ván Cờ Thế cổ phổ. |
 | 7 | `realtime.js` | `window.TuoiBacRealtime` | Lớp mạng thời gian thực tự phục hồi: kết nối song song `BroadcastChannel` nội bộ và `MQTT over WSS` công cộng (hoặc `Supabase` khi cấu hình khóa), quản lý hiện diện trực tuyến theo bàn và toàn quán, hàng đợi chat, ván cờ treo, thẻ hội viên đám mây, hội nhóm, kết bạn, chánh điện và luồng telemetry. |
 | 8 | `app.js` | IIFE Controller | Bộ điều phối trung tâm gắn kết tất cả module: quản lý `state`, lưu trữ kép (`localStorage` + `_vault_bak`), bộ định tuyến `navigate(route)`, xử lý Deep Link URL, tổng hợp giọng đọc tiếng Việt (Web Speech TTS + dự phòng luồng âm thanh), nhận dạng giọng nói kèm tự học từ điển phương ngữ, âm thanh nhạc cụ WebAudio (chuông chùa, mõ gỗ, quân cờ, đàn tranh) và 16 hàm dựng màn hình. |
-| 9 | `sw.js` | Service Worker | Quản lý bộ nhớ đệm PWA (`tuoibac-pwa-v14`): chiến lược *Network-First* cho mã nguồn chính để luôn nhận bản mới nhất khi có mạng và tự động dùng bản lưu sẵn khi mất sóng 4G, đồng thời bỏ qua không chặn các luồng WebSocket/TTS/RSS. |
+| 9 | `sw.js` | Service Worker | Quản lý bộ nhớ đệm PWA (`tuoibac-pwa-v15`): chiến lược *Network-First* cho mã nguồn chính để luôn nhận bản mới nhất khi có mạng và tự động dùng bản lưu sẵn khi mất sóng 4G, đồng thời bỏ qua không chặn các luồng WebSocket/TTS/RSS. |
 | — | `supabase_schema.sql` | PostgreSQL DDL | Tập lệnh SQL khởi tạo 14 bảng dữ liệu và chính sách bảo mật RLS trên gói miễn phí Supabase. |
 
 ---

@@ -24,6 +24,16 @@ window.TempleScene3D = (function () {
   let isDragging = false;
   let dragStartX = 0;
   let dragStartAzimuth = 0;
+  let boundMouseMove = null;
+  let boundMouseUp = null;
+
+  function escHtml(str) {
+    return String(str || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
 
   let currentConfig = null;
   let cushionActors = [];
@@ -897,7 +907,7 @@ window.TempleScene3D = (function () {
         ? "rgba(36,106,82,0.95)"
         : "rgba(42,30,22,0.88)";
       pieces.push(
-        `<div class="seat-status-tag" style="left:${Math.round(pt.sx)}px;top:${Math.round(pt.sy)}px;background:${bg};color:#FFFDF7;">BĐ${ca.idx + 1} · ${shortName}</div>`
+        `<div class="seat-status-tag" style="left:${Math.round(pt.sx)}px;top:${Math.round(pt.sy)}px;background:${bg};color:#FFFDF7;">BĐ${ca.idx + 1} · ${escHtml(shortName)}</div>`
       );
     });
 
@@ -905,7 +915,7 @@ window.TempleScene3D = (function () {
       const bPt = projectToOverlay(floatingBanner.worldPos, w, h);
       if (bPt) {
         pieces.push(
-          `<div class="seat-status-tag" style="left:${Math.round(bPt.sx)}px;top:${Math.round(bPt.sy)}px;background:${floatingBanner.bg};color:${floatingBanner.color};border:1.5px solid #FFE07D;font-weight:700;">${floatingBanner.text}</div>`
+          `<div class="seat-status-tag" style="left:${Math.round(bPt.sx)}px;top:${Math.round(bPt.sy)}px;background:${escHtml(floatingBanner.bg)};color:${escHtml(floatingBanner.color)};border:1.5px solid #FFE07D;font-weight:700;">${escHtml(floatingBanner.text)}</div>`
         );
       }
     }
@@ -1084,9 +1094,12 @@ window.TempleScene3D = (function () {
       isDragging = false;
     };
 
+    boundMouseMove = (e) => moveDrag(e.clientX);
+    boundMouseUp = stopDrag;
+
     el.addEventListener("mousedown", (e) => startDrag(e.clientX));
-    window.addEventListener("mousemove", (e) => moveDrag(e.clientX));
-    window.addEventListener("mouseup", stopDrag);
+    window.addEventListener("mousemove", boundMouseMove);
+    window.addEventListener("mouseup", boundMouseUp);
 
     el.addEventListener(
       "touchstart",
@@ -1257,6 +1270,15 @@ window.TempleScene3D = (function () {
   }
 
   function dispose() {
+    if (boundMouseMove) {
+      window.removeEventListener("mousemove", boundMouseMove);
+      boundMouseMove = null;
+    }
+    if (boundMouseUp) {
+      window.removeEventListener("mouseup", boundMouseUp);
+      boundMouseUp = null;
+    }
+    isDragging = false;
     if (animId) {
       cancelAnimationFrame(animId);
       animId = null;

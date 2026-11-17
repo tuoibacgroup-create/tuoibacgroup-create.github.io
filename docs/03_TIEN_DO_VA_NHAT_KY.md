@@ -29,6 +29,15 @@
 
 ## 2. Nhật Ký Phiên Bản Kỹ Thuật (Append-Only Engineering Log)
 
+### [2026-11-17] — Tổng Rà Soát Toàn Hệ Thống, Vá Lỗi Xóa Vault, Rò Rỉ WebGL/Event & Khớp API Export
+- **Tệp cập nhật:** `app.js`, `tearoom3d.js`, `temple3d.js`, `realtime.js`, `styles.css`, `index.html` (`?v=20261117c`), `sw.js` (`tuoibac-pwa-v15`), `ARCHITECTURE.md`, `docs/02_SO_DO_DU_LIEU_VA_API_NOI_BO.md`, `scripts/studio-doctor.mjs`.
+- **Chi tiết 5 lỗi kỹ thuật vừa phát hiện và xử lý triệt để:**
+  1. **Xóa dữ liệu NĐ 13/2023 & Reset Demo:** Bổ sung xóa `VAULT_BACKUP_KEY` (`_vault_bak`), gọi `RT.clearGlobalOnline()` trong `wipeMyCloudData()` và dọn `IndexedDB` khi đặt lại dữ liệu mẫu, tránh tình trạng bản sao dự phòng tự khôi phục dữ liệu cũ sau khi người dùng đã chọn xóa vĩnh viễn.
+  2. **Rò rỉ bộ nhớ & Event Listener 3D:** Bổ sung gỡ `boundMouseMove` / `boundMouseUp` trong `TempleScene3D.dispose()`, thêm `scene.traverse(...)` giải phóng Geometry/Material và xóa `window.onpointermove/up` trong `TeaRoomScene.dispose()`.
+  3. **Thoát chuỗi HTML trong nhãn nổi 3D (XSS Hardening):** Thêm `escHtml()` cho mọi nhãn bảng tên 3D/2.5D và banner nổi nhận tên bàn/tên người dùng từ mạng công cộng.
+  4. **Giới hạn `seenMsgIds` & Chuẩn hóa lưới nút / thanh đầu trang ở chế độ Chữ to 24px:** Đặt trần `seenMsgIds` tại `800` phần tử trong `realtime.js`; dùng `clamp(16px, 0.88rem, 18px)` trên `.app-topbar` (ngăn nút `Quay về` đè nút `Đọc to`), cho phép `.user-strip` tự xuống hàng khi cần, và chuyển `.room-strip` + `.tab-bar` sang bố cục xuống dòng (`flex-wrap: wrap`) để toàn bộ 6 phòng và các tab chức năng hiển thị trọn vẹn trong `390px` ngay cả khi bật **Chữ to 24px** (`0` nút chồng đè, `0` nút tràn ngang, `0` nút cao dưới `56px`).
+  5. **Chuẩn hóa 100% tên hàm API thực tế:** Cập nhật đúng tên hàm export của `tearoom3d.js` (`exportPostcardPng`, `toggleOverviewWide`) và `xiangqi.js` (`pickAiMove`, `applyMoveClone`, `getAllLegalMoves`, `formatMoveLabel`) vào `docs/02` và khóa kiểm tra tự động trong Cổng 7G/7H của `studio-doctor.mjs`.
+
 ### [2026-11-17] — Bổ sung Bất Biến #11 & Cổng Kiểm Định Đồng Bộ Sâu Code ↔ Docs (`9/9 PASS`)
 - **Tệp cập nhật:** `AGENTS.md`, `CLAUDE.md`, `ARCHITECTURE.md`, `README.md`, `docs/01..04_*.md`, `scripts/studio-doctor.mjs`.
 - **Lý do & Nội dung:** Thiết lập quy tắc bắt buộc đồng bộ hai chiều giữa mã nguồn thực tế và toàn bộ tệp `.md` trong cùng một lượt sửa. Nâng cấp `scripts/studio-doctor.mjs` lên **9 cổng kiểm định**: tự động bóc tách 16 `route`, 7 namespace `window.*`, 20 khóa gốc `state`, 14 bảng SQL, 8 tham số URL Deep Link, phiên bản `sw.js` và lịch sử Git để chặn ngay nếu sửa code mà chưa cập nhật tài liệu tiến độ/kiến trúc.

@@ -31,6 +31,14 @@ window.TeaRoomScene = (function () {
   // Cached procedural CanvasTextures so room switching stays instant & zero external asset dependencies
   const texCache = {};
 
+  function escHtml(str) {
+    return String(str || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
   function hexToCss(val, fallback) {
     if (typeof val === "string") return val;
     if (typeof val === "number") return "#" + val.toString(16).padStart(6, "0");
@@ -334,6 +342,22 @@ window.TeaRoomScene = (function () {
     if (animId) {
       cancelAnimationFrame(animId);
       animId = null;
+    }
+    window.onpointermove = null;
+    window.onpointerup = null;
+    isDraggingOverview = false;
+    if (scene) {
+      scene.traverse((obj) => {
+        if (obj.geometry && typeof obj.geometry.dispose === "function") {
+          obj.geometry.dispose();
+        }
+        if (obj.material) {
+          const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+          mats.forEach((m) => {
+            if (m && typeof m.dispose === "function") m.dispose();
+          });
+        }
+      });
     }
     if (renderer) {
       try {
@@ -1499,7 +1523,7 @@ window.TeaRoomScene = (function () {
       const text = isRec
         ? `${item.table.shortLabel} · Gợi ý (${count}/5)`
         : `${item.table.shortLabel}${hostMark} · ${count}/5`;
-      html += `<span class="seat-status-tag ${isRec ? "active-speaker" : ""}" style="left:${sx.toFixed(0)}px;top:${sy.toFixed(0)}px">${text}</span>`;
+      html += `<span class="seat-status-tag ${isRec ? "active-speaker" : ""}" style="left:${sx.toFixed(0)}px;top:${sy.toFixed(0)}px">${escHtml(text)}</span>`;
     });
 
     tagsLayerEl.innerHTML = html;
@@ -1515,13 +1539,13 @@ window.TeaRoomScene = (function () {
   };
 
   function formatSeatTagHtml(opts) {
-    const fId = opts.titleFrameId || "none";
+    const fId = String(opts.titleFrameId || "none").replace(/[^a-z0-9_-]/gi, "");
     const fShort = FRAME_SHORT_LABELS[fId] || "";
-    const prefix = fShort ? `<em class="tag-frame-pill">${fShort}</em> ` : "";
+    const prefix = fShort ? `<em class="tag-frame-pill">${escHtml(fShort)}</em> ` : "";
     const liveDot = opts.isRealPeer ? `<i class="tag-live-dot" aria-hidden="true"></i>` : "";
     const frameCls = fId !== "none" ? `has-frame frame-${fId}` : "";
     const spkCls = opts.isActive ? "active-speaker" : "";
-    return `<span class="seat-status-tag ${spkCls} ${frameCls}" style="left:${opts.sx.toFixed(0)}px;top:${opts.sy.toFixed(0)}px">${liveDot}${prefix}${opts.label}</span>`;
+    return `<span class="seat-status-tag ${spkCls} ${frameCls}" style="left:${opts.sx.toFixed(0)}px;top:${opts.sy.toFixed(0)}px">${liveDot}${prefix}${escHtml(opts.label)}</span>`;
   }
 
   function updateTagOverlays3D() {
@@ -1550,7 +1574,7 @@ window.TeaRoomScene = (function () {
       });
       if (activeStickerPop && activeStickerPop.seatIdx === i && activeStickerPop.expiresAt > Date.now()) {
         const popY = Math.max(26, sy - 30);
-        html += `<span class="seat-sticker-pop" style="left:${sx.toFixed(0)}px;top:${popY.toFixed(0)}px;background:${activeStickerPop.bg};color:${activeStickerPop.color};border-color:${activeStickerPop.color}">${activeStickerPop.label}</span>`;
+        html += `<span class="seat-sticker-pop" style="left:${sx.toFixed(0)}px;top:${popY.toFixed(0)}px;background:${escHtml(activeStickerPop.bg)};color:${escHtml(activeStickerPop.color)};border-color:${escHtml(activeStickerPop.color)}">${escHtml(activeStickerPop.label)}</span>`;
       }
     });
 
@@ -1648,7 +1672,7 @@ window.TeaRoomScene = (function () {
       const count = tbl.members.length;
       const hostMark = tbl.isHostNamed ? " · Chủ bàn" : "";
       const text = isRec ? `${tbl.shortLabel} · Gợi ý` : `${tbl.shortLabel}${hostMark} · ${count}/5`;
-      tagHtml += `<span class="seat-status-tag ${isRec ? "active-speaker" : ""}" style="left:${cx.toFixed(0)}px;top:${Math.max(24, cy - 22).toFixed(0)}px">${text}</span>`;
+      tagHtml += `<span class="seat-status-tag ${isRec ? "active-speaker" : ""}" style="left:${cx.toFixed(0)}px;top:${Math.max(24, cy - 22).toFixed(0)}px">${escHtml(text)}</span>`;
     });
 
     if (tagsLayerEl) {
@@ -1826,7 +1850,7 @@ window.TeaRoomScene = (function () {
       });
       if (activeStickerPop && activeStickerPop.seatIdx === idx && activeStickerPop.expiresAt > Date.now()) {
         const popY = Math.max(26, sy - 30);
-        tagHtml += `<span class="seat-sticker-pop" style="left:${sx.toFixed(0)}px;top:${popY.toFixed(0)}px;background:${activeStickerPop.bg};color:${activeStickerPop.color};border-color:${activeStickerPop.color}">${activeStickerPop.label}</span>`;
+        tagHtml += `<span class="seat-sticker-pop" style="left:${sx.toFixed(0)}px;top:${popY.toFixed(0)}px;background:${escHtml(activeStickerPop.bg)};color:${escHtml(activeStickerPop.color)};border-color:${escHtml(activeStickerPop.color)}">${escHtml(activeStickerPop.label)}</span>`;
       }
     });
 
@@ -1864,7 +1888,7 @@ window.TeaRoomScene = (function () {
       vi.project(camera);
       const ix = Math.max(84, Math.min(width - 96, (vi.x * 0.5 + 0.5) * width));
       const iy = Math.max(30, Math.min(height - 10, (-vi.y * 0.5 + 0.5) * height));
-      html += `<span class="seat-status-tag" style="left:${ix.toFixed(0)}px;top:${iy.toFixed(0)}px">${currentConfig.itemLabel || "Đồ bày bàn trà"}</span>`;
+      html += `<span class="seat-status-tag" style="left:${ix.toFixed(0)}px;top:${iy.toFixed(0)}px">${escHtml(currentConfig.itemLabel || "Đồ bày bàn trà")}</span>`;
     }
 
     tagsLayerEl.innerHTML = html;
@@ -1969,7 +1993,7 @@ window.TeaRoomScene = (function () {
           titleFrameId: currentConfig.userTitleFrame || "none",
           isRealPeer: false
         }) +
-        `<span class="seat-status-tag" style="left:${tx.toFixed(0)}px;top:${Math.max(28, ty - 42).toFixed(0)}px">${currentConfig.itemLabel || "Đồ bày bàn trà"}</span>`;
+        `<span class="seat-status-tag" style="left:${tx.toFixed(0)}px;top:${Math.max(28, ty - 42).toFixed(0)}px">${escHtml(currentConfig.itemLabel || "Đồ bày bàn trà")}</span>`;
     }
   }
 
