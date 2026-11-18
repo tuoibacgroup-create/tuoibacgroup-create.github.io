@@ -70,13 +70,13 @@ Tài liệu này lưu lại **lý do cốt lõi (Why)** đằng sau 10 quyết �
 
 ---
 
-## ADR-008: Chuẩn Hóa Đồ Họa Quán Trà Full 2.5D Cổ Điển (TLBB) Với 8 Trang Phục, 8 Phụ Kiện & 12 Đồ Bàn Trà Di Sản (`tearoom3d.js`)
+## ADR-008: Chuẩn Hóa Đồ Họa Quán Trà Full 2.5D Cổ Điển (TLBB) Với 6 Không Gian Riêng Biệt (Gồm Trà Đá Vỉa Hè), 14 Trang Phục Ba Miền, 11 Phụ Kiện & 13 Đồ Bàn Trà (`tearoom3d.js`)
 - **Trạng thái:** Đã chấp thuận & Đang vận hành (2026-11, khóa thống nhất `Full 2.5D TLBB`)
-- **Bối cảnh:** Bức tranh đẳng cự 2.5D cổ điển kiểu Thiên Long Bát Bộ mang lại cảm giác ấm cúng, đồng bộ và tiết kiệm pin nhất cho người cao tuổi 55+. Các phụ kiện vẽ hình học đơn giản trước đây dễ lệch khỏi mắt/cổ góc nghiêng `3/4` và làm giảm thẩm mỹ bàn trà.
+- **Bối cảnh:** Để không gian quán trà thật sự dân dã, gần gũi với đời sống người Việt ba miền, mỗi phòng sinh hoạt cần bối cảnh kiến trúc – bàn ghế riêng tương ứng và có thêm góc **Quán Trà Đá Vỉa Hè** bên cạnh các phòng trà trong nhà.
 - **Quyết định:**
-  - Sử dụng **Sprite Atlas nhân vật `4×2` (`assets/tearoom-sprites.webp`)** kết hợp **2 bộ Sprite phụ kiện (`assets/tearoom-accessories.webp`, `assets/tearoom-accessories-extra.webp`)** và **2 bộ Sprite vật phẩm di sản (`assets/tearoom-items.webp`, `assets/tearoom-items-extra.webp`)** đã tách nền sạch, phục vụ **8 mẫu áo truyền thống, 8 phụ kiện khớp đầu/mắt/cổ góc `3/4` và 12 món đồ bày bàn trà di sản** (từ ấm tử sa, cơi trầu cánh phượng, bánh đậu xanh, lồng chim khuyên đến bàn cờ ngọc, đỉnh trầm đồng tỏa khói và ấm tích men lam).
-  - Khóa toàn bộ Quán Trà về chế độ **Full 2.5D Cổ Điển (TLBB)** (`mode === "2.5d"`), đặt nhân vật ngồi tĩnh cân hông trên ghế gỗ và bày vật phẩm trên thảm chiếu hoa Đông Dương + đôn gỗ gụ khảm nu vàng.
-- **Hệ quả:** Giao diện quán trà và tủ trang phục đạt độ sắc nét đồng nhất như tranh vẽ tay truyền thống, nhẹ máy và dễ quan sát tuyệt đối với mắt người lớn tuổi.
+  - Thiết kế riêng **6 bộ tranh nền Sảnh & Bàn 5 ghế đẳng cự (`960×720`)** kèm tọa độ nệm ghế hiệu chuẩn riêng cho từng không gian: `Phòng Trà Sáng`, `Quán Trà Đá Vỉa Hè` (`room-viahe-*.jpg`: gạch đỏ lát xương cá, bóng cây sấu, tủ kẹo lạc, phích nước đỏ Rạng Đông, chiếu cói vuông), `Phòng Thơ Lục Bát` (`room-tho-*.jpg`), `Phòng Cờ Tướng` (`room-co-*.jpg`), `Phòng Cựu Chiến Binh` (`room-ccb-*.jpg`) và `Phòng Cây Cảnh` (`room-caycanh-*.jpg`).
+  - Mở rộng kho trang bị lên **14 trang phục đặc trưng vùng miền** (Kinh Bắc – Bắc Ninh: *Áo tứ thân mớ ba*, *Áo the thâm*; Miền Trung: *Áo ngũ thân Cố đô*, *Áo lụa tím Huế*, *Áo thổ cẩm Trường Sơn*; Miền Nam: *Áo bà ba đen Khăn rằn*, *Áo bà ba lụa mỡ gà*), **11 phụ kiện khớp đầu/mắt/cổ** (*Nón quai thao*, *Khăn xếp chữ Nhân*, *Khăn rằn Nam Bộ*...) và **13 vật phẩm bày bàn** (gồm *Khay trà đá vỉa hè & kẹo lạc*).
+- **Hệ quả:** Cả 6 không gian sinh hoạt đều có hồn Việt rõ nét từ phố thị vỉa hè đến thư phòng – sân vườn, giữ tốc độ mượt `28 FPS` và đồng bộ 100% với Tủ Trang Phục.
 
 ---
 

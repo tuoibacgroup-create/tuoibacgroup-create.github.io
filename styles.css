@@ -4029,6 +4029,26 @@ p {
   box-shadow: 0 2px 6px rgba(52, 34, 18, 0.1);
 }
 
+.region-origin-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background-color: #FFF4DC;
+  border: 1px solid #D8AB66;
+  color: #6B3C12;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.viahe-home-cta {
+  width: 100%;
+  margin-top: 4px;
+  background: linear-gradient(155deg, #FFFDF5 0%, #F7E8C4 100%);
+  border-color: #C89B54;
+  color: #4A2D12;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

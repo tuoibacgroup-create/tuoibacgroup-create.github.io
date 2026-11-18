@@ -42,18 +42,25 @@ window.TuoiBacData = (function () {
   ];
 
   const OUTFITS = [
-    { id: "ao-ba-ba", name: "Áo bà ba nâu trầm", desc: "Vải đũi mộc mạc, hàng cúc ngà truyền thống", color: "#6E4A35", cost: 0 },
-    { id: "ao-dai-xanh", name: "Áo lụa xanh ngọc", desc: "Lụa mềm cổ đứng nhã nhặn, mát mắt", color: "#2E5E4E", cost: 0 },
-    { id: "ao-linh", name: "Áo sơ mi cựu chiến binh", desc: "Màu xanh rêu kỷ niệm, hai túi ngực ngay ngắn", color: "#556B45", cost: 15 },
-    { id: "ao-kaki-kem", name: "Áo đại cán kaki kem", desc: "Phong thái nhà giáo, cán bộ hưu trí điềm đạm lịch lãm", color: "#9A8160", cost: 18 },
-    { id: "ao-len-do", name: "Áo gấm đỏ ấm", desc: "Sắc đỏ boóc-đô sang trọng cho buổi sáng se lạnh", color: "#A2382B", cost: 20 },
-    { id: "ao-lua-tim-hue", name: "Áo lụa tím Huế trầm", desc: "Lụa tơ tằm sắc tím mộng mơ xứ Huế, dịu dàng đằm thắm", color: "#633B6E", cost: 20 },
-    { id: "ao-gam-vang", name: "Áo lụa hoa cúc vàng", desc: "Vàng hoàng kim tươi tắn, điểm họa tiết cúc thu", color: "#C48A2D", cost: 25 },
-    { id: "ao-gam-lam-ngoc", name: "Áo gấm lam ngọc khánh thọ", desc: "Gấm dệt chữ Thọ xanh lam trầm quý phái dịp hội ngộ", color: "#1F4E68", cost: 28 }
+    { id: "ao-ba-ba", name: "Áo bà ba nâu trầm", regionTag: "Truyền thống", desc: "Vải đũi mộc mạc, hàng cúc ngà truyền thống", color: "#6E4A35", cost: 0 },
+    { id: "ao-dai-xanh", name: "Áo lụa xanh ngọc", regionTag: "Truyền thống", desc: "Lụa mềm cổ đứng nhã nhặn, mát mắt", color: "#2E5E4E", cost: 0 },
+    { id: "ao-tu-than-bac-ninh", name: "Áo tứ thân mớ ba (Bắc Ninh)", regionTag: "Bắc Ninh · Kinh Bắc", desc: "Tà nâu non Kinh Bắc phối yếm đào đỏ thắm và dải lụa xanh thiên lý", color: "#6B3D32", cost: 16 },
+    { id: "ao-the-kinh-bac", name: "Áo the thâm liền anh (Bắc Ninh)", regionTag: "Bắc Ninh · Kinh Bắc", desc: "Áo dài the thâm ánh chàm lót cổ lụa trắng ngà của liền anh Quan họ", color: "#272C36", cost: 16 },
+    { id: "ao-ngu-than-mien-trung", name: "Áo ngũ thân tay chẽn (Miền Trung)", regionTag: "Miền Trung · Cố Đô", desc: "Cổ phục Cố đô cài 5 khuy đồng mạ vàng, sắc chàm trầm mặc đĩnh đạc", color: "#23495D", cost: 18 },
+    { id: "ao-lua-tim-hue", name: "Áo lụa tím Huế trầm (Miền Trung)", regionTag: "Miền Trung · Xứ Huế", desc: "Lụa tơ tằm sắc tím mộng mơ bên dòng Hương Giang đằm thắm", color: "#633B6E", cost: 20 },
+    { id: "ao-tho-cam-mien-trung", name: "Áo thổ cẩm Trường Sơn (Miền Trung)", regionTag: "Miền Trung · Trường Sơn", desc: "Vải chàm dệt tay viền hoa văn thổ cẩm đỏ vàng dải đất miền Trung – Tây Nguyên", color: "#3A2C39", cost: 18 },
+    { id: "ao-ba-ba-nam-bo", name: "Áo bà ba đen Khăn rằn (Miền Nam)", regionTag: "Miền Nam · Sông Nước", desc: "Áo bà ba đen miệt vườn vắt đôi tà khăn rằn Nam Bộ trắng đen thân thương", color: "#2E3136", cost: 16 },
+    { id: "ao-ba-ba-mo-ga-nam", name: "Áo bà ba lụa mỡ gà (Miền Nam)", regionTag: "Miền Nam · Miệt Vườn", desc: "Sắc vàng mỡ gà dịu mát của các cô, các má miền Tây sông nước", color: "#C89D54", cost: 16 },
+    { id: "ao-linh", name: "Áo sơ mi cựu chiến binh", regionTag: "Đồng Ngũ", desc: "Màu xanh rêu kỷ niệm, hai túi ngực ngay ngắn", color: "#556B45", cost: 15 },
+    { id: "ao-kaki-kem", name: "Áo đại cán kaki kem", regionTag: "Hưu Trí", desc: "Phong thái nhà giáo, cán bộ hưu trí điềm đạm lịch lãm", color: "#9A8160", cost: 18 },
+    { id: "ao-len-do", name: "Áo gấm đỏ ấm", regionTag: "Lễ Tết", desc: "Sắc đỏ boóc-đô sang trọng cho buổi sáng se lạnh", color: "#A2382B", cost: 20 },
+    { id: "ao-gam-vang", name: "Áo lụa hoa cúc vàng", regionTag: "Mừng Thọ", desc: "Vàng hoàng kim tươi tắn, điểm họa tiết cúc thu", color: "#C48A2D", cost: 25 },
+    { id: "ao-gam-lam-ngoc", name: "Áo gấm lam ngọc khánh thọ", regionTag: "Khánh Thọ", desc: "Gấm dệt chữ Thọ xanh lam trầm quý phái dịp hội ngộ", color: "#1F4E68", cost: 28 }
   ];
 
   const TABLE_ITEMS = [
     { id: "am-tu-sa", name: "Ấm trà tử sa", desc: "Ấm đất nung giữ nhiệt trên khay trắc 3 chén men ngọc", color: "#8B4228", cost: 0 },
+    { id: "khay-tra-da", name: "Khay trà đá vỉa hè & kẹo lạc", desc: "Ba cốc thủy tinh có khía mát lạnh, ấm nhôm nhỏ, kẹo lạc vừng và hạt hướng dương", color: "#C78E2C", cost: 8 },
     { id: "binh-sen", name: "Bình hoa sen hồng", desc: "Bình sứ men lam cắm búp sen hồng và gương sen sớm mai", color: "#E8D5C4", cost: 10 },
     { id: "dia-hat-dua", name: "Khay mứt Tết sơn mài", desc: "Khay sơn mài bát giác bày hạt dưa đỏ, mứt sen và bánh in", color: "#C63B2F", cost: 10 },
     { id: "khay-trau-cau", name: "Cơi trầu đồng cánh phượng", desc: "Cơi đồng chạm lọng bày trầu têm cánh phượng và cau tươi bổ tư", color: "#B08632", cost: 12 },
@@ -71,11 +78,14 @@ window.TuoiBacData = (function () {
     { id: "none", name: "Để đầu trần tự nhiên", desc: "Mái tóc bạc chải gọn gàng, phúc hậu", cost: 0 },
     { id: "glasses", name: "Kính lão gọng vàng", desc: "Gọng tròn mạ vàng 18K giúp đọc báo sáng rõ nét", cost: 0 },
     { id: "scarf", name: "Khăn quàng ấm cổ", desc: "Khăn len đỏ boóc-đô quàng êm quanh cổ áo ngày se lạnh", cost: 10 },
+    { id: "khan-ran-nam-bo", name: "Khăn rằn Nam Bộ quàng vai", regionTag: "Miền Nam", desc: "Khăn rằn kẻ ô đen trắng vạch đỏ mộc mạc vắt ngang vai người miền Tây", cost: 12 },
     { id: "kinh-ram-tra", name: "Kính mát mắt trà đồi mồi", desc: "Tròng trà dịu mắt chống chói nắng sớm, gọng đồi mồi cổ điển", cost: 12 },
+    { id: "khan-xep-kinh-bac", name: "Khăn xếp the đen chữ Nhân", regionTag: "Bắc Ninh", desc: "Khăn xếp lụa the đen nếp chữ Nhân chỉnh tề của liền anh Kinh Bắc", cost: 14 },
     { id: "cap", name: "Mũ cối xanh kỷ niệm", desc: "Mũ cối cựu chiến binh đội ngay ngắn, đậm chất lính xưa", cost: 15 },
     { id: "mu-tai-beo", name: "Mũ tai bèo kaki dã ngoại", desc: "Mũ vải kaki xanh rêu vành mềm che nắng dạo vườn, hành quân", cost: 15 },
+    { id: "non-quai-thao", name: "Nón quai thao Quan họ", regionTag: "Bắc Ninh", desc: "Nón ba tầm vành phẳng đan lá cọ kèm tua quai thao lụa ngà Kinh Bắc", cost: 16 },
     { id: "khan-dong", name: "Khăn đóng gấm đỏ lễ thọ", desc: "Khăn xếp lụa gấm đỏ viền kim tuyến trang trọng dịp lễ Tết, mừng thọ", cost: 18 },
-    { id: "non-la", name: "Nón lá truyền thống", desc: "Nón lá chằm tay vành tre mộc mạc quê hương Việt Nam", cost: 20 }
+    { id: "non-la", name: "Nón lá truyền thống", regionTag: "Ba Miền", desc: "Nón lá chằm tay vành tre mộc mạc quê hương Việt Nam", cost: 20 }
   ];
 
   // Khung danh hiệu gắn lên thẻ tên & huy hiệu nhân vật 3D
@@ -179,23 +189,24 @@ window.TuoiBacData = (function () {
   // Danh bạ các anh chị đang sinh hoạt trong quán (xưng hô Anh / Chị + hiển thị tuổi rõ ràng)
   const SENIOR_DIRECTORY = [
     { id: "lan", name: "Chị Lan", gender: "female", age: 68, provinceId: "ha-noi", province: "Hà Nội", habits: ["uong-tra", "tho-ca", "day-som"], bio: "Cựu giáo viên, thích trà nhài và ngâm thơ lục bát mỗi sáng.", outfitId: "ao-len-do", outfitColor: "#A2382B", hat: "hair-bun", item: "binh-sen", badge: "Vừa cười", titleFrameId: "thi-huu" },
+    { id: "tham", name: "Chị Thắm", gender: "female", age: 64, provinceId: "bac-ninh", province: "Bắc Ninh", habits: ["tho-ca", "uong-tra", "day-som"], bio: "Liền chị Quan họ Kinh Bắc, hay têm trầu cánh phượng mời bạn trà.", outfitId: "ao-tu-than-bac-ninh", outfitColor: "#6B3D32", hat: "non-quai-thao", item: "khay-trau-cau", badge: "Mời trầu", titleFrameId: "thi-huu" },
     { id: "minh", name: "Anh Minh", gender: "male", age: 71, provinceId: "hai-phong", province: "Hải Phòng", habits: ["cuu-chien-binh", "co-tuong", "doc-bao"], bio: "Cựu chiến binh Hải quân, mê cờ tướng và đọc thời sự sáng.", outfitId: "ao-linh", outfitColor: "#556B45", hat: "cap", item: "radio-go", badge: "Đang nghe", titleFrameId: "ky-thu" },
-    { id: "hoa", name: "Chị Hoa", gender: "female", age: 63, provinceId: "da-nang", province: "Đà Nẵng", habits: ["duong-sinh", "uong-tra", "tho-ca"], bio: "Trưởng nhóm dân vũ phường, hay mời trà và bánh đậu xanh.", outfitId: "ao-dai-xanh", outfitColor: "#2E5E4E", hat: "hair-bob", item: "banh-dau-xanh", badge: "Mời trà", titleFrameId: "tri-am" },
-    { id: "bay", name: "Anh Bảy", gender: "male", age: 66, provinceId: "dong-thap", province: "Đồng Tháp", habits: ["cay-canh", "day-som", "uong-tra"], bio: "Chăm vườn mai vàng và đờn ca tài tử buổi trưa.", outfitId: "ao-ba-ba", outfitColor: "#6E4A35", hat: "scarf", item: "bonsai-mini", badge: "Đang ngồi", titleFrameId: "none" },
-    { id: "thanh", name: "Anh Thành", gender: "male", age: 69, provinceId: "ninh-binh", province: "Ninh Bình", habits: ["cay-canh", "co-tuong", "day-som"], bio: "Có 15 chậu sanh bonsai tự uốn và đôi chim vành khuyên hót sáng.", outfitId: "ao-kaki-kem", outfitColor: "#C9B796", hat: "mu-tai-beo", item: "long-chim-khuyen", badge: "Đang nói", titleFrameId: "ky-thu" },
-    { id: "sau", name: "Anh Sáu", gender: "male", age: 72, provinceId: "vinh-long", province: "Vĩnh Long", habits: ["cay-canh", "bao-cap", "uong-tra"], bio: "Thích kể chuyện miệt vườn sông nước và trồng lan rừng.", outfitId: "ao-ba-ba", outfitColor: "#6E4A35", hat: "scarf", item: "tich-tra-men-lam", badge: "Đang ngồi", titleFrameId: "none" },
-    { id: "nga", name: "Chị Nga", gender: "female", age: 61, provinceId: "lam-dong", province: "Lâm Đồng", habits: ["duong-sinh", "cay-canh", "tho-ca"], bio: "Trồng hoa cúc Đà Lạt và tập thái cực quyền lúc 6 giờ.", outfitId: "ao-lua-tim-hue", outfitColor: "#6B3F69", hat: "non-la", item: "binh-sen", badge: "Mời trà", titleFrameId: "tri-am" },
-    { id: "tu", name: "Anh Tư", gender: "male", age: 65, provinceId: "an-giang", province: "An Giang", habits: ["doc-bao", "co-tuong", "bao-cap"], bio: "Đọc báo giấy mỗi sáng, hay giải thế cờ tàn.", outfitId: "ao-kaki-kem", outfitColor: "#C9B796", hat: "kinh-ram-tra", item: "tich-tra-men-lam", badge: "Đang nghe", titleFrameId: "none" },
+    { id: "hoa", name: "Chị Hoa", gender: "female", age: 63, provinceId: "da-nang", province: "Đà Nẵng", habits: ["duong-sinh", "uong-tra", "tho-ca"], bio: "Trưởng nhóm dân vũ phường, hay mời trà và bánh đậu xanh.", outfitId: "ao-lua-tim-hue", outfitColor: "#633B6E", hat: "hair-bob", item: "banh-dau-xanh", badge: "Mời trà", titleFrameId: "tri-am" },
+    { id: "bay", name: "Anh Bảy", gender: "male", age: 66, provinceId: "dong-thap", province: "Đồng Tháp", habits: ["cay-canh", "day-som", "uong-tra"], bio: "Chăm vườn mai vàng, quàng khăn rằn ca tài tử buổi trưa.", outfitId: "ao-ba-ba-nam-bo", outfitColor: "#2E3136", hat: "khan-ran-nam-bo", item: "khay-tra-da", badge: "Đang ngồi", titleFrameId: "none" },
+    { id: "thanh", name: "Anh Thành", gender: "male", age: 69, provinceId: "ninh-binh", province: "Ninh Bình", habits: ["cay-canh", "co-tuong", "day-som"], bio: "Có 15 chậu sanh bonsai tự uốn và đôi chim vành khuyên hót sáng.", outfitId: "ao-kaki-kem", outfitColor: "#9A8160", hat: "mu-tai-beo", item: "long-chim-khuyen", badge: "Đang nói", titleFrameId: "ky-thu" },
+    { id: "sau", name: "Anh Sáu", gender: "male", age: 72, provinceId: "vinh-long", province: "Vĩnh Long", habits: ["cay-canh", "bao-cap", "uong-tra"], bio: "Thích kể chuyện miệt vườn sông nước và trồng lan rừng.", outfitId: "ao-ba-ba", outfitColor: "#6E4A35", hat: "khan-ran-nam-bo", item: "tich-tra-men-lam", badge: "Đang ngồi", titleFrameId: "none" },
+    { id: "nga", name: "Chị Nga", gender: "female", age: 61, provinceId: "lam-dong", province: "Lâm Đồng", habits: ["duong-sinh", "cay-canh", "tho-ca"], bio: "Mặc áo thổ cẩm ấm, trồng hoa cúc Đà Lạt và tập dưỡng sinh lúc 6 giờ.", outfitId: "ao-tho-cam-mien-trung", outfitColor: "#3A2C39", hat: "non-la", item: "binh-sen", badge: "Mời trà", titleFrameId: "tri-am" },
+    { id: "tu", name: "Anh Tư", gender: "male", age: 65, provinceId: "an-giang", province: "An Giang", habits: ["doc-bao", "co-tuong", "bao-cap"], bio: "Đọc báo giấy bên cốc trà đá sáng, hay giải thế cờ tàn.", outfitId: "ao-kaki-kem", outfitColor: "#9A8160", hat: "kinh-ram-tra", item: "khay-tra-da", badge: "Đang nghe", titleFrameId: "none" },
     { id: "vinh", name: "Anh Vĩnh", gender: "male", age: 74, provinceId: "nghe-an", province: "Nghệ An", habits: ["cuu-chien-binh", "bao-cap", "day-som"], bio: "Từng đóng quân Trường Sơn, nhớ nhiều kỷ niệm thời tem phiếu.", outfitId: "ao-linh", outfitColor: "#556B45", hat: "cap", item: "den-dau", badge: "Đang nói", titleFrameId: "giu-lua" },
-    { id: "mai", name: "Chị Mai", gender: "female", age: 70, provinceId: "thanh-hoa", province: "Thanh Hóa", habits: ["bao-cap", "tho-ca", "duong-sinh"], bio: "Hay đọc ca dao xứ Thanh và mời trầu cánh phượng.", outfitId: "ao-lua-tim-hue", outfitColor: "#6B3F69", hat: "glasses", item: "khay-trau-cau", badge: "Vừa cười", titleFrameId: "thi-huu" },
-    { id: "hai", name: "Anh Hải", gender: "male", age: 68, provinceId: "hue", province: "TP. Huế", habits: ["uong-tra", "tho-ca", "bao-cap"], bio: "Pha trà sen cung đình, đốt trầm hương nghe đài phát thanh xưa.", outfitId: "ao-gam-lam-ngoc", outfitColor: "#1F5673", hat: "khan-dong", item: "lu-tram-dong", badge: "Đang nghe", titleFrameId: "giu-lua" },
+    { id: "mai", name: "Chị Mai", gender: "female", age: 70, provinceId: "thanh-hoa", province: "Thanh Hóa", habits: ["bao-cap", "tho-ca", "duong-sinh"], bio: "Hay đọc ca dao xứ Thanh và mời trầu cánh phượng.", outfitId: "ao-lua-tim-hue", outfitColor: "#633B6E", hat: "glasses", item: "khay-trau-cau", badge: "Vừa cười", titleFrameId: "thi-huu" },
+    { id: "hai", name: "Anh Hải", gender: "male", age: 68, provinceId: "hue", province: "TP. Huế", habits: ["uong-tra", "tho-ca", "bao-cap"], bio: "Mặc áo ngũ thân Cố đô, đốt trầm hương pha trà sen cung đình.", outfitId: "ao-ngu-than-mien-trung", outfitColor: "#23495D", hat: "khan-dong", item: "lu-tram-dong", badge: "Đang nghe", titleFrameId: "giu-lua" },
     { id: "lien", name: "Chị Liên", gender: "female", age: 62, provinceId: "tp-hcm", province: "TP. HCM", habits: ["duong-sinh", "doc-bao", "uong-tra"], bio: "Thích mẹo chăm sóc giấc ngủ và sống khỏe tuổi nghỉ hưu.", outfitId: "ao-dai-xanh", outfitColor: "#2E5E4E", hat: "hair-bob", item: "dia-hat-dua", badge: "Đang ngồi", titleFrameId: "tri-am" },
-    { id: "dung", name: "Anh Dũng", gender: "male", age: 67, provinceId: "bac-ninh", province: "Bắc Ninh", habits: ["tho-ca", "co-tuong", "uong-tra"], bio: "Yêu dân ca Quan họ và xướng họa thơ Đường luật.", outfitId: "ao-gam-vang", outfitColor: "#C48A2D", hat: "khan-dong", item: "khay-trau-cau", badge: "Đang nói", titleFrameId: "thi-huu" },
+    { id: "dung", name: "Anh Dũng", gender: "male", age: 67, provinceId: "bac-ninh", province: "Bắc Ninh", habits: ["tho-ca", "co-tuong", "uong-tra"], bio: "Liền anh áo the khăn xếp Quan họ, mê xướng họa thơ Đường luật.", outfitId: "ao-the-kinh-bac", outfitColor: "#272C36", hat: "khan-xep-kinh-bac", item: "khay-trau-cau", badge: "Đang nói", titleFrameId: "thi-huu" },
     { id: "thu", name: "Chị Thu", gender: "female", age: 64, provinceId: "thai-nguyen", province: "Thái Nguyên", habits: ["uong-tra", "tho-ca", "cay-canh"], bio: "Quê đất chè Tân Cương, hay tặng hoa trong sân thơ.", outfitId: "ao-dai-xanh", outfitColor: "#2E5E4E", hat: "hair-bun", item: "am-tu-sa", badge: "Vừa cười", titleFrameId: "thi-huu" },
-    { id: "phat", name: "Anh Phát", gender: "male", age: 66, provinceId: "can-tho", province: "Cần Thơ", habits: ["co-tuong", "uong-tra", "day-som"], bio: "Đồng hương Cần Thơ, mê ô ăn quan và cờ tướng mỗi sáng.", outfitId: "ao-ba-ba", outfitColor: "#6E4A35", hat: "scarf", item: "dia-hat-dua", badge: "Đang nghe", titleFrameId: "ky-thu" },
+    { id: "phat", name: "Anh Phát", gender: "male", age: 66, provinceId: "can-tho", province: "Cần Thơ", habits: ["co-tuong", "uong-tra", "day-som"], bio: "Đồng hương Cần Thơ, mê ô ăn quan và trà đá sáng vỉa hè.", outfitId: "ao-ba-ba-nam-bo", outfitColor: "#2E3136", hat: "khan-ran-nam-bo", item: "khay-tra-da", badge: "Đang nghe", titleFrameId: "ky-thu" },
     { id: "quynh", name: "Anh Quỳnh", gender: "male", age: 70, provinceId: "phu-tho", province: "Phú Thọ", habits: ["cuu-chien-binh", "doc-bao", "bao-cap"], bio: "Cán bộ hưu trí, hay bàn tin lương hưu và chuyện đồng đội.", outfitId: "ao-len-do", outfitColor: "#A2382B", hat: "glasses", item: "den-dau", badge: "Đang ngồi", titleFrameId: "tri-am" },
     { id: "hung-ccb", name: "Anh Cường", gender: "male", age: 73, provinceId: "quang-tri", province: "Quảng Trị", habits: ["cuu-chien-binh", "co-tuong", "uong-tra"], bio: "Cựu chiến binh thành cổ, thích bày thế cờ ngọc giao lưu đồng đội.", outfitId: "ao-linh", outfitColor: "#556B45", hat: "mu-tai-beo", item: "ban-co-ngoc", badge: "Mời trà", titleFrameId: "giu-lua" },
-    { id: "binh", name: "Chị Bình", gender: "female", age: 60, provinceId: "can-tho", province: "Cần Thơ", habits: ["duong-sinh", "doc-bao", "cay-canh"], bio: "Tập dưỡng sinh buổi sáng ở bến Ninh Kiều, thích trồng rau sạch.", outfitId: "ao-dai-xanh", outfitColor: "#2E5E4E", hat: "hair-bob", item: "bonsai-mini", badge: "Đang ngồi", titleFrameId: "none" }
+    { id: "binh", name: "Chị Bình", gender: "female", age: 60, provinceId: "can-tho", province: "Cần Thơ", habits: ["duong-sinh", "doc-bao", "cay-canh"], bio: "Áo bà ba lụa mỡ gà, tập dưỡng sinh sớm ở bến Ninh Kiều.", outfitId: "ao-ba-ba-mo-ga-nam", outfitColor: "#C89D54", hat: "khan-ran-nam-bo", item: "bonsai-mini", badge: "Đang ngồi", titleFrameId: "none" }
   ];
 
   function pickSeniors(ids) {
@@ -290,6 +301,72 @@ window.TuoiBacData = (function () {
           memberIds: ["vinh", "hai", "sau"],
           initialLog: [
             { speaker: "Anh Vĩnh · 74 tuổi (Nghệ An)", text: "Nhớ hồi xưa xếp hàng mua gạo bằng sổ gạo từ bốn giờ sáng mà vui tình hàng xóm lắm." }
+          ]
+        }
+      ]
+    },
+    {
+      id: "via-he",
+      name: "Quán Trà Đá Vỉa Hè",
+      shortName: "Trà Đá Vỉa Hè",
+      description: "Dưới tán sấu già mát rượi: cốc trà đá, thanh kẹo lạc, hạt hướng dương và chuyện phố phường dân dã",
+      hostName: "Cô Hàng Nước (Trợ lý)",
+      focusHabits: ["uong-tra", "doc-bao", "bao-cap"],
+      theme: { floorHex: 0xc96f4a, wallHex: 0xf2d07e, floor2D: "#C97550", wall2D: "#F3D68A", tableHex: 0x7a5638, cushionHex: 0x3b5f46, accentHex: "#B84328" },
+      tables: [
+        {
+          name: "Bàn 1: Trà Đá Gốc Sấu",
+          topic: "Ngồi mát hóng gió sáng & Chuyện phố phường",
+          tags: ["uong-tra", "day-som", "doc-bao"],
+          memberIds: ["tu", "phat", "lan"],
+          initialLog: [
+            { speaker: "Cô Hàng Nước (Trợ lý)", text: "Mời các anh chị ngồi ghế gỗ dưới bóng cây, em vừa rót cốc trà đá hoa nhài mát lạnh với đĩa kẹo lạc vừng mới ra lò!" },
+            { speaker: "Anh Tư · 65 tuổi (An Giang)", text: "Không gì sảng khoái bằng đi bộ sáng về ghé vỉa hè làm ngụm trà đá mát, cắn hạt hướng dương tán chuyện các bác nhỉ." }
+          ]
+        },
+        {
+          name: "Bàn 2: Kẹo Lạc & Chè Xanh",
+          topic: "Chè Thái đặc pha đá & Quà vặt quê nhà",
+          tags: ["uong-tra", "bao-cap", "tho-ca"],
+          memberIds: ["tham", "hoa", "dung"],
+          initialLog: [
+            { speaker: "Chị Thắm · 64 tuổi (Bắc Ninh)", text: "Thanh kẹo lạc giòn tan đi với bát nước chè xanh đá đúng vị quán cóc đầu làng Kinh Bắc quê tôi." }
+          ]
+        },
+        {
+          name: "Bàn 3: Bình Cờ Đầu Ngõ",
+          topic: "Vừa uống trà đá vừa bàn nước cờ hay",
+          tags: ["co-tuong", "uong-tra", "day-som"],
+          memberIds: ["minh", "thanh", "hung-ccb"],
+          initialLog: [
+            { speaker: "Anh Thành · 69 tuổi (Ninh Bình)", text: "Ngồi vỉa hè thoáng gió thế này bày bàn cờ tướng ra thẩm vài nước Pháo đầu thì quên cả giờ trưa." }
+          ]
+        },
+        {
+          name: "Bàn 4: Chuyện Chợ Sáng Xóm Giềng",
+          topic: "Món ngon cơm nhà & Mẹo chọn rau quả tươi",
+          tags: ["duong-sinh", "uong-tra", "cay-canh"],
+          memberIds: ["binh", "lien", "mai"],
+          initialLog: [
+            { speaker: "Chị Bình · 60 tuổi (Cần Thơ)", text: "Sáng nay chợ đầu ngõ có mớ bông điên điển tươi rói, trưa nay nhà tôi nấu nồi canh chua cá linh." }
+          ]
+        },
+        {
+          name: "Bàn 5: Góc Phích Nước Rạng Đông",
+          topic: "Kỷ niệm phố cũ, tàu điện leng keng & tem phiếu",
+          tags: ["bao-cap", "cuu-chien-binh", "doc-bao"],
+          memberIds: ["vinh", "quynh", "hai"],
+          initialLog: [
+            { speaker: "Anh Quỳnh · 70 tuổi (Phú Thọ)", text: "Nhìn cái phích vỏ đỏ đặt cạnh tủ kính nhớ những năm tám mươi cả khu tập thể ngồi hóng mát đầu hè." }
+          ]
+        },
+        {
+          name: "Bàn 6: Hóng Mát Ba Miền",
+          topic: "Giao lưu giọng quê Bắc – Trung – Nam thân tình",
+          tags: ["uong-tra", "cay-canh", "tho-ca"],
+          memberIds: ["bay", "nga", "sau"],
+          initialLog: [
+            { speaker: "Anh Bảy · 66 tuổi (Đồng Tháp)", text: "Quán vỉa hè bình dị vậy mà vui, Bắc Trung Nam ghé ngang đều như người một nhà cả." }
           ]
         }
       ]

@@ -459,6 +459,10 @@
       merged.settings.autoFallbacked = false;
       merged.settings.voiceMode = merged.settings.voiceMode === "recorded" ? "recorded" : "auto";
       merged.settings.uatTag = String(merged.settings.uatTag || "").slice(0, 24);
+      merged.teaRoom.rooms = def.teaRoom.rooms;
+      if (!merged.teaRoom.rooms.some((r) => r.id === merged.teaRoom.roomId)) {
+        merged.teaRoom.roomId = def.teaRoom.roomId;
+      }
       merged.newspaper.adminOpen = false;
       if (!Array.isArray(merged.quiz.hiddenOpts)) merged.quiz.hiddenOpts = [];
       merged.quiz.packIdx = Math.max(0, Math.min(4, Number(merged.quiz.packIdx) || 0));
@@ -1339,6 +1343,12 @@
       accSvg = `<ellipse cx="20" cy="14" rx="13.5" ry="3.2" fill="#3F5636"/><path d="M12 13.8c1-4.5 15-4.5 16 0z" fill="#556E48"/><line x1="12.5" y1="12.8" x2="27.5" y2="12.8" stroke="#2D3E26" stroke-width="1.2"/>`;
     } else if (hat === "khan-dong") {
       accSvg = `<path d="M11.5 15.2c0-4.6 3.8-7.4 8.5-7.4s8.5 2.8 8.5 7.4c-2.6-1.6-5.5-2.2-8.5-2.2s-5.9.6-8.5 2.2z" fill="#9E241C" stroke="#E3B448" stroke-width="1.1"/><path d="M14 12.2L20 9.6l6 2.6" fill="none" stroke="#F6D57A" stroke-width="1.1"/>`;
+    } else if (hat === "khan-xep-kinh-bac") {
+      accSvg = `<path d="M11.5 15.2c0-4.6 3.8-7.4 8.5-7.4s8.5 2.8 8.5 7.4c-2.6-1.6-5.5-2.2-8.5-2.2s-5.9.6-8.5 2.2z" fill="#231D1A" stroke="#5A4E46" stroke-width="1.1"/><path d="M15 11.8L20 9.4l5 2.4" fill="none" stroke="#8C7E74" stroke-width="1.1"/>`;
+    } else if (hat === "non-quai-thao") {
+      accSvg = `<rect x="4" y="8.5" width="32" height="5" rx="2.2" fill="#8B633A" stroke="#5C3F22" stroke-width="1"/><path d="M10 13.5 Q20 22 30 13.5" fill="none" stroke="#E0A93E" stroke-width="1.3"/>`;
+    } else if (hat === "khan-ran-nam-bo") {
+      accSvg = `<path d="M12.5 24.6c2.2 2.2 12.8 2.2 15 0l1.2 3c-3.4 2-14 2-17.4 0z" fill="#F5F1E8" stroke="#222" stroke-width="1"/><rect x="14.5" y="26.4" width="3.2" height="6.8" rx="0.9" fill="#222"/><line x1="14.5" y1="31.5" x2="17.7" y2="31.5" stroke="#C62828" stroke-width="1.2"/>`;
     } else if (hat === "non-la") {
       accSvg = `<polygon points="20,4 6,16 34,16" fill="#E9D59B" stroke="#B79452" stroke-width="1.2"/>`;
     } else if (hat === "glasses") {
@@ -2334,6 +2344,11 @@
             <small>Cờ tướng 9×10 &amp; Ô ăn quan</small>
           </button>
         </div>
+
+        <button type="button" class="btn-secondary viahe-home-cta" id="btn-home-open-viahe">
+          ${ico("tea")}
+          <span>Ghé Quán Trà Đá Vỉa Hè · Gốc Sấu &amp; Kẹo Lạc</span>
+        </button>
       </section>
 
       <section class="section-block">
@@ -2410,6 +2425,17 @@
         awardSeniorityPoints(15, "daily_chest_claimed", "diem-danh", "Hoàn thành trọn vẹn Sổ Tay 3 Niềm Vui Hôm Nay (+15 XP)");
         saveState();
         renderHome();
+      });
+    }
+
+    const homeOpenViaHe = document.getElementById("btn-home-open-viahe");
+    if (homeOpenViaHe) {
+      homeOpenViaHe.addEventListener("click", () => {
+        state.teaRoom.roomId = "via-he";
+        state.teaRoom.subView = "lobby";
+        state.teaRoom.tableIdx = 0;
+        saveState();
+        navigate("tearoom");
       });
     }
 
@@ -3894,6 +3920,7 @@
       {
         viewMode,
         preferredMode: state.settings.preferredRender,
+        roomId: room.id,
         roomTheme: room.theme,
         tables: effectiveTables,
         recommendedIdx,
@@ -9603,12 +9630,47 @@
   function renderOutfitSampleSvg(outfit) {
     const c = sanitizeColorCss(outfit.color || "#6E4A35", "#6E4A35");
     let detail = "";
-    if (outfit.id === "ao-ba-ba") {
+    if (outfit.id === "ao-ba-ba" || outfit.id === "ao-ba-ba-mo-ga-nam") {
       detail = `
         <line x1="28" y1="18" x2="28" y2="46" stroke="#F5EBD6" stroke-width="1.4"/>
         <circle cx="28" cy="24" r="1.4" fill="#FFFDF7"/><circle cx="28" cy="31" r="1.4" fill="#FFFDF7"/><circle cx="28" cy="38" r="1.4" fill="#FFFDF7"/>
         <rect x="17" y="36" width="6" height="6" rx="1" fill="none" stroke="rgba(255,255,255,0.45)" stroke-width="1.1"/>
         <rect x="33" y="36" width="6" height="6" rx="1" fill="none" stroke="rgba(255,255,255,0.45)" stroke-width="1.1"/>
+      `;
+    } else if (outfit.id === "ao-ba-ba-nam-bo") {
+      detail = `
+        <line x1="28" y1="18" x2="28" y2="46" stroke="#F5EBD6" stroke-width="1.4"/>
+        <circle cx="28" cy="26" r="1.4" fill="#FFFDF7"/><circle cx="28" cy="33" r="1.4" fill="#FFFDF7"/><circle cx="28" cy="40" r="1.4" fill="#FFFDF7"/>
+        <path d="M19 14 Q28 21 37 14 L38 19 Q28 25 18 19 Z" fill="#F5F1E8" stroke="#1F1F1F" stroke-width="1"/>
+        <rect x="19.5" y="18" width="4.2" height="12" rx="1" fill="#F5F1E8" stroke="#1F1F1F" stroke-width="0.9"/>
+        <line x1="19.5" y1="27.5" x2="23.7" y2="27.5" stroke="#C62828" stroke-width="1.5"/>
+      `;
+    } else if (outfit.id === "ao-tu-than-bac-ninh") {
+      detail = `
+        <polygon points="28,16 34,27 28,38 22,27" fill="#C93832" stroke="#F5D792" stroke-width="1"/>
+        <path d="M19 31 Q28 34 37 31 L37 36 Q28 39 19 36 Z" fill="#2A8C6A"/>
+        <path d="M29 34 L33 45 L28 45 Z" fill="#D98B2B"/>
+      `;
+    } else if (outfit.id === "ao-the-kinh-bac") {
+      detail = `
+        <path d="M23 12 L28 17 L33 12" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+        <path d="M25 16 Q32 22 33 46" fill="none" stroke="rgba(255,255,255,0.42)" stroke-width="1.3"/>
+        <circle cx="30.2" cy="21" r="1.3" fill="#E3B857"/><circle cx="32" cy="28" r="1.3" fill="#E3B857"/>
+      `;
+    } else if (outfit.id === "ao-ngu-than-mien-trung") {
+      detail = `
+        <path d="M24 15 Q32 21 33 46" fill="none" stroke="#E8C66B" stroke-width="1.4"/>
+        <circle cx="28.5" cy="18.5" r="1.3" fill="#F4D36B"/>
+        <circle cx="31" cy="23" r="1.3" fill="#F4D36B"/>
+        <circle cx="32.2" cy="28.5" r="1.3" fill="#F4D36B"/>
+        <circle cx="32.6" cy="34.5" r="1.3" fill="#F4D36B"/>
+        <circle cx="32.8" cy="40.5" r="1.3" fill="#F4D36B"/>
+      `;
+    } else if (outfit.id === "ao-tho-cam-mien-trung") {
+      detail = `
+        <rect x="19" y="25" width="18" height="5.5" fill="#B83228"/>
+        <polyline points="19.5,27.8 22.5,25.6 25.5,29.8 28.5,25.6 31.5,29.8 34.5,25.6 36.5,27.8" fill="none" stroke="#F4D47C" stroke-width="1.3"/>
+        <line x1="28" y1="16" x2="28" y2="46" stroke="#D94B38" stroke-width="1.2"/>
       `;
     } else if (outfit.id === "ao-dai-xanh" || outfit.id === "ao-lua-tim-hue") {
       detail = `
@@ -9663,7 +9725,7 @@
     }[acc.id];
     if (spritePos) {
       return `
-        <span class="sample-thumb" aria-hidden="true" style="display:inline-block; width:56px; height:56px; border-radius:12px; background-color:#FBF5E8; border:1px solid #D5C4AA; background-image:url('assets/tearoom-accessories.webp?v=20261118c'); background-size:400% 200%; background-position:${spritePos}; background-repeat:no-repeat;"></span>
+        <span class="sample-thumb" aria-hidden="true" style="display:inline-block; width:56px; height:56px; border-radius:12px; background-color:#FBF5E8; border:1px solid #D5C4AA; background-image:url('assets/tearoom-accessories.webp?v=20261118d'); background-size:400% 200%; background-position:${spritePos}; background-repeat:no-repeat;"></span>
       `;
     }
     const extraAccPos = {
@@ -9672,7 +9734,17 @@
     }[acc.id];
     if (extraAccPos) {
       return `
-        <span class="sample-thumb" aria-hidden="true" style="display:inline-block; width:56px; height:56px; border-radius:12px; background-color:#FBF5E8; border:1px solid #D5C4AA; background-image:url('assets/tearoom-accessories-extra.webp?v=20261118c'); background-size:200% 200%; background-position:${extraAccPos}; background-repeat:no-repeat;"></span>
+        <span class="sample-thumb" aria-hidden="true" style="display:inline-block; width:56px; height:56px; border-radius:12px; background-color:#FBF5E8; border:1px solid #D5C4AA; background-image:url('assets/tearoom-accessories-extra.webp?v=20261118d'); background-size:200% 200%; background-position:${extraAccPos}; background-repeat:no-repeat;"></span>
+      `;
+    }
+    const regAccPos = {
+      "non-quai-thao": "0% 0%",
+      "khan-xep-kinh-bac": "50% 0%",
+      "khan-ran-nam-bo": "100% 0%"
+    }[acc.id];
+    if (regAccPos) {
+      return `
+        <span class="sample-thumb" aria-hidden="true" style="display:inline-block; width:56px; height:56px; border-radius:12px; background-color:#FBF5E8; border:1px solid #D5C4AA; background-image:url('assets/tearoom-regional-acc.webp?v=20261118d'); background-size:300% 200%; background-position:${regAccPos}; background-repeat:no-repeat;"></span>
       `;
     }
     let art = "";
@@ -9723,7 +9795,7 @@
     }[item.id];
     if (spritePos) {
       return `
-        <span class="sample-thumb" aria-hidden="true" style="display:inline-block; width:56px; height:56px; border-radius:12px; background-color:#FBF5E8; border:1px solid #D5C4AA; background-image:url('assets/tearoom-items.webp?v=20261118c'); background-size:300% 200%; background-position:${spritePos}; background-repeat:no-repeat;"></span>
+        <span class="sample-thumb" aria-hidden="true" style="display:inline-block; width:56px; height:56px; border-radius:12px; background-color:#FBF5E8; border:1px solid #D5C4AA; background-image:url('assets/tearoom-items.webp?v=20261118d'); background-size:300% 200%; background-position:${spritePos}; background-repeat:no-repeat;"></span>
       `;
     }
     const extraSpritePos = {
@@ -9736,7 +9808,12 @@
     }[item.id];
     if (extraSpritePos) {
       return `
-        <span class="sample-thumb" aria-hidden="true" style="display:inline-block; width:56px; height:56px; border-radius:12px; background-color:#FBF5E8; border:1px solid #D5C4AA; background-image:url('assets/tearoom-items-extra.webp?v=20261118c'); background-size:300% 200%; background-position:${extraSpritePos}; background-repeat:no-repeat;"></span>
+        <span class="sample-thumb" aria-hidden="true" style="display:inline-block; width:56px; height:56px; border-radius:12px; background-color:#FBF5E8; border:1px solid #D5C4AA; background-image:url('assets/tearoom-items-extra.webp?v=20261118d'); background-size:300% 200%; background-position:${extraSpritePos}; background-repeat:no-repeat;"></span>
+      `;
+    }
+    if (item.id === "khay-tra-da") {
+      return `
+        <span class="sample-thumb" aria-hidden="true" style="display:inline-block; width:56px; height:56px; border-radius:12px; background-color:#FBF5E8; border:1px solid #D5C4AA; background-image:url('assets/tearoom-viahe-item.webp?v=20261118d'); background-size:contain; background-position:center; background-repeat:no-repeat;"></span>
       `;
     }
     return `
@@ -9801,7 +9878,7 @@
                   <div class="catalog-sample-top">
                     ${cfg.thumbFn(item)}
                     <div class="catalog-sample-info">
-                      <strong>${escHtml(item.name)}</strong>
+                      <strong>${escHtml(item.name)}</strong>${item.regionTag ? ` <span class="region-origin-pill">${escHtml(item.regionTag)}</span>` : ""}
                       <small>${escHtml(item.desc || "")}</small>
                     </div>
                   </div>
@@ -10010,6 +10087,7 @@
           {
             viewMode: "profile",
             preferredMode: state.settings.preferredRender,
+            roomId: getCurrentRoom().id,
             roomTheme: getCurrentRoom().theme,
             userName: state.user.name,
             userAge: age,

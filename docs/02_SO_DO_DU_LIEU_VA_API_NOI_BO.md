@@ -72,7 +72,7 @@ state = {
   },
 
   teaRoom: {
-    rooms: [],                    // 5 phòng sinh hoạt (Trà, Báo, Thơ, Cờ, Quê Hương)
+    rooms: [],                    // 6 không gian sinh hoạt (Phòng Trà, Trà Đá Vỉa Hè, Phòng Thơ, Phòng Cờ, Cựu Chiến Binh, Cây Cảnh)
     roomId: "phong-tra",
     subView: "lobby" | "table",
     tableIdx: 0,                  // Bàn số 0..5 trong sảnh 5 gian

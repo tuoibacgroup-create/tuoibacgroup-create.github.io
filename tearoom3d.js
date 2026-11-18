@@ -56,11 +56,58 @@ window.TeaRoomScene = (function () {
     itemsReady: false,
     itemsExtraImg: null,
     itemsExtraReady: false,
+    viaheItemImg: null,
+    viaheItemReady: false,
     accImg: null,
     accReady: false,
     accExtraImg: null,
-    accExtraReady: false
+    accExtraReady: false,
+    regAccImg: null,
+    regAccReady: false
   };
+  const roomBackdropsCache = Object.create(null);
+  const ROOM_BACKDROP_URLS = {
+    "phong-tra": { lobby: "./assets/tearoom-lobby-25d.jpg?v=20261118d", table: "./assets/tearoom-table-25d.jpg?v=20261118d" },
+    "via-he": { lobby: "./assets/room-viahe-lobby.jpg?v=20261118d", table: "./assets/room-viahe-table.jpg?v=20261118d" },
+    "phong-tho": { lobby: "./assets/room-tho-lobby.jpg?v=20261118d", table: "./assets/room-tho-table.jpg?v=20261118d" },
+    "phong-co": { lobby: "./assets/room-co-lobby.jpg?v=20261118d", table: "./assets/room-co-table.jpg?v=20261118d" },
+    "phong-ccb": { lobby: "./assets/room-ccb-lobby.jpg?v=20261118d", table: "./assets/room-ccb-table.jpg?v=20261118d" },
+    "phong-cay-canh": { lobby: "./assets/room-caycanh-lobby.jpg?v=20261118d", table: "./assets/room-caycanh-table.jpg?v=20261118d" }
+  };
+
+  function getRoomBackdropImg(roomId, kind) {
+    const rid = ROOM_BACKDROP_URLS[roomId] ? roomId : "phong-tra";
+    if (rid === "phong-tra") {
+      return kind === "lobby"
+        ? assets25D.lobbyReady ? assets25D.lobbyImg : null
+        : assets25D.tableReady ? assets25D.tableImg : null;
+    }
+    if (!roomBackdropsCache[rid] && typeof Image !== "undefined") {
+      const urls = ROOM_BACKDROP_URLS[rid];
+      const rec = { lobbyImg: null, lobbyReady: false, tableImg: null, tableReady: false };
+      roomBackdropsCache[rid] = rec;
+      const lImg = new Image();
+      lImg.onload = () => {
+        rec.lobbyImg = lImg;
+        rec.lobbyReady = true;
+        triggerRenderIf25D();
+      };
+      lImg.src = urls.lobby;
+      const tImg = new Image();
+      tImg.onload = () => {
+        rec.tableImg = tImg;
+        rec.tableReady = true;
+        triggerRenderIf25D();
+      };
+      tImg.src = urls.table;
+    }
+    const entry = roomBackdropsCache[rid];
+    if (kind === "lobby") {
+      return entry && entry.lobbyReady ? entry.lobbyImg : assets25D.lobbyReady ? assets25D.lobbyImg : null;
+    }
+    return entry && entry.tableReady ? entry.tableImg : assets25D.tableReady ? assets25D.tableImg : null;
+  }
+
   const composedSpriteCache = new Map();
   let tempMaskCanvas = null;
 
@@ -110,7 +157,7 @@ window.TeaRoomScene = (function () {
     tblImg.onerror = () => {
       assets25D.tableReady = false;
     };
-    tblImg.src = "./assets/tearoom-table-25d.jpg?v=20261118c";
+    tblImg.src = "./assets/tearoom-table-25d.jpg?v=20261118d";
 
     const lobImg = new Image();
     lobImg.onload = () => {
@@ -121,7 +168,7 @@ window.TeaRoomScene = (function () {
     lobImg.onerror = () => {
       assets25D.lobbyReady = false;
     };
-    lobImg.src = "./assets/tearoom-lobby-25d.jpg?v=20261118c";
+    lobImg.src = "./assets/tearoom-lobby-25d.jpg?v=20261118d";
 
     const sprImg = new Image();
     sprImg.onload = () => {
@@ -134,7 +181,7 @@ window.TeaRoomScene = (function () {
     sprImg.onerror = () => {
       assets25D.spritesReady = false;
     };
-    sprImg.src = "./assets/tearoom-sprites.webp?v=20261118c";
+    sprImg.src = "./assets/tearoom-sprites.webp?v=20261118d";
 
     const itmImg = new Image();
     itmImg.onload = () => {
@@ -145,7 +192,7 @@ window.TeaRoomScene = (function () {
     itmImg.onerror = () => {
       assets25D.itemsReady = false;
     };
-    itmImg.src = "./assets/tearoom-items.webp?v=20261118c";
+    itmImg.src = "./assets/tearoom-items.webp?v=20261118d";
 
     const acImg = new Image();
     acImg.onload = () => {
@@ -158,7 +205,7 @@ window.TeaRoomScene = (function () {
     acImg.onerror = () => {
       assets25D.accReady = false;
     };
-    acImg.src = "./assets/tearoom-accessories.webp?v=20261118c";
+    acImg.src = "./assets/tearoom-accessories.webp?v=20261118d";
 
     const itmExImg = new Image();
     itmExImg.onload = () => {
@@ -169,7 +216,18 @@ window.TeaRoomScene = (function () {
     itmExImg.onerror = () => {
       assets25D.itemsExtraReady = false;
     };
-    itmExImg.src = "./assets/tearoom-items-extra.webp?v=20261118c";
+    itmExImg.src = "./assets/tearoom-items-extra.webp?v=20261118d";
+
+    const vhItmImg = new Image();
+    vhItmImg.onload = () => {
+      assets25D.viaheItemImg = vhItmImg;
+      assets25D.viaheItemReady = true;
+      triggerRenderIf25D();
+    };
+    vhItmImg.onerror = () => {
+      assets25D.viaheItemReady = false;
+    };
+    vhItmImg.src = "./assets/tearoom-viahe-item.webp?v=20261118d";
 
     const acExImg = new Image();
     acExImg.onload = () => {
@@ -182,7 +240,20 @@ window.TeaRoomScene = (function () {
     acExImg.onerror = () => {
       assets25D.accExtraReady = false;
     };
-    acExImg.src = "./assets/tearoom-accessories-extra.webp?v=20261118c";
+    acExImg.src = "./assets/tearoom-accessories-extra.webp?v=20261118d";
+
+    const regImg = new Image();
+    regImg.onload = () => {
+      assets25D.regAccImg = regImg;
+      assets25D.regAccReady = true;
+      composedSpriteCache.clear();
+      refreshHybridBillboardsOnLoad();
+      triggerRenderIf25D();
+    };
+    regImg.onerror = () => {
+      assets25D.regAccReady = false;
+    };
+    regImg.src = "./assets/tearoom-regional-acc.webp?v=20261118d";
   }
 
   function createCanvas2D(w, h) {
@@ -220,7 +291,7 @@ window.TeaRoomScene = (function () {
             ? { lx: 96.5, rx: 107.8, ey: 41.2, earX: 82, earY: 41, neckX: 98, neckY: 64, chestX: 88, chestY: 88 }
             : { lx: 97.5, rx: 108.5, ey: 39.8, earX: 83.5, earY: 39.2, neckX: 100, neckY: 64, chestX: 88, chestY: 90 };
 
-    // Subtle outfit collar/pocket/brocade details
+    // Regional & traditional outfit collar/sash/brocade details
     if (col < 2 && (outfitId === "ao-gam-vang" || outfitId === "ao-gam-lam-ngoc")) {
       ctx.save();
       ctx.strokeStyle = outfitId === "ao-gam-lam-ngoc" ? "rgba(246, 214, 128, 0.86)" : "rgba(255, 232, 160, 0.78)";
@@ -229,6 +300,97 @@ window.TeaRoomScene = (function () {
       ctx.moveTo(anchors.neckX - 14, anchors.neckY - 2);
       ctx.lineTo(anchors.neckX + 4, anchors.neckY + 8);
       ctx.stroke();
+      ctx.restore();
+    } else if (col < 2 && outfitId === "ao-tu-than-bac-ninh") {
+      // Yếm đào đỏ thắm bên trong & dải lụa xanh thiên lý Kinh Bắc ngang eo
+      ctx.save();
+      ctx.fillStyle = "rgba(186, 38, 34, 0.92)";
+      ctx.beginPath();
+      ctx.moveTo(anchors.neckX - 7, anchors.neckY + 2);
+      ctx.lineTo(anchors.neckX + 7, anchors.neckY + 2);
+      ctx.lineTo(anchors.neckX + 1, anchors.chestY + 14);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = "rgba(246, 218, 152, 0.82)";
+      ctx.lineWidth = 1.1;
+      ctx.stroke();
+      // Dải thắt lưng lụa xanh thiên lý buộc múi
+      ctx.fillStyle = "rgba(58, 156, 124, 0.88)";
+      ctx.fillRect(anchors.chestX - 10, anchors.chestY + 28, 38, 5);
+      ctx.beginPath();
+      ctx.moveTo(anchors.chestX + 12, anchors.chestY + 32);
+      ctx.lineTo(anchors.chestX + 8, anchors.chestY + 48);
+      ctx.lineTo(anchors.chestX + 15, anchors.chestY + 47);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    } else if (col < 2 && outfitId === "ao-the-kinh-bac") {
+      // Cổ lụa trắng ngà lót trong áo the thâm & khuy đồng cài chéo vai phải
+      ctx.save();
+      ctx.strokeStyle = "rgba(248, 244, 232, 0.94)";
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.arc(anchors.neckX, anchors.neckY - 1, 8.5, 0.15 * Math.PI, 0.85 * Math.PI);
+      ctx.stroke();
+      ctx.strokeStyle = "rgba(218, 178, 96, 0.76)";
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      ctx.moveTo(anchors.neckX + 2, anchors.neckY + 5);
+      ctx.lineTo(anchors.chestX + 18, anchors.chestY + 8);
+      ctx.stroke();
+      ctx.restore();
+    } else if (col < 2 && outfitId === "ao-ngu-than-mien-trung") {
+      // Áo ngũ thân tay chẽn Cố đô Huế: đường tà chéo & 5 khuy đồng mạ vàng
+      ctx.save();
+      ctx.strokeStyle = "rgba(236, 212, 162, 0.82)";
+      ctx.lineWidth = 1.25;
+      ctx.beginPath();
+      ctx.moveTo(anchors.neckX, anchors.neckY + 4);
+      ctx.quadraticCurveTo(anchors.chestX + 18, anchors.chestY - 4, anchors.chestX + 22, anchors.chestY + 26);
+      ctx.stroke();
+      ctx.fillStyle = "#F0C45A";
+      [
+        [anchors.neckX + 1, anchors.neckY + 5],
+        [anchors.chestX + 11, anchors.neckY + 12],
+        [anchors.chestX + 18, anchors.chestY - 1],
+        [anchors.chestX + 20, anchors.chestY + 11],
+        [anchors.chestX + 21, anchors.chestY + 23]
+      ].forEach(([bx, by]) => {
+        ctx.beginPath();
+        ctx.arc(bx, by, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.restore();
+    } else if (col < 2 && outfitId === "ao-tho-cam-mien-trung") {
+      // Dải hoa văn thổ cẩm đỏ-vàng Trường Sơn dệt ngang ngực
+      ctx.save();
+      ctx.fillStyle = "rgba(184, 48, 36, 0.88)";
+      ctx.fillRect(anchors.chestX - 12, anchors.chestY + 4, 42, 6.5);
+      ctx.strokeStyle = "#F4CA64";
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      for (let dx = -10; dx <= 26; dx += 6) {
+        ctx.moveTo(anchors.chestX + dx, anchors.chestY + 9.5);
+        ctx.lineTo(anchors.chestX + dx + 3, anchors.chestY + 5);
+        ctx.lineTo(anchors.chestX + dx + 6, anchors.chestY + 9.5);
+      }
+      ctx.stroke();
+      ctx.restore();
+    } else if (col < 2 && (outfitId === "ao-ba-ba-nam-bo" || outfitId === "ao-ba-ba-mo-ga-nam")) {
+      // Hàng cúc ngọc trai dọc giữa áo bà ba Phương Nam
+      ctx.save();
+      ctx.strokeStyle = outfitId === "ao-ba-ba-mo-ga-nam" ? "rgba(128, 86, 32, 0.42)" : "rgba(235, 232, 224, 0.42)";
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      ctx.moveTo(anchors.neckX + 1, anchors.neckY + 5);
+      ctx.lineTo(anchors.neckX + 2, anchors.chestY + 36);
+      ctx.stroke();
+      ctx.fillStyle = "#FFFDF6";
+      for (let k = 0; k < 4; k++) {
+        ctx.beginPath();
+        ctx.arc(anchors.neckX + 1.5, anchors.neckY + 10 + k * 9.5, 1.35, 0, Math.PI * 2);
+        ctx.fill();
+      }
       ctx.restore();
     } else if (col < 2 && outfitId === "ao-lua-tim-hue") {
       ctx.save();
@@ -243,6 +405,22 @@ window.TeaRoomScene = (function () {
       ctx.fillRect(anchors.chestX - 9, anchors.chestY + 18, 18, 4);
       ctx.fillRect(anchors.chestX + 18, anchors.chestY + 15, 18, 4);
       ctx.restore();
+    }
+
+    // 1b. Khăn rằn Nam Bộ quàng vai (từ phụ kiện hoặc đi kèm bộ Áo bà ba đen Khăn rằn)
+    const showKhanRan = acc === "khan-ran-nam-bo" || (outfitId === "ao-ba-ba-nam-bo" && acc !== "scarf");
+    if (showKhanRan) {
+      if (assets25D.regAccReady && assets25D.regAccImg) {
+        if (col === 2) {
+          ctx.drawImage(assets25D.regAccImg, ACC_CELL_W * 2, ACC_CELL_H, ACC_CELL_W, ACC_CELL_H, 86, 65, 74, 56);
+        } else {
+          const kx = col === 0 ? 64 : 65;
+          const ky = col === 0 ? 50 : 54;
+          const kw = col === 0 ? 68 : 66;
+          const kh = col === 0 ? 62 : 60;
+          ctx.drawImage(assets25D.regAccImg, ACC_CELL_W * 2, 0, ACC_CELL_W, ACC_CELL_H, kx, ky, kw, kh);
+        }
+      }
     }
 
     // 1. Khăn quàng ấm cổ (2.5D Painterly draped wool/silk scarf nestled naturally around collar beneath chin)
@@ -304,13 +482,13 @@ window.TeaRoomScene = (function () {
       // Dual-pass rim & nose bridge (18K Gold vs Classic Tortoiseshell)
       (isTeaTint
         ? [
-            { color: "rgba(56, 26, 10, 0.96)", width: 1.65 },
-            { color: "#B86E2E", width: 0.82 }
-          ]
+          { color: "rgba(56, 26, 10, 0.96)", width: 1.65 },
+          { color: "#B86E2E", width: 0.82 }
+        ]
         : [
-            { color: "rgba(92, 56, 16, 0.92)", width: 1.45 },
-            { color: "#F2C14E", width: 0.78 }
-          ]
+          { color: "rgba(92, 56, 16, 0.92)", width: 1.45 },
+          { color: "#F2C14E", width: 0.78 }
+        ]
       ).forEach((pass) => {
         ctx.strokeStyle = pass.color;
         ctx.lineWidth = pass.width;
@@ -429,6 +607,37 @@ window.TeaRoomScene = (function () {
       }
     }
 
+    // 4c. Nón quai thao Quan họ & Khăn xếp the đen chữ Nhân (2.5D Painterly Kinh Bắc headwear)
+    if (acc === "non-quai-thao" || acc === "khan-xep-kinh-bac") {
+      const regCol = acc === "non-quai-thao" ? 0 : 1;
+      if (assets25D.regAccReady && assets25D.regAccImg) {
+        if (col === 2) {
+          const bx = acc === "non-quai-thao" ? 60 : 80;
+          const by = acc === "non-quai-thao" ? -4 : 8;
+          const bw = acc === "non-quai-thao" ? 116 : 76;
+          const bh = acc === "non-quai-thao" ? 86 : 62;
+          ctx.drawImage(assets25D.regAccImg, regCol * ACC_CELL_W, ACC_CELL_H, ACC_CELL_W, ACC_CELL_H, bx, by, bw, bh);
+        } else {
+          const fx = acc === "non-quai-thao" ? (col === 0 ? 48 : 47) : col === 0 ? 68 : 67;
+          const fy = acc === "non-quai-thao" ? (col === 0 ? -4 : -2) : col === 0 ? 5 : 7;
+          const fw = acc === "non-quai-thao" ? 96 : 56;
+          const fh = acc === "non-quai-thao" ? 72 : 42;
+          ctx.save();
+          ctx.translate(fx + fw * 0.5, fy + fh * 0.5);
+          ctx.rotate(acc === "non-quai-thao" ? -0.02 : 0.035);
+          ctx.drawImage(assets25D.regAccImg, regCol * ACC_CELL_W, 0, ACC_CELL_W, ACC_CELL_H, -fw * 0.5, -fh * 0.5, fw, fh);
+          ctx.restore();
+        }
+      } else {
+        ctx.save();
+        ctx.fillStyle = acc === "non-quai-thao" ? "#D6A856" : "#26282C";
+        ctx.beginPath();
+        ctx.ellipse(96, 20, acc === "non-quai-thao" ? 36 : 24, 11, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
     // 5. Refined Title Frame Lapel Pin on chest
     if (col < 2 && FRAME_HEX[frameId]) {
       ctx.save();
@@ -466,7 +675,7 @@ window.TeaRoomScene = (function () {
     const outfitId = s.outfitId || "";
     const acc = s.accessory || "none";
     const frameId = s.titleFrameId || "none";
-    const cacheKey = `${col}|${outfitColor}|${outfitId}|${acc}|${frameId}|${s.isHost ? 1 : 0}|${assets25D.spritesReady ? 1 : 0}|${assets25D.accReady ? 1 : 0}|${assets25D.accExtraReady ? 1 : 0}`;
+    const cacheKey = `${col}|${outfitColor}|${outfitId}|${acc}|${frameId}|${s.isHost ? 1 : 0}|${assets25D.spritesReady ? 1 : 0}|${assets25D.accReady ? 1 : 0}|${assets25D.accExtraReady ? 1 : 0}|${assets25D.regAccReady ? 1 : 0}`;
 
     if (composedSpriteCache.has(cacheKey)) {
       return composedSpriteCache.get(cacheKey);
@@ -532,6 +741,7 @@ window.TeaRoomScene = (function () {
 
   const TABLE_ITEM_ATLAS_MAP = {
     "am-tu-sa": { sheet: "base", col: 0, row: 0, w: 66, h: 60, yOff: 14 },
+    "khay-tra-da": { sheet: "viahe", col: 0, row: 0, w: 70, h: 60, yOff: 14 },
     "binh-sen": { sheet: "base", col: 1, row: 0, w: 58, h: 64, yOff: 12 },
     "bonsai-mini": { sheet: "base", col: 2, row: 0, w: 66, h: 64, yOff: 12 },
     "dia-hat-dua": { sheet: "base", col: 0, row: 1, w: 62, h: 56, yOff: 13 },
@@ -559,9 +769,18 @@ window.TeaRoomScene = (function () {
     ctx.fill();
 
     const meta = TABLE_ITEM_ATLAS_MAP[itemId] || TABLE_ITEM_ATLAS_MAP["am-tu-sa"];
-    const useExtra = meta.sheet === "extra";
-    const sheetReady = useExtra ? assets25D.itemsExtraReady : assets25D.itemsReady;
-    const sheetImg = useExtra ? assets25D.itemsExtraImg : assets25D.itemsImg;
+    const sheetReady =
+      meta.sheet === "viahe"
+        ? assets25D.viaheItemReady
+        : meta.sheet === "extra"
+          ? assets25D.itemsExtraReady
+          : assets25D.itemsReady;
+    const sheetImg =
+      meta.sheet === "viahe"
+        ? assets25D.viaheItemImg
+        : meta.sheet === "extra"
+          ? assets25D.itemsExtraImg
+          : assets25D.itemsImg;
 
     if (sheetReady && sheetImg) {
       ctx.drawImage(
@@ -2125,6 +2344,7 @@ window.TeaRoomScene = (function () {
     if (!ctx) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
+    const roomId = (currentConfig && currentConfig.roomId) || "phong-tra";
     const theme = currentConfig.roomTheme || {};
     const isUltraWide = overviewWideLevel === "ultrawide";
     const panShift = -pan25DX * w * 0.65;
@@ -2132,8 +2352,9 @@ window.TeaRoomScene = (function () {
       ? coverImageRect(panShift * 0.45 - w * 0.04, 0, w * 1.08, h, 960, 720)
       : coverImageRect(panShift - w * 0.10, -h * 0.04, w * 1.20, h * 1.08, 960, 720);
 
-    if (assets25D.lobbyReady && assets25D.lobbyImg) {
-      ctx.drawImage(assets25D.lobbyImg, wideRect.x, wideRect.y, wideRect.w, wideRect.h);
+    const activeLobbyImg = getRoomBackdropImg(roomId, "lobby");
+    if (activeLobbyImg) {
+      ctx.drawImage(activeLobbyImg, wideRect.x, wideRect.y, wideRect.w, wideRect.h);
     } else {
       ctx.fillStyle = theme.wall2D || "#F6ECDA";
       ctx.fillRect(0, 0, w, h);
@@ -2143,7 +2364,7 @@ window.TeaRoomScene = (function () {
       ctx.fillRect(0, h * 0.28, w, h * 0.03);
     }
 
-    // Gentle sunlit glow shimmer over ceiling lanterns
+    // Gentle sunlit glow shimmer over ceiling lanterns / shady banyan canopy
     const shimmer = 0.14 + Math.sin((now || 0) * 0.0025) * 0.04;
     const sunGrad = ctx.createRadialGradient(w * 0.5, h * 0.18, 10, w * 0.5, h * 0.35, w * 0.55);
     sunGrad.addColorStop(0, `rgba(255, 226, 150, ${shimmer.toFixed(3)})`);
@@ -2151,30 +2372,85 @@ window.TeaRoomScene = (function () {
     ctx.fillStyle = sunGrad;
     ctx.fillRect(0, 0, w, h);
 
-    // Chị Trà standing calmly beside the carved back tea counter
-    const hostX = wideRect.x + wideRect.w * 0.50;
-    const hostBottomY = wideRect.y + wideRect.h * 0.46;
+    // Room-specific host uniform & standing anchor beside counter/stall
+    const hostCfgMap = {
+      "via-he": { nx: 0.39, ny: 0.49, color: "#C89D54", outfitId: "ao-ba-ba-mo-ga-nam", acc: "non-la" },
+      "phong-tho": { nx: 0.48, ny: 0.47, color: "#633B6E", outfitId: "ao-lua-tim-hue", acc: "hair-bun" },
+      "phong-co": { nx: 0.45, ny: 0.47, color: "#23495D", outfitId: "ao-ngu-than-mien-trung", acc: "khan-xep-kinh-bac" },
+      "phong-ccb": { nx: 0.43, ny: 0.45, color: "#556B45", outfitId: "ao-linh", acc: "cap" },
+      "phong-cay-canh": { nx: 0.45, ny: 0.47, color: "#2E5E4E", outfitId: "ao-dai-xanh", acc: "non-la" }
+    };
+    const hCfg = hostCfgMap[roomId] || { nx: 0.50, ny: 0.46, color: "#D98A2B", outfitId: "", acc: "hair-bun" };
+    const hostX = wideRect.x + wideRect.w * hCfg.nx;
+    const hostBottomY = wideRect.y + wideRect.h * hCfg.ny;
     const hostH = wideRect.h * 0.19;
     const hostW = hostH * (SPRITE_CELL_W / SPRITE_CELL_H);
     const hostSpr = composeSeniorSpriteCanvas({
       gender: "female",
       pose: "stand",
-      outfitColor: "#D98A2B",
-      accessory: "hair-bun",
+      outfitColor: hCfg.color,
+      outfitId: hCfg.outfitId,
+      accessory: hCfg.acc,
       isHost: true
     });
     ctx.drawImage(hostSpr, hostX - hostW * 0.5, hostBottomY - hostH, hostW, hostH);
 
-    // 6 Interactive Tables across the open honey-oak floor bays
+    // 6 Interactive Tables styled specifically for each room's identity
     const normSlots = [
-      { nx: 0.21, ny: 0.56, sc: 0.80 },
-      { nx: 0.50, ny: 0.53, sc: 0.78 },
-      { nx: 0.79, ny: 0.56, sc: 0.80 },
-      { nx: 0.20, ny: 0.82, sc: 0.98 },
-      { nx: 0.50, ny: 0.84, sc: 1.00 },
-      { nx: 0.80, ny: 0.82, sc: 0.98 }
+      { nx: 0.21, ny: 0.58, sc: 0.80 },
+      { nx: 0.50, ny: 0.56, sc: 0.78 },
+      { nx: 0.79, ny: 0.58, sc: 0.80 },
+      { nx: 0.20, ny: 0.83, sc: 0.98 },
+      { nx: 0.50, ny: 0.85, sc: 1.00 },
+      { nx: 0.80, ny: 0.83, sc: 0.98 }
     ];
     let tagHtml = "";
+
+    const roomLobbyPalette = {
+      "via-he": {
+        sedgeRect: true,
+        matFill: "rgba(226, 198, 138, 0.92)",
+        matStroke: "#8C6834",
+        tblLight: "#98704B",
+        tblDark: "#5F4128",
+        items: ["khay-tra-da", "banh-dau-xanh", "khay-tra-da", "dia-hat-dua", "tich-tra-men-lam", "khay-tra-da"]
+      },
+      "phong-tho": {
+        matFill: "rgba(245, 226, 204, 0.92)",
+        matStroke: "#9C2E1F",
+        tblLight: "#8E3428",
+        tblDark: "#4E1912",
+        items: ["lu-tram-dong", "binh-sen", "khay-trau-cau", "radio-go", "bonsai-mini", "am-tu-sa"]
+      },
+      "phong-co": {
+        matFill: "rgba(232, 214, 178, 0.92)",
+        matStroke: "#8B5A2B",
+        tblLight: "#6E4A32",
+        tblDark: "#382214",
+        goldInlay: true,
+        items: ["ban-co-ngoc", "tich-tra-men-lam", "ban-co-ngoc", "am-tu-sa", "ban-co-ngoc", "khay-tra-da"]
+      },
+      "phong-ccb": {
+        matFill: "rgba(232, 228, 210, 0.92)",
+        matStroke: "#485E3B",
+        tblLight: "#7F5939",
+        tblDark: "#4A311D",
+        items: ["tich-tra-men-lam", "ban-co-ngoc", "radio-go", "am-tu-sa", "den-dau", "khay-tra-da"]
+      },
+      "phong-cay-canh": {
+        matFill: "rgba(234, 216, 176, 0.92)",
+        matStroke: "#2E6A44",
+        tblLight: "#9A623B",
+        tblDark: "#5B351D",
+        items: ["bonsai-mini", "binh-sen", "long-chim-khuyen", "am-tu-sa", "den-dau", "khay-trau-cau"]
+      }
+    }[roomId] || {
+      matFill: "rgba(247, 239, 224, 0.9)",
+      matStroke: "#2E5E4E",
+      tblLight: "#8B4E2B",
+      tblDark: "#522A14",
+      items: ["am-tu-sa", "tich-tra-men-lam", "khay-trau-cau", "banh-dau-xanh", "lu-tram-dong", "ban-co-ngoc"]
+    };
 
     currentConfig.tables.slice(0, 6).forEach((tbl, tIdx) => {
       const slot = normSlots[tIdx % normSlots.length];
@@ -2194,15 +2470,26 @@ window.TeaRoomScene = (function () {
         };
       }
 
-      // Woven medallion rug beneath each table
+      // Room-themed mat/rug beneath each table (woven straw sedge mat on sidewalk vs medallion rug indoors)
       ctx.save();
-      ctx.fillStyle = "rgba(247, 239, 224, 0.9)";
-      ctx.beginPath();
-      ctx.ellipse(cx, cy + 4 * sc, 46 * sc, 21 * sc, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = isRec ? "#EFA026" : "#2E5E4E";
-      ctx.lineWidth = isRec ? 3.2 : 1.5;
-      ctx.stroke();
+      ctx.fillStyle = roomLobbyPalette.matFill;
+      ctx.strokeStyle = isRec ? "#EFA026" : roomLobbyPalette.matStroke;
+      ctx.lineWidth = isRec ? 3.2 : 1.6;
+      if (roomLobbyPalette.sedgeRect) {
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - 17 * sc);
+        ctx.lineTo(cx + 50 * sc, cy + 4 * sc);
+        ctx.lineTo(cx, cy + 25 * sc);
+        ctx.lineTo(cx - 50 * sc, cy + 4 * sc);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      } else {
+        ctx.beginPath();
+        ctx.ellipse(cx, cy + 4 * sc, 46 * sc, 21 * sc, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
 
       // Back row seated 2.5D sprites (slots 0, 1)
       const seatOffsets = [
@@ -2231,15 +2518,15 @@ window.TeaRoomScene = (function () {
         ctx.restore();
       });
 
-      // Carved round wooden table
+      // Room-styled round wooden table
       ctx.fillStyle = "rgba(35, 22, 12, 0.25)";
       ctx.beginPath();
       ctx.ellipse(cx, cy + 8 * sc, 28 * sc, 13 * sc, 0, 0, Math.PI * 2);
       ctx.fill();
 
       const tGrad = ctx.createRadialGradient(cx - 5 * sc, cy - 3 * sc, 2, cx, cy, 28 * sc);
-      tGrad.addColorStop(0, "#8B4E2B");
-      tGrad.addColorStop(1, "#522A14");
+      tGrad.addColorStop(0, roomLobbyPalette.tblLight);
+      tGrad.addColorStop(1, roomLobbyPalette.tblDark);
       ctx.fillStyle = tGrad;
       ctx.beginPath();
       ctx.ellipse(cx, cy - 1 * sc, 27 * sc, 12.5 * sc, 0, 0, Math.PI * 2);
@@ -2247,13 +2534,19 @@ window.TeaRoomScene = (function () {
       ctx.strokeStyle = "#3E1E0E";
       ctx.lineWidth = 1.6;
       ctx.stroke();
+      if (roomLobbyPalette.goldInlay) {
+        ctx.strokeStyle = "rgba(238, 194, 98, 0.72)";
+        ctx.lineWidth = 1.0;
+        ctx.beginPath();
+        ctx.ellipse(cx, cy - 1 * sc, 22 * sc, 9.8 * sc, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
 
-      // Diverse heritage table centerpiece per lobby table (and user's equipped item on their active table)
-      const defaultLobbyItems = ["am-tu-sa", "tich-tra-men-lam", "khay-trau-cau", "banh-dau-xanh", "lu-tram-dong", "ban-co-ngoc"];
+      // Room-corresponding table centerpiece (and user's equipped item on their active table)
       const lobbyItemId =
         typeof currentConfig.activeTableIdx === "number" && tIdx === currentConfig.activeTableIdx && currentConfig.userItem
           ? currentConfig.userItem
-          : (lobbyMembers[0] && lobbyMembers[0].item) || (isRec ? "binh-sen" : defaultLobbyItems[tIdx % defaultLobbyItems.length]);
+          : roomLobbyPalette.items[tIdx % roomLobbyPalette.items.length];
       drawPainterlyTableItem25D(ctx, lobbyItemId, cx, cy - 3 * sc, 0.44 * sc, now);
 
       // Front row seated sprites (slots 2, 3)
@@ -2303,12 +2596,14 @@ window.TeaRoomScene = (function () {
     if (!ctx) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
+    const roomId = (currentConfig && currentConfig.roomId) || "phong-tra";
     const theme = currentConfig.roomTheme || {};
     const panShift = -pan25DX * w * 0.55;
     const bgRect = coverImageRect(panShift - w * 0.04, 0, w * 1.08, h, 960, 720);
+    const activeTableImg = getRoomBackdropImg(roomId, "table");
 
-    if (assets25D.tableReady && assets25D.tableImg) {
-      ctx.drawImage(assets25D.tableImg, bgRect.x, bgRect.y, bgRect.w, bgRect.h);
+    if (activeTableImg) {
+      ctx.drawImage(activeTableImg, bgRect.x, bgRect.y, bgRect.w, bgRect.h);
     } else {
       ctx.fillStyle = theme.wall2D || "#F6ECDA";
       ctx.fillRect(0, 0, w, h);
@@ -2316,9 +2611,9 @@ window.TeaRoomScene = (function () {
       ctx.fillRect(0, h * 0.35, w, h * 0.65);
     }
 
-    // Subtle glowing silk lantern halo on upper-left & warm window sunbeams
+    // Subtle glowing silk lantern halo or dappled banyan sunlight
     const lanternPulse = 0.20 + Math.sin((now || 0) * 0.003) * 0.05;
-    const lx = bgRect.x + bgRect.w * 0.365;
+    const lx = bgRect.x + bgRect.w * (roomId === "via-he" ? 0.56 : 0.365);
     const ly = bgRect.y + bgRect.h * 0.16;
     const lg = ctx.createRadialGradient(lx, ly, 4, lx, ly, bgRect.h * 0.22);
     lg.addColorStop(0, `rgba(255, 224, 130, ${lanternPulse.toFixed(3)})`);
@@ -2362,7 +2657,7 @@ window.TeaRoomScene = (function () {
     }
 
     function restoreBackdropPoly(ptsNorm) {
-      if (!assets25D.tableReady || !assets25D.tableImg) return;
+      if (!activeTableImg) return;
       ctx.save();
       ctx.beginPath();
       ptsNorm.forEach(([pxN, pyN], idx) => {
@@ -2373,28 +2668,120 @@ window.TeaRoomScene = (function () {
       });
       ctx.closePath();
       ctx.clip();
-      ctx.drawImage(assets25D.tableImg, bgRect.x, bgRect.y, bgRect.w, bgRect.h);
+      ctx.drawImage(activeTableImg, bgRect.x, bgRect.y, bgRect.w, bgRect.h);
       ctx.restore();
     }
 
     function restoreBackdropEllipse(cxN, cyN, rxN, ryN) {
-      if (!assets25D.tableReady || !assets25D.tableImg) return;
+      if (!activeTableImg) return;
       ctx.save();
       ctx.beginPath();
       ctx.ellipse(bgRect.x + cxN * bgRect.w, bgRect.y + cyN * bgRect.h, rxN * bgRect.w, ryN * bgRect.h, 0, 0, Math.PI * 2);
       ctx.clip();
-      ctx.drawImage(assets25D.tableImg, bgRect.x, bgRect.y, bgRect.w, bgRect.h);
+      ctx.drawImage(activeTableImg, bgRect.x, bgRect.y, bgRect.w, bgRect.h);
       ctx.restore();
     }
 
-    // 5 exact cushion coordinates with dignified adult chair proportions (0 bobbing!)
-    const chairSlots = [
-      { nx: 0.252, ny: 0.602, hFrac: 0.475, flip: false, pose: "front", order: 2, tagDx: -12, tagDy: 22 },  // 0: 8:30 left-front (Bạn)
-      { nx: 0.346, ny: 0.484, hFrac: 0.435, flip: false, pose: "front", order: 0, tagDx: -28, tagDy: 14 },  // 1: 10:30 left-back
-      { nx: 0.523, ny: 0.424, hFrac: 0.415, flip: false, pose: "front", order: 0, tagDx: 24, tagDy: -10 },  // 2: 12:00 top-center
-      { nx: 0.708, ny: 0.512, hFrac: 0.445, flip: true, pose: "front", order: 1, tagDx: 6, tagDy: 12 },     // 3: 2:00 right-back
-      { nx: 0.684, ny: 0.782, hFrac: 0.355, flip: false, pose: "back", order: 4, tagDx: 0, tagDy: 2 }       // 4: 4:30 foreground-right
-    ];
+    // Per-room calibrated 5-chair cushions & tabletop geometry (measured from 960x720 backdrops)
+    const ROOM_TABLE_GEOM = {
+      "via-he": {
+        chairs: [
+          { nx: 0.235, ny: 0.555, hFrac: 0.465, flip: false, pose: "front", order: 2, tagDx: -8, tagDy: 20 },
+          { nx: 0.352, ny: 0.388, hFrac: 0.425, flip: false, pose: "front", order: 0, tagDx: -18, tagDy: 14 },
+          { nx: 0.538, ny: 0.328, hFrac: 0.410, flip: false, pose: "front", order: 0, tagDx: 18, tagDy: 8 },
+          { nx: 0.728, ny: 0.408, hFrac: 0.435, flip: true, pose: "front", order: 1, tagDx: 4, tagDy: 12 },
+          { nx: 0.675, ny: 0.785, hFrac: 0.350, flip: false, pose: "back", order: 4, tagDx: 0, tagDy: 2 }
+        ],
+        tableEllipse: [0.512, 0.522, 0.146, 0.098],
+        propCenter: [0.512, 0.505],
+        frontRightBackrest: [[0.700, 0.635], [0.805, 0.635], [0.805, 0.900], [0.685, 0.900]],
+        centerItem: "khay-tra-da",
+        treats: ["banh-dau-xanh", "dia-hat-dua", "tich-tra-men-lam"],
+        noHotSteam: true,
+        host: { idleNx: 0.105, idleNy: 0.735, color: "#C89D54", outfitId: "ao-ba-ba-mo-ga-nam", acc: "non-la", name: "Cô Hàng Nước" }
+      },
+      "phong-tho": {
+        chairs: [
+          { nx: 0.268, ny: 0.742, hFrac: 0.460, flip: false, pose: "front", order: 2, tagDx: -8, tagDy: 20 },
+          { nx: 0.288, ny: 0.518, hFrac: 0.425, flip: false, pose: "front", order: 0, tagDx: -18, tagDy: 14 },
+          { nx: 0.502, ny: 0.435, hFrac: 0.405, flip: false, pose: "front", order: 0, tagDx: 18, tagDy: -6 },
+          { nx: 0.715, ny: 0.518, hFrac: 0.435, flip: true, pose: "front", order: 1, tagDx: 4, tagDy: 12 },
+          { nx: 0.725, ny: 0.790, hFrac: 0.345, flip: false, pose: "back", order: 4, tagDx: 0, tagDy: 2 }
+        ],
+        tableEllipse: [0.502, 0.585, 0.155, 0.105],
+        propCenter: [0.502, 0.566],
+        frontRightBackrest: [[0.745, 0.635], [0.815, 0.635], [0.815, 0.900], [0.730, 0.900]],
+        centerItem: "am-tu-sa",
+        treats: ["lu-tram-dong", "binh-sen", "khay-trau-cau"],
+        host: { idleNx: 0.112, idleNy: 0.655, color: "#633B6E", outfitId: "ao-lua-tim-hue", acc: "hair-bun", name: "Trợ lý Phòng Thơ" }
+      },
+      "phong-co": {
+        chairs: [
+          { nx: 0.282, ny: 0.762, hFrac: 0.460, flip: false, pose: "front", order: 2, tagDx: -8, tagDy: 20 },
+          { nx: 0.295, ny: 0.545, hFrac: 0.425, flip: false, pose: "front", order: 0, tagDx: -18, tagDy: 14 },
+          { nx: 0.495, ny: 0.435, hFrac: 0.405, flip: false, pose: "front", order: 0, tagDx: 18, tagDy: -6 },
+          { nx: 0.712, ny: 0.545, hFrac: 0.435, flip: true, pose: "front", order: 1, tagDx: 4, tagDy: 12 },
+          { nx: 0.692, ny: 0.812, hFrac: 0.345, flip: false, pose: "back", order: 4, tagDx: 0, tagDy: 2 }
+        ],
+        tableEllipse: [0.498, 0.610, 0.152, 0.102],
+        propCenter: [0.498, 0.592],
+        frontRightBackrest: [[0.712, 0.660], [0.795, 0.660], [0.795, 0.920], [0.700, 0.920]],
+        centerItem: "ban-co-ngoc",
+        treats: ["tich-tra-men-lam", "am-tu-sa", "khay-tra-da"],
+        host: { idleNx: 0.112, idleNy: 0.665, color: "#23495D", outfitId: "ao-ngu-than-mien-trung", acc: "khan-xep-kinh-bac", name: "Trợ lý Kỳ Đài" }
+      },
+      "phong-ccb": {
+        chairs: [
+          { nx: 0.305, ny: 0.738, hFrac: 0.460, flip: false, pose: "front", order: 2, tagDx: -10, tagDy: 20 },
+          { nx: 0.312, ny: 0.515, hFrac: 0.425, flip: false, pose: "front", order: 0, tagDx: -18, tagDy: 14 },
+          { nx: 0.500, ny: 0.430, hFrac: 0.405, flip: false, pose: "front", order: 0, tagDx: 18, tagDy: -6 },
+          { nx: 0.688, ny: 0.515, hFrac: 0.435, flip: true, pose: "front", order: 1, tagDx: 4, tagDy: 12 },
+          { nx: 0.688, ny: 0.765, hFrac: 0.345, flip: false, pose: "back", order: 4, tagDx: 0, tagDy: 2 }
+        ],
+        tableEllipse: [0.500, 0.585, 0.152, 0.102],
+        propCenter: [0.500, 0.566],
+        frontRightBackrest: [[0.708, 0.615], [0.785, 0.615], [0.785, 0.880], [0.695, 0.880]],
+        centerItem: "tich-tra-men-lam",
+        treats: ["radio-go", "banh-dau-xanh", "den-dau"],
+        host: { idleNx: 0.115, idleNy: 0.685, color: "#556B45", outfitId: "ao-linh", acc: "cap", name: "Trợ lý Đồng Ngũ" }
+      },
+      "phong-cay-canh": {
+        chairs: [
+          { nx: 0.302, ny: 0.696, hFrac: 0.445, flip: false, pose: "front", order: 2, tagDx: -10, tagDy: 20 },
+          { nx: 0.318, ny: 0.518, hFrac: 0.415, flip: false, pose: "front", order: 0, tagDx: -18, tagDy: 14 },
+          { nx: 0.478, ny: 0.430, hFrac: 0.395, flip: false, pose: "front", order: 0, tagDx: 18, tagDy: -6 },
+          { nx: 0.632, ny: 0.518, hFrac: 0.420, flip: true, pose: "front", order: 1, tagDx: 4, tagDy: 12 },
+          { nx: 0.635, ny: 0.728, hFrac: 0.335, flip: false, pose: "back", order: 4, tagDx: 0, tagDy: 2 }
+        ],
+        tableEllipse: [0.478, 0.562, 0.128, 0.088],
+        propCenter: [0.478, 0.546],
+        frontRightBackrest: [[0.652, 0.585], [0.720, 0.585], [0.720, 0.820], [0.640, 0.820]],
+        centerItem: "am-tu-sa",
+        treats: ["bonsai-mini", "long-chim-khuyen", "binh-sen"],
+        host: { idleNx: 0.115, idleNy: 0.685, color: "#2E5E4E", outfitId: "ao-dai-xanh", acc: "non-la", name: "Trợ lý Sân Vườn" }
+      }
+    }[roomId] || {
+      chairs: [
+        { nx: 0.252, ny: 0.602, hFrac: 0.475, flip: false, pose: "front", order: 2, tagDx: -12, tagDy: 22 },
+        { nx: 0.346, ny: 0.484, hFrac: 0.435, flip: false, pose: "front", order: 0, tagDx: -28, tagDy: 14 },
+        { nx: 0.523, ny: 0.424, hFrac: 0.415, flip: false, pose: "front", order: 0, tagDx: 24, tagDy: -10 },
+        { nx: 0.708, ny: 0.512, hFrac: 0.445, flip: true, pose: "front", order: 1, tagDx: 6, tagDy: 12 },
+        { nx: 0.684, ny: 0.782, hFrac: 0.355, flip: false, pose: "back", order: 4, tagDx: 0, tagDy: 2 }
+      ],
+      tableEllipse: [0.510, 0.542, 0.174, 0.118],
+      propCenter: [0.506, 0.508],
+      extraOcclusions: [
+        [[0.718, 0.520], [0.790, 0.495], [0.800, 0.695], [0.698, 0.690]],
+        [[0.610, 0.590], [0.702, 0.585], [0.705, 0.700], [0.610, 0.700]],
+        [[0.335, 0.545], [0.415, 0.545], [0.415, 0.665], [0.335, 0.665]]
+      ],
+      frontRightBackrest: [[0.735, 0.625], [0.805, 0.615], [0.800, 0.900], [0.715, 0.890]],
+      centerItem: "am-tu-sa",
+      treats: ["banh-dau-xanh", "khay-trau-cau", "dia-hat-dua"],
+      host: { idleNx: 0.112, idleNy: 0.675, color: "#D98A2B", outfitId: "", acc: "hair-bun", name: "Trợ lý Chị Trà" }
+    };
+
+    const chairSlots = ROOM_TABLE_GEOM.chairs;
 
     const list = currentConfig.table.members.slice(0, 4).map((m, idx) => ({
       member: m,
@@ -2402,7 +2789,6 @@ window.TeaRoomScene = (function () {
       seatPosIdx: idx,
       isUser: false
     }));
-    // Place user prominently at left-front chair (index 0) so outfit/accessories/face stay visible!
     list.unshift({
       member: {
         name: currentConfig.userName,
@@ -2434,7 +2820,6 @@ window.TeaRoomScene = (function () {
         accessory: m.hat || "none",
         titleFrameId: m.titleFrameId || "none"
       });
-      // Zero vertical bobbing so seated members sit rock-solid on their chairs
       drawnAnchors[entry.slotIdx] = drawAnchoredSprite(spr, col, slot.nx, slot.ny, slot.hFrac * scaleAdjust, slot.flip, isActive, 0);
     }
 
@@ -2444,97 +2829,110 @@ window.TeaRoomScene = (function () {
       .sort((a, b) => chairSlots[a.slotIdx].order - chairSlots[b.slotIdx].order)
       .forEach(renderSeatedSlot);
 
-    // 2) Restore Chair 2:00 outer right armrest, under-table shadows & central rosewood tabletop so knees tuck naturally underneath!
-    restoreBackdropPoly([[0.718, 0.520], [0.790, 0.495], [0.800, 0.695], [0.698, 0.690]]);
-    restoreBackdropPoly([[0.610, 0.590], [0.702, 0.585], [0.705, 0.700], [0.610, 0.700]]);
-    restoreBackdropPoly([[0.335, 0.545], [0.415, 0.545], [0.415, 0.665], [0.335, 0.665]]);
-    restoreBackdropEllipse(0.510, 0.542, 0.174, 0.118);
+    // 2) Restore tabletop & optional armrest occlusions so knees tuck naturally underneath!
+    if (ROOM_TABLE_GEOM.extraOcclusions) {
+      ROOM_TABLE_GEOM.extraOcclusions.forEach((poly) => restoreBackdropPoly(poly));
+    }
+    const te = ROOM_TABLE_GEOM.tableEllipse;
+    restoreBackdropEllipse(te[0], te[1], te[2], te[3]);
 
     // 3) Draw Chair 0 (8:30 left-front "Bạn") naturally in front of left rug
     list.filter((entry) => entry.slotIdx === 0).forEach(renderSeatedSlot);
 
-    // 4) Center tabletop props + companion treat + user's equipped table item (100% painted 2.5D heritage sprites)
-    const tblCx = bgRect.x + bgRect.w * 0.506;
-    const tblCy = bgRect.y + bgRect.h * 0.508;
-    const propScale = (bgRect.h / 330) * 0.96;
-    const treatPool = ["banh-dau-xanh", "khay-trau-cau", "dia-hat-dua"];
+    // 4) Room-matched tabletop props + user's equipped table item
+    const tblCx = bgRect.x + bgRect.w * ROOM_TABLE_GEOM.propCenter[0];
+    const tblCy = bgRect.y + bgRect.h * ROOM_TABLE_GEOM.propCenter[1];
+    const propScale = (bgRect.h / 330) * 0.94;
+    const treatPool = ROOM_TABLE_GEOM.treats;
     const tableSeed = Number(currentConfig.activeTableIdx) || 0;
     const leftTreatId =
       currentConfig.userItem === treatPool[tableSeed % treatPool.length]
         ? treatPool[(tableSeed + 1) % treatPool.length]
         : treatPool[tableSeed % treatPool.length];
-    drawPainterlyTableItem25D(ctx, leftTreatId, tblCx - 30 * propScale, tblCy + 11 * propScale, propScale * 0.82, now);
-    drawPainterlyTableItem25D(ctx, "am-tu-sa", tblCx, tblCy - 4 * propScale, propScale, now);
+    const centerPropId = ROOM_TABLE_GEOM.centerItem;
+
+    drawPainterlyTableItem25D(ctx, leftTreatId, tblCx - 29 * propScale, tblCy + 10 * propScale, propScale * 0.80, now);
+    drawPainterlyTableItem25D(ctx, centerPropId, tblCx, tblCy - 4 * propScale, propScale, now);
     if (currentConfig.userItem) {
-      if (currentConfig.userItem === "am-tu-sa") {
-        drawPainterlyTableItem25D(ctx, "tich-tra-men-lam", tblCx + 33 * propScale, tblCy + 6 * propScale, propScale * 0.82, now);
-      } else {
-        drawPainterlyTableItem25D(ctx, currentConfig.userItem, tblCx + 33 * propScale, tblCy + 6 * propScale, propScale * 0.88, now);
+      const rightPropId =
+        currentConfig.userItem === centerPropId
+          ? roomId === "via-he"
+            ? "dia-hat-dua"
+            : "tich-tra-men-lam"
+          : currentConfig.userItem;
+      drawPainterlyTableItem25D(ctx, rightPropId, tblCx + 31 * propScale, tblCy + 6 * propScale, propScale * 0.84, now);
+    }
+
+    // Rising aromatic steam wisps above hot tea (skipped for refreshing iced-tea tray on sidewalk!)
+    if (!ROOM_TABLE_GEOM.noHotSteam) {
+      const steamT = (now || 0) * 0.0024;
+      for (let s = 0; s < 3; s++) {
+        const ph = (steamT + s * 2.1) % (Math.PI * 2);
+        const lift = (ph / (Math.PI * 2)) * 28 * propScale;
+        const drift = Math.sin(ph * 2 + s) * 4;
+        const alpha = Math.max(0, 0.52 * (1 - ph / (Math.PI * 2)));
+        ctx.strokeStyle = `rgba(255, 252, 244, ${alpha.toFixed(2)})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(tblCx + drift * 0.5, tblCy - 14 * propScale - lift * 0.4);
+        ctx.quadraticCurveTo(tblCx + drift * 1.4, tblCy - 24 * propScale - lift * 0.8, tblCx - drift * 0.6, tblCy - 34 * propScale - lift);
+        ctx.stroke();
       }
     }
 
-    // Rising aromatic steam wisps above the teapot
-    const steamT = (now || 0) * 0.0024;
-    for (let s = 0; s < 3; s++) {
-      const ph = (steamT + s * 2.1) % (Math.PI * 2);
-      const lift = (ph / (Math.PI * 2)) * 28 * propScale;
-      const drift = Math.sin(ph * 2 + s) * 4;
-      const alpha = Math.max(0, 0.52 * (1 - ph / (Math.PI * 2)));
-      ctx.strokeStyle = `rgba(255, 252, 244, ${alpha.toFixed(2)})`;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(tblCx + drift * 0.5, tblCy - 14 * propScale - lift * 0.4);
-      ctx.quadraticCurveTo(tblCx + drift * 1.4, tblCy - 24 * propScale - lift * 0.8, tblCx - drift * 0.6, tblCy - 34 * propScale - lift);
-      ctx.stroke();
+    // 5) Draw foreground-right seat (4:30) and restore Chair 4:30 rear wooden backrest behind shoulder
+    list.filter((entry) => entry.slotIdx === 4).forEach(renderSeatedSlot);
+    if (ROOM_TABLE_GEOM.frontRightBackrest) {
+      restoreBackdropPoly(ROOM_TABLE_GEOM.frontRightBackrest);
     }
 
-    // 5) Draw foreground-right seat (4:30) and restore Chair 4:30 rear carved wooden backrest behind shoulder
-    list.filter((entry) => entry.slotIdx === 4).forEach(renderSeatedSlot);
-    restoreBackdropPoly([[0.735, 0.625], [0.805, 0.615], [0.800, 0.900], [0.715, 0.890]]);
-
-    // 6) Standing & walking Trợ lý Chị Trà holding tea tray: calm at left sideboard when idle, walks steadily to pour!
+    // 6) Standing & walking room host: calm at side when idle, walks steadily to serve tea!
+    const hSpec = ROOM_TABLE_GEOM.host;
     const pourDur = 4200;
     const elapsed = hostServingTimer > 0 ? Math.max(0, pourDur - hostServingTimer) : 0;
     const pFrac = elapsed / pourDur;
-    let hostNx = 0.112;
-    let hostNy = 0.675;
-    let hostScale = 0.425;
+    let hostNx = hSpec.idleNx;
+    let hostNy = hSpec.idleNy;
+    let hostScale = 0.420;
     let hostFlip = false;
     let stepBob = 0;
     let hostActionLabel = "";
 
     if (hostServingTimer > 0) {
+      const walkDx = 0.405 - hSpec.idleNx;
+      const walkDy = 0.860 - hSpec.idleNy;
       if (pFrac < 0.36) {
         const k = pFrac / 0.36;
         const ease = k * k * (3 - 2 * k);
-        hostNx = 0.112 + ease * 0.293;
-        hostNy = 0.675 + Math.sin(ease * Math.PI * 0.5) * 0.185;
-        hostScale = 0.425 + ease * 0.035;
+        hostNx = hSpec.idleNx + ease * walkDx;
+        hostNy = hSpec.idleNy + Math.sin(ease * Math.PI * 0.5) * walkDy;
+        hostScale = 0.420 + ease * 0.035;
         stepBob = -Math.abs(Math.sin((now || 0) * 0.013)) * 2.2;
-        hostActionLabel = "Trợ lý Chị Trà · Đang ra mời";
+        hostActionLabel = `${hSpec.name} · Đang ra mời`;
       } else if (pFrac < 0.68) {
         hostNx = 0.405;
         hostNy = 0.860;
-        hostScale = 0.460;
+        hostScale = 0.455;
         stepBob = 0;
-        hostActionLabel = "Trợ lý Chị Trà · Rót trà";
+        hostActionLabel = `${hSpec.name} · Rót trà`;
       } else {
         const k = (pFrac - 0.68) / 0.32;
         const ease = k * k * (3 - 2 * k);
-        hostNx = 0.405 - ease * 0.293;
-        hostNy = 0.860 - (1 - Math.cos(ease * Math.PI * 0.5)) * 0.185;
-        hostScale = 0.460 - ease * 0.035;
+        hostNx = 0.405 - ease * walkDx;
+        hostNy = 0.860 - (1 - Math.cos(ease * Math.PI * 0.5)) * walkDy;
+        hostScale = 0.455 - ease * 0.035;
         hostFlip = true;
         stepBob = -Math.abs(Math.sin((now || 0) * 0.013)) * 2.2;
-        hostActionLabel = "Trợ lý Chị Trà · Quay lại";
+        hostActionLabel = `${hSpec.name} · Quay lại`;
       }
     }
 
     const hostSpr = composeSeniorSpriteCanvas({
       gender: "female",
       pose: "stand",
-      outfitColor: "#D98A2B",
-      accessory: "hair-bun",
+      outfitColor: hSpec.color,
+      outfitId: hSpec.outfitId,
+      accessory: hSpec.acc,
       isHost: true
     });
     const hx = bgRect.x + hostNx * bgRect.w;
@@ -2827,6 +3225,7 @@ window.TeaRoomScene = (function () {
 
     if (tagsLayerEl) {
       const SHORT_ITEM_TAG_MAP = {
+        "khay-tra-da": "Khay trà đá vỉa hè",
         "khay-trau-cau": "Cơi trầu cánh phượng",
         "banh-dau-xanh": "Bánh đậu xanh",
         "long-chim-khuyen": "Lồng chim khuyên",

@@ -10,7 +10,7 @@
 | :---: | :--- | :---: | :--- | :--- |
 | 1 | Trang chủ Mobile-First, Sổ Tay 3 Niềm Vui & Tự Chuyển Ngày Mới | Hoàn thành | `app.js`, `styles.css` | Tự chuyển ngày lịch mới (`ensureDailyRollover`), Hộp Lộc Tâm Giao mỗi ngày, PWA & chữ 20px/24px |
 | 2 | Điểm danh bình an & Bản đồ 34 đơn vị hành chính mới | Hoàn thành | `app.js`, `data.js` | Có chú thích tỉnh cũ gộp vào, xuất thiệp chúc sáng kèm QR + lời chúc thu sẵn |
-| 3 | Sảnh Trà, 8 Trang Phục · 8 Phụ Kiện & 12 Đồ Bàn Trà 2.5D | Hoàn thành | `tearoom3d.js`, `assets/tearoom-*`, `app.js` | 8 mẫu áo, 8 phụ kiện khớp đầu/cổ & 12 món đồ bàn trà di sản đặt trên thảm cói dệt + đôn gỗ nu |
+| 3 | 6 Không Gian Trà (Có Trà Đá Vỉa Hè), 14 Áo Ba Miền · 11 Phụ Kiện · 13 Đồ Bày | Hoàn thành | `tearoom3d.js`, `assets/room-*`, `assets/tearoom-*`, `data.js` | 6 cảnh Sảnh & Bàn riêng biệt (gồm Quán Trà Đá Vỉa Hè), trang phục Bắc Ninh – Miền Trung – Miền Nam |
 | 4 | Chủ bàn đặt tên bàn đàm đạo & Gửi 8 Sticker 1 chạm | Hoàn thành | `app.js`, `tearoom3d.js` | Bong bóng Sticker nổi trên đầu nhân vật 3D, đồng bộ qua `custom_tea_tables` |
 | 5 | Trợ lý Quán Trà tự gợi chuyện sau 60s & Nhịp nhấp trà 10s | Hoàn thành | `app.js` | Rót trà 3D tự động khi bàn yên ắng quá 60 giây |
 | 6 | Nhập liệu giọng nói, Sổ phương ngữ & 15 Clip Giọng Thu Sẵn | Hoàn thành | `app.js`, `data.js`, `assets/audio/*.mp3` | 15 tệp `.mp3` tiếng Việt ngoại tuyến cho máy Android cũ + đồng bộ `phonetic_dictionary` |
@@ -28,6 +28,19 @@
 ---
 
 ## 2. Nhật Ký Phiên Bản Kỹ Thuật (Append-Only Engineering Log)
+
+### [2026-11-18] — Mở Rộng Quán Trà Đá Vỉa Hè, Thiết Kế Riêng 6 Bộ Cảnh Sảnh & Bàn Tương Ứng, Và Bổ Sung Trang Phục · Phụ Kiện Đặc Trưng Bắc Ninh – Miền Trung – Miền Nam (`?v=20261118d`)
+- **Tệp tạo mới / cập nhật:** `assets/room-viahe-lobby.jpg`, `assets/room-viahe-table.jpg`, `assets/room-tho-lobby.jpg`, `assets/room-tho-table.jpg`, `assets/room-co-lobby.jpg`, `assets/room-co-table.jpg`, `assets/room-ccb-lobby.jpg`, `assets/room-ccb-table.jpg`, `assets/room-caycanh-lobby.jpg`, `assets/room-caycanh-table.jpg`, `assets/tearoom-regional-acc.webp`, `assets/tearoom-viahe-item.webp`, `data.js`, `tearoom3d.js`, `app.js`, `styles.css`, `index.html` (`?v=20261118d`), `sw.js` (`tuoibac-pwa-v28`), `scripts/e2e-regression.mjs`, `ARCHITECTURE.md`, `DESIGN.md`, `PRODUCT.md`, `docs/02_SO_DO_DU_LIEU_VA_API_NOI_BO.md`, `docs/03_TIEN_DO_VA_NHAT_KY.md`, `docs/05_QUYET_DINH_KIEN_TRUC_ADR.md`.
+- **Chi tiết 3 cụm hạng mục hoàn thành:**
+  1. **Mở không gian mới `"Quán Trà Đá Vỉa Hè"` (`via-he`) dân dã, gần gũi đời sống Việt (`data.js`, `tearoom3d.js`, `app.js`, `assets/room-viahe-*.jpg`, `assets/tearoom-viahe-item.webp`):**
+     - Bổ sung không gian sinh hoạt thứ 6 đặt ngay cạnh `Phòng Trà Sáng` (và nút mở nhanh `#btn-home-open-viahe` trên Trang chủ): tường vàng cửa chớp xanh dưới bóng cây sấu già, vỉa hè gạch đỏ lát xương cá, tủ gỗ đựng lọ kẹo lạc, phích nước đỏ Rạng Đông, chiếu cói vuông và `Cô Hàng Nước (Trợ lý)` mặc áo bà ba đội nón lá mời trà.
+     - Thêm vật phẩm mới **`khay-tra-da` (`Khay trà đá vỉa hè & kẹo lạc`)**: 3 cốc thủy tinh có khía đựng trà đá hoa nhài mát lạnh kèm ấm tích nhỏ, thanh kẹo lạc vừng và hạt hướng dương.
+  2. **Thiết kế riêng cảnh Sảnh & Bàn 5 ghế tương ứng cho đủ 6/6 phòng sinh hoạt (`tearoom3d.js`, `assets/room-*.jpg`):**
+     - Thay vì dùng chung một ảnh nền cho mọi phòng, từng không gian nay có bộ tranh Sảnh & Bàn đẳng cự `960×720` kèm tọa độ nệm ghế hiệu chuẩn riêng (`ROOM_TABLE_GEOM`), thảm/chiếu và vật phẩm mặt bàn tương ứng: `Phòng Trà Sáng` (nhà gỗ ấm tử sa), `Quán Trà Đá Vỉa Hè` (vỉa hè gạch đỏ khay trà đá), `Phòng Thơ Lục Bát` (thư phòng đàn tranh hồ sen & lư trầm), `Phòng Cờ Tướng` (kỳ đài & bàn cờ ngọc khảm chỉ vàng), `Phòng Cựu Chiến Binh` (hội quán gạch bông Đông Dương, tủ huân chương & đài radio gỗ) và `Phòng Cây Cảnh` (hiên vườn giò phong lan tím, kệ bonsai & lồng chim khuyên).
+  3. **Bổ sung bộ Trang Phục & Phụ Kiện Vùng Miền Bắc Ninh – Miền Trung – Miền Nam (`data.js`, `tearoom3d.js`, `app.js`, `assets/tearoom-regional-acc.webp`):**
+     - **Bắc Ninh – Kinh Bắc:** *Áo tứ thân mớ ba* (yếm đào đỏ thắm, dải lụa xanh thiên lý), *Áo the thâm liền anh* (lót cổ lụa trắng ngà), *Nón quai thao Quan họ* và *Khăn xếp the đen chữ Nhân*.
+     - **Miền Trung:** *Áo ngũ thân tay chẽn Cố đô* (5 khuy đồng chéo tà), *Áo lụa tím Huế trầm* và *Áo thổ cẩm Trường Sơn* (dải thổ cẩm đỏ vàng dệt ngang ngực).
+     - **Miền Nam:** *Áo bà ba đen Khăn rằn Nam Bộ*, *Áo bà ba lụa mỡ gà miền Tây* và phụ kiện *Khăn rằn Nam Bộ quàng vai* tách rời; hiển thị huy hiệu vùng miền `.region-origin-pill` rõ nét trong `Tủ Trang Phục`.
 
 ### [2026-11-18] — Pentest & Gia Cố Bảo Mật Đa Lớp (CSP, RLS, Chống Dò PIN, Chống Đầu Độc Gói Tin), Nâng Cấp Thẩm Mỹ Hiên Trà Sáng & Mở Rộng 12 Vật Phẩm Di Sản 2.5D Mới (`?v=20261118c`)
 - **Tệp tạo mới / cập nhật:** `assets/tearoom-items-extra.webp`, `assets/tearoom-accessories-extra.webp`, `data.js`, `tearoom3d.js`, `realtime.js`, `supabase_schema.sql`, `app.js`, `styles.css`, `index.html` (`?v=20261118c`), `sw.js` (`tuoibac-pwa-v27`), `scripts/e2e-regression.mjs`, `verify.bat`, `run.bat`, `ARCHITECTURE.md`, `DESIGN.md`, `PRODUCT.md`, `docs/02_SO_DO_DU_LIEU_VA_API_NOI_BO.md`, `docs/03_TIEN_DO_VA_NHAT_KY.md`, `docs/04_CAM_NANG_FIX_BUG_VA_KIEM_THU.md`, `docs/05_QUYET_DINH_KIEN_TRUC_ADR.md`.

@@ -504,6 +504,7 @@ async function main() {
     const wardrobeCounts = await page.evaluate(() => {
       const st = JSON.parse(localStorage.getItem("tuoi_bac_sim_v7_e2e"));
       return {
+        rooms: window.TuoiBacData.ROOM_TEMPLATES.length,
         outfits: window.TuoiBacData.OUTFITS.length,
         accessories: window.TuoiBacData.ACCESSORIES.length,
         items: window.TuoiBacData.TABLE_ITEMS.length,
@@ -511,19 +512,22 @@ async function main() {
       };
     });
     assert(
-      wardrobeCounts.outfits === 8 && wardrobeCounts.accessories === 8 && wardrobeCounts.items === 12,
-      `Expected 8 outfits / 8 accessories / 12 items, got ${JSON.stringify(wardrobeCounts)}`
+      wardrobeCounts.rooms === 6 &&
+        wardrobeCounts.outfits === 14 &&
+        wardrobeCounts.accessories === 11 &&
+        wardrobeCounts.items === 13,
+      `Expected 6 rooms / 14 outfits / 11 accessories / 13 items, got ${JSON.stringify(wardrobeCounts)}`
     );
     assert(
       wardrobeCounts.unlockedItems.includes("khay-trau-cau") && wardrobeCounts.unlockedItems.includes("banh-dau-xanh"),
       `Expected milestone gifts 'khay-trau-cau' & 'banh-dau-xanh' unlocked, got ${JSON.stringify(wardrobeCounts.unlockedItems)}`
     );
 
-    // Preview new outfit + new headwear + equip milestone-unlocked 'khay-trau-cau'
-    await page.click('.preview-outfit-btn[data-id="ao-gam-lam-ngoc"]');
+    // Preview Bac Ninh / Mien Trung / Mien Nam regional outfits & headwear + khay-tra-da
+    await page.click('.preview-outfit-btn[data-id="ao-tu-than-bac-ninh"]');
     await page.click('[data-wcat="accessories"]');
-    await page.waitForSelector('.preview-acc-btn[data-id="khan-dong"]');
-    await page.click('.preview-acc-btn[data-id="khan-dong"]');
+    await page.waitForSelector('.preview-acc-btn[data-id="non-quai-thao"]');
+    await page.click('.preview-acc-btn[data-id="non-quai-thao"]');
     await page.click('[data-wcat="items"]');
     await page.waitForSelector('.equip-item-btn[data-id="khay-trau-cau"]');
     await page.click('.equip-item-btn[data-id="khay-trau-cau"]');
@@ -531,57 +535,79 @@ async function main() {
     if (shotsDir) {
       await page.evaluate(() => document.getElementById("profile-live-card").scrollIntoView({ block: "start" }));
       await page.waitForTimeout(100);
-      await page.screenshot({ path: path.join(shotsDir, "09-wardrobe-khan-dong-trau-cau.png") });
+      await page.screenshot({ path: path.join(shotsDir, "09-wardrobe-bac-ninh-quai-thao.png") });
     }
 
+    await page.click('[data-wcat="outfits"]');
+    await page.click('.preview-outfit-btn[data-id="ao-ngu-than-mien-trung"]');
     await page.click('[data-wcat="accessories"]');
-    await page.click('.preview-acc-btn[data-id="mu-tai-beo"]');
-    await page.click('[data-wcat="items"]');
-    await page.click('.preview-item-btn[data-id="long-chim-khuyen"]');
-    await page.waitForTimeout(140);
-    if (shotsDir) {
-      await page.evaluate(() => document.getElementById("profile-live-card").scrollIntoView({ block: "start" }));
-      await page.waitForTimeout(100);
-      await page.screenshot({ path: path.join(shotsDir, "10-wardrobe-tai-beo-chim-khuyen.png") });
-    }
-
-    await page.click('[data-wcat="accessories"]');
-    await page.click('.preview-acc-btn[data-id="kinh-ram-tra"]');
+    await page.click('.preview-acc-btn[data-id="khan-xep-kinh-bac"]');
     await page.click('[data-wcat="items"]');
     await page.click('.equip-item-btn[data-id="lu-tram-dong"], .preview-item-btn[data-id="lu-tram-dong"]');
     await page.waitForTimeout(140);
     if (shotsDir) {
       await page.evaluate(() => document.getElementById("profile-live-card").scrollIntoView({ block: "start" }));
       await page.waitForTimeout(100);
-      await page.screenshot({ path: path.join(shotsDir, "11-wardrobe-kinh-tra-lu-tram.png") });
-      await page.evaluate(() => {
-        const cards = document.querySelectorAll(".catalog-sample-card");
-        if (cards.length > 0) cards[cards.length - 1].scrollIntoView({ block: "end" });
-      });
-      await page.waitForTimeout(80);
-      await page.screenshot({ path: path.join(shotsDir, "12-wardrobe-extra-items-catalog.png") });
+      await page.screenshot({ path: path.join(shotsDir, "10-wardrobe-mien-trung-ngu-than.png") });
+    }
+
+    await page.click('[data-wcat="outfits"]');
+    await page.click('.preview-outfit-btn[data-id="ao-ba-ba-nam-bo"]');
+    await page.click('[data-wcat="accessories"]');
+    await page.click('.preview-acc-btn[data-id="khan-ran-nam-bo"]');
+    await page.click('[data-wcat="items"]');
+    await page.click('.preview-item-btn[data-id="khay-tra-da"]');
+    await page.waitForTimeout(140);
+    if (shotsDir) {
+      await page.evaluate(() => document.getElementById("profile-live-card").scrollIntoView({ block: "start" }));
+      await page.waitForTimeout(100);
+      await page.screenshot({ path: path.join(shotsDir, "11-wardrobe-mien-nam-khan-ran-tra-da.png") });
     }
     await inspectCurrentViewportErgonomics(page, "profile-new-items", 20);
-    if (shotsDir) {
-      await page.click('[data-bnav="tearoom"]');
-      await page.waitForSelector("#tearoom-stage");
-      await page.waitForTimeout(180);
-      await page.evaluate(() => document.getElementById("tearoom-stage").scrollIntoView({ block: "center" }));
-      await page.waitForTimeout(80);
-      await page.screenshot({ path: path.join(shotsDir, "13-tearoom-lobby-heritage.png") });
-      await page.click(".join-table-btn");
-      if ((await page.locator("#tb-dialog[open] #btn-confirm-forfeit-leave").count()) > 0) {
-        await page.click("#btn-confirm-forfeit-leave");
-      }
-      await page.waitForSelector("#btn-back-lobby");
-      await page.waitForTimeout(180);
-      await page.evaluate(() => document.getElementById("tearoom-stage").scrollIntoView({ block: "center" }));
-      await page.waitForTimeout(80);
-      await page.screenshot({ path: path.join(shotsDir, "14-tearoom-table-heritage.png") });
-      await page.click("#btn-back-lobby");
-      await page.click('[data-bnav="profile"]');
+
+    // Verify 1-tap Sidewalk Iced Tea Stall ("Quan Tra Da Via He") + distinct room backdrops!
+    await page.click('[data-bnav="home"]');
+    await page.waitForSelector("#btn-home-open-viahe");
+    await page.click("#btn-home-open-viahe");
+    if ((await page.locator("#tb-dialog[open] #btn-confirm-forfeit-leave").count()) > 0) {
+      await page.click("#btn-confirm-forfeit-leave");
     }
-    console.log("[PASS] 9. Heritage Items — 8 Trang phuc, 8 Phu kien & 12 Do ban tra 2.5D moi + Qua tang thanh tuu");
+    await page.waitForSelector("#tearoom-stage");
+    await page.waitForTimeout(220);
+    await inspectCurrentViewportErgonomics(page, "tearoom-viahe-lobby", 20);
+    if (shotsDir) {
+      await page.evaluate(() => document.getElementById("tearoom-stage").scrollIntoView({ block: "center" }));
+      await page.waitForTimeout(100);
+      await page.screenshot({ path: path.join(shotsDir, "13-viahe-lobby-25d.png") });
+    }
+    await page.click("#btn-join-recommended");
+    await page.waitForSelector("#btn-back-lobby");
+    await page.waitForTimeout(220);
+    await inspectCurrentViewportErgonomics(page, "tearoom-viahe-table", 20);
+    if (shotsDir) {
+      await page.evaluate(() => document.getElementById("tearoom-stage").scrollIntoView({ block: "center" }));
+      await page.waitForTimeout(100);
+      await page.screenshot({ path: path.join(shotsDir, "14-viahe-table-25d.png") });
+
+      // Also capture Phong Tho, Phong Co, Phong CCB & Phong Cay Canh table scenes!
+      for (const [rid, shotName] of [
+        ["phong-tho", "15-room-tho-table-25d.png"],
+        ["phong-co", "16-room-co-table-25d.png"],
+        ["phong-ccb", "17-room-ccb-table-25d.png"],
+        ["phong-cay-canh", "18-room-caycanh-table-25d.png"]
+      ]) {
+        await page.click(`[data-room-id="${rid}"]`);
+        await page.waitForSelector("#btn-join-recommended");
+        await page.click("#btn-join-recommended");
+        await page.waitForSelector("#btn-back-lobby");
+        await page.waitForTimeout(220);
+        await page.evaluate(() => document.getElementById("tearoom-stage").scrollIntoView({ block: "center" }));
+        await page.waitForTimeout(80);
+        await page.screenshot({ path: path.join(shotsDir, shotName) });
+      }
+    }
+    await page.click('[data-bnav="profile"]');
+    console.log("[PASS] 9. Regional & Via He — 6 Phong rieng biet (co Tra Da Via He), 14 Trang phuc Ba Mien, 11 Phu kien & 13 Do ban");
 
     // ------------------------------------------------------------------
     // PART 9: Automated Penetration Test (Pentest) & Security Hardening
@@ -615,6 +641,8 @@ async function main() {
     // 9C. Scam phone obfuscation, shortlinks & split-phoneticDict expansion bypass attempt
     await page.evaluate(() => {
       const st = JSON.parse(localStorage.getItem("tuoi_bac_sim_v7_e2e"));
+      st.teaRoom.subView = "lobby";
+      st.teaRoom.roomId = "phong-tra";
       st.teaRoom.lastSentAt = 0;
       st.phoneticDict.push(
         { wrong: "ma1", right: "0988", hits: 1, learnedBy: "Test" },
