@@ -1948,6 +1948,7 @@ window.TuoiBacData = (function () {
   const AUTH_TIER_GUIDE = {
     freeFeatures: [
       "Điểm danh bình an buổi sáng & xem bản đồ đèn sáng 34 tỉnh thành",
+      "Xé Tờ Lịch Vạn Niên mỗi sáng, xem Giờ Hoàng Đạo, Hướng xuất hành & đặt chuông nhắc việc",
       "Đọc Tờ Báo Sáng chữ to, nghe Đọc to tiếng Việt, giải Đố vui",
       "Đánh Cờ Tướng 9×10 (32 quân) với Máy & Giải 6 thế Cờ Thế cổ phổ",
       "Viếng Chùa Chánh Điện Online (gõ mõ, dâng hương, rút Thẻ An Lạc) & ghé thử Bàn trà"
@@ -1959,6 +1960,674 @@ window.TuoiBacData = (function () {
       "Lưu trữ đám mây đa lớp & Ảnh Thẻ QR — đổi điện thoại mới khôi phục 100% dữ liệu trong 1 chạm"
     ]
   };
+
+  // ==================== 3 KHUNG GIỜ VÀNG SINH HOẠT QUÁN TRÀ ====================
+  const COMMUNITY_SESSIONS = [
+    {
+      id: "ca-sang",
+      shortTitle: "Ca Sáng",
+      timeRange: "06:00–08:30",
+      startMin: 360,
+      endMin: 510,
+      defaultRemindHm: "06:30",
+      title: "Xé Lịch Mới · Điểm Báo · Trà Sáng",
+      desc: "Cùng xé tờ lịch mới, đọc tin giá cả – sức khỏe và nhấp chén trà đầu ngày.",
+      targetRoute: "tearoom",
+      targetRoomId: "phong-tra"
+    },
+    {
+      id: "ca-chieu",
+      shortTitle: "Ca Chiều",
+      timeRange: "15:00–17:30",
+      startMin: 900,
+      endMin: 1050,
+      defaultRemindHm: "15:15",
+      title: "Kỳ Đài Giao Hữu · Trà Đá Gốc Sấu",
+      desc: "Giải thế cờ chiều, ôn chuyện xưa dưới bóng sấu mát và mời nhau kẹo lạc.",
+      targetRoute: "tearoom",
+      targetRoomId: "via-he"
+    },
+    {
+      id: "ca-toi",
+      shortTitle: "Ca Tối",
+      timeRange: "19:30–21:30",
+      startMin: 1170,
+      endMin: 1290,
+      defaultRemindHm: "19:45",
+      title: "Chiếu Thơ Lục Bát · Tĩnh Tâm Đêm",
+      desc: "Nghe ngâm thơ lục bát, gõ mõ chuông đồng nhẹ lòng trước giấc ngủ ngon.",
+      targetRoute: "poetry",
+      targetRoomId: "phong-tho"
+    }
+  ];
+
+  // Mẫu công việc nhắc nhở 1 chạm gần gũi với người cao tuổi
+  const REMINDER_PRESETS = [
+    {
+      id: "tai-kham",
+      label: "Tái khám BHYT",
+      title: "Đi tái khám định kỳ & mang thẻ BHYT",
+      calendarType: "solar",
+      timeHm: "07:15",
+      category: "suc-khoe"
+    },
+    {
+      id: "gio-chap",
+      label: "Giỗ chạp Âm lịch",
+      title: "Chuẩn bị lễ giỗ gia tiên (Âm lịch)",
+      calendarType: "lunar",
+      lunarDay: 15,
+      lunarMonth: 7,
+      timeHm: "07:30",
+      category: "gia-dinh"
+    },
+    {
+      id: "luong-huu",
+      label: "Lĩnh lương hưu",
+      title: "Kiểm tra kỳ lĩnh lương hưu hàng tháng",
+      calendarType: "solar",
+      timeHm: "08:30",
+      category: "doi-song"
+    },
+    {
+      id: "hop-dong-ngu",
+      label: "Họp đồng ngũ",
+      title: "Gặp mặt / Vào bàn trà Hội Đồng Ngũ",
+      calendarType: "solar",
+      timeHm: "08:00",
+      category: "dong-ngu"
+    }
+  ];
+
+  // ==================== ĐỘNG CƠ LỊCH VẠN NIÊN · TIẾT KHÍ · GIỜ ĐẸP XUẤT HÀNH (UTC+7) ====================
+  const Almanac = (function () {
+    const TZ_VN = 7.0;
+    const CAN = ["Giáp", "Ất", "Bính", "Đinh", "Mậu", "Kỷ", "Canh", "Tân", "Nhâm", "Quý"];
+    const CHI = ["Tý", "Sửu", "Dần", "Mão", "Thìn", "Tỵ", "Ngọ", "Mùi", "Thân", "Dậu", "Tuất", "Hợi"];
+    const CON_GIAP = ["Chuột", "Trâu", "Hổ", "Mèo", "Rồng", "Rắn", "Ngựa", "Dê", "Khỉ", "Gà", "Chó", "Lợn"];
+    const LUNAR_MONTH_NAMES = [
+      "",
+      "Tháng Giêng",
+      "Tháng Hai",
+      "Tháng Ba",
+      "Tháng Tư",
+      "Tháng Năm",
+      "Tháng Sáu",
+      "Tháng Bảy",
+      "Tháng Tám",
+      "Tháng Chín",
+      "Tháng Mười",
+      "Tháng Một",
+      "Tháng Chạp"
+    ];
+    const WEEKDAYS_VI = ["Chủ Nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"];
+
+    const HOUR_WINDOWS = [
+      { chiIdx: 0, chi: "Tý", range: "23:00–01:00", startHm: "23:15", daytime: false },
+      { chiIdx: 1, chi: "Sửu", range: "01:00–03:00", startHm: "01:15", daytime: false },
+      { chiIdx: 2, chi: "Dần", range: "03:00–05:00", startHm: "04:30", daytime: false },
+      { chiIdx: 3, chi: "Mão", range: "05:00–07:00", startHm: "05:30", daytime: true },
+      { chiIdx: 4, chi: "Thìn", range: "07:00–09:00", startHm: "07:30", daytime: true },
+      { chiIdx: 5, chi: "Tỵ", range: "09:00–11:00", startHm: "09:15", daytime: true },
+      { chiIdx: 6, chi: "Ngọ", range: "11:00–13:00", startHm: "11:15", daytime: true },
+      { chiIdx: 7, chi: "Mùi", range: "13:00–15:00", startHm: "13:30", daytime: true },
+      { chiIdx: 8, chi: "Thân", range: "15:00–17:00", startHm: "15:15", daytime: true },
+      { chiIdx: 9, chi: "Dậu", range: "17:00–19:00", startHm: "17:15", daytime: true },
+      { chiIdx: 10, chi: "Tuất", range: "19:00–21:00", startHm: "19:30", daytime: false },
+      { chiIdx: 11, chi: "Hợi", range: "21:00–23:00", startHm: "21:15", daytime: false }
+    ];
+
+    const HOANG_DAO_STARS = ["Thanh Long", "Minh Đường", "Kim Quỹ", "Thiên Đức", "Ngọc Đường", "Tư Mệnh"];
+    const HOANG_DAO_OFFSETS = [0, 1, 4, 5, 7, 10];
+    // Điểm khởi Thanh Long theo Địa Chi ngày (Tý=0..Hợi=11): Dần/Thân->Tý(0), Mão/Dậu->Dần(2), Thìn/Tuất->Thìn(4), Tỵ/Hợi->Ngọ(6), Tý/Ngọ->Thân(8), Sửu/Mùi->Tuất(10)
+    const THANH_LONG_START_BY_DAY_CHI = [8, 10, 0, 2, 4, 6, 8, 10, 0, 2, 4, 6];
+
+    const DIRECTIONS_BY_CAN = [
+      { hyThan: "Đông Bắc", taiThan: "Đông Nam" }, // Giáp
+      { hyThan: "Tây Bắc", taiThan: "Đông Nam" },  // Ất
+      { hyThan: "Tây Nam", taiThan: "Chính Đông" }, // Bính
+      { hyThan: "Chính Nam", taiThan: "Chính Đông" }, // Đinh
+      { hyThan: "Đông Nam", taiThan: "Chính Bắc" }, // Mậu
+      { hyThan: "Đông Bắc", taiThan: "Chính Nam" }, // Kỷ
+      { hyThan: "Tây Bắc", taiThan: "Tây Nam" },   // Canh
+      { hyThan: "Tây Nam", taiThan: "Tây Nam" },   // Tân
+      { hyThan: "Chính Nam", taiThan: "Chính Tây" }, // Nhâm
+      { hyThan: "Đông Nam", taiThan: "Tây Bắc" }   // Quý
+    ];
+
+    // 24 Tiết khí tính theo kinh độ Mặt Trời (từ 0° Xuân Phân, mỗi tiết 15°) kèm lời dặn dưỡng sinh
+    const SOLAR_TERMS = [
+      { name: "Xuân Phân", tip: "Ngày đêm bằng nhau, tiết trời ôn hòa; bác nên đi bộ nắng sớm 20 phút cho dẻo gân cốt." },
+      { name: "Thanh Minh", tip: "Khí xuân trong sáng; đi tảo mộ hay dạo vườn nhớ đội mũ nhẹ và mang theo bình nước ấm." },
+      { name: "Cốc Vũ", tip: "Mưa xuân ẩm ướt dễ mỏi khớp gối; tối nên ngâm chân nước gừng ấm trước khi ngủ." },
+      { name: "Lập Hạ", tip: "Bắt đầu sang hè; bác ưu tiên canh rau mát, ngủ trưa ngắn 25 phút để dưỡng tâm." },
+      { name: "Tiểu Mãn", tip: "Nắng đầu mùa hanh nhẹ; uống nước từng ngụm nhỏ đều trong ngày dù chưa thấy khát." },
+      { name: "Mang Chủng", tip: "Trời oi hơn; tránh ra ngoài lúc đứng bóng 11h–14h, chọn áo vải thoáng mồ hôi." },
+      { name: "Hạ Chí", tip: "Ngày dài nhất năm; buổi sáng dậy sớm hít thở sâu, chiều mát ngồi bàn trà thư giãn." },
+      { name: "Tiểu Thử", tip: "Nắng nóng tăng dần; hạn chế nước đá lạnh đột ngột, dùng trà sen hoặc nước vối ấm." },
+      { name: "Đại Thử", tip: "Đỉnh điểm nắng hè; giữ phòng thoáng gió, ăn thanh đạm và theo dõi huyết áp đều đặn." },
+      { name: "Lập Thu", tip: "Gió thu chớm về sáng sớm; khoác thêm áo mỏng khi tập dưỡng sinh lúc tinh mơ." },
+      { name: "Xử Thử", tip: "Nắng dịu dần về chiều; rất hợp tỉa cây cảnh, phơi nắng nhẹ và đọc sách chữ to." },
+      { name: "Bạch Lộ", tip: "Sương sớm bắt đầu lành lạnh; giữ ấm cổ và lòng bàn chân khi thức dậy buổi sáng." },
+      { name: "Thu Phân", tip: "Tiết thu mát mẻ khô ráo; ăn thêm lê, cam, mật ong ấm để giữ êm cổ họng." },
+      { name: "Hàn Lộ", tip: "Sương lạnh đậm hơn; bác nên uống một ngụm nước ấm ngay trên giường trước khi bước xuống." },
+      { name: "Sương Giáng", tip: "Giao mùa thu đông; giữ ấm vùng lưng, đầu gối và tập xoay khớp nhẹ nhàng trong nhà." },
+      { name: "Lập Đông", tip: "Chớm vào mùa đông; ăn cơm canh nóng sốt, đi tất mỏng giữ ấm bàn chân buổi tối." },
+      { name: "Tiểu Tuyết", tip: "Gió mùa về se lạnh; tránh tắm muộn sau 19h và nhớ đo huyết áp buổi sáng." },
+      { name: "Đại Tuyết", tip: "Trời rét sâu hơn ở miền Bắc; quàng khăn ấm cổ khi bước từ phòng ấm ra ngoài hiên." },
+      { name: "Đông Chí", tip: "Đêm dài nhất năm; đi ngủ sớm trước 22h, uống trà gừng mật ong giữ ấm tỳ vị." },
+      { name: "Tiểu Hàn", tip: "Tiết trời rét ngọt; tập vươn vai thở đều trong phòng kín gió trước khi mở cửa sáng." },
+      { name: "Đại Hàn", tip: "Đợt lạnh cuối năm; giữ ấm ngực và bàn tay, hạn chế đi xa lúc sáng sớm còn sương mù." },
+      { name: "Lập Xuân", tip: "Khí xuân mở đầu năm mới; mở cửa đón nắng ấm, chúc nhau lời hiền hòa may mắn." },
+      { name: "Vũ Thủy", tip: "Mưa bụi mùa xuân nồm ẩm; lau khô sàn nhà chống trơn trượt và giữ ấm khớp tay chân." },
+      { name: "Kinh Trập", tip: "Cây cối đâm chồi nảy lộc; vươn vai đi dạo công viên và trò chuyện cùng bạn đồng niên." }
+    ];
+
+    // 12 Trực truyền thống diễn giải tích cực, thực tế, không mê tín hù dọa
+    const TRUC_LIST = [
+      { name: "Trực Kiến", goodFor: ["Khởi sự việc mới", "Đi bộ sáng", "Thăm hỏi bạn bè"], note: "Ngày mở đầu giàu sinh khí, hợp lên kế hoạch tuần mới và gặp gỡ người thân." },
+      { name: "Trực Trừ", goodFor: ["Dọn dẹp nhà cửa", "Khám sức khỏe", "Tỉa cây cảnh"], note: "Hợp sắp xếp lại góc nhà gọn gàng, kiểm tra sức khỏe định kỳ cho yên tâm." },
+      { name: "Trực Mãn", goodFor: ["Sum họp con cháu", "Mừng thọ", "Mua sắm vừa đủ"], note: "Ngày viên mãn ấm cúng, hợp làm bữa cơm gia đình hoặc gọi điện thăm con cháu." },
+      { name: "Trực Bình", goodFor: ["Xuất hành bình an", "Họp hội đồng ngũ", "Đàm đạo trà"], note: "Khí ngày cân bằng êm ả, đi lại thư thả và trò chuyện rất dễ đồng cảm." },
+      { name: "Trực Định", goodFor: ["Gắn kết tình thân", "Đọc sách báo", "Luyện cờ tướng"], note: "Tâm trí vững vàng, hợp giải cờ thế, đọc tin tức và chốt lịch hẹn quan trọng." },
+      { name: "Trực Chấp", goodFor: ["Chăm vườn cây", "Sửa sang đồ đạc", "Giữ nếp sinh hoạt"], note: "Hợp chăm chút vườn tược, duy trì đều đặn lịch uống thuốc và tập dưỡng sinh." },
+      { name: "Trực Phá", goodFor: ["Bỏ thói quen cũ", "Tái khám định kỳ", "Thư giãn nhẹ"], note: "Nên đi lại thong thả không vội vã, ưu tiên nghỉ ngơi và giải quyết dứt điểm việc tồn." },
+      { name: "Trực Nguy", goodFor: ["Tĩnh tâm tại gia", "Nghe thơ lục bát", "Dâng hương cầu an"], note: "Hợp ngồi ấm trà yên tĩnh, hạn chế mang vác nặng hoặc đi đường xa lúc trời tối." },
+      { name: "Trực Thành", goodFor: ["Xuất phát đi xa", "Khai mở việc tốt", "Kết bạn mới"], note: "Ngày thuận hòa cát lành, khởi hành hay bàn bạc công việc gia đình đều suôn sẻ." },
+      { name: "Trực Thu", goodFor: ["Thu vén tài chính", "Lĩnh lương hưu", "Lưu giữ kỷ niệm"], note: "Hợp kiểm điểm sổ sách gia đình, lưu ảnh kỷ niệm và chia sẻ niềm vui cùng bạn trà." },
+      { name: "Trực Khai", goodFor: ["Xuất hành đón lộc", "Mở bàn trà mới", "Thăm quê hương"], note: "Ngày rộng mở hanh thông, rất đẹp để ra ngoài đón nắng mới và hội ngộ đồng đội." },
+      { name: "Trực Bế", goodFor: ["Nghỉ ngơi dưỡng sức", "Đọc thơ ca", "Chăm sóc gia đình"], note: "Hợp khép lại việc bận rộn, dành thời gian tĩnh dưỡng và ngủ sớm lấy sức." }
+    ];
+
+    // Lục Diệu Lý Thuần Phong (6 cung giờ xuất hành thực dụng, nhẹ nhàng)
+    const LUC_DIEU = [
+      { id: "dai-an", name: "Đại An", rank: 3, good: true, desc: "Bình an vững chãi, đi lại êm xuôi, tâm thế thư thái." },
+      { id: "luu-nien", name: "Lưu Niên", rank: 1, good: false, desc: "Thong thả chừng mực; nên kiểm tra kỹ giấy tờ trước khi đi." },
+      { id: "toc-hy", name: "Tốc Hỷ", rank: 3, good: true, desc: "Đón niềm vui nhanh, gặp người niềm nở giúp đỡ, rất hợp buổi sáng." },
+      { id: "xich-khau", name: "Xích Khẩu", rank: 1, good: false, desc: "Giữ lời nói ôn hòa, đi đường đông nên nhường nhịn nhẹ nhàng." },
+      { id: "tieu-cat", name: "Tiểu Cát", rank: 2, good: true, desc: "Thuận lợi dịu dàng, thăm con cháu hay mua sắm đều suôn sẻ." },
+      { id: "khong-vong", name: "Không Vong", rank: 0, good: false, desc: "Hợp ngồi nghỉ uống trà chuẩn bị thêm, không nên hấp tấp." }
+    ];
+
+    const DEPARTURE_PURPOSES = [
+      { id: "xuat-hanh", label: "Đi xa / Về quê / Du lịch", icon: "compass", preferHours: [3, 4, 5, 7], dirType: "both" },
+      { id: "tham-kham", label: "Đi khám sức khỏe / Tái khám BHYT", icon: "heart", preferHours: [3, 4, 5, 7], dirType: "hy" },
+      { id: "tham-con-chau", label: "Thăm con cháu / Họp đồng ngũ", icon: "users", preferHours: [4, 5, 7, 8], dirType: "hy" },
+      { id: "mua-sam", label: "Mua sắm / Giao dịch / Lĩnh lương", icon: "coin", preferHours: [4, 5, 7, 8], dirType: "tai" },
+      { id: "mung-tho", label: "Cưới hỏi / Mừng thọ / Việc họ", icon: "flower", preferHours: [3, 4, 5, 6], dirType: "hy" },
+      { id: "vuon-tuoc", label: "Trồng cây / Sửa sang nhà cửa", icon: "sun", preferHours: [3, 4, 7, 8], dirType: "tai" }
+    ];
+
+    const DAILY_PROVERBS = [
+      "Trà ngon nước biếc hương đưa nhẹ · Bạn quý tâm đồng chuyện nở hoa.",
+      "Sáng ra xé một tờ lịch mới · Đón nắng hiên nhà trọn chữ An.",
+      "Cây cao bóng cả che con cháu · Tuổi hạc thong dong ấm nghĩa tình.",
+      "Một câu chào hỏi thêm vui khỏe · Đôi ván cờ chiều sáng trí tâm.",
+      "Giữ tâm thanh thản hơn thang thuốc · Nở nụ cười hiền đẹp sắc xuân.",
+      "Quê hương ba bốn vùng đèn sáng · Bốn bể anh em một mái trà.",
+      "Đi đâu nhớ chọn giờ thư thả · Bước nhẹ chân êm vạn dặm lành.",
+      "Sống vui sống khỏe cùng năm tháng · Cháu thảo con hiền phúc lộc bền."
+    ];
+
+    function INT(d) {
+      return Math.floor(d);
+    }
+
+    function jdFromDate(dd, mm, yy) {
+      const a = INT((14 - mm) / 12);
+      const y = yy + 4800 - a;
+      const m = mm + 12 * a - 3;
+      let jd = dd + INT((153 * m + 2) / 5) + 365 * y + INT(y / 4) - INT(y / 100) + INT(y / 400) - 32045;
+      if (jd < 2299161) {
+        jd = dd + INT((153 * m + 2) / 5) + 365 * y + INT(y / 4) - 32083;
+      }
+      return jd;
+    }
+
+    function jdToDate(jd) {
+      let a;
+      let b;
+      let c;
+      if (jd > 2299160) {
+        a = jd + 32044;
+        b = INT((4 * a + 3) / 146097);
+        c = a - INT((b * 146097) / 4);
+      } else {
+        b = 0;
+        c = jd + 32082;
+      }
+      const d = INT((4 * c + 3) / 1461);
+      const e = c - INT((1461 * d) / 4);
+      const m = INT((5 * e + 2) / 153);
+      const day = e - INT((153 * m + 2) / 5) + 1;
+      const month = m + 3 - 12 * INT(m / 10);
+      const year = b * 100 + d - 4800 + INT(m / 10);
+      return [day, month, year];
+    }
+
+    function getNewMoonDay(k, timeZone) {
+      const tz = typeof timeZone === "number" ? timeZone : TZ_VN;
+      const T = k / 1236.85;
+      const T2 = T * T;
+      const T3 = T2 * T;
+      const dr = Math.PI / 180;
+      let Jd1 = 2415020.75933 + 29.53058868 * k + 0.0001178 * T2 - 0.000000155 * T3;
+      Jd1 = Jd1 + 0.00033 * Math.sin((166.56 + 132.87 * T - 0.009173 * T2) * dr);
+      const M = 359.2242 + 29.10535608 * k - 0.0000333 * T2 - 0.00000347 * T3;
+      const Mpr = 306.0253 + 385.81691806 * k + 0.0107306 * T2 + 0.00001236 * T3;
+      const F = 21.2964 + 390.67050646 * k - 0.0016528 * T2 - 0.00000239 * T3;
+      let C1 = (0.1734 - 0.000393 * T) * Math.sin(M * dr) + 0.0021 * Math.sin(2 * dr * M);
+      C1 = C1 - 0.4068 * Math.sin(Mpr * dr) + 0.0161 * Math.sin(dr * 2 * Mpr);
+      C1 = C1 - 0.0004 * Math.sin(dr * 3 * Mpr);
+      C1 = C1 + 0.0104 * Math.sin(dr * 2 * F) - 0.0051 * Math.sin(dr * (M + Mpr));
+      C1 = C1 - 0.0074 * Math.sin(dr * (M - Mpr)) + 0.0004 * Math.sin(dr * (2 * F + M));
+      C1 = C1 - 0.0004 * Math.sin(dr * (2 * F - M)) - 0.0006 * Math.sin(dr * (2 * F + Mpr));
+      C1 = C1 + 0.0010 * Math.sin(dr * (2 * F - Mpr)) + 0.0005 * Math.sin(dr * (2 * Mpr + M));
+      const deltat =
+        T < -11
+          ? 0.001 + 0.000839 * T + 0.0002261 * T2 - 0.00000845 * T3 - 0.000000081 * T * T3
+          : -0.000278 + 0.000265 * T + 0.000262 * T2;
+      const JdNew = Jd1 + C1 - deltat;
+      return INT(JdNew + 0.5 + tz / 24);
+    }
+
+    function getSunLongitudeRad(jdn, timeZone) {
+      const tz = typeof timeZone === "number" ? timeZone : TZ_VN;
+      const T = (jdn - 2451545.5 - tz / 24) / 36525;
+      const T2 = T * T;
+      const dr = Math.PI / 180;
+      const M = 357.52910 + 35999.05030 * T - 0.0001559 * T2 - 0.00000048 * T * T2;
+      const L0 = 280.46645 + 36000.76983 * T + 0.0003032 * T2;
+      let DL = (1.914600 - 0.004817 * T - 0.000014 * T2) * Math.sin(dr * M);
+      DL = DL + (0.019993 - 0.000101 * T) * Math.sin(dr * 2 * M) + 0.000290 * Math.sin(dr * 3 * M);
+      let L = (L0 + DL) * dr;
+      L = L - Math.PI * 2 * INT(L / (Math.PI * 2));
+      if (L < 0) L += Math.PI * 2;
+      return L;
+    }
+
+    function getSunLongitude(jdn, timeZone) {
+      return INT((getSunLongitudeRad(jdn, timeZone) / Math.PI) * 6);
+    }
+
+    function getLunarMonth11(yy, timeZone) {
+      const tz = typeof timeZone === "number" ? timeZone : TZ_VN;
+      const off = jdFromDate(31, 12, yy) - 2415021;
+      const k = INT(off / 29.530588853);
+      let nm = getNewMoonDay(k, tz);
+      const sunLong = getSunLongitude(nm, tz);
+      if (sunLong >= 9) {
+        nm = getNewMoonDay(k - 1, tz);
+      }
+      return nm;
+    }
+
+    function getLeapMonthOffset(a11, timeZone) {
+      const tz = typeof timeZone === "number" ? timeZone : TZ_VN;
+      const k = INT((a11 - 2415021.076998695) / 29.530588853 + 0.5);
+      let last = 0;
+      let i = 1;
+      let arc = getSunLongitude(getNewMoonDay(k + i, tz), tz);
+      do {
+        last = arc;
+        i += 1;
+        arc = getSunLongitude(getNewMoonDay(k + i, tz), tz);
+      } while (arc !== last && i < 14);
+      return i - 1;
+    }
+
+    function solarToLunarVi(dd, mm, yy) {
+      const dayNumber = jdFromDate(dd, mm, yy);
+      const k = INT((dayNumber - 2415021.076998695) / 29.530588853);
+      let monthStart = getNewMoonDay(k + 1, TZ_VN);
+      if (monthStart > dayNumber) {
+        monthStart = getNewMoonDay(k, TZ_VN);
+      }
+      let a11 = getLunarMonth11(yy, TZ_VN);
+      let b11 = a11;
+      let lunarYear;
+      if (a11 >= monthStart) {
+        lunarYear = yy;
+        a11 = getLunarMonth11(yy - 1, TZ_VN);
+      } else {
+        lunarYear = yy + 1;
+        b11 = getLunarMonth11(yy + 1, TZ_VN);
+      }
+      const lunarDay = dayNumber - monthStart + 1;
+      const diff = INT((monthStart - a11) / 29);
+      let lunarLeap = 0;
+      let lunarMonth = diff + 11;
+      if (b11 - a11 > 365) {
+        const leapMonthDiff = getLeapMonthOffset(a11, TZ_VN);
+        if (diff >= leapMonthDiff) {
+          lunarMonth = diff + 10;
+          if (diff === leapMonthDiff) {
+            lunarLeap = 1;
+          }
+        }
+      }
+      if (lunarMonth > 12) {
+        lunarMonth = lunarMonth - 12;
+      }
+      if (lunarMonth >= 11 && diff < 4) {
+        lunarYear -= 1;
+      }
+      const nextMonthStart = getNewMoonDay(
+        INT((monthStart - 2415021.076998695) / 29.530588853 + 0.5) + 1,
+        TZ_VN
+      );
+      const monthDays = nextMonthStart - monthStart;
+      return {
+        day: lunarDay,
+        month: lunarMonth,
+        year: lunarYear,
+        leap: lunarLeap,
+        monthDays,
+        jd: dayNumber
+      };
+    }
+
+    function lunarToSolarVi(lunarDay, lunarMonth, lunarYear, lunarLeap) {
+      let a11;
+      let b11;
+      if (lunarMonth < 11) {
+        a11 = getLunarMonth11(lunarYear - 1, TZ_VN);
+        b11 = getLunarMonth11(lunarYear, TZ_VN);
+      } else {
+        a11 = getLunarMonth11(lunarYear, TZ_VN);
+        b11 = getLunarMonth11(lunarYear + 1, TZ_VN);
+      }
+      const k = INT(0.5 + (a11 - 2415021.076998695) / 29.530588853);
+      let off = lunarMonth - 11;
+      if (off < 0) {
+        off += 12;
+      }
+      if (b11 - a11 > 365) {
+        const leapOff = getLeapMonthOffset(a11, TZ_VN);
+        let leapMonth = leapOff - 2;
+        if (leapMonth < 0) {
+          leapMonth += 12;
+        }
+        if (lunarLeap && lunarMonth !== leapMonth) {
+          return { day: 0, month: 0, year: 0 };
+        } else if (lunarLeap || off >= leapOff) {
+          off += 1;
+        }
+      }
+      const monthStart = getNewMoonDay(k + off, TZ_VN);
+      const [day, month, year] = jdToDate(monthStart + lunarDay - 1);
+      return { day, month, year };
+    }
+
+    function resolveNextSolarForLunar(lunarDay, lunarMonth, fromDate) {
+      const ref = parseDateInput(fromDate);
+      const refSolarMid = new Date(ref.year, ref.month - 1, ref.day).getTime();
+      const curLunar = solarToLunarVi(ref.day, ref.month, ref.year);
+      for (let yOff = 0; yOff <= 2; yOff++) {
+        const tryLunarYear = curLunar.year + yOff;
+        const cand = lunarToSolarVi(
+          Math.max(1, Math.min(30, Number(lunarDay) || 1)),
+          Math.max(1, Math.min(12, Number(lunarMonth) || 1)),
+          tryLunarYear,
+          0
+        );
+        if (cand && cand.year > 0) {
+          const candMid = new Date(cand.year, cand.month - 1, cand.day).getTime();
+          if (candMid >= refSolarMid) {
+            const ym = String(cand.month).padStart(2, "0");
+            const yd = String(cand.day).padStart(2, "0");
+            return {
+              day: cand.day,
+              month: cand.month,
+              year: cand.year,
+              dateKey: `${cand.year}-${ym}-${yd}`
+            };
+          }
+        }
+      }
+      const ym = String(ref.month).padStart(2, "0");
+      const yd = String(ref.day).padStart(2, "0");
+      return { day: ref.day, month: ref.month, year: ref.year, dateKey: `${ref.year}-${ym}-${yd}` };
+    }
+
+    function parseDateInput(dateInput) {
+      if (typeof dateInput === "string" && /^\d{4}-\d{2}-\d{2}$/.test(dateInput.trim())) {
+        const [y, m, d] = dateInput.trim().split("-").map(Number);
+        const dt = new Date(y, m - 1, d);
+        return { day: dt.getDate(), month: dt.getMonth() + 1, year: dt.getFullYear(), dateObj: dt };
+      }
+      const dt = dateInput instanceof Date && !Number.isNaN(dateInput.getTime()) ? dateInput : new Date();
+      return { day: dt.getDate(), month: dt.getMonth() + 1, year: dt.getFullYear(), dateObj: dt };
+    }
+
+    function formatDateKey(dd, mm, yy) {
+      return `${yy}-${String(mm).padStart(2, "0")}-${String(dd).padStart(2, "0")}`;
+    }
+
+    function checkBirthYearHarmony(dayChiIdx, userBirthYear) {
+      const by = Number(userBirthYear);
+      if (!Number.isFinite(by) || by < 1920 || by > 2015) {
+        return {
+          birthCanChi: "",
+          harmonyTag: "Ngày bình hòa",
+          harmonyNote: "Khởi hành thong thả, giữ tâm vui vẻ là cát lành."
+        };
+      }
+      const bCan = CAN[(by + 6) % 10];
+      const bChiIdx = (by + 8) % 12;
+      const bChi = CHI[bChiIdx];
+      const diff = Math.abs(dayChiIdx - bChiIdx);
+      const isTamHop = diff === 4 || diff === 8;
+      // Lục hợp: Tý-Sửu(0-1), Dần-Hợi(2-11), Mão-Tuất(3-10), Thìn-Dậu(4-9), Tỵ-Thân(5-8), Ngọ-Mùi(6-7)
+      const lucHopPairs = [[0, 1], [2, 11], [3, 10], [4, 9], [5, 8], [6, 7]];
+      const isLucHop = lucHopPairs.some(([a, b]) => (a === dayChiIdx && b === bChiIdx) || (b === dayChiIdx && a === bChiIdx));
+      const isSame = dayChiIdx === bChiIdx;
+
+      if (isLucHop) {
+        return {
+          birthCanChi: `${bCan} ${bChi} (${by})`,
+          harmonyTag: "Lục hợp quý nhân",
+          harmonyNote: `Tuổi ${bCan} ${bChi} rất hợp khí ngày hôm nay, dễ gặp người niềm nở tương trợ.`
+        };
+      }
+      if (isTamHop) {
+        return {
+          birthCanChi: `${bCan} ${bChi} (${by})`,
+          harmonyTag: "Tam hợp thuận lợi",
+          harmonyNote: `Tuổi ${bCan} ${bChi} đồng điệu với ngày này, ra ngoài tinh thần khoan khoái.`
+        };
+      }
+      if (isSame) {
+        return {
+          birthCanChi: `${bCan} ${bChi} (${by})`,
+          harmonyTag: "Đồng khí vững vàng",
+          harmonyNote: `Tuổi ${bCan} ${bChi} hợp làm việc quen thuộc, đi lại đều nhịp thong thả.`
+        };
+      }
+      return {
+        birthCanChi: `${bCan} ${bChi} (${by})`,
+        harmonyTag: "Bình hòa an ổn",
+        harmonyNote: `Tuổi ${bCan} ${bChi} cứ chọn đúng khung Giờ Hoàng Đạo buổi sáng/chiều là êm xuôi.`
+      };
+    }
+
+    function getDayAlmanacDetail(dateInput, userBirthYear) {
+      const { day, month, year, dateObj } = parseDateInput(dateInput);
+      const lunar = solarToLunarVi(day, month, year);
+      const jd = lunar.jd;
+
+      const canYearIdx = (lunar.year + 6) % 10;
+      const chiYearIdx = (lunar.year + 8) % 12;
+      const canMonthIdx = (lunar.year * 12 + lunar.month + 3) % 10;
+      const chiMonthIdx = (lunar.month + 1) % 12;
+      const canDayIdx = (jd + 9) % 10;
+      const chiDayIdx = (jd + 1) % 12;
+      // Giờ Tý đầu ngày tính theo Ngũ Thử Độn từ Thiên Can ngày
+      const canFirstHourIdx = (canDayIdx % 5) * 2;
+
+      const solarTermIdx = INT((getSunLongitudeRad(jd + 1, TZ_VN) / Math.PI) * 12) % 24;
+      const solarTerm = SOLAR_TERMS[solarTermIdx] || SOLAR_TERMS[0];
+
+      // 12 Trực: khởi Trực Kiến tại ngày trùng Địa Chi của tháng tiết khí
+      const approxSolarMonthBranch = (INT(((getSunLongitudeRad(jd + 1, TZ_VN) * 180) / Math.PI + 45) / 30) + 2) % 12;
+      const trucIdx = (chiDayIdx - approxSolarMonthBranch + 12) % 12;
+      const truc = TRUC_LIST[trucIdx] || TRUC_LIST[0];
+
+      const thanhLongStart = THANH_LONG_START_BY_DAY_CHI[chiDayIdx];
+      const hoangDaoByChi = Object.create(null);
+      HOANG_DAO_OFFSETS.forEach((off, idx) => {
+        const hChi = (thanhLongStart + off) % 12;
+        hoangDaoByChi[hChi] = HOANG_DAO_STARS[idx];
+      });
+
+      const allHours = HOUR_WINDOWS.map((hw) => {
+        const star = hoangDaoByChi[hw.chiIdx] || null;
+        const lucDieuIdx = (lunar.month + lunar.day + hw.chiIdx - 2 + 60) % 6;
+        const lucDieu = LUC_DIEU[lucDieuIdx];
+        const hCan = CAN[(canFirstHourIdx + hw.chiIdx) % 10];
+        return {
+          chiIdx: hw.chiIdx,
+          chi: hw.chi,
+          canChi: `${hCan} ${hw.chi}`,
+          range: hw.range,
+          startHm: hw.startHm,
+          daytime: hw.daytime,
+          isHoangDao: Boolean(star),
+          starName: star || "",
+          lucDieu
+        };
+      });
+
+      const auspiciousHours = allHours.filter((h) => h.isHoangDao);
+      const dirs = DIRECTIONS_BY_CAN[canDayIdx] || DIRECTIONS_BY_CAN[0];
+      const harmony = checkBirthYearHarmony(chiDayIdx, userBirthYear);
+
+      const specialNote =
+        lunar.day === 1 && lunar.month === 1
+          ? "Mùng 1 Tết Nguyên Đán — Khai xuân an khang, vạn sự cát tường!"
+          : lunar.day === 1
+            ? "Mùng 1 đầu tháng Âm lịch — Hợp dâng hương cầu bình an & khởi tâm thiện lành."
+            : lunar.day === 15
+              ? "Ngày Rằm (15 Âm lịch) — Trăng tròn tâm sáng, hợp viếng Chánh Điện & sum vầy."
+              : lunar.day === 14
+                ? "Ngày mai là Rằm 15 Âm lịch — Bác có thể chuẩn bị hoa tươi, trái cây thanh tịnh."
+                : lunar.day === lunar.monthDays
+                  ? "Ngày cuối tháng Âm lịch — Ngày mai là Mùng 1 đầu tháng mới."
+                  : "";
+
+      const lunarMonthLabel = `${LUNAR_MONTH_NAMES[lunar.month] || `Tháng ${lunar.month}`}${lunar.leap ? " (Nhuận)" : ""} (${lunar.monthDays === 30 ? "Đủ" : "Thiếu"})`;
+
+      return {
+        dateKey: formatDateKey(day, month, year),
+        solar: {
+          day,
+          month,
+          year,
+          weekdayIndex: dateObj.getDay(),
+          weekdayLabel: WEEKDAYS_VI[dateObj.getDay()]
+        },
+        lunar: Object.assign({}, lunar, {
+          monthLabel: lunarMonthLabel,
+          shortLabel: `${lunar.day}/${lunar.month}${lunar.leap ? "N" : ""} ÂL`
+        }),
+        canChi: {
+          day: `${CAN[canDayIdx]} ${CHI[chiDayIdx]}`,
+          month: `${CAN[canMonthIdx]} ${CHI[chiMonthIdx]}`,
+          year: `${CAN[canYearIdx]} ${CHI[chiYearIdx]}`,
+          zodiacAnimal: CON_GIAP[chiYearIdx]
+        },
+        solarTerm,
+        truc,
+        directions: dirs,
+        auspiciousHours,
+        allHours,
+        harmony,
+        specialNote,
+        dailyProverb: DAILY_PROVERBS[jd % DAILY_PROVERBS.length]
+      };
+    }
+
+    function evaluateDeparturePlan(dateInput, purposeId, userBirthYear) {
+      const detail = getDayAlmanacDetail(dateInput, userBirthYear);
+      const purpose = DEPARTURE_PURPOSES.find((p) => p.id === purposeId) || DEPARTURE_PURPOSES[0];
+
+      const scoredSlots = detail.allHours
+        .filter((h) => h.chiIdx >= 3 && h.chiIdx <= 9) // Khung ban ngày 05:00 - 19:00 an toàn sức khỏe cho các bác
+        .map((h) => {
+          let score = 50;
+          if (h.isHoangDao) score += 26;
+          score += h.lucDieu.rank * 8;
+          if (purpose.preferHours.includes(h.chiIdx)) score += 10;
+          const reasons = [];
+          if (h.isHoangDao) reasons.push(`${h.starName} Hoàng Đạo`);
+          if (h.lucDieu.good) reasons.push(`Cung ${h.lucDieu.name}`);
+          if (purpose.preferHours.includes(h.chiIdx)) reasons.push("Khung giờ ban ngày khỏe người");
+          return Object.assign({}, h, {
+            score: Math.min(99, score),
+            summaryReason: reasons.join(" · ") || h.lucDieu.desc
+          });
+        })
+        .sort((a, b) => b.score - a.score);
+
+      const recommendedDir =
+        purpose.dirType === "hy"
+          ? `Hướng ${detail.directions.hyThan} (đón Hỷ Thần — niềm vui & quý nhân)`
+          : purpose.dirType === "tai"
+            ? `Hướng ${detail.directions.taiThan} (đón Tài Thần — hanh thông công việc)`
+            : detail.directions.hyThan === detail.directions.taiThan
+              ? `Hướng ${detail.directions.hyThan} (trùng cả Hỷ Thần & Tài Thần rất đẹp)`
+              : `Hướng ${detail.directions.hyThan} (Hỷ Thần) hoặc ${detail.directions.taiThan} (Tài Thần)`;
+
+      return {
+        detail,
+        purpose,
+        topSlots: scoredSlots.slice(0, 3),
+        recommendedDir,
+        prepChecklist:
+          purpose.id === "tham-kham"
+            ? "Nhớ mang thẻ BHYT, căn cước, sổ đơn thuốc cũ và chai nước ấm nhỏ."
+            : purpose.id === "xuat-hanh"
+              ? "Kiểm tra kính lão, điện thoại đầy pin, khoác thêm áo mỏng và đi trước giờ hẹn 15 phút."
+              : "Bước ra cửa thong thả, hít thở sâu và giữ tinh thần vui vẻ."
+      };
+    }
+
+    function getActiveCommunitySession(nowDate) {
+      const dt = nowDate instanceof Date ? nowDate : new Date();
+      const curMin = dt.getHours() * 60 + dt.getMinutes();
+      let activeId = "";
+      let nextId = COMMUNITY_SESSIONS[0].id;
+      for (const s of COMMUNITY_SESSIONS) {
+        if (curMin >= s.startMin && curMin <= s.endMin) {
+          activeId = s.id;
+          break;
+        }
+      }
+      if (!activeId) {
+        const upcoming = COMMUNITY_SESSIONS.find((s) => s.startMin > curMin);
+        nextId = upcoming ? upcoming.id : COMMUNITY_SESSIONS[0].id;
+      }
+      return COMMUNITY_SESSIONS.map((s) =>
+        Object.assign({}, s, {
+          isActive: s.id === activeId,
+          isNext: !activeId && s.id === nextId
+        })
+      );
+    }
+
+    return {
+      DEPARTURE_PURPOSES,
+      LUNAR_MONTH_NAMES,
+      jdFromDate,
+      jdToDate,
+      solarToLunarVi,
+      lunarToSolarVi,
+      resolveNextSolarForLunar,
+      getDayAlmanacDetail,
+      evaluateDeparturePlan,
+      getActiveCommunitySession
+    };
+  })();
 
   return {
     PROVINCES,
@@ -1978,6 +2647,9 @@ window.TuoiBacData = (function () {
     GROUP_CATEGORIES,
     INITIAL_GROUPS,
     AUTH_TIER_GUIDE,
+    COMMUNITY_SESSIONS,
+    REMINDER_PRESETS,
+    Almanac,
     ROOM_TEMPLATES,
     cloneRoomTemplate,
     TEA_TABLES,

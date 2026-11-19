@@ -4,13 +4,13 @@
 
 ---
 
-## 1. Bảng Trạng Thái 16 Phân Hệ Của Game (Cập nhật: 19/11/2026)
+## 1. Bảng Trạng Thái 17 Phân Hệ Của Game (Cập nhật: 20/11/2026)
 
 | STT | Phân hệ chức năng | Trạng thái | Tệp phụ trách chính | Ghi chú kỹ thuật |
 | :---: | :--- | :---: | :--- | :--- |
-| 1 | Trang chủ Mobile-First "Mực & Chu Sa · Sáng", 3 Niềm Vui & Lưới Tiện Ích 3 Cột | Hoàn thành | `app.js`, `styles.css`, `index.html` | Giao diện Ink & Cinnabar Light (M3 Active Pill, Banner Chu Sa, lưới 3 cột 11 tiện ích, thanh 3 niềm vui ngang), `ensureDailyRollover`, chữ 20px/24px |
-| 2 | Điểm danh bình an & Bản đồ Việt Nam chuẩn GIS Natural Earth 10m | Hoàn thành | `app.js`, `data.js`, `styles.css` | Bản đồ GIS 290 đỉnh đất liền + 21 đảo ven bờ (`cos 16°`), sao vàng Thủ đô Hà Nội, Hoàng Sa (TP. Đà Nẵng) & Trường Sa (Khánh Hòa), Vịnh Bắc Bộ, Biển Đông, thước tỷ lệ `0–200 km` & `0` tỉnh trôi ngoài bờ |
-| 3 | 6 Không Gian Trà (Có Trà Đá Vỉa Hè), 14 Áo Ba Miền · 11 Phụ Kiện Khớp Tọa Độ · 13 Đồ Bày | Hoàn thành | `tearoom3d.js`, `assets/room-*`, `assets/tearoom-*`, `data.js` | Cắt sát `ACC_BBOX` + mặt nạ `evenodd` đảo ngược & vòng cung trán cong cho 11 phụ kiện liền mạch tuyệt đối Nam/Nữ/Lưng (không cắt ngang khăn rằn, không cắt dây qua mặt nón quai thao), lưới 2×2 Tủ đồ |
+| 1 | Trang chủ Mobile-First "Mực & Chu Sa · Sáng", 6 Việc Chính `2×3`, 3 Ca Họp Quán & 3 Niềm Vui | Hoàn thành | `app.js`, `styles.css`, `index.html` | Giao diện Ink & Cinnabar Light, 6 thẻ việc chính cân đối `2×3`, thanh 3 Ca Vàng trực tiếp (`06:00`, `15:00`, `19:30`), chữ 20px/24px |
+| 2 | Điểm danh bình an, Bản đồ GIS Natural Earth 10m & Thi Đua Tuần Quê Hương Sáng Đèn | Hoàn thành | `app.js`, `data.js`, `styles.css` | Bản đồ GIS 290 đỉnh đất liền + 21 đảo ven bờ (`cos 16°`), sao vàng Thủ đô Hà Nội, Hoàng Sa & Trường Sa, bảng điểm tuần đồng hương + mời Zalo 1 chạm |
+| 3 | 6 Không Gian Trà (Có Trà Đá Vỉa Hè), 14 Áo Ba Miền · 11 Phụ Kiện · 13 Đồ Bày & Lời Chào Giọng Thật `12s` | Hoàn thành | `tearoom3d.js`, `app.js`, `realtime.js` | Nhãn nổi 2.5D 0% che mặt, thu âm giọng nói ngắn `<= 12s` (`< 20 KB` đồng bộ bàn trà) & vinh danh *Chủ Bàn Hiếu Khách* |
 | 4 | Chủ bàn đặt tên bàn đàm đạo & Gửi 8 Sticker 1 chạm | Hoàn thành | `app.js`, `tearoom3d.js` | Bong bóng Sticker nổi trên đầu nhân vật 3D, đồng bộ qua `custom_tea_tables` |
 | 5 | Trợ lý Quán Trà tự gợi chuyện sau 60s & Nhịp nhấp trà 10s | Hoàn thành | `app.js` | Rót trà 3D tự động khi bàn yên ắng quá 60 giây |
 | 6 | Nhập liệu giọng nói, Sổ phương ngữ & 15 Clip Giọng Thu Sẵn | Hoàn thành | `app.js`, `data.js`, `assets/audio/*.mp3` | 15 tệp `.mp3` tiếng Việt ngoại tuyến cho máy Android cũ + đồng bộ `phonetic_dictionary` |
@@ -23,11 +23,31 @@
 | 13 | Hệ Thống 96 Danh Hiệu Toán Học Lồi (32 tầng chính + 8 cây chuyên môn) | Hoàn thành | `progression.js`, `app.js` | Tách biệt bảng chào đón Người mới (Tầng 1–5) và vinh danh Trưởng lão / Đại thụ |
 | 14 | 3 Không Gian Tĩnh Tâm Riêng, Hoa Đăng 3 Phút & Tờ Giấy Đỏ (Hồi 45s) | Hoàn thành | `temple3d.js`, `assets/ancestral-*`, `assets/zengarden-*`, `app.js` | Tách riêng Sân Chùa Quê, Nhà Thờ Họ, Vườn Thiền; Hoa Đăng nổi 3 phút; mở tờ giấy đỏ xem quẻ & hồi lượt 45s |
 | 15 | Sức Khỏe (Thuốc/Nước/Huyết Áp), Góc Con Cái, Dash Admin & UAT | Hoàn thành | `telemetry.js`, `app.js`, `realtime.js` | Sổ thuốc sáng/tối, 8 cốc nước ấm, sổ đo huyết áp tự cảnh báo >=180/120, cài SĐT người thân cục bộ & Dash Admin |
-| 16 | Hồ Sơ Kiến Trúc Studio & Bộ Kiểm Thử Hồi Quy E2E 16 Màn Hình | Hoàn thành | `AGENTS.md`, `scripts/studio-doctor.mjs`, `scripts/e2e-regression.mjs` | Tự động kiểm định 9 cổng Code ↔ Docs + Playwright E2E quét đủ 16 route ở cả `20px` và `24px` |
+| 16 | Hồ Sơ Kiến Trúc Studio & Bộ Kiểm Thử Hồi Quy E2E 17 Màn Hình | Hoàn thành | `AGENTS.md`, `scripts/studio-doctor.mjs`, `scripts/e2e-regression.mjs` | Tự động kiểm định 9 cổng Code ↔ Docs + Playwright E2E quét đủ 17 route (`34` lượt) ở cả `20px` và `24px` |
+| 17 | Lịch Vạn Niên Xé Tay (`UTC+7`), Xem Giờ Xuất Phát & Sổ Nhắc Việc Âm–Dương 3 Tầng (`.ics` + `sw.js`) | Hoàn thành | `data.js`, `app.js`, `styles.css`, `sw.js`, `supabase_schema.sql` | Thuật toán Âm–Dương `UTC+7` (1900–2100, tháng Nhuận), 24 Tiết khí dưỡng sinh, 6 Giờ Hoàng Đạo, Hỷ/Tài Thần, Lục Diệu Lý Thuần Phong, thiệp Lịch PNG & chuông `.ics` |
 
 ---
 
 ## 2. Nhật Ký Phiên Bản Kỹ Thuật (Append-Only Engineering Log)
+
+### [2026-11-20] — Triển Khai Toàn Diện 5 Phân Đoạn: Lịch Vạn Niên Việt Nam (`UTC+7`), Tờ Lịch Bloc Xé Tay, Tra Giờ Xuất Phát, Sổ Nhắc Việc 3 Tầng (`.ics` + `sw.js`), 3 Ca Họp Quán, Lời Chào Giọng Thật `12s` & Đua Đèn Đồng Hương (`?v=20261120a`)
+- **Tệp cập nhật:** `data.js`, `app.js`, `styles.css`, `index.html` (`?v=20261120a`), `tearoom3d.js` (`?v=20261120a`), `realtime.js`, `sw.js` (`tuoibac-pwa-v33`), `supabase_schema.sql`, `scripts/e2e-regression.mjs`, `ARCHITECTURE.md`, `DESIGN.md`, `PRODUCT.md`, `docs/02_SO_DO_DU_LIEU_VA_API_NOI_BO.md`, `docs/03_TIEN_DO_VA_NHAT_KY.md`, `docs/04_CAM_NANG_FIX_BUG_VA_KIEM_THU.md`.
+- **Chi tiết 5 phân đoạn tính năng & bản sắc cộng đồng hoàn thành:**
+  1. **Động cơ Lịch Vạn Niên thiên văn Việt Nam (`UTC+7`, 1900–2100) trong `TuoiBacData.Almanac` (`data.js`):**
+     - Cài đặt thuật toán đổi hai chiều Dương lịch ↔ Âm lịch Việt Nam (`solarToLunarVi`, `lunarToSolarVi`, `resolveNextSolarForLunar`) theo chuẩn múi giờ `UTC+7` có xử lý tháng Nhuận (đã kiểm chứng khứ hồi 4.000 ngày liên tiếp từ 2020–2031 và các mốc Tết 2025, tháng 6 Nhuận 2025, Tết Bính Ngọ `17/02/2026`, Tết Canh Tuất `02/02/2030`).
+     - Tính tự động Can Chi Ngày/Tháng/Năm, 24 Tiết khí kèm lời dặn dưỡng sinh người cao tuổi theo mùa, 12 Trực diễn giải tích cực, 6 Giờ Hoàng Đạo trong ngày, Hướng xuất hành đón Hỷ Thần / Tài Thần và 6 cung Lục Diệu Lý Thuần Phong (tuân thủ nghiêm ngặt Bất biến #10: văn hóa truyền thống ấm áp, không dùng từ ngữ hù dọa mê tín, không thu phí).
+  2. **Màn hình thứ 17 `"almanac"` — Tờ Lịch Bloc Xé Tay, Tra Giờ Xuất Phát & Thiệp Lịch Zalo (`app.js`, `styles.css`, `index.html`):**
+     - Đặt thẻ độc lập **`Lịch Âm & Nhắc Việc`** ngay trong cụm **`6 Việc Chính Hôm Nay`** (lưới `2×3` cân đối cùng `Trà Đá Vỉa Hè` trên Trang chủ) và mở rộng liên kết sâu `?lich=YYYY-MM-DD`, `?nhac=1`.
+     - Thiết kế **Tờ Lịch Bloc** Đỏ Chu Sa & Giấy Ngà kèm nghi thức **"Xé tờ lịch đón ngày mới (+3 Xu · +5 XP)"**, bảng 6 Giờ Hoàng Đạo, Hướng Hỷ Thần / Tài Thần, nút nghe đọc to và xuất ảnh **Thiệp Lịch Bình An (`720×920` PNG đính QR)** gửi Zalo; ngăn **`Giờ xuất phát`** chấm điểm Top 3 khung giờ ban ngày đẹp nhất theo 6 nhóm việc thực tế và độ hợp năm sinh, cho phép lưu sang Sổ nhắc việc chỉ bằng 1 chạm.
+  3. **Sổ Nhắc Việc Âm–Dương Lịch & Kiến Trúc Thông Báo 3 Tầng (`app.js`, `sw.js`, `realtime.js`, `supabase_schema.sql`):**
+     - Hỗ trợ đặt lịch nhắc công việc theo cả ngày Dương lẫn ngày Âm (*Rằm, Mùng 1, Giỗ chạp hằng năm, Tái khám BHYT, Lĩnh lương hưu, Họp đồng ngũ*), nhập tên việc bằng giọng nói và bật công tắc tự nhắc ngày 14–15 / cuối tháng – Mùng 1 Âm lịch cùng Ca Trà Sáng `06:30`.
+     - Phối hợp 3 tầng báo nhắc: **Tầng 1** chạy bộ canh ngầm mỗi `30 giây` (`checkDueRemindersTick`) bắn thông báo hệ thống qua `ServiceWorkerRegistration.showNotification` kèm tiếng chuông êm; **Tầng 2** xuất tệp lịch chuẩn `RFC 5545 (.ics)` gắn 2 mốc báo thức `VALARM` (`-30 phút` và `-1 ngày`) vào thẳng ứng dụng Lịch gốc của điện thoại để đổ chuông kể cả khi tắt mạng/đóng trình duyệt; **Tầng 3** bổ sung trình lắng nghe `push` trong `sw.js` và bảng #15 `public.push_subscriptions` (RLS tối thiểu đặc quyền) trong `supabase_schema.sql`.
+  4. **Nhịp Sinh Hoạt Cộng Đồng 3 Ca Vàng & Lời Chào Giọng Thật `12s` Tại Bàn Trà (`app.js`, `realtime.js`, `styles.css`):**
+     - Bổ sung thanh **`Lịch Họp Quán 3 Ca Hôm Nay`** (*Ca Sáng `06:00–08:30`*, *Ca Chiều `15:00–17:30`*, *Ca Tối `19:30–21:30`*) hiển thị chấm xanh ca đang mở và dẫn 1 chạm vào đúng không gian tiêu điểm.
+     - Thêm nút **`Thu lời chào giọng thật (Tối đa 12s)`** trong ngăn giao tiếp bàn trà: thu âm nén nhẹ (`14 kbps`, `< 20 KB` Base64, có bản âm ngũ cung mẫu dự phòng khi thiết bị không có micro), đồng bộ thời gian thực qua `RT.sendTableMessage` mà không lưu phình `localStorage`, hiển thị nút nghe `.tea-voice-clip-pill` ngay trên Bảng lời bàn trà.
+  5. **Thi Đua Tuần "Quê Hương Sáng Đèn", Vinh Danh Chủ Bàn Hiếu Khách & Mở Rộng E2E 17 Route (`app.js`, `scripts/e2e-regression.mjs`):**
+     - Nâng cấp bảng xếp hạng tỉnh thành sang **Thi đua tuần Quê hương sáng đèn** (tổng hợp đèn điểm danh, xé lịch sáng, thắng cờ và mở bàn trà) kèm nút mời đồng hương tỉnh nhà qua Zalo (`?tinh=...`); trao danh hiệu **`Chủ Bàn Hiếu Khách`** và điểm chuyên môn `tea_host` / `comrade_social` khi thành viên đặt chủ đề bàn trà đón bạn.
+     - Nâng cấp bộ kiểm thử tự động `scripts/e2e-regression.mjs` quét đủ **17 màn hình × 2 cỡ chữ (`20px` & `24px`) = 34 lượt** cùng các bài kiểm thử toán học Lịch Âm `UTC+7`, xé lịch nhận Xu, tra giờ xuất phát, xuất chuông `.ics` và gửi lời chào giọng nói `12s`.
 
 ### [2026-11-19] — Kiểm Thử Trực Tiếp Trên Samsung Galaxy A56 (`SM-A566B`, Android 16) Qua USB, Xử Lý Triệt Để Nhãn Tên 2.5D Che Mặt & Tối Ưu Khung Nhìn Đầu Tiên `384×692` Trên Toàn Bộ 16 Màn Hình (`?v=20261119d`)
 - **Tệp cập nhật:** `tearoom3d.js` (`?v=20261119d`), `temple3d.js`, `app.js`, `styles.css`, `index.html` (`?v=20261119d`), `sw.js` (`tuoibac-pwa-v32`), `ARCHITECTURE.md`, `DESIGN.md`, `docs/03_TIEN_DO_VA_NHAT_KY.md`, `docs/04_CAM_NANG_FIX_BUG_VA_KIEM_THU.md`.

@@ -216,6 +216,15 @@ window.TuoiBacRealtime = (function () {
     } else if (kind === "chat") {
       if (!isSafeKey(payload.msgId) || seenMsgIds.has(payload.msgId)) return;
       if (isMaliciousNetworkText(payload.text || "") || isMaliciousNetworkText(payload.speaker || "")) return;
+      if (payload.voiceClipDataUrl) {
+        const vUrl = String(payload.voiceClipDataUrl);
+        if (
+          vUrl.length > 21000 ||
+          !/^data:audio\/[a-z0-9.+-]+(?:;[a-z0-9=+-]+)*;base64,[A-Za-z0-9+/=]{16,20800}$/i.test(vUrl)
+        ) {
+          delete payload.voiceClipDataUrl;
+        }
+      }
       if (seenMsgIds.size > 800) seenMsgIds.clear();
       seenMsgIds.add(payload.msgId);
       if (payload.clientId === clientId) return;
@@ -843,6 +852,16 @@ window.TuoiBacRealtime = (function () {
 
   function sendTableMessage(tableKey, speaker, text, ritual, recentLogSlice, extraMeta) {
     const cleanKey = String(tableKey || activeTableKey || "phong-tra-ban-1").replace(/[^a-zA-Z0-9_-]/g, "_");
+    const rawVoice = extraMeta && typeof extraMeta.voiceClipDataUrl === "string" ? extraMeta.voiceClipDataUrl : "";
+    const safeVoice =
+      rawVoice &&
+      rawVoice.length <= 21000 &&
+      /^data:audio\/[a-z0-9.+-]+(?:;[a-z0-9=+-]+)*;base64,[A-Za-z0-9+/=]{16,20800}$/i.test(rawVoice)
+        ? rawVoice
+        : null;
+    const safeVoiceDur = safeVoice
+      ? Math.max(1, Math.min(12, Math.round(Number(extraMeta && extraMeta.voiceDurSec) || 6)))
+      : 0;
     const msg = {
       msgId: `${clientId}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       tableKey: cleanKey,
@@ -852,6 +871,8 @@ window.TuoiBacRealtime = (function () {
       ritual: ritual || null,
       stickerId: (extraMeta && extraMeta.stickerId) || null,
       stickerLabel: (extraMeta && extraMeta.stickerLabel) || null,
+      voiceClipDataUrl: safeVoice,
+      voiceDurSec: safeVoiceDur || undefined,
       ts: Date.now()
     };
     seenMsgIds.add(msg.msgId);
@@ -859,9 +880,15 @@ window.TuoiBacRealtime = (function () {
     if (mqttClient && connected) {
       mqttClient.publish(`${TOPIC_ROOT}/chat/${cleanKey}`, JSON.stringify(msg), { qos: 0, retain: false });
       if (Array.isArray(recentLogSlice)) {
+        const leanLog = recentLogSlice.slice(-8).map((ln) => ({
+          speaker: ln.speaker,
+          text: ln.text,
+          stickerId: ln.stickerId || null,
+          voiceDurSec: ln.voiceDurSec || undefined
+        }));
         mqttClient.publish(
           `${TOPIC_ROOT}/log/${cleanKey}`,
-          JSON.stringify(recentLogSlice.slice(-8)),
+          JSON.stringify(leanLog),
           { qos: 0, retain: true }
         );
       }
@@ -1598,6 +1625,26 @@ window.TuoiBacRealtime = (function () {
     return Object.values(sharedPoems).sort((a, b) => (b.ts || 0) - (a.ts || 0));
   }
 
+  function upsertPushSubscription(subObj, prefsObj) {
+    if (!sbClient || !subObj || typeof subObj.endpoint !== "string") return Promise.resolve(false);
+    const endpoint = subObj.endpoint.trim().slice(0, 600);
+    if (!endpoint) return Promise.resolve(false);
+    const keys = (subObj.keys && typeof subObj.keys === "object" ? subObj.keys : {}) || {};
+    return sbClient
+      .from("push_subscriptions")
+      .upsert({
+        endpoint,
+        member_code: myMemberCode || "",
+        client_id: clientId,
+        p256dh: String(keys.p256dh || "").slice(0, 256),
+        auth_key: String(keys.auth || "").slice(0, 128),
+        prefs: prefsObj && typeof prefsObj === "object" ? prefsObj : {},
+        updated_at: new Date().toISOString()
+      })
+      .then(({ error }) => !error)
+      .catch(() => false);
+  }
+
   function getStatus() {
     const snap = getPresenceSnapshot();
     return {
@@ -1654,6 +1701,7 @@ window.TuoiBacRealtime = (function () {
     getAllTableCustomMeta,
     publishTempleRitual,
     getTemplePrayers,
+    upsertPushSubscription,
     wipeMyCloudData
   };
 })();

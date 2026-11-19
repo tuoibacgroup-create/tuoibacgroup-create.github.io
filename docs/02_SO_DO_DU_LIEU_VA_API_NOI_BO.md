@@ -118,7 +118,7 @@ state = {
     prayers: []                   // Lời cầu an & thẻ đỏ ước nguyện gần nhất
   },
 
-  // Đầy đủ các khóa gốc còn lại trong createDefaultState() (tổng 20 khóa gốc):
+  // Đầy đủ các khóa gốc còn lại trong createDefaultState() (tổng 22 khóa gốc):
   settings: { xlFont: false, preferredRender: "2.5d", autoFallbacked: false, homeMode: "full", pwaBannerDismissed: false, voiceMode: "auto", uatTag: "" },
   privacy: { consentFamilyCheckin: true, consentRealtimePresence: true, consentVoiceDict: true },
   analytics: { session_start: 1, morning_checkin_done: 0, tea_table_joined: 0, tea_msg_quick_0token: 0, tea_msg_voice_or_text: 0, news_article_read: 0, async_game_move: 0, poem_posted: 0, share_link_created: 0, idle_prompts_triggered: 0, feedbacks: [] },
@@ -131,6 +131,8 @@ state = {
   watch: { channelIdx: 0, votes: [], votedIdx: null, reactions: {}, clipAnswered: null },
   memberLogs: [],                 // Bộ đệm tóm tắt hoạt động gần nhất trong state
   customTables: {},               // Tên bàn trà đàm đạo do Chủ bàn đặt ({ [tableKey]: metaObj })
+  almanac: { lastTornDate: "", selectedDate: "", purposeId: "xuat-hanh", birthYear: 1961, activeTab: "today" },
+  reminders: { permissionAsked: false, autoLunar1st15th: true, autoMorningSession: true, morningSessionHm: "06:30", items: [], firedKeys: [] },
   health: { medMorning: false, medEvening: false, waterCups: 3, emergencyContactName: "Anh Hùng (Con trai)", emergencyContactPhone: "0900000000", bpReadings: [], lastAnswer: "", emergencyMode: false }
 }
 ```
@@ -140,7 +142,7 @@ state = {
 ## 2. API Công Khai Của 7 Namespace Toàn Cục
 
 ### 2.0. `window.TuoiBacData` (`data.js`)
-- Kho hằng số dữ liệu nền: `PROVINCES` (34 đơn vị hành chính sau sáp nhập + Hoàng Sa, Trường Sa, Người Việt xa quê theo tọa độ chiếu kinh vĩ độ thực `380×560`), `ROOM_TEMPLATES` (6 phòng sinh hoạt gồm `Quán Trà Đá Vỉa Hè`), `MORNING_ARTICLES`, `RSS_DRAFTS`, `NEWS_CATEGORIES`, `NEWS_HOT_KEYWORDS`, `INITIAL_PHONETIC_DICT`, `VOICE_SAMPLES`, `VOICE_CLIPS` (15 clip `.mp3` giọng người thu sẵn ngoại tuyến), `REPLY_MATRIX`, `IDLE_ICEBREAKERS`, `TEA_STICKERS`, `TEMPLE_PEACE_CARDS` (kèm `clipId` và `spaceCodes` cho 3 không gian), `TEMPLE_PRAYER_PRESETS`, `INITIAL_GROUPS`, `SENIOR_DIRECTORY`, `POEMS`, `LUC_BAT_RHYME_PAIRS`, `QUIZ_PACKS` (5 bộ đề), `QUIZ_QUESTIONS` (25 câu đố vui), `PROVERB_PAIRS` (18 cặp ca dao tục ngữ), `TOURNAMENT_RIVAL_CLUBS` (5 CLB đối thủ Cúp 3 vòng), `OUTFITS` (14 trang phục ba miền), `ACCESSORIES` (11 phụ kiện đầu/mắt/cổ), `TABLE_ITEMS` (13 món đồ bày bàn & khay trà đá), `TITLE_FRAMES` (9 khung danh hiệu), `HEALTH_QA`.
+- Kho hằng số dữ liệu nền: `PROVINCES` (34 đơn vị hành chính sau sáp nhập + Hoàng Sa, Trường Sa, Người Việt xa quê theo tọa độ chiếu kinh vĩ độ thực `380×560`), `Almanac` (`solarToLunarVi`, `lunarToSolarVi`, `resolveNextSolarForLunar`, `getDayAlmanacDetail`, `evaluateDeparturePlan`, `getActiveCommunitySession`, `DEPARTURE_PURPOSES`), `COMMUNITY_SESSIONS` (3 ca họp quán vàng trong ngày), `REMINDER_PRESETS` (4 mẫu công việc nhắc nhở 1 chạm), `ROOM_TEMPLATES` (6 phòng sinh hoạt gồm `Quán Trà Đá Vỉa Hè`), `MORNING_ARTICLES`, `RSS_DRAFTS`, `NEWS_CATEGORIES`, `NEWS_HOT_KEYWORDS`, `INITIAL_PHONETIC_DICT`, `VOICE_SAMPLES`, `VOICE_CLIPS` (15 clip `.mp3` giọng người thu sẵn ngoại tuyến), `REPLY_MATRIX`, `IDLE_ICEBREAKERS`, `TEA_STICKERS`, `TEMPLE_PEACE_CARDS` (kèm `clipId` và `spaceCodes` cho 3 không gian), `TEMPLE_PRAYER_PRESETS`, `INITIAL_GROUPS`, `SENIOR_DIRECTORY`, `POEMS`, `LUC_BAT_RHYME_PAIRS`, `QUIZ_PACKS` (5 bộ đề), `QUIZ_QUESTIONS` (25 câu đố vui), `PROVERB_PAIRS` (18 cặp ca dao tục ngữ), `TOURNAMENT_RIVAL_CLUBS` (5 CLB đối thủ Cúp 3 vòng), `OUTFITS` (14 trang phục ba miền), `ACCESSORIES` (11 phụ kiện đầu/mắt/cổ), `TABLE_ITEMS` (13 món đồ bày bàn & khay trà đá), `TITLE_FRAMES` (9 khung danh hiệu), `HEALTH_QA`.
 
 ### 2.1. `window.TuoiBacProgression` (`progression.js`)
 - `MAIN_TIERS`: Mảng `33` phần tử (`level 0` đến `level 32`).
@@ -190,17 +192,17 @@ state = {
 - Bàn trà: `joinTableChannel(tableKey, myPeerMeta)`, `leaveTableChannel()`, `sendTableMessage(...)`, `publishTableCustomMeta(...)`.
 - Hiện diện & Xã hội: `publishGlobalOnline(peerMeta)`, `getOnlinePeers()`, `publishGroup(groupObj)`, `publishFriendSignal(targetCode, signalObj)`.
 - Sao lưu Thẻ Hội Viên: `publishAccountBackup(accountHash, snapshotObj)`, `fetchAccountBackup(accountHash, callback)`.
-- Chuyên mục & bền vững: `publishMorningCheckin(...)`, `publishMatchState(...)`, `publishPoem(...)`, `publishTempleRitual(...)`, `publishApprovedArticle(...)`, `getApprovedArticles()`, `publishPhoneticEntry(...)`, `getSharedPhonetics()`, `publishMemberLog(...)`, `publishTelemetryEvent(...)`, `publishSafetyReport(...)`.
+- Chuyên mục & bền vững: `publishMorningCheckin(...)`, `publishMatchState(...)`, `publishPoem(...)`, `publishTempleRitual(...)`, `publishApprovedArticle(...)`, `getApprovedArticles()`, `publishPhoneticEntry(...)`, `getSharedPhonetics()`, `publishMemberLog(...)`, `publishTelemetryEvent(...)`, `publishSafetyReport(...)`, `upsertPushSubscription(subObj, prefsObj)`.
 
 ---
 
-## 3. Cây Chủ Đề MQTT & 14 Bảng Cơ Sở Dữ Liệu (`supabase_schema.sql`)
+## 3. Cây Chủ Đề MQTT & 15 Bảng Cơ Sở Dữ Liệu (`supabase_schema.sql`)
 
 | Phân hệ | Chủ đề MQTT (`tuoibac/prod/v1/...`) | Bảng PostgreSQL tương ứng |
 | :--- | :--- | :--- |
 | Hiện diện bàn trà | `/presence/{tableKey}/{clientId}` | Supabase Realtime Presence |
 | Hiện diện toàn quán | `/online/{memberCode_or_clientId}` | Broadcast `tb_event` (`online`) |
-| Trò chuyện & Sticker | `/chat/{tableKey}` & `/log/{tableKey}` | `public.tea_messages` |
+| Trò chuyện, Sticker & Giọng chào `12s` | `/chat/{tableKey}` & `/log/{tableKey}` | `public.tea_messages` |
 | Đặt tên bàn trà riêng | `/tablemeta/{tableKey}` | `public.custom_tea_tables` |
 | Điểm danh buổi sáng | `/checkins/{YYYY-MM-DD}/{clientId}` | `public.morning_checkins` |
 | Cờ tướng & Ô ăn quan treo | `/matches/{matchId}` | `public.async_matches` |
@@ -211,4 +213,5 @@ state = {
 | Chánh Điện & Thẻ Đỏ 3D | `/temple/{slotKey}` | `public.temple_prayers` |
 | Nhật ký tóm tắt | `/memberlogs/{ownerKey}` | `public.member_activity_logs` |
 | Kho AI Telemetry 100% | `/telemetry/{ownerKey}` | `public.member_telemetry_events` |
-| Sổ từ điển & Báo cáo an toàn | Đồng bộ qua ứng dụng (lọc chống gói tin độc hại & giới hạn 200 khóa RAM) | `public.phonetic_dictionary`, `public.analytics_events`, `public.safety_reports` (`INSERT`-only cho `anon`, chặn `DELETE` ẩn danh trên cả 14 bảng) |
+| Đăng ký Web Push nhắc lịch | Lưu trực tiếp qua Supabase REST + `sw.js` `push` | `public.push_subscriptions` |
+| Sổ từ điển & Báo cáo an toàn | Đồng bộ qua ứng dụng (lọc chống gói tin độc hại & giới hạn 200 khóa RAM) | `public.phonetic_dictionary`, `public.analytics_events`, `public.safety_reports` (`INSERT`-only cho `anon`, chặn `DELETE` ẩn danh trên cả 15 bảng) |

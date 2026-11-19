@@ -20,19 +20,19 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Merriweather:ital,wght@0,400;0,700;1,400&display=swap"
     rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20261119d" />
+  <link rel="stylesheet" href="styles.css?v=20261120a" />
   <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.3/dist/mqtt.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
-  <script src="data.js?v=20261119d" defer></script>
-  <script src="progression.js?v=20261119d" defer></script>
-  <script src="telemetry.js?v=20261119d" defer></script>
-  <script src="tearoom3d.js?v=20261119d" defer></script>
-  <script src="temple3d.js?v=20261119d" defer></script>
-  <script src="xiangqi.js?v=20261119d" defer></script>
-  <script src="realtime.js?v=20261119d" defer></script>
-  <script src="app.js?v=20261119d" defer></script>
+  <script src="data.js?v=20261120a" defer></script>
+  <script src="progression.js?v=20261120a" defer></script>
+  <script src="telemetry.js?v=20261120a" defer></script>
+  <script src="tearoom3d.js?v=20261120a" defer></script>
+  <script src="temple3d.js?v=20261120a" defer></script>
+  <script src="xiangqi.js?v=20261120a" defer></script>
+  <script src="realtime.js?v=20261120a" defer></script>
+  <script src="app.js?v=20261120a" defer></script>
 </head>
 
 <body>
@@ -238,6 +238,26 @@
       stroke-linecap="round" stroke-linejoin="round">
       <path d="M9 6l6 6-6 6" />
     </symbol>
+    <symbol id="ico-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+      stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3.5" y="4.5" width="17" height="16" rx="2.5" />
+      <path d="M8 3v3M16 3v3M3.5 9.5h17" />
+      <path d="M8.5 14h3M13.5 14h2M8.5 17.5h4.5" />
+    </symbol>
+    <symbol id="ico-compass" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+      stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="9" />
+      <polygon points="15.8 8.2 13.5 13.5 8.2 15.8 10.5 10.5 15.8 8.2" />
+    </symbol>
+    <symbol id="ico-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+      stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3.5 2" />
+    </symbol>
+    <symbol id="ico-wave" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+      stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4" />
+    </symbol>
   </svg>
 
   <!-- Desktop / Testing Helper Bar (hidden on narrow mobile viewports) -->
@@ -247,6 +267,7 @@
       <span>Khung điện thoại 480px (Mobile-First PWA + Realtime)</span>
     </div>
     <div class="sim-bar-controls">
+      <button type="button" class="sim-chip" id="sim-open-almanac">Lịch Vạn Niên &amp; Nhắc Việc</button>
       <button type="button" class="sim-chip" id="sim-open-temple">Viếng Chùa Chánh Điện</button>
       <button type="button" class="sim-chip" id="sim-open-groups">Hội Đồng Ngũ &amp; Kết bạn</button>
       <button type="button" class="sim-chip" id="sim-open-xiangqi">Cờ tướng 9×10 &amp; Cờ thế</button>

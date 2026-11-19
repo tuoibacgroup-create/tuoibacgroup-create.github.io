@@ -96,6 +96,7 @@ function assert(cond, msg) {
 
 const ALL_16_ROUTES = [
   { route: "home", openVia: "bnav:home" },
+  { route: "almanac", openVia: "go:almanac" },
   { route: "checkin", openVia: "go:checkin" },
   { route: "tearoom", openVia: "go:tearoom" },
   { route: "newspaper", openVia: "go:newspaper" },
@@ -238,7 +239,7 @@ async function main() {
       await navigateToRouteFromUi(page, item);
       await inspectCurrentViewportErgonomics(page, item.route, 20);
     }
-    console.log("[PASS] 1. Quet 16/16 man hinh o che do Chu chuan 20px (0 tran ngang, nut >= 56px)");
+    console.log("[PASS] 1. Quet 17/17 man hinh o che do Chu chuan 20px (0 tran ngang, nut >= 56px)");
 
     await page.click("#btn-font-toggle");
     await page.waitForTimeout(120);
@@ -247,7 +248,7 @@ async function main() {
       await navigateToRouteFromUi(page, item);
       await inspectCurrentViewportErgonomics(page, item.route, 24);
     }
-    console.log("[PASS] 2. Quet 16/16 man hinh o che do Chu to 24px .xl-font (0 tran ngang, nut >= 56px)");
+    console.log("[PASS] 2. Quet 17/17 man hinh o che do Chu to 24px .xl-font (0 tran ngang, nut >= 56px)");
 
     // Switch back to 20px for crisp functional feature tests
     await page.click("#btn-font-toggle");
@@ -610,6 +611,84 @@ async function main() {
     console.log("[PASS] 9. Regional & Via He — 6 Phong rieng biet (co Tra Da Via He), 14 Trang phuc Ba Mien, 11 Phu kien & 13 Do ban");
 
     // ------------------------------------------------------------------
+    // PART 8B: Lich Van Nien (UTC+7), Gio Xuat Phat, Nhac Viec .ics & Giong Chao 12s
+    // ------------------------------------------------------------------
+    await page.click('[data-bnav="home"]');
+    await page.waitForSelector("#home-community-sessions");
+    const homeCardCount = await page.locator(".home-hero-grid-4 .home-core-card").count();
+    assert(homeCardCount === 6, `Expected 6 symmetric cards in Viec Chinh Hom Nay, got ${homeCardCount}`);
+
+    const almanacMath = await page.evaluate(() => {
+      const A = window.TuoiBacData.Almanac;
+      const tet2026 = A.solarToLunarVi(17, 2, 2026);
+      const tet2030 = A.solarToLunarVi(2, 2, 2030);
+      const plan = A.evaluateDeparturePlan("2026-11-20", "xuat-hanh", 1961);
+      return {
+        tet2026,
+        tet2030,
+        topCount: plan.topSlots.length,
+        hasDir: Boolean(plan.recommendedDir)
+      };
+    });
+    assert(almanacMath.tet2026.day === 1 && almanacMath.tet2026.month === 1 && almanacMath.tet2026.year === 2026, "Tet 2026 UTC+7 mismatch");
+    assert(almanacMath.tet2030.day === 1 && almanacMath.tet2030.month === 1 && almanacMath.tet2030.year === 2030, "Tet 2030 VN UTC+7 mismatch");
+    assert(almanacMath.topCount === 3 && almanacMath.hasDir, "Departure planner failed to return Top 3 slots & direction");
+
+    await page.click('[data-go="almanac"]');
+    await page.waitForSelector("#bloc-calendar-card");
+    const xuBeforeTear = await page.evaluate(() => JSON.parse(localStorage.getItem("tuoi_bac_sim_v7_e2e")).user.xu);
+    if ((await page.locator("#btn-tear-calendar").count()) > 0) {
+      await page.click("#btn-tear-calendar");
+      const xuAfterTear = await page.evaluate(() => JSON.parse(localStorage.getItem("tuoi_bac_sim_v7_e2e")).user.xu);
+      assert(xuAfterTear === xuBeforeTear + 3, `Expected +3 Xu on tearing calendar, got ${xuBeforeTear} -> ${xuAfterTear}`);
+    }
+    await inspectCurrentViewportErgonomics(page, "almanac-today", 20);
+
+    await page.click("#alm-tab-depart");
+    await page.waitForSelector("#alm-depart-result");
+    await inspectCurrentViewportErgonomics(page, "almanac-depart", 20);
+
+    await page.click("#alm-tab-rem");
+    await page.waitForSelector("#rem-create-panel");
+    await page.click('[data-rem-preset="gio-chap"]');
+    await page.click("#btn-add-reminder");
+    await inspectCurrentViewportErgonomics(page, "almanac-reminders", 20);
+
+    // Verify 24px XL Font ergonomics on all 3 Almanac sub-tabs too
+    await page.click("#btn-font-toggle");
+    await inspectCurrentViewportErgonomics(page, "almanac-reminders-xl", 24);
+    await page.click("#alm-tab-depart");
+    await inspectCurrentViewportErgonomics(page, "almanac-depart-xl", 24);
+    await page.click("#alm-tab-today");
+    await inspectCurrentViewportErgonomics(page, "almanac-today-xl", 24);
+    await page.click("#btn-font-toggle");
+
+    // Verify 12s Voice Greeting on Tea Table & .ics calendar alarm builder
+    const icsPreview = await page.evaluate(() => {
+      const st = JSON.parse(localStorage.getItem("tuoi_bac_sim_v7_e2e"));
+      st.teaRoom.subView = "lobby";
+      st.teaRoom.roomId = "phong-tra";
+      st.teaRoom.lastSentAt = 0;
+      localStorage.setItem("tuoi_bac_sim_v7_e2e", JSON.stringify(st));
+      return st.reminders && Array.isArray(st.reminders.items) ? st.reminders.items.length : 0;
+    });
+    assert(icsPreview >= 3, `Expected at least 3 reminders after adding Gio chap, got ${icsPreview}`);
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.click('[data-bnav="tearoom"]');
+    await page.waitForSelector(".join-table-btn");
+    await page.click(".join-table-btn");
+    await page.waitForSelector("#tea-in-tab-compose");
+    await page.click("#tea-in-tab-compose");
+    await page.waitForSelector("#btn-voice-clip-12s");
+    await page.click("#btn-voice-clip-12s");
+    await page.waitForSelector("#btn-send-voice-clip");
+    await page.click("#btn-send-voice-clip");
+    await page.waitForSelector(".tea-voice-clip-pill");
+
+    await page.click('[data-bnav="profile"]');
+    console.log("[PASS] 9B. Lich Van Nien (UTC+7), Gio Xuat Phat, So Nhac Viec 3 Tang, 3 Ca Hop Quan & Loi Chao Giong 12s");
+
+    // ------------------------------------------------------------------
     // PART 9: Automated Penetration Test (Pentest) & Security Hardening
     // ------------------------------------------------------------------
     // 9A. CSP inline script execution block
@@ -761,7 +840,7 @@ async function main() {
     assert(failedLocalResponses.length === 0, `Failed local HTTP assets: ${failedLocalResponses.join(" | ")}`);
 
     console.log("======================================================================");
-    console.log(" KET QUA E2E + PENTEST: PASS TUYET DOI (32 luot quet + 10 cong nghiep vu & bao mat, 0 loi)");
+    console.log(" KET QUA E2E + PENTEST: PASS TUYET DOI (34 luot quet + 11 cong nghiep vu & bao mat, 0 loi)");
     console.log("======================================================================");
   } finally {
     if (browser) await browser.close();

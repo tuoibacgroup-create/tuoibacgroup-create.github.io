@@ -23,7 +23,7 @@ Tài liệu này giúp bất kỳ AI Agent nào khi nhận báo lỗi từ Chủ
 
 ---
 
-## 2. Mười Bốn "Bẫy Kỹ Thuật" Thực Tế Cần Nhớ (Known Gotchas)
+## 2. Mười Lăm "Bẫy Kỹ Thuật" Thực Tế Cần Nhớ (Known Gotchas)
 
 1. **Nút `Quay về` (`#btn-back`) luôn đưa thẳng về Trang chủ (`"home"`):**
    - Thiết kế cố ý theo nguyên tắc *"1 chạm thoát ra sảnh chính"* cho người cao tuổi (không bắt bấm lùi nhiều tầng). Khi viết kịch bản kiểm thử tự động Playwright, từ bên trong bàn trà bấm `#btn-back` 1 lần là đã ở `"home"` (nút `#btn-back` sẽ ẩn đi ngay sau đó).
@@ -60,6 +60,9 @@ Tài liệu này giúp bất kỳ AI Agent nào khi nhận báo lỗi từ Chủ
     - Trên điện thoại Android thật (VD: Samsung Galaxy A56 `1080×2340 @ 450dpi`), chiều cao hiển thị thực tế khi hiện thanh địa chỉ Chrome chỉ còn `692px` (thấp hơn `152px` so với khung giả lập `844px`). Luôn giữ thanh chọn phòng `.room-strip`, bộ chọn đối thủ/thế cờ Cờ Tướng và 5 bộ Đố Vui ở dạng dải chip 1 hàng cuộn ngang (kèm `min-width: 0; max-width: 100%` trên `.surface-panel` để không tràn ngang ở chế độ Chữ to `24px`), giúp Sân khấu Bàn Trà 2.5D, Bàn Cờ Tướng `9×10`, Bàn Ô Ăn Quan và 20 Chiếu Chánh Điện hiển thị trọn ngay khung hình đầu tiên.
     - Trong `tearoom3d.js` (`drawTableCloseUp25D`), **tuyệt đối không cộng `tagDy` dương đẩy `.seat-status-tag` xuống vùng đầu/mặt nhân vật**: 3 ghế hàng sau (`slot 1, 2, 3`) luôn neo phía trên chóp tóc/nón, 2 ghế hàng trước (`slot 0, 4`) luôn neo dưới đế giày/chân ghế (`.anchor-below`), và bộ giải va chạm 2D chỉ tách ngang hoặc nhấc nhãn hàng sau lên trên.
     - Khi viết script điều khiển cảm ứng tự động qua `adb` + CDP (`Input.dispatchTouchEvent`), dùng `scrollIntoView({ block: "center" })` cho các nút nằm trong `#app-main` (tránh `block: "nearest"` vì phần tử ở sát đáy viewport sẽ nằm khuất dưới thanh cố định `.bottom-nav` cao `68px`).
+15. **Múi giờ thiên văn `UTC+7` cho Lịch Âm Việt Nam & Chuẩn tệp chuông `.ics` (RFC 5545):**
+    - Trong `TuoiBacData.Almanac` (`data.js`), điểm Sóc (`getNewMoonDay`) và kinh độ Mặt Trời (`getSunLongitude`) bắt buộc tính theo `TZ_VN = 7.0` (`UTC+7`), không dùng `UTC+8` (tránh sai lệch tháng Nhuận và ngày Tết như Mùng 1 Tết 2030 Việt Nam `02/02/2030` khác Trung Quốc `03/02/2030`).
+    - Khi xuất tệp lịch nhắc `.ics` (`buildReminderIcsString` trong `app.js`), không chèn ký tự BOM `\ufeff` ở đầu tệp và dùng dấu xuống dòng `\r\n` để dòng đầu tiên luôn khớp `BEGIN:VCALENDAR` trên Samsung Calendar và Apple Calendar; gói âm thanh lời chào giọng thật `12s` giữ trong RAM (`runtimeVoiceClips`) và dưới ngưỡng `21.000` ký tự Base64 để không làm đầy `localStorage` hay vượt trần `24 KB` của MQTT.
 
 ---
 
@@ -70,7 +73,9 @@ Các tham số dưới đây được bóc tách trực tiếp từ `app.js` (tr
 | Tham số URL thực tế | Hành vi kích hoạt tự động khi mở trang |
 | :--- | :--- |
 | `?may=1`, `?may=2` | Cô lập hoàn toàn `STORAGE_KEY`, `IndexedDB` và `clientId` để giả lập nhiều điện thoại độc lập trên cùng 1 máy. |
-| `?tinh=ha-noi` | Chọn sẵn tỉnh/thành phố quê hương cho hội viên khi mở từ liên kết thiệp mời điểm danh. |
+| `?tinh=ha-noi` | Chọn sẵn tỉnh/thành phố quê hương cho hội viên khi mở từ liên kết thiệp mời điểm danh hoặc thi đua tuần. |
+| `?lich=2026-11-20` | Mở thẳng màn hình `Lịch Vạn Niên` (`route = "almanac"`) tại đúng ngày Dương lịch được truyền vào để xem ngày Âm, Giờ Hoàng Đạo và Hướng xuất hành. |
+| `?nhac=1` | Mở thẳng ngăn `Sổ Nhắc Việc` trong màn hình `Lịch Vạn Niên` (dùng khi người dùng chạm vào thông báo nhắc việc từ `sw.js`). |
 | `?phong=phong-tra&ban=1` | Mở thẳng phòng sinh hoạt `phong` và vào ngồi ngay tại bàn số `ban` (đánh số từ `1` trở đi; nếu bỏ trống `ban` thì mở sảnh phòng đó). |
 | `?tin=<articleId>` | Mở thẳng bàn trà đàm đạo riêng xoay quanh bài báo có mã `<articleId>`. |
 | `?van=xq-123` hoặc `?van=oaq-123` | Kết nối thẳng vào Ván treo thời gian thực: tiền tố `xq-` mở bàn Cờ Tướng `9×10`, tiền tố khác mở bàn Ô Ăn Quan. |

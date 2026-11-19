@@ -1,4 +1,4 @@
-const CACHE_VERSION = "tuoibac-pwa-v32";
+const CACHE_VERSION = "tuoibac-pwa-v33";
 const CORE_ASSETS = [
   "./",
   "./index.html",
@@ -134,6 +134,31 @@ self.addEventListener("fetch", (event) => {
         })
         .catch(() => cached);
       return cached || networkFetch;
+    })
+  );
+});
+
+self.addEventListener("push", (event) => {
+  let payload = {};
+  if (event.data) {
+    try {
+      payload = event.data.json();
+    } catch (e) {
+      payload = { body: event.data.text() };
+    }
+  }
+  const title = String(payload.title || "Tuổi Bạc — Nhắc Lịch Hẹn").slice(0, 80);
+  const body = String(payload.body || "Mời bác mở Quán Trà xem công việc hoặc lịch sinh hoạt hôm nay.").slice(0, 220);
+  const targetUrl = String(payload.url || "./?nhac=1").slice(0, 180);
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body,
+      icon: "./icons/icon-192.png",
+      badge: "./icons/icon-192.png",
+      vibrate: [180, 80, 180],
+      tag: String(payload.tag || "tuoibac-reminder").slice(0, 64),
+      renotify: true,
+      data: { url: targetUrl }
     })
   );
 });

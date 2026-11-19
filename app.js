@@ -273,6 +273,46 @@
       },
       memberLogs: [],
       customTables: {},
+      almanac: {
+        lastTornDate: "",
+        selectedDate: "",
+        purposeId: "xuat-hanh",
+        birthYear: 1961,
+        activeTab: "today"
+      },
+      reminders: {
+        permissionAsked: false,
+        autoLunar1st15th: true,
+        autoMorningSession: true,
+        morningSessionHm: "06:30",
+        items: [
+          {
+            id: "rem-seed-ram",
+            title: "Dâng hương ngày Rằm & cầu bình an gia đình",
+            calendarType: "lunar",
+            dateStr: "",
+            lunarDay: 15,
+            lunarMonth: 10,
+            repeat: "monthly_lunar",
+            timeHm: "07:00",
+            category: "tam-linh",
+            doneDateKey: ""
+          },
+          {
+            id: "rem-seed-bhyt",
+            title: "Đo huyết áp sáng & kiểm tra lịch thuốc trong ngày",
+            calendarType: "solar",
+            dateStr: "",
+            lunarDay: 1,
+            lunarMonth: 1,
+            repeat: "daily",
+            timeHm: "07:30",
+            category: "suc-khoe",
+            doneDateKey: ""
+          }
+        ],
+        firedKeys: []
+      },
       health: {
         medMorning: false,
         medEvening: false,
@@ -453,8 +493,42 @@
         watch: Object.assign({}, def.watch, parsed.watch || {}),
         zen: Object.assign({}, def.zen, parsed.zen || {}),
         health: Object.assign({}, def.health, parsed.health || {}),
-        customTables: Object.assign({}, def.customTables, parsed.customTables || {})
+        customTables: Object.assign({}, def.customTables, parsed.customTables || {}),
+        almanac: Object.assign({}, def.almanac, parsed.almanac || {}),
+        reminders: Object.assign({}, def.reminders, parsed.reminders || {})
       });
+      if (!["today", "depart", "reminders"].includes(merged.almanac.activeTab)) {
+        merged.almanac.activeTab = "today";
+      }
+      const inferredBirthYear = new Date().getFullYear() - (Number(merged.user && merged.user.age) || 65);
+      merged.almanac.birthYear = Math.max(
+        1925,
+        Math.min(2005, Number(merged.almanac.birthYear) || inferredBirthYear)
+      );
+      if (!Array.isArray(merged.reminders.items)) {
+        merged.reminders.items = def.reminders.items;
+      } else {
+        merged.reminders.items = merged.reminders.items
+          .filter((it) => it && typeof it === "object" && typeof it.title === "string")
+          .slice(0, 40)
+          .map((it, idx) => ({
+            id: String(it.id || `rem-${idx}`),
+            title: String(it.title || "").replace(/[<>]/g, "").slice(0, 96),
+            calendarType: it.calendarType === "lunar" ? "lunar" : "solar",
+            dateStr: String(it.dateStr || "").slice(0, 10),
+            lunarDay: Math.max(1, Math.min(30, Number(it.lunarDay) || 1)),
+            lunarMonth: Math.max(1, Math.min(12, Number(it.lunarMonth) || 1)),
+            repeat: ["once", "daily", "monthly_lunar", "yearly_lunar"].includes(it.repeat) ? it.repeat : "once",
+            timeHm: /^\d{2}:\d{2}$/.test(String(it.timeHm || "")) ? String(it.timeHm) : "07:30",
+            category: String(it.category || "doi-song").slice(0, 24),
+            doneDateKey: String(it.doneDateKey || "").slice(0, 10)
+          }));
+      }
+      if (!Array.isArray(merged.reminders.firedKeys)) {
+        merged.reminders.firedKeys = [];
+      } else {
+        merged.reminders.firedKeys = merged.reminders.firedKeys.slice(-60).map((k) => String(k));
+      }
       merged.settings.preferredRender = "2.5d";
       merged.settings.autoFallbacked = false;
       merged.settings.voiceMode = merged.settings.voiceMode === "recorded" ? "recorded" : "auto";
@@ -693,7 +767,14 @@
     if (cat === "co-tuong" || act.includes("xiangqi") || act.includes("puzzle")) return "xiangqi";
     if (cat === "tho-ca" || act.includes("poem")) return "poetry";
     if (cat === "dan-gian" || act.includes("oaq") || act.includes("quiz")) return "folk_games";
-    if (cat === "diem-danh" || cat === "doc-bao" || act.includes("news") || act.includes("checkin")) return "morning_habit";
+    if (
+      cat === "diem-danh" ||
+      cat === "doc-bao" ||
+      cat === "lich-am" ||
+      act.includes("checkin") ||
+      act.includes("news") ||
+      act.includes("almanac")
+    ) return "morning_habit";
     if (cat === "dong-ngu" || act.includes("group") || act.includes("friend")) return "comrade_social";
     if (cat === "giao-luu" || act.includes("table") || act.includes("tea")) return "tea_host";
     return null;
@@ -708,8 +789,10 @@
     if (
       cat === "diem-danh" ||
       cat === "doc-bao" ||
+      cat === "lich-am" ||
       act.includes("checkin") ||
       act.includes("news") ||
+      act.includes("almanac") ||
       state.user.checkedInToday
     ) {
       dq.morningDone = true;
@@ -951,6 +1034,9 @@
       navigator.serviceWorker.register("./sw.js").catch(() => {});
     });
   }
+
+  const runtimeVoiceClips = Object.create(null);
+  let activeVoiceClipAudio = null;
 
   function saveState() {
     try {
@@ -1378,6 +1464,15 @@
   }
 
   function buildCurrentScreenSpeech() {
+    if (state.route === "almanac" && D.Almanac) {
+      const selDate = (state.almanac && state.almanac.selectedDate) || getLocalDateKey(new Date());
+      const alm = D.Almanac.getDayAlmanacDetail(selDate, state.almanac && state.almanac.birthYear);
+      const hdText = alm.auspiciousHours
+        .slice(0, 4)
+        .map((h) => `giờ ${h.chi} từ ${h.range}`)
+        .join(", ");
+      return `Tờ Lịch Vạn Niên Tuổi Bạc. Dương lịch ${alm.solar.weekdayLabel} ngày ${alm.solar.day} tháng ${alm.solar.month} năm ${alm.solar.year}. Âm lịch ngày ${alm.lunar.day} ${alm.lunar.monthLabel}, năm ${alm.canChi.year}, ngày ${alm.canChi.day}, tiết ${alm.solarTerm.name}. Hướng Hỷ Thần ${alm.directions.hyThan}, Tài Thần ${alm.directions.taiThan}. Giờ Hoàng Đạo gồm ${hdText}. ${alm.solarTerm.tip}`;
+    }
     if (state.route === "tearoom") {
       const room = getCurrentRoom();
       if (state.teaRoom.subView === "table") {
@@ -2244,6 +2339,15 @@
     const doneQuestCount = [dq.morningDone, dq.socialDone, dq.mindDone].filter(Boolean).length;
     const canClaimDailyChest = doneQuestCount === 3 && !dq.chestClaimed;
 
+    const todayKey = getLocalDateKey(new Date());
+    const todayAlm = D.Almanac
+      ? D.Almanac.getDayAlmanacDetail(todayKey, state.almanac && state.almanac.birthYear)
+      : null;
+    const tornToday = Boolean(state.almanac && state.almanac.lastTornDate === todayKey);
+    if (tornToday) dq.morningDone = true;
+    const pendingRemCount = countPendingRemindersToday(todayKey);
+    const sessionsNow = D.Almanac ? D.Almanac.getActiveCommunitySession(new Date()) : [];
+
     const hourNow = new Date().getHours();
     const timeGreeting =
       hourNow < 11
@@ -2271,7 +2375,7 @@
 
       <section class="section-block">
         <div class="m3-section-head">
-          <h2>4 Việc Chính Hôm Nay</h2>
+          <h2>6 Việc Chính Hôm Nay</h2>
           <span class="m3-section-meta num">${countOnlineFriendsNow()} bạn trực tuyến</span>
         </div>
         <div class="home-hero-grid-4">
@@ -2287,6 +2391,16 @@
             <small>${escHtml(getCurrentRoom().shortName)} · ${getCurrentRoom().tables.length} bàn</small>
           </button>
 
+          <button type="button" class="home-core-card is-almanac" data-go="almanac" id="btn-home-open-almanac">
+            <span class="home-main-icon">${ico("calendar")}</span>
+            <strong>Lịch Âm &amp; Nhắc Việc</strong>
+            <small class="num">${
+              todayAlm
+                ? `${todayAlm.lunar.shortLabel} · ${tornToday ? `${pendingRemCount} việc nhắc` : "Xé lịch +3 Xu"}`
+                : "Xem ngày giờ xuất hành"
+            }</small>
+          </button>
+
           <button type="button" class="home-core-card" data-go="newspaper">
             <span class="home-main-icon">${ico("paper")}</span>
             <strong>Đọc Báo Sáng</strong>
@@ -2298,13 +2412,43 @@
             <strong>Đánh Cờ &amp; Ca Dao</strong>
             <small>Cờ 9×10 · Ô ăn quan</small>
           </button>
-        </div>
 
-        <button type="button" class="btn-secondary viahe-home-cta" id="btn-home-open-viahe">
-          ${ico("tea")}
-          <span>Ghé Quán Trà Đá Vỉa Hè · Kẹo Lạc</span>
-        </button>
+          <button type="button" class="home-core-card is-viahe" id="btn-home-open-viahe">
+            <span class="home-main-icon">${ico("tea")}</span>
+            <strong>Trà Đá Vỉa Hè</strong>
+            <small>Gốc sấu · Kẹo lạc</small>
+          </button>
+        </div>
       </section>
+
+      ${
+        sessionsNow.length > 0
+          ? `
+        <div class="session-strip-card" id="home-community-sessions">
+          <div class="passcard-head">
+            <strong style="font-size:0.86rem;">Lịch Họp Quán 3 Ca Hôm Nay</strong>
+            <button type="button" class="btn-mini" id="btn-home-open-reminders" style="min-height:32px;padding:3px 9px;font-size:0.72rem;">${ico("bell", "ico-sm")}<span>Nhắc giờ</span></button>
+          </div>
+          <div class="session-grid-3">
+            ${sessionsNow
+              .map(
+                (s) => `
+              <button type="button" class="session-pill-btn ${s.isActive ? "is-live" : s.isNext ? "is-next" : ""}" data-session-id="${escHtml(s.id)}">
+                <span class="session-pill-top">
+                  ${s.isActive ? `<i class="session-live-dot"></i>` : ""}
+                  <span>${escHtml(s.shortTitle)}</span>
+                </span>
+                <span class="session-pill-time">${escHtml(s.timeRange)}</span>
+                <span class="session-pill-sub">${escHtml(s.isActive ? "Đang mở rôm rả" : s.title.split("·")[0].trim())}</span>
+              </button>
+            `
+              )
+              .join("")}
+          </div>
+        </div>
+      `
+          : ""
+      }
 
       <div class="daily-quest-card" id="home-daily-quest-card">
         <div class="passcard-head">
@@ -2424,6 +2568,31 @@
         navigate("tearoom");
       });
     }
+
+    const homeOpenRemBtn = document.getElementById("btn-home-open-reminders");
+    if (homeOpenRemBtn) {
+      homeOpenRemBtn.addEventListener("click", () => {
+        state.almanac.activeTab = "reminders";
+        saveState();
+        navigate("almanac");
+      });
+    }
+
+    els.main.querySelectorAll("[data-session-id]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const sess = (D.COMMUNITY_SESSIONS || []).find((s) => s.id === btn.dataset.sessionId);
+        if (!sess) return;
+        if (sess.targetRoute === "tearoom" && sess.targetRoomId) {
+          state.teaRoom.roomId = sess.targetRoomId;
+          state.teaRoom.subView = "lobby";
+          saveState();
+          navigate("tearoom");
+        } else {
+          navigate(sess.targetRoute || "tearoom");
+        }
+        showToast(`Đã vào ${sess.shortTitle}: ${sess.title}`);
+      });
+    });
 
     const homeOpenAuth = document.getElementById("btn-home-open-auth");
     if (homeOpenAuth) {
@@ -2649,6 +2818,22 @@
         saveState();
         return;
       }
+      const lich = params.get("lich");
+      if (lich) {
+        const cleanDate = /^\d{4}-\d{2}-\d{2}$/.test(lich.trim()) ? lich.trim() : getLocalDateKey(new Date());
+        state.almanac.selectedDate = cleanDate;
+        state.almanac.activeTab = "today";
+        state.route = "almanac";
+        saveState();
+        return;
+      }
+      const nhac = params.get("nhac");
+      if (nhac) {
+        state.almanac.activeTab = "reminders";
+        state.route = "almanac";
+        saveState();
+        return;
+      }
       const phong = params.get("phong");
       const ban = Number(params.get("ban"));
       if (phong) {
@@ -2670,6 +2855,1037 @@
     } catch (e) {
       // Ignore malformed query params
     }
+  }
+
+  // ==================== MODULE 17: LỊCH VẠN NIÊN · GIỜ XUẤT PHÁT · NHẮC VIỆC 3 TẦNG ====================
+  function shiftDateKeyByDays(dateKey, deltaDays) {
+    const parts = String(dateKey || getLocalDateKey(new Date())).split("-").map(Number);
+    const dt = parts.length === 3 ? new Date(parts[0], parts[1] - 1, parts[2]) : new Date();
+    dt.setDate(dt.getDate() + (Number(deltaDays) || 0));
+    return getLocalDateKey(dt);
+  }
+
+  function countPendingRemindersToday(todayKey) {
+    const tk = todayKey || getLocalDateKey(new Date());
+    const items = (state.reminders && Array.isArray(state.reminders.items) ? state.reminders.items : []);
+    return items.filter((it) => {
+      if (!it) return false;
+      if (it.repeat === "once" && it.doneDateKey) return false;
+      return it.doneDateKey !== tk;
+    }).length;
+  }
+
+  function resolveReminderTargetSolar(item, nowDate) {
+    const ref = nowDate instanceof Date ? nowDate : new Date();
+    const todayKey = getLocalDateKey(ref);
+    if (item.calendarType === "lunar" && D.Almanac) {
+      return D.Almanac.resolveNextSolarForLunar(item.lunarDay || 15, item.lunarMonth || 1, ref);
+    }
+    if (item.dateStr && /^\d{4}-\d{2}-\d{2}$/.test(item.dateStr)) {
+      const [y, m, d] = item.dateStr.split("-").map(Number);
+      return { day: d, month: m, year: y, dateKey: item.dateStr };
+    }
+    return {
+      day: ref.getDate(),
+      month: ref.getMonth() + 1,
+      year: ref.getFullYear(),
+      dateKey: todayKey
+    };
+  }
+
+  function formatReminderWhenLabel(item) {
+    const target = resolveReminderTargetSolar(item, new Date());
+    const dd = String(target.day).padStart(2, "0");
+    const mm = String(target.month).padStart(2, "0");
+    const hm = item.timeHm || "07:30";
+    if (item.calendarType === "lunar") {
+      const repLbl =
+        item.repeat === "monthly_lunar"
+          ? `Mỗi tháng ngày ${item.lunarDay} ÂL`
+          : item.repeat === "yearly_lunar"
+            ? `Hằng năm ${item.lunarDay}/${item.lunarMonth} ÂL`
+            : `Ngày ${item.lunarDay}/${item.lunarMonth} ÂL`;
+      return `${repLbl} (Dương gần nhất: ${dd}/${mm}/${target.year}) · Lúc ${hm}`;
+    }
+    if (item.repeat === "daily") {
+      return `Đều đặn hằng ngày · Lúc ${hm}`;
+    }
+    return `Dương lịch ${dd}/${mm}/${target.year} · Lúc ${hm}`;
+  }
+
+  function escapeIcsText(str) {
+    return String(str || "")
+      .replace(/\\/g, "\\\\")
+      .replace(/;/g, "\\;")
+      .replace(/,/g, "\\,")
+      .replace(/\r?\n/g, "\\n");
+  }
+
+  function buildReminderIcsString(item) {
+    const target = resolveReminderTargetSolar(item, new Date());
+    const [hhRaw, mmRaw] = String(item.timeHm || "07:30").split(":").map(Number);
+    const hh = Number.isFinite(hhRaw) ? Math.max(0, Math.min(23, hhRaw)) : 7;
+    const min = Number.isFinite(mmRaw) ? Math.max(0, Math.min(59, mmRaw)) : 30;
+    const startDt = new Date(target.year, target.month - 1, target.day, hh, min, 0);
+    const endDt = new Date(startDt.getTime() + 30 * 60000);
+    const pad2 = (n) => String(n).padStart(2, "0");
+    const fmtLocal = (dt) =>
+      `${dt.getFullYear()}${pad2(dt.getMonth() + 1)}${pad2(dt.getDate())}T${pad2(dt.getHours())}${pad2(dt.getMinutes())}00`;
+    const nowUtc = new Date();
+    const fmtUtc = (dt) =>
+      `${dt.getUTCFullYear()}${pad2(dt.getUTCMonth() + 1)}${pad2(dt.getUTCDate())}T${pad2(dt.getUTCHours())}${pad2(dt.getUTCMinutes())}${pad2(dt.getUTCSeconds())}Z`;
+
+    const summary = `Tuổi Bạc: ${item.title}`;
+    const desc = `${formatReminderWhenLabel(item)} — Mở ứng dụng: ${getPublicBaseUrl()}?nhac=1`;
+    const lines = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//Tuoi Bac Studio//Lich Van Nien & Nhac Viec//VI",
+      "CALSCALE:GREGORIAN",
+      "METHOD:PUBLISH",
+      "BEGIN:VEVENT",
+      `UID:${String(item.id || Date.now()).replace(/[^a-zA-Z0-9_-]/g, "")}@tuoibac.vn`,
+      `DTSTAMP:${fmtUtc(nowUtc)}`,
+      `DTSTART:${fmtLocal(startDt)}`,
+      `DTEND:${fmtLocal(endDt)}`,
+      `SUMMARY:${escapeIcsText(summary)}`,
+      `DESCRIPTION:${escapeIcsText(desc)}`
+    ];
+    if (item.repeat === "daily") {
+      lines.push("RRULE:FREQ=DAILY");
+    }
+    lines.push(
+      "BEGIN:VALARM",
+      "TRIGGER:-PT30M",
+      "ACTION:DISPLAY",
+      `DESCRIPTION:${escapeIcsText("Sắp đến giờ (30 phút nữa): " + item.title)}`,
+      "END:VALARM",
+      "BEGIN:VALARM",
+      "TRIGGER:-P1D",
+      "ACTION:DISPLAY",
+      `DESCRIPTION:${escapeIcsText("Nhắc trước 1 ngày: " + item.title)}`,
+      "END:VALARM",
+      "END:VEVENT",
+      "END:VCALENDAR"
+    );
+    return lines.join("\r\n") + "\r\n";
+  }
+
+  function downloadReminderIcs(item) {
+    if (!item) return "";
+    const icsContent = buildReminderIcsString(item);
+    try {
+      const blob = new Blob([icsContent], { type: "text/calendar;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const slug = stripVnAccents(item.title || "lich-hen").replace(/[^a-z0-9]+/g, "-").slice(0, 28) || "lich-hen";
+      a.download = `tuoi-bac-${slug}.ics`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 2500);
+      trackTelemetryDirect("reminder_ics_export", "almanac", "export_calendar_alarm", {
+        calendarType: item.calendarType,
+        repeat: item.repeat
+      });
+      showToast("Đã tạo tệp chuông Lịch (.ics) — bác bấm Mở để lưu vào Lịch điện thoại!");
+    } catch (e) {
+      showToast("Không tạo được tệp lịch trên thiết bị này.");
+    }
+    return icsContent;
+  }
+
+  async function requestAndSyncBrowserNotificationPermission() {
+    if (typeof Notification === "undefined") {
+      showToast("Trình duyệt này không có thông báo nổi — bác dùng nút Đặt chuông ĐT (.ics) nhé!");
+      return "unsupported";
+    }
+    state.reminders.permissionAsked = true;
+    saveState();
+    let perm = Notification.permission;
+    if (perm === "default") {
+      try {
+        perm = await Notification.requestPermission();
+      } catch (e) {
+        perm = Notification.permission;
+      }
+    }
+    if (perm === "granted") {
+      fireThreeTierReminderNotification(
+        "Tuổi Bạc — Đã bật chuông nhắc lịch",
+        "Hệ thống sẽ nhắc giờ tốt, ngày Rằm/Mùng 1 và công việc của bác đúng hẹn.",
+        "./?nhac=1",
+        "test-perm"
+      );
+      if ("serviceWorker" in navigator && RT && typeof RT.upsertPushSubscription === "function") {
+        navigator.serviceWorker.ready
+          .then((reg) => (reg.pushManager ? reg.pushManager.getSubscription() : null))
+          .then((sub) => {
+            if (sub) {
+              RT.upsertPushSubscription(sub.toJSON ? sub.toJSON() : sub, {
+                autoLunar1st15th: state.reminders.autoLunar1st15th,
+                autoMorningSession: state.reminders.autoMorningSession
+              });
+            }
+          })
+          .catch(() => {});
+      }
+      showToast("Đã bật thông báo nhắc việc thành công!");
+    } else {
+      showToast("Trình duyệt đang chặn thông báo — bác dùng nút Chuông ĐT (.ics) để báo thức chính xác nhé!");
+    }
+    return perm;
+  }
+
+  function fireThreeTierReminderNotification(title, body, targetUrl, tagKey) {
+    playTempleBell();
+    if (typeof Notification !== "undefined" && Notification.permission === "granted" && "serviceWorker" in navigator) {
+      navigator.serviceWorker.ready
+        .then((reg) => {
+          if (reg && typeof reg.showNotification === "function") {
+            return reg.showNotification(title, {
+              body,
+              icon: "./icons/icon-192.png",
+              badge: "./icons/icon-192.png",
+              vibrate: [180, 80, 180],
+              tag: `tb-${tagKey || "rem"}`,
+              data: { url: targetUrl || "./?nhac=1" }
+            });
+          }
+          return null;
+        })
+        .catch(() => {});
+    }
+    showToast(`${title}: ${body}`);
+  }
+
+  function checkDueRemindersTick() {
+    if (!state.reminders || !D.Almanac) return;
+    const now = new Date();
+    const todayKey = getLocalDateKey(now);
+    const curHm = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+    const todayAlm = D.Almanac.getDayAlmanacDetail(todayKey, state.almanac && state.almanac.birthYear);
+    const fired = new Set(state.reminders.firedKeys || []);
+    const markFired = (key) => {
+      fired.add(key);
+      state.reminders.firedKeys = Array.from(fired).slice(-60);
+      saveState();
+    };
+
+    // 1. Nhắc tự động Rằm (14, 15 ÂL) & Mùng 1 (cuối tháng, 1 ÂL)
+    if (state.reminders.autoLunar1st15th && curHm >= "07:00") {
+      const ld = todayAlm.lunar.day;
+      const md = todayAlm.lunar.monthDays;
+      const lunarAutoKey = `lunar_${todayKey}`;
+      if (!fired.has(lunarAutoKey) && (ld === 1 || ld === 14 || ld === 15 || ld === md)) {
+        markFired(lunarAutoKey);
+        fireThreeTierReminderNotification(
+          `Lịch Âm hôm nay: ${todayAlm.lunar.shortLabel}`,
+          todayAlm.specialNote || `Hôm nay ${todayAlm.lunar.monthLabel}, mời bác xem giờ đẹp & dâng hương bình an.`,
+          `./?lich=${todayKey}`,
+          lunarAutoKey
+        );
+      }
+    }
+
+    // 2. Nhắc tự động Ca Trà Sáng
+    if (state.reminders.autoMorningSession && curHm >= (state.reminders.morningSessionHm || "06:30") && curHm <= "09:00") {
+      const sessKey = `sess_${todayKey}`;
+      if (!fired.has(sessKey) && state.almanac.lastTornDate !== todayKey) {
+        markFired(sessKey);
+        fireThreeTierReminderNotification(
+          "Ca Sáng Quán Trà Đang Mở",
+          "Mời bác vào xé tờ lịch mới (+3 Xu), xem Giờ Hoàng Đạo và uống trà sáng!",
+          `./?lich=${todayKey}`,
+          sessKey
+        );
+      }
+    }
+
+    // 3. Nhắc danh sách công việc cá nhân
+    const items = state.reminders.items || [];
+    for (const it of items) {
+      if (!it || it.doneDateKey === todayKey) continue;
+      if (it.repeat === "once" && it.doneDateKey) continue;
+      const itemFireKey = `item_${it.id}_${todayKey}`;
+      if (fired.has(itemFireKey)) continue;
+      if (curHm < (it.timeHm || "07:30")) continue;
+
+      let matchesToday = false;
+      if (it.calendarType === "lunar") {
+        if (it.repeat === "monthly_lunar") {
+          matchesToday = todayAlm.lunar.day === Number(it.lunarDay);
+        } else {
+          matchesToday =
+            todayAlm.lunar.day === Number(it.lunarDay) && todayAlm.lunar.month === Number(it.lunarMonth);
+        }
+      } else if (it.repeat === "daily") {
+        matchesToday = true;
+      } else if (it.dateStr) {
+        matchesToday = it.dateStr === todayKey;
+      }
+
+      if (matchesToday) {
+        markFired(itemFireKey);
+        fireThreeTierReminderNotification(
+          `Đến giờ hẹn (${it.timeHm})`,
+          it.title,
+          "./?nhac=1",
+          itemFireKey
+        );
+        break;
+      }
+    }
+  }
+
+  function drawAlmanacPostcardDataUrl(alm) {
+    const c = document.createElement("canvas");
+    c.width = 720;
+    c.height = 920;
+    const ctx = c.getContext("2d");
+
+    ctx.fillStyle = "#FAF6EE";
+    ctx.fillRect(0, 0, 720, 920);
+    ctx.strokeStyle = "#A93222";
+    ctx.lineWidth = 6;
+    ctx.strokeRect(20, 20, 680, 880);
+    ctx.strokeStyle = "#DFC7A7";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(32, 32, 656, 856);
+
+    ctx.fillStyle = "#9E2A1B";
+    ctx.fillRect(32, 32, 656, 108);
+    ctx.fillStyle = "#FFFDF8";
+    ctx.textAlign = "center";
+    ctx.font = "bold 28px sans-serif";
+    ctx.fillText("TUỔI BẠC — LỊCH VẠN NIÊN BÌNH AN", 360, 78);
+    ctx.font = "21px sans-serif";
+    ctx.fillText(`Tháng ${alm.solar.month} năm ${alm.solar.year} · Năm ${alm.canChi.year}`, 360, 114);
+
+    // Big Solar Day
+    ctx.fillStyle = "#A93222";
+    ctx.font = "bold 124px serif";
+    ctx.fillText(String(alm.solar.day), 360, 272);
+    ctx.fillStyle = "#1C1917";
+    ctx.font = "bold 30px sans-serif";
+    ctx.fillText(alm.solar.weekdayLabel, 360, 318);
+
+    // Lunar & Can Chi Box
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fillRect(60, 346, 600, 178);
+    ctx.strokeStyle = "#E4C8BE";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(60, 346, 600, 178);
+
+    ctx.fillStyle = "#9E2A1B";
+    ctx.font = "bold 26px sans-serif";
+    ctx.fillText(`Âm lịch: Ngày ${alm.lunar.day} — ${alm.lunar.monthLabel}`, 360, 390);
+    ctx.fillStyle = "#2E2621";
+    ctx.font = "22px sans-serif";
+    ctx.fillText(`Ngày ${alm.canChi.day} · Tháng ${alm.canChi.month} · ${alm.truc.name}`, 360, 430);
+    ctx.fillStyle = "#1E5B46";
+    ctx.font = "bold 21px sans-serif";
+    ctx.fillText(`Tiết ${alm.solarTerm.name} · Hỷ Thần: ${alm.directions.hyThan} · Tài Thần: ${alm.directions.taiThan}`, 360, 470);
+    const hdShort = alm.auspiciousHours
+      .filter((h) => h.daytime)
+      .slice(0, 3)
+      .map((h) => `${h.chi} (${h.range})`)
+      .join(" · ");
+    ctx.fillStyle = "#5C534A";
+    ctx.font = "19px sans-serif";
+    ctx.fillText(`Giờ đẹp ban ngày: ${hdShort}`, 360, 505);
+
+    // Proverb
+    ctx.fillStyle = "#4A3A30";
+    ctx.font = "italic 22px serif";
+    const proverbParts = String(alm.dailyProverb || "").split("·");
+    ctx.fillText(`"${(proverbParts[0] || "").trim()}"`, 360, 576);
+    if (proverbParts[1]) {
+      ctx.fillText(`"${proverbParts[1].trim()}"`, 360, 610);
+    }
+
+    // Sender & QR
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#1C1917";
+    ctx.font = "bold 23px sans-serif";
+    ctx.fillText(`${state.user.name} · ${getUserAge()} tuổi`, 64, 710);
+    ctx.fillStyle = "#57534E";
+    ctx.font = "20px sans-serif";
+    ctx.fillText(`Quê hương: ${getProvince(state.user.provinceId).name}`, 64, 746);
+    ctx.fillStyle = "#9E2A1B";
+    ctx.font = "bold 20px sans-serif";
+    ctx.fillText("Chúc gia đình & bạn hữu ngày mới an khang!", 64, 786);
+    const shareUrl = `${getPublicBaseUrl()}?lich=${encodeURIComponent(alm.dateKey)}`;
+    ctx.fillStyle = "#57534E";
+    ctx.font = "17px sans-serif";
+    ctx.fillText("Quét QR xem Giờ Hoàng Đạo & đặt lịch nhắc:", 64, 824);
+
+    if (window.TeaRoomScene && typeof window.TeaRoomScene.drawQrToCanvas === "function") {
+      window.TeaRoomScene.drawQrToCanvas(ctx, shareUrl, 504, 676, 152);
+    }
+    return c.toDataURL("image/png");
+  }
+
+  function renderAlmanac() {
+    if (!D.Almanac) {
+      renderHome();
+      return;
+    }
+    const todayKey = getLocalDateKey(new Date());
+    if (!state.almanac.selectedDate || !/^\d{4}-\d{2}-\d{2}$/.test(state.almanac.selectedDate)) {
+      state.almanac.selectedDate = todayKey;
+    }
+    const tab = state.almanac.activeTab || "today";
+    const selDateKey = state.almanac.selectedDate;
+    const birthYear = Number(state.almanac.birthYear) || (new Date().getFullYear() - getUserAge());
+    const selAlm = D.Almanac.getDayAlmanacDetail(selDateKey, birthYear);
+    const tornToday = state.almanac.lastTornDate === todayKey;
+    const pendingCount = countPendingRemindersToday(todayKey);
+    const notifPerm = typeof Notification !== "undefined" ? Notification.permission : "unsupported";
+
+    const departPlan =
+      tab === "depart"
+        ? D.Almanac.evaluateDeparturePlan(selDateKey, state.almanac.purposeId || "xuat-hanh", birthYear)
+        : null;
+
+    els.main.innerHTML = `
+      ${renderM3HeroBanner(
+        "Lịch Vạn Niên & Nhắc Việc",
+        `${escHtml(selAlm.lunar.shortLabel)} · Năm ${escHtml(selAlm.canChi.year)} · Tiết ${escHtml(selAlm.solarTerm.name)}`,
+        "calendar",
+        `<span class="m3-hero-pill num">${tornToday ? "Đã xé lịch sáng" : "Tờ lịch mới"}</span>`
+      )}
+
+      <div class="m3-seg-bar is-3col" role="tablist" aria-label="Chọn mục Lịch Vạn Niên và Nhắc việc">
+        <button type="button" class="m3-seg-btn ${tab === "today" ? "active" : ""}" id="alm-tab-today">Tờ lịch</button>
+        <button type="button" class="m3-seg-btn ${tab === "depart" ? "active" : ""}" id="alm-tab-depart">Giờ xuất phát</button>
+        <button type="button" class="m3-seg-btn ${tab === "reminders" ? "active" : ""}" id="alm-tab-rem">Nhắc việc (${pendingCount})</button>
+      </div>
+
+      ${
+        tab === "today"
+          ? `
+        <article class="bloc-calendar-card" id="bloc-calendar-card">
+          <div class="bloc-top-cap">
+            <strong class="num">Dương lịch: Tháng ${selAlm.solar.month} · ${selAlm.solar.year}</strong>
+            <span>Năm ${escHtml(selAlm.canChi.year)} (${escHtml(selAlm.canChi.zodiacAnimal)})</span>
+          </div>
+          <div class="bloc-body-split">
+            <div class="bloc-solar-box">
+              <div class="bloc-solar-num">${selAlm.solar.day}</div>
+              <div class="bloc-weekday">${escHtml(selAlm.solar.weekdayLabel)}</div>
+            </div>
+            <div class="bloc-lunar-meta">
+              <span class="bloc-lunar-badge">${ico("calendar", "ico-sm")}<span>Âm lịch: ${selAlm.lunar.day}/${selAlm.lunar.month}${selAlm.lunar.leap ? " Nhuận" : ""}</span></span>
+              <div class="bloc-canchi-line"><strong>${escHtml(selAlm.lunar.monthLabel)}</strong> · Ngày ${escHtml(selAlm.canChi.day)}</div>
+              <div class="bloc-canchi-line">${escHtml(selAlm.truc.name)}: ${escHtml(selAlm.truc.goodFor.slice(0, 2).join(" · "))}</div>
+              <div class="bloc-term-line">Tiết ${escHtml(selAlm.solarTerm.name)} · ${escHtml(selAlm.harmony.harmonyTag)}</div>
+            </div>
+          </div>
+          ${selAlm.specialNote ? `<div class="bloc-special-banner">${escHtml(selAlm.specialNote)}</div>` : ""}
+          <div class="bloc-proverb-bar">"${escHtml(selAlm.dailyProverb)}"</div>
+        </article>
+
+        ${
+          !tornToday
+            ? `
+          <button type="button" class="btn-primary" id="btn-tear-calendar">
+            ${ico("calendar")}
+            <span>Xé tờ lịch đón ngày mới (+3 Xu · +5 XP)</span>
+          </button>
+        `
+            : `
+          <button type="button" class="btn-jade" id="btn-share-almanac-card">
+            ${ico("share")}
+            <span>Gửi Tờ Lịch &amp; Giờ Tốt Qua Zalo</span>
+          </button>
+        `
+        }
+
+        <div class="bloc-date-nav" role="group" aria-label="Chuyển ngày xem lịch">
+          <button type="button" class="alm-nav-chip" id="btn-alm-prev">← Hôm trước</button>
+          <button type="button" class="alm-nav-chip ${selDateKey === todayKey ? "is-today" : ""}" id="btn-alm-today">Hôm nay</button>
+          <button type="button" class="alm-nav-chip" id="btn-alm-next">Ngày mai →</button>
+        </div>
+
+        <div class="surface-panel">
+          <div class="passcard-head">
+            <strong>Hướng Xuất Hành &amp; 6 Giờ Hoàng Đạo</strong>
+            <span class="badge-tag jade">${escHtml(selAlm.canChi.day)}</span>
+          </div>
+
+          <div class="dir-compass-grid">
+            <div class="dir-card">
+              <span>Hướng Hỷ Thần (Đón niềm vui)</span>
+              <strong>${escHtml(selAlm.directions.hyThan)}</strong>
+            </div>
+            <div class="dir-card is-jade">
+              <span>Hướng Tài Thần (Thuận công việc)</span>
+              <strong>${escHtml(selAlm.directions.taiThan)}</strong>
+            </div>
+          </div>
+
+          <div class="hoang-dao-grid">
+            ${selAlm.auspiciousHours
+              .map(
+                (h) => `
+              <div class="hd-slot-card ${h.daytime ? "is-daytime" : ""}">
+                <strong>Giờ ${escHtml(h.chi)} · ${escHtml(h.range)}</strong>
+                <small>${escHtml(h.starName)} · Cung ${escHtml(h.lucDieu.name)}</small>
+              </div>
+            `
+              )
+              .join("")}
+          </div>
+
+          <p style="margin:2px 0 0;font-size:0.82rem;color:var(--ink-secondary);">
+            <strong>Dưỡng sinh Tiết ${escHtml(selAlm.solarTerm.name)}:</strong> ${escHtml(selAlm.solarTerm.tip)}
+          </p>
+
+          <button type="button" class="btn-secondary" id="btn-alm-goto-depart">
+            ${ico("compass")}
+            <span>Chọn ngày &amp; xem giờ xuất phát theo việc</span>
+          </button>
+        </div>
+      `
+          : tab === "depart"
+            ? `
+        <div class="surface-panel">
+          <div class="rem-form-grid-2">
+            <label class="field-label">
+              Ngày Dương lịch
+              <input type="date" class="input-lg" id="alm-plan-date" value="${escHtml(selDateKey)}" />
+            </label>
+
+            <label class="field-label">
+              Năm sinh bác
+              <input type="number" class="input-lg num" id="alm-plan-birthyear" min="1925" max="2005" value="${birthYear}" />
+            </label>
+          </div>
+
+          <label class="field-label">
+            Công việc dự định khởi hành
+            <select class="select-lg" id="alm-plan-purpose">
+              ${D.Almanac.DEPARTURE_PURPOSES.map(
+                (p) =>
+                  `<option value="${escHtml(p.id)}" ${p.id === departPlan.purpose.id ? "selected" : ""}>${escHtml(p.label)}</option>`
+              ).join("")}
+            </select>
+          </label>
+        </div>
+
+        <div class="surface-panel warm" id="alm-depart-result">
+          <div class="passcard-head">
+            <strong>Ngày ${departPlan.detail.solar.day}/${departPlan.detail.solar.month} (${escHtml(departPlan.detail.lunar.shortLabel)})</strong>
+            <span class="badge-tag jade">${escHtml(departPlan.detail.harmony.harmonyTag)}</span>
+          </div>
+          <p style="margin:0;font-size:0.84rem;">
+            <strong>Hướng bước ra cửa:</strong> ${escHtml(departPlan.recommendedDir)}
+          </p>
+          <p style="margin:0;font-size:0.80rem;color:var(--ink-secondary);">
+            ${escHtml(departPlan.detail.harmony.harmonyNote)} ${escHtml(departPlan.prepChecklist)}
+          </p>
+
+          <strong style="font-size:0.86rem;margin-top:2px;">3 Khung Giờ Xuất Phát Đẹp Nhất Ban Ngày:</strong>
+          <div class="depart-slot-list">
+            ${departPlan.topSlots
+              .map(
+                (slot, idx) => `
+              <div class="depart-slot-card ${idx === 0 ? "is-top1" : ""}">
+                <div class="depart-slot-head">
+                  <strong>${idx + 1}. Giờ ${escHtml(slot.chi)} (${escHtml(slot.range)})</strong>
+                  <span class="badge-tag ${idx === 0 ? "jade" : "amber"} num">${slot.score}/99 điểm</span>
+                </div>
+                <small style="color:var(--ink-secondary);font-size:0.78rem;">${escHtml(slot.summaryReason)} — ${escHtml(slot.lucDieu.desc)}</small>
+                <div class="rem-item-actions">
+                  <button type="button" class="btn-mini" data-save-depart-hm="${escHtml(slot.startHm)}" data-save-depart-label="Xuất phát (${escHtml(departPlan.purpose.label.split("/")[0].trim())}) — Giờ ${escHtml(slot.chi)}">
+                    ${ico("bell", "ico-sm")}<span>Lưu nhắc &amp; Đặt chuông ${escHtml(slot.startHm)}</span>
+                  </button>
+                </div>
+              </div>
+            `
+              )
+              .join("")}
+          </div>
+        </div>
+      `
+            : `
+        <div class="surface-panel">
+          <div class="passcard-head">
+            <strong>Cài Đặt Chuông Nhắc Tự Động</strong>
+            <span class="badge-tag ${notifPerm === "granted" ? "jade" : "amber"}">${
+              notifPerm === "granted" ? "Đã bật chuông trình duyệt" : "Dùng chuông Lịch + Hộp nhắc"
+            }</span>
+          </div>
+
+          ${
+            notifPerm !== "granted" && notifPerm !== "unsupported"
+              ? `
+            <button type="button" class="btn-secondary" id="btn-enable-notif">
+              ${ico("bell")}
+              <span>Cho phép thông báo nhắc việc trên điện thoại</span>
+            </button>
+          `
+              : ""
+          }
+
+          <div class="m3-list-stack">
+            <button type="button" class="m3-list-row" id="btn-toggle-rem-lunar">
+              <span class="m3-row-ico ${state.reminders.autoLunar1st15th ? "is-jade" : ""}">${ico("lotus", "ico-sm")}</span>
+              <span class="m3-row-text">
+                <strong>Tự nhắc ngày Rằm (14–15 ÂL) &amp; Mùng 1</strong>
+                <small>Nhắc lúc 07:00 sáng chuẩn bị hoa quả &amp; viếng Chánh Điện</small>
+              </span>
+              <span class="m3-row-pill ${state.reminders.autoLunar1st15th ? "is-on" : ""}">${state.reminders.autoLunar1st15th ? "Đang bật" : "Đang tắt"}</span>
+            </button>
+
+            <button type="button" class="m3-list-row" id="btn-toggle-rem-session">
+              <span class="m3-row-ico ${state.reminders.autoMorningSession ? "is-jade" : ""}">${ico("tea", "ico-sm")}</span>
+              <span class="m3-row-text">
+                <strong>Tự nhắc Ca Trà Sáng (${escHtml(state.reminders.morningSessionHm || "06:30")})</strong>
+                <small>Nhắc xé tờ lịch mới (+3 Xu) &amp; đọc báo cùng bạn trà</small>
+              </span>
+              <span class="m3-row-pill ${state.reminders.autoMorningSession ? "is-on" : ""}">${state.reminders.autoMorningSession ? "Đang bật" : "Đang tắt"}</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="surface-panel" id="rem-create-panel">
+          <strong>Thêm Lịch Nhắc Công Việc Của Bác</strong>
+          <div class="rem-preset-strip">
+            ${(D.REMINDER_PRESETS || [])
+              .map(
+                (pr) => `
+              <button type="button" class="rem-preset-chip" data-rem-preset="${escHtml(pr.id)}">
+                ${ico("clock", "ico-sm")}
+                <span>+ ${escHtml(pr.label)}</span>
+              </button>
+            `
+              )
+              .join("")}
+          </div>
+
+          <div style="display:flex; gap:6px; align-items:stretch;">
+            <input type="text" class="input-lg" id="rem-title-in" maxlength="90" placeholder="VD: Khám mắt bệnh viện tỉnh / Giỗ ông nội..." style="flex:1;" />
+            <button type="button" class="btn-mini" id="btn-rem-mic" title="Đọc tên công việc bằng giọng nói" style="min-height:48px;padding:0 12px;">${ico("mic", "ico-sm")}</button>
+          </div>
+
+          <div class="rem-form-grid-2">
+            <label class="field-label">
+              Tính theo lịch
+              <select class="select-lg" id="rem-cal-type">
+                <option value="solar">Dương lịch</option>
+                <option value="lunar">Âm lịch (Tự đổi ngày Dương)</option>
+              </select>
+            </label>
+
+            <label class="field-label">
+              Giờ nhắc chuông
+              <input type="time" class="input-lg num" id="rem-time-in" value="07:30" />
+            </label>
+          </div>
+
+          <div id="rem-solar-fields">
+            <label class="field-label">
+              Ngày Dương lịch
+              <input type="date" class="input-lg" id="rem-solar-date" value="${escHtml(todayKey)}" />
+            </label>
+          </div>
+
+          <div id="rem-lunar-fields" hidden class="rem-form-grid-2">
+            <label class="field-label">
+              Ngày Âm (1–30)
+              <input type="number" class="input-lg num" id="rem-lunar-day" min="1" max="30" value="${selAlm.lunar.day}" />
+            </label>
+            <label class="field-label">
+              Tháng Âm (1–12)
+              <input type="number" class="input-lg num" id="rem-lunar-month" min="1" max="12" value="${selAlm.lunar.month}" />
+            </label>
+          </div>
+
+          <label class="field-label">
+            Chế độ lặp lại
+            <select class="select-lg" id="rem-repeat">
+              <option value="once">Nhắc 1 lần đúng ngày</option>
+              <option value="daily">Nhắc đều hằng ngày</option>
+              <option value="monthly_lunar">Lặp mỗi tháng Âm lịch (Rằm / Mùng 1)</option>
+              <option value="yearly_lunar">Lặp mỗi năm Âm lịch (Giỗ chạp / Sinh nhật)</option>
+            </select>
+          </label>
+
+          <button type="button" class="btn-primary" id="btn-add-reminder">
+            ${ico("bell")}
+            <span>Lưu Vào Sổ Nhắc Việc</span>
+          </button>
+        </div>
+
+        <div class="section-block">
+          <div class="m3-section-head">
+            <h2>Sổ Nhắc Việc Đã Lưu (${(state.reminders.items || []).length})</h2>
+            <span class="m3-section-meta">Bấm .ics để ghim chuông ĐT</span>
+          </div>
+          <div class="rem-item-list" id="rem-item-list">
+            ${(state.reminders.items || [])
+              .map((it) => {
+                const isDone = it.repeat === "once" ? Boolean(it.doneDateKey) : it.doneDateKey === todayKey;
+                return `
+                <article class="rem-item-card ${isDone ? "is-done" : ""}" data-rem-card="${escHtml(it.id)}">
+                  <div class="rem-item-head">
+                    <span class="rem-item-title">${escHtml(it.title)}</span>
+                    <span class="badge-tag ${it.calendarType === "lunar" ? "amber" : "jade"}">${it.calendarType === "lunar" ? "Âm lịch" : "Dương lịch"}</span>
+                  </div>
+                  <div class="rem-item-when">${escHtml(formatReminderWhenLabel(it))}</div>
+                  <div class="rem-item-actions">
+                    <button type="button" class="btn-mini" data-rem-done="${escHtml(it.id)}">
+                      ${ico("check", "ico-sm")}<span>${isDone ? "Mở lại" : "Đã xong"}</span>
+                    </button>
+                    <button type="button" class="btn-mini" data-rem-ics="${escHtml(it.id)}">
+                      ${ico("download", "ico-sm")}<span>Chuông ĐT (.ics)</span>
+                    </button>
+                    <button type="button" class="btn-mini report" data-rem-del="${escHtml(it.id)}">Xóa</button>
+                  </div>
+                </article>
+              `;
+              })
+              .join("")}
+          </div>
+        </div>
+      `
+      }
+    `;
+
+    // Bind 3 tabs
+    document.getElementById("alm-tab-today").addEventListener("click", () => {
+      state.almanac.activeTab = "today";
+      saveState();
+      renderAlmanac();
+    });
+    document.getElementById("alm-tab-depart").addEventListener("click", () => {
+      state.almanac.activeTab = "depart";
+      saveState();
+      renderAlmanac();
+    });
+    document.getElementById("alm-tab-rem").addEventListener("click", () => {
+      state.almanac.activeTab = "reminders";
+      saveState();
+      renderAlmanac();
+    });
+
+    // Tab 1 bindings
+    const tearBtn = document.getElementById("btn-tear-calendar");
+    if (tearBtn) {
+      tearBtn.addEventListener("click", () => {
+        if (state.almanac.lastTornDate === todayKey) return;
+        state.almanac.lastTornDate = todayKey;
+        state.almanac.selectedDate = todayKey;
+        playTempleBell();
+        addXu(3, `Xé tờ lịch mới ${selAlm.lunar.shortLabel} (+3 Xu)`);
+        awardSeniorityPoints(5, "almanac_torn", "lich-am", `Xé tờ lịch sáng ${selAlm.lunar.shortLabel} · Ngày ${selAlm.canChi.day}`);
+        saveState();
+        updateGlobalChrome();
+        renderAlmanac();
+      });
+    }
+
+    const shareAlmBtn = document.getElementById("btn-share-almanac-card");
+    if (shareAlmBtn) {
+      shareAlmBtn.addEventListener("click", () => {
+        const png = drawAlmanacPostcardDataUrl(selAlm);
+        const shareUrl = `${getPublicBaseUrl()}?lich=${encodeURIComponent(selAlm.dateKey)}`;
+        const postText = `Tờ lịch sáng nay ${selAlm.solar.weekdayLabel} ${selAlm.solar.day}/${selAlm.solar.month}/${selAlm.solar.year} (Âm lịch ${selAlm.lunar.shortLabel} — Ngày ${selAlm.canChi.day}, Tiết ${selAlm.solarTerm.name}). Hướng Hỷ Thần: ${selAlm.directions.hyThan}, Tài Thần: ${selAlm.directions.taiThan}. Mời các bác xem Giờ Hoàng Đạo & đặt lịch nhắc tại:\n${shareUrl}`;
+        openDialog(
+          "Thiệp Tờ Lịch Sáng & Giờ Tốt (Gửi Zalo)",
+          `<img src="${png}" alt="Thiệp Lịch Vạn Niên Tuổi Bạc" style="width:100%; border-radius:12px; border:1px solid #DFC7A7;" />
+           <div class="btn-row">
+             <a class="btn-primary" href="${png}" download="to-lich-tuoi-bac-${selAlm.dateKey}.png" style="text-decoration:none;">Lưu ảnh Lịch</a>
+             <button type="button" class="btn-jade" id="btn-native-share-almanac">${ico("share")}<span>Gửi qua Zalo</span></button>
+           </div>
+           ${renderSocialShareKitHtml({
+             prefix: "alm-share",
+             copyLinkBtnId: "btn-copy-alm-link",
+             shareUrl,
+             postText
+           })}`
+        );
+        bindSocialShareKit({
+          prefix: "alm-share",
+          copyLinkBtnId: "btn-copy-alm-link",
+          shareUrl,
+          postText
+        });
+        const natBtn = document.getElementById("btn-native-share-almanac");
+        if (natBtn) {
+          natBtn.addEventListener("click", async () => {
+            if (navigator.share) {
+              try {
+                await navigator.share({ title: "Tờ Lịch Vạn Niên — Tuổi Bạc", text: postText, url: shareUrl });
+                return;
+              } catch (e) {}
+            }
+            copyTextSafe(postText, "Đã sao chép lời chúc & link Tờ Lịch để dán lên Zalo!");
+          });
+        }
+      });
+    }
+
+    const prevBtn = document.getElementById("btn-alm-prev");
+    const todayBtn = document.getElementById("btn-alm-today");
+    const nextBtn = document.getElementById("btn-alm-next");
+    if (prevBtn) {
+      prevBtn.addEventListener("click", () => {
+        state.almanac.selectedDate = shiftDateKeyByDays(selDateKey, -1);
+        saveState();
+        renderAlmanac();
+      });
+    }
+    if (todayBtn) {
+      todayBtn.addEventListener("click", () => {
+        state.almanac.selectedDate = todayKey;
+        saveState();
+        renderAlmanac();
+      });
+    }
+    if (nextBtn) {
+      nextBtn.addEventListener("click", () => {
+        state.almanac.selectedDate = shiftDateKeyByDays(selDateKey, 1);
+        saveState();
+        renderAlmanac();
+      });
+    }
+
+    const gotoDepartBtn = document.getElementById("btn-alm-goto-depart");
+    if (gotoDepartBtn) {
+      gotoDepartBtn.addEventListener("click", () => {
+        state.almanac.activeTab = "depart";
+        saveState();
+        renderAlmanac();
+      });
+    }
+
+    // Tab 2 bindings (Departure Planner)
+    const planDateEl = document.getElementById("alm-plan-date");
+    const planPurpEl = document.getElementById("alm-plan-purpose");
+    const planByEl = document.getElementById("alm-plan-birthyear");
+    if (planDateEl) {
+      planDateEl.addEventListener("change", () => {
+        if (/^\d{4}-\d{2}-\d{2}$/.test(planDateEl.value)) {
+          state.almanac.selectedDate = planDateEl.value;
+          saveState();
+          renderAlmanac();
+        }
+      });
+    }
+    if (planPurpEl) {
+      planPurpEl.addEventListener("change", () => {
+        state.almanac.purposeId = planPurpEl.value;
+        saveState();
+        renderAlmanac();
+      });
+    }
+    if (planByEl) {
+      planByEl.addEventListener("change", () => {
+        const val = Number(planByEl.value);
+        if (Number.isFinite(val) && val >= 1925 && val <= 2005) {
+          state.almanac.birthYear = Math.floor(val);
+          saveState();
+          renderAlmanac();
+        }
+      });
+    }
+
+    els.main.querySelectorAll("[data-save-depart-hm]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const hm = btn.dataset.saveDepartHm || "07:30";
+        const label = btn.dataset.saveDepartLabel || "Giờ đẹp xuất phát";
+        const newRem = {
+          id: `rem-dep-${Date.now().toString(36)}`,
+          title: label,
+          calendarType: "solar",
+          dateStr: selDateKey,
+          lunarDay: selAlm.lunar.day,
+          lunarMonth: selAlm.lunar.month,
+          repeat: "once",
+          timeHm: hm,
+          category: "xuat-hanh",
+          doneDateKey: ""
+        };
+        state.reminders.items.unshift(newRem);
+        saveState();
+        downloadReminderIcs(newRem);
+        state.almanac.activeTab = "reminders";
+        renderAlmanac();
+      });
+    });
+
+    // Tab 3 bindings (Reminders)
+    const enableNotifBtn = document.getElementById("btn-enable-notif");
+    if (enableNotifBtn) {
+      enableNotifBtn.addEventListener("click", () => {
+        requestAndSyncBrowserNotificationPermission().then(() => renderAlmanac());
+      });
+    }
+
+    const toggleLunarBtn = document.getElementById("btn-toggle-rem-lunar");
+    if (toggleLunarBtn) {
+      toggleLunarBtn.addEventListener("click", () => {
+        state.reminders.autoLunar1st15th = !state.reminders.autoLunar1st15th;
+        saveState();
+        showToast(state.reminders.autoLunar1st15th ? "Đã bật tự nhắc ngày Rằm & Mùng 1 Âm lịch." : "Đã tắt tự nhắc ngày Rằm & Mùng 1.");
+        renderAlmanac();
+      });
+    }
+
+    const toggleSessBtn = document.getElementById("btn-toggle-rem-session");
+    if (toggleSessBtn) {
+      toggleSessBtn.addEventListener("click", () => {
+        state.reminders.autoMorningSession = !state.reminders.autoMorningSession;
+        saveState();
+        showToast(state.reminders.autoMorningSession ? "Đã bật tự nhắc Ca Trà Sáng (06:30)." : "Đã tắt tự nhắc Ca Trà Sáng.");
+        renderAlmanac();
+      });
+    }
+
+    const calTypeSel = document.getElementById("rem-cal-type");
+    const solarFields = document.getElementById("rem-solar-fields");
+    const lunarFields = document.getElementById("rem-lunar-fields");
+    const repeatSel = document.getElementById("rem-repeat");
+    const syncRemFormType = () => {
+      if (!calTypeSel || !solarFields || !lunarFields) return;
+      const isLun = calTypeSel.value === "lunar";
+      solarFields.hidden = isLun;
+      lunarFields.hidden = !isLun;
+      lunarFields.style.display = isLun ? "grid" : "none";
+      if (isLun && repeatSel && repeatSel.value === "daily") {
+        repeatSel.value = "yearly_lunar";
+      }
+    };
+    if (calTypeSel) {
+      calTypeSel.addEventListener("change", syncRemFormType);
+      syncRemFormType();
+    }
+
+    els.main.querySelectorAll("[data-rem-preset]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const pr = (D.REMINDER_PRESETS || []).find((p) => p.id === btn.dataset.remPreset);
+        if (!pr) return;
+        const titleIn = document.getElementById("rem-title-in");
+        const timeIn = document.getElementById("rem-time-in");
+        if (titleIn) titleIn.value = pr.title;
+        if (timeIn && pr.timeHm) timeIn.value = pr.timeHm;
+        if (calTypeSel) {
+          calTypeSel.value = pr.calendarType || "solar";
+          syncRemFormType();
+        }
+        if (pr.calendarType === "lunar") {
+          const ldIn = document.getElementById("rem-lunar-day");
+          const lmIn = document.getElementById("rem-lunar-month");
+          if (ldIn && pr.lunarDay) ldIn.value = pr.lunarDay;
+          if (lmIn && pr.lunarMonth) lmIn.value = pr.lunarMonth;
+          if (repeatSel) repeatSel.value = "yearly_lunar";
+        }
+        showToast(`Đã điền mẫu "${pr.label}" — bác chọn ngày rồi bấm Lưu nhé!`);
+      });
+    });
+
+    const remMicBtn = document.getElementById("btn-rem-mic");
+    if (remMicBtn) {
+      remMicBtn.addEventListener("click", () => {
+        const titleIn = document.getElementById("rem-title-in");
+        if (!titleIn) return;
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SR) {
+          titleIn.value = "Đi tái khám định kỳ sáng thứ Năm & mang thẻ BHYT";
+          showToast("Đã điền câu mẫu nhắc việc để bác thử nhanh!");
+          return;
+        }
+        showToast("Mời bác đọc tên công việc cần nhắc...");
+        const rec = new SR();
+        rec.lang = "vi-VN";
+        rec.interimResults = false;
+        rec.onresult = (ev) => {
+          const raw = String((ev.results[0] && ev.results[0][0] && ev.results[0][0].transcript) || "").trim();
+          if (raw && !isUnsafeScamOrPiiText(raw)) {
+            titleIn.value = raw.slice(0, 90);
+          }
+        };
+        try {
+          rec.start();
+        } catch (e) {}
+      });
+    }
+
+    const addRemBtn = document.getElementById("btn-add-reminder");
+    if (addRemBtn) {
+      addRemBtn.addEventListener("click", () => {
+        const titleIn = document.getElementById("rem-title-in");
+        const rawTitle = String((titleIn && titleIn.value) || "").replace(/[<>]/g, "").trim();
+        if (!rawTitle) {
+          showToast("Mời bác nhập hoặc chọn mẫu tên công việc cần nhắc.");
+          return;
+        }
+        if (isUnsafeScamOrPiiText(rawTitle)) {
+          showToast("Vì an toàn, nội dung nhắc việc không chứa số tài khoản hoặc đường link lạ.");
+          return;
+        }
+        const cType = (calTypeSel && calTypeSel.value) === "lunar" ? "lunar" : "solar";
+        const hm = (document.getElementById("rem-time-in") || {}).value || "07:30";
+        const sDate = (document.getElementById("rem-solar-date") || {}).value || todayKey;
+        const lDay = Math.max(1, Math.min(30, Number((document.getElementById("rem-lunar-day") || {}).value) || 15));
+        const lMonth = Math.max(1, Math.min(12, Number((document.getElementById("rem-lunar-month") || {}).value) || 1));
+        const rep = (repeatSel && repeatSel.value) || "once";
+
+        const item = {
+          id: `rem-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 5)}`,
+          title: rawTitle.slice(0, 90),
+          calendarType: cType,
+          dateStr: sDate,
+          lunarDay: lDay,
+          lunarMonth: lMonth,
+          repeat: rep,
+          timeHm: hm,
+          category: "ca-nhan",
+          doneDateKey: ""
+        };
+        state.reminders.items.unshift(item);
+        if (state.reminders.items.length > 40) state.reminders.items = state.reminders.items.slice(0, 40);
+        awardSeniorityPoints(3, "reminder_created", "lich-am", `Đặt lịch nhắc (${cType === "lunar" ? "Âm lịch" : "Dương lịch"}): "${item.title}"`);
+        saveState();
+        if (!state.reminders.permissionAsked && typeof Notification !== "undefined" && Notification.permission === "default") {
+          requestAndSyncBrowserNotificationPermission();
+        }
+        showToast("Đã lưu công việc vào Sổ Nhắc Việc!");
+        renderAlmanac();
+      });
+    }
+
+    els.main.querySelectorAll("[data-rem-done]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const it = (state.reminders.items || []).find((x) => x.id === btn.dataset.remDone);
+        if (!it) return;
+        const alreadyDone = it.repeat === "once" ? Boolean(it.doneDateKey) : it.doneDateKey === todayKey;
+        it.doneDateKey = alreadyDone ? "" : todayKey;
+        saveState();
+        showToast(alreadyDone ? "Đã mở lại nhắc việc." : "Hoan hô bác đã hoàn thành công việc!");
+        renderAlmanac();
+      });
+    });
+
+    els.main.querySelectorAll("[data-rem-ics]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const it = (state.reminders.items || []).find((x) => x.id === btn.dataset.remIcs);
+        if (it) downloadReminderIcs(it);
+      });
+    });
+
+    els.main.querySelectorAll("[data-rem-del]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        state.reminders.items = (state.reminders.items || []).filter((x) => x.id !== btn.dataset.remDel);
+        saveState();
+        showToast("Đã xóa mục nhắc việc.");
+        renderAlmanac();
+      });
+    });
   }
 
   // ==================== MODULE 1: CHECKIN & VIETNAM MAP ====================
@@ -3099,17 +4315,30 @@
       }
 
       <div class="surface-panel">
-        <h3>Xếp hạng tỉnh sáng đèn hôm nay</h3>
+        <div class="passcard-head">
+          <h3 style="margin:0;">Thi đua tuần: Quê hương sáng đèn</h3>
+          <span class="badge-tag jade num">${escHtml(myProv.short)}</span>
+        </div>
+        <p style="margin:0;font-size:0.80rem;color:var(--ink-secondary);">
+          Điểm tuần của tỉnh cộng từ lượt điểm danh sáng, xé lịch Vạn Niên, thắng cờ và mở bàn trà hiếu khách.
+        </p>
         <div class="province-rank-list">
           ${sortedProvinces
             .map((p, idx) => {
               const cnt = lampsOf(p);
+              const myBonus =
+                p.id === myProv.id
+                  ? (state.almanac && state.almanac.lastTornDate ? 5 : 0) +
+                    ((Number((state.user.gameStats || {}).xiangqiWins) || 0) * 4) +
+                    (Object.keys(state.customTables || {}).length * 6)
+                  : 0;
+              const weekScore = cnt * 3 + myBonus;
               const pct = Math.max(12, Math.round((cnt / maxRankLamps) * 100));
               return `
               <div class="province-rank-item">
                 <div class="province-rank-top">
                   <span class="province-rank-name"><strong class="num">${idx + 1}.</strong> ${escHtml(p.name)}</span>
-                  <span class="badge-tag amber num">${cnt.toLocaleString("vi-VN")} đèn</span>
+                  <span class="badge-tag ${p.id === myProv.id ? "jade" : "amber"} num">${cnt.toLocaleString("vi-VN")} đèn · ${weekScore.toLocaleString("vi-VN")}đ</span>
                 </div>
                 <div class="province-rank-track"><div class="province-rank-fill" style="width:${pct}%"></div></div>
               </div>
@@ -3117,6 +4346,10 @@
             })
             .join("")}
         </div>
+        <button type="button" class="btn-primary" id="btn-invite-hometown-zalo">
+          ${ico("share")}
+          <span>Mời đồng hương ${escHtml(myProv.short)} vào thắp đèn qua Zalo</span>
+        </button>
       </div>
       `
       }
@@ -3126,6 +4359,22 @@
     const chkTabRank = document.getElementById("chk-tab-rank");
     if (chkTabMap) chkTabMap.addEventListener("click", () => { if (activeCheckinTab !== "map") { activeCheckinTab = "map"; renderCheckin(); } });
     if (chkTabRank) chkTabRank.addEventListener("click", () => { if (activeCheckinTab !== "rank") { activeCheckinTab = "rank"; renderCheckin(); } });
+
+    const inviteHometownBtn = document.getElementById("btn-invite-hometown-zalo");
+    if (inviteHometownBtn) {
+      inviteHometownBtn.addEventListener("click", async () => {
+        const shareUrl = `${getPublicBaseUrl()}?tinh=${encodeURIComponent(myProv.id)}`;
+        const inviteTxt = `Mời các bác, anh chị đồng hương ${myProv.name} vào Quán Trà Tuổi Bạc điểm danh sáng, xé lịch xem giờ đẹp và góp đèn tuần cho tỉnh nhà mình nhé:\n${shareUrl}`;
+        trackEvent("share_link_created");
+        if (navigator.share) {
+          try {
+            await navigator.share({ title: `Đồng hương ${myProv.short} — Tuổi Bạc`, text: inviteTxt, url: shareUrl });
+            return;
+          } catch (e) {}
+        }
+        copyTextSafe(inviteTxt, `Đã sao chép lời mời đồng hương ${myProv.short} — dán ngay lên Zalo!`);
+      });
+    }
 
     const provSelectEl = document.getElementById("checkin-province");
     if (provSelectEl) {
@@ -3680,13 +4929,18 @@
       if (RT && typeof RT.publishTableCustomMeta === "function") {
         RT.publishTableCustomMeta(cleanKey, metaObj);
       }
-      awardSeniorityPoints(8, "table_hosted", "giao-luu", `Đặt tên bàn đàm đạo: "${formattedName}"`);
+      if (Array.isArray(state.user.unlockedTitles) && !state.user.unlockedTitles.includes("Chủ Bàn Hiếu Khách")) {
+        state.user.unlockedTitles.unshift("Chủ Bàn Hiếu Khách");
+      }
+      awardSkillPoints("tea_host", 5);
+      awardSkillPoints("comrade_social", 3);
+      awardSeniorityPoints(8, "table_hosted", "giao-luu", `Đặt tên bàn đàm đạo (Chủ Bàn Hiếu Khách): "${formattedName}"`);
       closeDialog();
       joinTable(pickedIdx);
       if (welcomeLine) {
         sendUserTeaMessage(welcomeLine, { source: "quick" });
       }
-      showToast(`Đã mở "${formattedName}" — bác đang là Chủ bàn!`);
+      showToast(`Đã mở "${formattedName}" — trao danh hiệu Chủ Bàn Hiếu Khách!`);
     });
   }
 
@@ -3730,10 +4984,13 @@
     if (foundStk) {
       return `<span style="color:var(--accent-terracotta);font-weight:700;">${escHtml(entry.speaker)}:</span> <span class="tea-sticker-inline-card" style="background:${escHtml(foundStk.bg)};color:${escHtml(foundStk.color)};border-color:${escHtml(foundStk.color)}">${renderStickerArtSvg(foundStk)}<span>${escHtml(foundStk.shortLabel)}</span></span>`;
     }
+    const voiceBtnHtml = entry.voiceDurSec
+      ? ` <button type="button" class="tea-voice-clip-pill" data-play-vclip="${escHtml(entry.voiceClipId || "")}" data-play-vtext="${escHtml(entry.text || "")}">${ico("wave", "ico-sm")}<span>Nghe giọng thật (${Number(entry.voiceDurSec) || 6}s)</span></button>`
+      : "";
     if (isCurrent) {
-      return `<span style="color:var(--accent-terracotta);">${escHtml(entry.speaker)}:</span> "${escHtml(entry.text)}"`;
+      return `<span style="color:var(--accent-terracotta);">${escHtml(entry.speaker)}:</span> "${escHtml(entry.text)}"${voiceBtnHtml}`;
     }
-    return `${escHtml(entry.speaker)}: "${escHtml(entry.text)}"`;
+    return `${escHtml(entry.speaker)}: "${escHtml(entry.text)}"${voiceBtnHtml}`;
   }
 
   function sendUserTeaSticker(stk) {
@@ -3892,11 +5149,29 @@
     );
   }
 
-  function pushTableMessage(speaker, text, seatIdx, stickerId) {
+  function pushTableMessage(speaker, text, seatIdx, stickerId, voiceMeta) {
     const trimmed = String(text || "").trim();
     const safeText = trimmed.length > 120 ? trimmed.slice(0, 117).trim() + "..." : trimmed;
     lastTableActivityAt = Date.now();
-    pendingQueue.push({ speaker, text: safeText, seatIdx, stickerId: stickerId || null });
+    let voiceClipId = null;
+    let voiceDurSec = 0;
+    if (voiceMeta && (voiceMeta.voiceClipDataUrl || voiceMeta.voiceDurSec)) {
+      voiceDurSec = Math.max(1, Math.min(12, Math.round(Number(voiceMeta.voiceDurSec) || 6)));
+      if (voiceMeta.voiceClipDataUrl) {
+        voiceClipId = `vc_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+        const keys = Object.keys(runtimeVoiceClips);
+        if (keys.length >= 24) delete runtimeVoiceClips[keys[0]];
+        runtimeVoiceClips[voiceClipId] = voiceMeta.voiceClipDataUrl;
+      }
+    }
+    pendingQueue.push({
+      speaker,
+      text: safeText,
+      seatIdx,
+      stickerId: stickerId || null,
+      voiceClipId,
+      voiceDurSec: voiceDurSec || undefined
+    });
     processQueueStep();
   }
 
@@ -3906,7 +5181,9 @@
     state.teaRoom.log.push({
       speaker: nextItem.speaker,
       text: nextItem.text,
-      stickerId: nextItem.stickerId || null
+      stickerId: nextItem.stickerId || null,
+      voiceClipId: nextItem.voiceClipId || undefined,
+      voiceDurSec: nextItem.voiceDurSec || undefined
     });
     if (state.teaRoom.log.length > 30) {
       state.teaRoom.log = state.teaRoom.log.slice(-30);
@@ -4633,7 +5910,11 @@
           </div>
           <button type="button" class="btn-primary" id="btn-voice-speak">
             ${ico("mic")}
-            <span>Bấm để nói bằng giọng</span>
+            <span>Bấm để nói thành chữ</span>
+          </button>
+          <button type="button" class="btn-jade" id="btn-voice-clip-12s">
+            ${ico("wave")}
+            <span>Thu lời chào giọng thật (Tối đa 12s)</span>
           </button>
           <div id="inline-voice-box" hidden></div>
         </div>
@@ -4933,6 +6214,242 @@
     }
 
     document.getElementById("btn-voice-speak").addEventListener("click", startInlineVoiceCapture);
+    const voiceClip12Btn = document.getElementById("btn-voice-clip-12s");
+    if (voiceClip12Btn) {
+      voiceClip12Btn.addEventListener("click", startInline12sVoiceRecorder);
+    }
+  }
+
+  function synthesizeWarmGreetingWavDataUrl(durationSec) {
+    const dur = Math.max(2, Math.min(6, Number(durationSec) || 3));
+    const sampleRate = 2000;
+    const numSamples = Math.floor(sampleRate * dur);
+    const buf = new ArrayBuffer(44 + numSamples);
+    const view = new DataView(buf);
+    const writeAscii = (off, str) => {
+      for (let i = 0; i < str.length; i++) view.setUint8(off + i, str.charCodeAt(i));
+    };
+    writeAscii(0, "RIFF");
+    view.setUint32(4, 36 + numSamples, true);
+    writeAscii(8, "WAVE");
+    writeAscii(12, "fmt ");
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate, true);
+    view.setUint16(32, 1, true);
+    view.setUint16(34, 8, true);
+    writeAscii(36, "data");
+    view.setUint32(40, numSamples, true);
+    // Gentle Vietnamese pentatonic tea-chime (Hò - Xự - Xang - Xê - Cống)
+    const notes = [261.6, 293.7, 329.6, 392.0, 440.0, 392.0];
+    for (let i = 0; i < numSamples; i++) {
+      const t = i / sampleRate;
+      const noteIdx = Math.min(notes.length - 1, Math.floor((t / dur) * notes.length));
+      const localT = t - (noteIdx * dur) / notes.length;
+      const env = Math.exp(-localT * 3.8);
+      const val = Math.sin(2 * Math.PI * notes[noteIdx] * t) * env * 0.34;
+      view.setUint8(44 + i, Math.max(0, Math.min(255, Math.round(128 + val * 110))));
+    }
+    const bytes = new Uint8Array(buf);
+    let bin = "";
+    for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    return `data:audio/wav;base64,${btoa(bin)}`;
+  }
+
+  function sendUserVoiceClipGreeting(captionText, voiceClipDataUrl, voiceDurSec) {
+    if (getCooldownRemaining() > 0) {
+      showToast("Bác đợi hết vài giây nghỉ ngụm trà nhé.");
+      return;
+    }
+    const cleanCaption = String(captionText || "Chào cả bàn, mời các anh chị dùng chén trà ấm sáng nay nhé!").replace(/[<>]/g, "").trim();
+    const checked = cleanAndApplyDictionary(cleanCaption);
+    if (checked.blocked) {
+      showToast("Vì an toàn cho các bác, không gửi số điện thoại hoặc đường link.");
+      return;
+    }
+    const provShort = getProvince(state.user.provinceId).short;
+    const baseTable = getCurrentTable();
+    const table = getTableWithRealPeers(baseTable);
+    const userSeatIdx = Math.min(4, table.members.length);
+    const speakerLabel = `${state.user.name} · ${getUserAge()} tuổi (${provShort})`;
+    const safeDur = Math.max(1, Math.min(12, Math.round(Number(voiceDurSec) || 4)));
+
+    state.teaRoom.lastSentAt = Date.now();
+    lastTableActivityAt = Date.now();
+    trackEvent("tea_msg_voice_or_text");
+    awardSkillPoints("voice_wisdom", 5);
+    awardSeniorityPoints(
+      4,
+      "tea_voice_clip_12s",
+      "giao-luu",
+      `Gửi lời chào giọng thật (${safeDur}s) tại ${table.name}`,
+      {
+        eventType: "chat_message",
+        module: "tearoom",
+        inputMethod: "voice_clip_12s",
+        text: checked.aiPolished,
+        voiceDurSec: safeDur,
+        roomId: state.teaRoom.roomId,
+        tableId: baseTable.id,
+        tableName: table.name
+      }
+    );
+
+    pushTableMessage(speakerLabel, checked.aiPolished, userSeatIdx, null, {
+      voiceClipDataUrl,
+      voiceDurSec: safeDur
+    });
+
+    if (RT) {
+      const nextSlice = state.teaRoom.log
+        .concat([{ speaker: speakerLabel, text: checked.aiPolished, voiceDurSec: safeDur }])
+        .slice(-8);
+      RT.sendTableMessage(baseTable.id, speakerLabel, checked.aiPolished, null, nextSlice, {
+        voiceClipDataUrl,
+        voiceDurSec: safeDur
+      });
+    }
+    startCooldownTicker();
+    showToast(`Đã gửi lời chào giọng nói (${safeDur}s) lên bàn trà!`);
+  }
+
+  function startInline12sVoiceRecorder() {
+    if (getCooldownRemaining() > 0) {
+      showToast("Bác đợi hết vài giây nghỉ ngụm trà nhé.");
+      return;
+    }
+    const box = document.getElementById("inline-voice-box");
+    if (!box) return;
+    box.hidden = false;
+
+    const showReadyClipDraft = (dataUrl, durSec, noteText) => {
+      box.innerHTML = `
+        <div class="surface-panel jade">
+          <div class="passcard-head">
+            <strong>Lời chào giọng nói (${durSec}s · Nhẹ dưới 20KB)</strong>
+            <span class="badge-tag jade">Sẵn sàng gửi</span>
+          </div>
+          ${noteText ? `<small style="color:var(--ink-secondary);">${escHtml(noteText)}</small>` : ""}
+          <audio controls src="${escHtml(dataUrl)}" style="width:100%; height:40px;"></audio>
+          <label class="field-label">
+            Lời dẫn hiển thị kèm trên Bảng lời bàn trà:
+            <input type="text" class="input-lg" id="voice-clip-caption-in" maxlength="90" value="Chào các anh chị cùng bàn, chúc cả nhà ngày mới nhiều sức khỏe!" />
+          </label>
+          <div class="btn-row">
+            <button type="button" class="btn-primary" id="btn-send-voice-clip">${ico("check")}<span>Gửi lời chào (${durSec}s)</span></button>
+            <button type="button" class="btn-secondary" id="btn-cancel-voice-clip">Đóng</button>
+          </div>
+        </div>
+      `;
+      document.getElementById("btn-send-voice-clip").addEventListener("click", () => {
+        const cap = (document.getElementById("voice-clip-caption-in") || {}).value || "";
+        box.hidden = true;
+        box.innerHTML = "";
+        sendUserVoiceClipGreeting(cap, dataUrl, durSec);
+      });
+      document.getElementById("btn-cancel-voice-clip").addEventListener("click", () => {
+        box.hidden = true;
+        box.innerHTML = "";
+      });
+    };
+
+    if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== "function" || typeof MediaRecorder === "undefined") {
+      const sampleWav = synthesizeWarmGreetingWavDataUrl(3);
+      showReadyClipDraft(sampleWav, 3, "Thiết bị chưa bật micro thu âm — tạo sẵn bản âm chào mẫu 3s để bác gửi thử:");
+      return;
+    }
+
+    navigator.mediaDevices
+      .getUserMedia({ audio: true })
+      .then((stream) => {
+        const mime =
+          MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+            ? "audio/webm;codecs=opus"
+            : MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported("audio/mp4")
+              ? "audio/mp4"
+              : "";
+        const recOpts = mime ? { mimeType: mime, audioBitsPerSecond: 14000 } : { audioBitsPerSecond: 14000 };
+        const recorder = new MediaRecorder(stream, recOpts);
+        const chunks = [];
+        const startedAt = Date.now();
+        let secElapsed = 0;
+
+        box.innerHTML = `
+          <div class="surface-panel warm">
+            <p style="margin:0;font-weight:700;" id="voice-rec-timer-lbl">Đang thu lời chào giọng thật... (0/12 giây)</p>
+            <small style="color:var(--ink-secondary);">Bác nói lời chào ngắn gọn ấm áp, máy tự dừng ở giây 12.</small>
+            <div class="btn-row">
+              <button type="button" class="btn-primary" id="btn-stop-voice-clip">Dừng &amp; Nghe lại</button>
+              <button type="button" class="btn-secondary" id="btn-abort-voice-clip">Hủy</button>
+            </div>
+          </div>
+        `;
+
+        let aborted = false;
+        const tickId = setInterval(() => {
+          secElapsed = Math.min(12, Math.max(1, Math.round((Date.now() - startedAt) / 1000)));
+          const lbl = document.getElementById("voice-rec-timer-lbl");
+          if (lbl) lbl.textContent = `Đang thu lời chào giọng thật... (${secElapsed}/12 giây)`;
+          if (secElapsed >= 12 && recorder.state === "recording") {
+            try { recorder.stop(); } catch (e) {}
+          }
+        }, 500);
+
+        const cleanupStream = () => {
+          clearInterval(tickId);
+          stream.getTracks().forEach((tr) => {
+            try { tr.stop(); } catch (e) {}
+          });
+        };
+
+        recorder.ondataavailable = (ev) => {
+          if (ev.data && ev.data.size > 0) chunks.push(ev.data);
+        };
+        recorder.onstop = () => {
+          cleanupStream();
+          if (aborted) return;
+          const dur = Math.max(1, Math.min(12, Math.round((Date.now() - startedAt) / 1000)));
+          const blob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const rawUrl = String(reader.result || "");
+            if (rawUrl.length > 0 && rawUrl.length <= 20800) {
+              showReadyClipDraft(rawUrl, dur, "");
+            } else {
+              showReadyClipDraft(
+                synthesizeWarmGreetingWavDataUrl(Math.min(4, dur)),
+                Math.min(4, dur),
+                "Đã nén gọn âm thanh dưới 20KB để truyền nhanh qua bàn trà:"
+              );
+            }
+          };
+          reader.readAsDataURL(blob);
+        };
+
+        document.getElementById("btn-stop-voice-clip").addEventListener("click", () => {
+          if (recorder.state === "recording") {
+            try { recorder.stop(); } catch (e) {}
+          }
+        });
+        document.getElementById("btn-abort-voice-clip").addEventListener("click", () => {
+          aborted = true;
+          if (recorder.state === "recording") {
+            try { recorder.stop(); } catch (e) {}
+          } else {
+            cleanupStream();
+          }
+          box.hidden = true;
+          box.innerHTML = "";
+        });
+
+        recorder.start();
+      })
+      .catch(() => {
+        const sampleWav = synthesizeWarmGreetingWavDataUrl(3);
+        showReadyClipDraft(sampleWav, 3, "Chưa cấp quyền micro — hiển thị bản âm chào mẫu 3s để bác nghe & gửi thử:");
+      });
   }
 
   function commitVoiceDictionaryLearning(res) {
@@ -13764,6 +15281,9 @@
   function render() {
     updateGlobalChrome();
     switch (state.route) {
+      case "almanac":
+        renderAlmanac();
+        break;
       case "groups":
         renderGroupsAndFriends();
         break;
@@ -13865,6 +15385,9 @@
     if (sessionSeconds % 20 === 0 && TEL && typeof TEL.flushDwellHeartbeat === "function") {
       TEL.flushDwellHeartbeat(buildTelemetryUserCtx());
     }
+    if (sessionSeconds % 30 === 0) {
+      checkDueRemindersTick();
+    }
     if (sessionSeconds % 60 === 0 && ensureDailyRollover(state)) {
       saveState();
       updateGlobalChrome();
@@ -13938,7 +15461,15 @@
           window.TeaRoomScene.showSeatSticker(seatIdx >= 0 ? seatIdx : 0, foundStk.shortLabel, foundStk.bg, foundStk.color);
         }
       }
-      pushTableMessage(pkt.speaker, pkt.text, seatIdx >= 0 ? seatIdx : 0, pkt.stickerId || null);
+      pushTableMessage(
+        pkt.speaker,
+        pkt.text,
+        seatIdx >= 0 ? seatIdx : 0,
+        pkt.stickerId || null,
+        pkt.voiceClipDataUrl || pkt.voiceDurSec
+          ? { voiceClipDataUrl: pkt.voiceClipDataUrl || null, voiceDurSec: pkt.voiceDurSec || 6 }
+          : null
+      );
     });
 
     RT.on("tableMeta", () => {
@@ -14170,6 +15701,10 @@
   if (simOpenGroups) {
     simOpenGroups.addEventListener("click", () => navigate("groups"));
   }
+  const simOpenAlmanac = document.getElementById("sim-open-almanac");
+  if (simOpenAlmanac) {
+    simOpenAlmanac.addEventListener("click", () => navigate("almanac"));
+  }
   const simOpenTemple = document.getElementById("sim-open-temple");
   if (simOpenTemple) {
     simOpenTemple.addEventListener("click", () => navigate("zen"));
@@ -14316,7 +15851,46 @@
     }, "bấm nút Quay lại trên trình duyệt");
   });
 
+  els.main.addEventListener("click", (ev) => {
+    const pill = ev.target && ev.target.closest ? ev.target.closest("[data-play-vclip]") : null;
+    if (!pill) return;
+    const clipId = pill.getAttribute("data-play-vclip") || "";
+    const fallbackText = pill.getAttribute("data-play-vtext") || "";
+    const dataUrl = clipId ? runtimeVoiceClips[clipId] : null;
+    if (activeVoiceClipAudio) {
+      try {
+        activeVoiceClipAudio.pause();
+      } catch (e) {}
+      activeVoiceClipAudio = null;
+    }
+    document.querySelectorAll(".tea-voice-clip-pill.is-playing").forEach((el) => el.classList.remove("is-playing"));
+    if (dataUrl) {
+      const aud = new Audio(dataUrl);
+      activeVoiceClipAudio = aud;
+      pill.classList.add("is-playing");
+      if (window.TeaRoomScene && typeof window.TeaRoomScene.setSpeaker === "function") {
+        window.TeaRoomScene.setSpeaker(0);
+      }
+      aud.onended = () => {
+        pill.classList.remove("is-playing");
+        activeVoiceClipAudio = null;
+      };
+      aud.onerror = () => {
+        pill.classList.remove("is-playing");
+        activeVoiceClipAudio = null;
+        if (fallbackText) speak(fallbackText);
+      };
+      aud.play().catch(() => {
+        pill.classList.remove("is-playing");
+        if (fallbackText) speak(fallbackText);
+      });
+    } else if (fallbackText) {
+      speak(fallbackText, { announceToast: true });
+    }
+  });
+
   applyUrlDeepLinkIfPresent();
+  setTimeout(checkDueRemindersTick, 2500);
   if (RT) {
     RT.start();
     setTimeout(() => {

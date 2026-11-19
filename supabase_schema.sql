@@ -300,3 +300,23 @@ drop policy if exists "member_telemetry_select" on public.member_telemetry_event
 drop policy if exists "member_telemetry_insert" on public.member_telemetry_events;
 create policy "member_telemetry_select" on public.member_telemetry_events for select using (true);
 create policy "member_telemetry_insert" on public.member_telemetry_events for insert with check (char_length(event_type) <= 64);
+
+-- 15. Đăng ký nhận thông báo Web Push nhắc lịch hẹn 24/7 (VAPID Endpoint)
+create table if not exists public.push_subscriptions (
+  endpoint text primary key,
+  member_code text default '',
+  client_id text not null,
+  p256dh text not null default '',
+  auth_key text not null default '',
+  prefs jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.push_subscriptions enable row level security;
+
+drop policy if exists "push_subscriptions_select" on public.push_subscriptions;
+drop policy if exists "push_subscriptions_insert" on public.push_subscriptions;
+drop policy if exists "push_subscriptions_update" on public.push_subscriptions;
+create policy "push_subscriptions_select" on public.push_subscriptions for select using (true);
+create policy "push_subscriptions_insert" on public.push_subscriptions for insert with check (char_length(endpoint) <= 600 and char_length(client_id) <= 96);
+create policy "push_subscriptions_update" on public.push_subscriptions for update using (true) with check (char_length(endpoint) <= 600 and char_length(client_id) <= 96);
