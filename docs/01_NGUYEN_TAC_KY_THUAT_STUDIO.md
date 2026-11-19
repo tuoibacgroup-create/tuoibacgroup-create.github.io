@@ -62,6 +62,11 @@ Trong vận hành game lâu dài, lỗi nghiêm trọng nhất là cập nhật 
    - Không đặt `white-space: nowrap` cho các nhãn có độ dài trên 18 ký tự.
 4. **Ngôn ngữ tôn trọng, ấm áp, tự nhiên:**
    - Xưng hô nhất quán theo lựa chọn của hội viên (`Anh` / `Chị` hoặc `bác`), không dùng thông báo lỗi mang tính trách phạt kỹ thuật (ví dụ thay *"Invalid input"* bằng *"Mời bác nhập đủ 4 chữ số dễ nhớ"*).
+5. **Ưu tiên khung nhìn đầu tiên (Above-the-Fold) & Dấu tiếng Việt sắc nét:**
+   - Thanh trạng thái `.user-strip` giữ gọn 1 hàng ngang trên màn hình `390px` (tự xuống dòng khi bật `24px`); `4 Việc Chính Hôm Nay` ở Trang chủ và sân khấu 2.5D ở Sảnh Quán Trà phải xuất hiện ngay phần đầu màn hình, không bị đẩy sâu xuống dưới bởi các khối phụ hoặc danh sách chip dài.
+   - Chuỗi font chữ có chân `--font-serif` bắt buộc đặt `"Merriweather", "Cambria", "Noto Serif", "Times New Roman", serif` (tránh dùng `Georgia` làm dự phòng trực tiếp trên Windows vì gây rời dấu tiếng Việt khi chạy ngoại tuyến).
+6. **Kỷ luật cắt khung bao `ACC_BBOX` & tách 2 lớp phụ kiện 2.5D (`tearoom3d.js`):**
+   - Khi thêm hoặc chỉnh sửa phụ kiện đội đầu / khăn quàng trong `tearoom-accessories*.webp` hay `tearoom-regional-acc.webp`, bắt buộc đo khung bao điểm ảnh thật (`ACC_BBOX`) và tách 2 lượt vẽ (`drawSpritePreHeadAccessory` vẽ phần sau cổ/vành sau trước nhân vật → `drawSpriteAccessories` vẽ phần trước kèm cắt biên `browClipY` / `chinClipY` sau nhân vật) để khớp đồng bộ cả 3 tư thế Nam (`col 0`), Nữ (`col 1`) và Lưng (`col 2`).
 
 ---
 

@@ -1,6 +1,6 @@
 # 05 — Hồ Sơ Quyết Định Kiến Trúc (Architecture Decision Records — ADRs)
 
-Tài liệu này lưu lại **lý do cốt lõi (Why)** đằng sau 10 quyết định kỹ thuật quan trọng nhất của dự án **Tuổi Bạc**, giúp các lập trình viên và AI Agent về sau hiểu rõ bối cảnh, ưu nhược điểm và không vô tình quay lại các phương án đã bị loại bỏ.
+Tài liệu này lưu lại **lý do cốt lõi (Why)** đằng sau 11 quyết định kỹ thuật quan trọng nhất của dự án **Tuổi Bạc**, giúp các lập trình viên và AI Agent về sau hiểu rõ bối cảnh, ưu nhược điểm và không vô tình quay lại các phương án đã bị loại bỏ.
 
 ---
 
@@ -98,3 +98,14 @@ Tài liệu này lưu lại **lý do cốt lõi (Why)** đằng sau 10 quyết �
   - Đóng gói sẵn **15 tệp âm thanh giọng đọc tiếng Việt ấm áp (`assets/audio/*.mp3`, tổng `564 KB`)** vào bộ đệm ngoại tuyến `sw.js` cho lời chào buổi sáng, điểm danh, bàn trà, 3 không gian tĩnh tâm, cờ tướng, ô ăn quan, nhắc nghỉ mắt 20 phút và 6 quẻ bình an; tự động phát dự phòng hoặc cho phép bật ưu tiên giọng thu sẵn.
   - Tích hợp tham số `?uat=<ma_nhom>` và báo cáo `getUatAndXpCalibrationReport()` trong `telemetry.js` để đo cỡ chữ, loại mạng và dự phóng số ngày đạt Bậc 6 / 16 / 32 ngay trong Dash Admin.
 - **Hệ quả:** Máy Android cũ vẫn phát giọng tiếng Việt rõ ràng cả khi ngoại tuyến, và Ban Chủ Nhiệm có số liệu thực chứng để cân chỉnh nhịp độ thăng cấp.
+
+---
+
+## ADR-011: Bản Đồ Việt Nam Chiếu Kinh Vĩ Độ Thực (`380×560`), Hiệu Chuẩn `ACC_BBOX` 2 Lớp & Bố Cục Operate Mode Ưu Tiên Khung Nhìn Đầu Tiên (`?v=20261119a`)
+- **Trạng thái:** Đã chấp thuận & Đang vận hành (2026-11)
+- **Bối cảnh:** Trong rà soát thực tế trên điện thoại `390×844`, phiên bản cũ bộc lộ 4 điểm gây khó dùng và thiếu thẩm mỹ: (1) Bản đồ Điểm danh chỉ là đa giác gãy khúc 23 đỉnh khiến nhiều chấm tỉnh trôi ngoài bờ biển và chữ bị bôi đen vàng; (2) Một số phụ kiện 2.5D như Khăn rằn Nam Bộ đè lên cằm, Khăn xếp the đen bị hở lỗ trắng trên đầu và Nón quai thao cắt ngang mặt do tâm ô sprite `180×150` không đồng nhất và thiếu lớp che khuất trước/sau; (3) Khối `4 Việc Chính Hôm Nay` ở Trang chủ và sân khấu 2.5D ở Sảnh Quán Trà bị đẩy xuống dưới ~1.000px bởi các thẻ phụ, thanh `.user-strip` gãy 2 hàng; (4) Font dự phòng `Georgia` làm tách rời dấu tiếng Việt trên Báo Sáng và thơ Quẻ Xăm khi ngoại tuyến.
+- **Quyết định:**
+  - **Bản đồ địa lý chữ S (`data.js`, `app.js`, `styles.css`):** Chiếu trực tiếp kinh vĩ độ thật của dải đất hình chữ S (85 điểm đường cong Bezier mượt trên khung `380×560`) kèm Phú Quốc, Cát Bà, Bạch Long Vĩ, Lý Sơn, Côn Đảo, hai khung chủ quyền Hoàng Sa & Trường Sa có cụm đảo con, huy hiệu địa cầu Người Việt xa quê, lưới kinh vĩ tuyến, la bàn Bắc, ánh đèn lồng tỏa sáng, khóa chống bôi đen `user-select: none` và thanh xem nhanh tỉnh đang chạm `#vn-map-selected-bar`.
+  - **Hiệu chuẩn 2 lớp phụ kiện (`tearoom3d.js`):** Đo khung bao điểm ảnh thật (`ACC_BBOX`) cho toàn bộ phụ kiện, vẽ phần vòng sau gáy / vành sau trong `drawSpritePreHeadAccessory()` trước nhân vật và phần phía trước có cắt biên trán/cằm trong `drawSpriteAccessories()`, đồng thời nới mặt đôn gỗ gụ Tủ đồ (`rx=64`) để 13 vật phẩm đặt gọn trong lòng bàn.
+  - **Bố cục Operate Mode & Serif an toàn (`app.js`, `styles.css`):** Gom `.user-strip` còn 1 hàng ngang (tự mở rộng ở `.xl-font` `24px`), đưa `4 Việc Chính Hôm Nay` lên ngay khung nhìn đầu tiên Trang chủ, đưa sân khấu 2.5D lên đầu Sảnh Quán Trà, thay thông tin rời ở Tủ đồ bằng lưới `2×2` (`.equipped-spec-grid`), chuẩn hóa lưới `.tabs-3` / `.segmented-2` / `.zen-space-tabs` + `.zen-view-bar` và chuyển `--font-serif` sang `"Merriweather", "Cambria", "Noto Serif", "Times New Roman", serif`.
+- **Hệ quả:** Người dùng 55+ mở ứng dụng chạm được ngay việc chính mà không phải cuộn nhiều màn hình, bản đồ và trang phục 2.5D đạt độ chính xác trực quan cao, đồng thời giữ nguyên 100% kiến trúc tĩnh không cần build và đạt tuyệt đối `9/9` Studio Doctor + `32` lượt quét E2E (`20px` & `24px`).

@@ -12,7 +12,7 @@ Bộ tài liệu của dự án được chia nhỏ giống mô hình một Stud
 
 | Tệp / Thư mục | Vai trò dễ hiểu |
 | :--- | :--- |
-| [AGENTS.md](AGENTS.md) & [CLAUDE.md](CLAUDE.md) | **"Nội quy bắt buộc cho AI"** — Mọi AI lập trình (Antigravity, Claude, Cursor, ChatGPT/Codex) khi mở thư mục này sẽ tự đọc tệp này đầu tiên để biết 10 điều cấm làm hỏng game. |
+| [AGENTS.md](AGENTS.md) & [CLAUDE.md](CLAUDE.md) | **"Nội quy bắt buộc cho AI"** — Mọi AI lập trình (Antigravity, Claude, Cursor, ChatGPT/Codex) khi mở thư mục này sẽ tự đọc tệp này đầu tiên để nắm đủ 11 bất biến kỹ thuật cấm vi phạm (bao gồm quy tắc đồng bộ Code ↔ Docs). |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | **"Bản vẽ tổng thể tòa nhà"** — Chỉ rõ game có bao nhiêu tệp, 16 màn hình nằm ở đâu, phần nào nối với phần nào để AI tìm đúng chỗ sửa trong 5 giây. |
 | [docs/01_NGUYEN_TAC_KY_THUAT_STUDIO.md](docs/01_NGUYEN_TAC_KY_THUAT_STUDIO.md) | **"Tiêu chuẩn xây dựng bền vững"** — Quy định cách giữ máy điện thoại mát pin khi chạy 3D, không mất nick/xu của người chơi cũ khi nâng cấp bản mới. |
 | [docs/02_SO_DO_DU_LIEU_VA_API_NOI_BO.md](docs/02_SO_DO_DU_LIEU_VA_API_NOI_BO.md) | **"Sổ đăng ký dữ liệu"** — Ghi rõ cấu trúc lưu điểm, danh hiệu, tin nhắn, bảng cơ sở dữ liệu đám mây để các phần khớp khít với nhau. |

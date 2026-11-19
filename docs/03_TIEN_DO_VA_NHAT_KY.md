@@ -30,7 +30,7 @@
 ## 2. Nhật Ký Phiên Bản Kỹ Thuật (Append-Only Engineering Log)
 
 ### [2026-11-19] — Vẽ Lại Bản Đồ Địa Lý Việt Nam Chuẩn Chữ S, Hiệu Chuẩn Tuyệt Đối 11 Phụ Kiện & Đồ Bày 2.5D, Và Sắp Xếp Lại Bố Cục Khoa Học Toàn Ứng Dụng (`?v=20261119a`)
-- **Tệp cập nhật:** `data.js`, `tearoom3d.js`, `temple3d.js`, `app.js`, `styles.css`, `index.html` (`?v=20261119a`), `sw.js` (`tuoibac-pwa-v29`), `scripts/e2e-regression.mjs`, `ARCHITECTURE.md`, `DESIGN.md`, `docs/03_TIEN_DO_VA_NHAT_KY.md`.
+- **Tệp cập nhật:** `data.js`, `tearoom3d.js`, `temple3d.js`, `app.js`, `styles.css`, `index.html` (`?v=20261119a`), `sw.js` (`tuoibac-pwa-v29`), `scripts/e2e-regression.mjs`, `README.md`, `ARCHITECTURE.md`, `DESIGN.md`, `docs/01_NGUYEN_TAC_KY_THUAT_STUDIO.md`, `docs/02_SO_DO_DU_LIEU_VA_API_NOI_BO.md`, `docs/03_TIEN_DO_VA_NHAT_KY.md`, `docs/04_CAM_NANG_FIX_BUG_VA_KIEM_THU.md`, `docs/05_QUYET_DINH_KIEN_TRUC_ADR.md`.
 - **Chi tiết 3 cụm nâng cấp thẩm mỹ & bố cục (theo chuẩn Impeccable Operate Mode & Craft Floor):**
   1. **Vẽ lại hoàn toàn Bản đồ Điểm danh Việt Nam (`data.js`, `app.js`, `styles.css`):**
      - Thay đa giác gãy khúc cũ bằng bản đồ địa lý chữ S mượt theo phép chiếu kinh vĩ độ thực (`viewBox 380×560`, 85 điểm đường cong Bezier), bổ sung đầy đủ Phú Quốc, Cát Bà, Bạch Long Vĩ, Lý Sơn, Côn Đảo, lưới kinh vĩ tuyến (`10°B–20°B`), la bàn Bắc, chữ nổi `BIỂN ĐÔNG`, hai khung chủ quyền `Hoàng Sa` và `Trường Sa` có cụm đảo con cùng huy hiệu địa cầu `Người Việt xa quê`.

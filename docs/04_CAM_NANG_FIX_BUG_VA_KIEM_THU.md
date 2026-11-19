@@ -17,10 +17,13 @@ Tài liệu này giúp bất kỳ AI Agent nào khi nhận báo lỗi từ Chủ
 | Hai tab trên cùng 1 máy tính mở test chung lại ghi đè tên của nhau | Hai tab dùng chung một khóa `localStorage` nên ghi đè `state` và `clientId` của nhau | Khi test nhiều người trên 1 máy, bắt buộc thêm `?may=1` cho tab 1 và `?may=2` cho tab 2 trên thanh địa chỉ |
 | Các nhãn tên chiếu Bồ Đoàn 3D chồng đè lên nhau khi zoom cận cảnh | Các vật thể cùng nằm trên một hàng ngang (`z` bằng nhau) nên chiếu ra cùng tung độ màn hình `sy` | `temple3d.js` → `syncOverlayTags()`: giữ cơ chế so le độ cao `tagWorldY` chẵn/lẻ (`ca.idx % 2 === 0 ? 1.48 : 1.98`) |
 | Báo lỗi vượt dung lượng `QuotaExceededError` khi chạy lâu ngày | Lưu mảng sự kiện vô hạn trực tiếp vào `localStorage` thay vì `IndexedDB` | Mọi log chi tiết phải ghi qua `telemetry.js` (`IndexedDB`), mảng trong `state` phải cắt trần `.slice(0, 150)` |
+| Phụ kiện 2.5D bị lệch tâm, khăn đè cằm hoặc khăn xếp hở lỗ trắng giữa đầu | Vẽ cả ô `180×150` không cắt theo khung bao thật (`ACC_BBOX`) hoặc không tách lớp vẽ phần sau đầu/cổ trước khi vẽ nhân vật | `tearoom3d.js` → `ACC_BBOX`, `drawSpritePreHeadAccessory()` và `drawSpriteAccessories()` |
+| Bản đồ Việt Nam thô, chấm tỉnh nằm ngoài bờ biển hoặc chữ bản đồ bị bôi đen vàng | Đa giác ít đỉnh lệch phép chiếu hoặc thiếu `user-select: none` trên `#vn-map-svg` / `.map-card` | `data.js` (`PROVINCES` khung `380×560`), `app.js` (`renderCheckin()`), `styles.css` (`.map-card`) |
+| Chữ Báo Sáng hoặc thơ Quẻ Xăm bị tách rời dấu tiếng Việt khi mất mạng/chặn Google Fonts | Font dự phòng `Georgia` trên Windows thiếu glyph tiếng Việt dựng sẵn | `styles.css` (`--font-serif` dùng `"Merriweather", "Cambria", "Noto Serif", "Times New Roman", serif`) |
 
 ---
 
-## 2. Tám "Bẫy Kỹ Thuật" Thực Tế Cần Nhớ (Known Gotchas)
+## 2. Mười Bốn "Bẫy Kỹ Thuật" Thực Tế Cần Nhớ (Known Gotchas)
 
 1. **Nút `Quay về` (`#btn-back`) luôn đưa thẳng về Trang chủ (`"home"`):**
    - Thiết kế cố ý theo nguyên tắc *"1 chạm thoát ra sảnh chính"* cho người cao tuổi (không bắt bấm lùi nhiều tầng). Khi viết kịch bản kiểm thử tự động Playwright, từ bên trong bàn trà bấm `#btn-back` 1 lần là đã ở `"home"` (nút `#btn-back` sẽ ẩn đi ngay sau đó).
@@ -47,6 +50,14 @@ Tài liệu này giúp bất kỳ AI Agent nào khi nhận báo lỗi từ Chủ
 11. **Bảo vệ ván cờ đang đánh dở (Ô ăn quan & Cờ tướng `9×10`) khi thoát/tải lại/Quay lại:**
     - Chỉ các ván thật (`oaq.inProgress` hoặc `xiangqi.inProgress` với `mode !== "puzzle"`) mới bật cảnh báo xác nhận qua `confirmMatchExitOrStay(...)`, `popstate` và `beforeunload`/`pagehide` (Giải Cờ thế `mode === "puzzle"` luôn đổi thế tự do không tính thua).
     - Nếu người chơi bấm F5 hoặc đóng tab khi `forfeitedPendingReload` đã đánh dấu, lần tải lại kế tiếp trong `loadState()` sẽ cộng `+1` vào `gameStats.oaqLosses` / `gameStats.xiangqiLosses` và đặt lại bàn cờ sạch; nếu người chơi chọn *"Ở lại"* trên hộp thoại trình duyệt, bộ đếm `1500ms` tự hủy cờ `forfeitedPendingReload` để không phạt nhầm.
+12. **Cắt khung bao `ACC_BBOX` & tách 2 lớp khi vẽ phụ kiện 2.5D (`tearoom3d.js`):**
+    - Nhiều ô phụ kiện trong `tearoom-regional-acc.webp` có tâm điểm ảnh lệch khỏi giữa ô `180×150` (ví dụ `khanxep_f` có `cx = 102` thay vì `90`), và vòng khăn rằn / vành khăn xếp / nón quai thao có phần nằm sau gáy hoặc phía trong đầu. Luôn dùng `drawCroppedRotated()` với tọa độ đo thật trong `ACC_BBOX`, vẽ lớp sau đầu/cổ trong `drawSpritePreHeadAccessory()` rồi cắt biên trán/cằm (`browClipY` / `chinClipY`) ở lượt trước trong `drawSpriteAccessories()`.
+13. **Giữ phép chiếu địa lý `380×560` của Bản đồ Việt Nam & font serif `Cambria` an toàn dấu tiếng Việt:**
+    - Toàn bộ 34 tọa độ tỉnh đất liền trong `data.js` (`PROVINCES`) khớp với đường cong Bezier `VN_MAINLAND_PATH` trong `renderCheckin()` (`viewBox="0 0 380 560"`). Khi sửa tọa độ tỉnh hoặc đường bờ, bắt buộc chạy kiểm tra điểm-trong-đa-giác để `0` tỉnh trôi ngoài bờ biển, và giữ `user-select: none` trên `.map-card` / `#vn-map-svg`.
+    - Không đổi `--font-serif` về `Georgia` đứng ngay sau `Merriweather` vì Windows tách rời dấu thanh tiếng Việt khi ngoại tuyến; luôn giữ `Cambria`, `Noto Serif`, `Times New Roman`.
+14. **Trật tự khung nhìn đầu tiên (Above-the-Fold) & Cân lưới nút theo đúng số cột:**
+    - Giữ `.user-strip` trên 1 hàng ngang ở chế độ `20px` (tự xuống dòng khi bật `html.xl-font` `24px`), giữ `4 Việc Chính Hôm Nay` ngay phần đầu Trang chủ và sân khấu 2.5D ngay đầu Sảnh Quán Trà.
+    - Không dùng lớp 3 cột `.temple-cam-bar` cho nhóm chỉ có 2 nút (dùng `.segmented-2`), dùng `.tab-bar.tabs-3` cho thanh 3 tab để không tạo khoảng trống hoặc dòng mồ côi.
 
 ---
 
@@ -84,4 +95,4 @@ Các tham số dưới đây được bóc tách trực tiếp từ `app.js` (tr
    ```powershell
    node scripts/e2e-regression.mjs
    ```
-   - Tự động duyệt đủ 16 `route` ở cả cỡ chữ chuẩn (`20px`) và Chữ to (`24px`), xác nhận `scrollWidth <= innerWidth`, `0` lỗi Console / CSP / mạng cục bộ, kiểm thử trọn bộ 8 trang phục + 8 phụ kiện + 12 món đồ bàn trà mới và chạy bộ kiểm thử thâm nhập (Pentest: XSS đa ngữ cảnh, chống né bộ lọc SĐT/link lừa đảo qua khoảng trắng/từ điển phương ngữ, khóa tạm `60s` sau `5` lần nhập sai mã Admin).
+   - Tự động duyệt đủ 16 `route` ở cả cỡ chữ chuẩn (`20px`) và Chữ to (`24px`), xác nhận `scrollWidth <= innerWidth`, `0` lỗi Console / CSP / mạng cục bộ, kiểm thử trọn bộ 6 không gian trà + 14 trang phục + 11 phụ kiện + 13 món đồ bàn trà và chạy bộ kiểm thử thâm nhập (Pentest: XSS đa ngữ cảnh, chống né bộ lọc SĐT/link lừa đảo qua khoảng trắng/từ điển phương ngữ, khóa tạm `60s` sau `5` lần nhập sai mã Admin).
