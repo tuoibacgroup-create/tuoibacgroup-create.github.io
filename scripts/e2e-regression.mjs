@@ -654,6 +654,16 @@ async function main() {
     await page.click("#btn-add-reminder");
     await inspectCurrentViewportErgonomics(page, "almanac-reminders", 20);
 
+    // Intercept actual .ics file download and verify RFC 5545 + VALARM structure
+    const [icsDownload] = await Promise.all([
+      page.waitForEvent("download"),
+      page.click("[data-rem-ics]")
+    ]);
+    const icsTmpPath = await icsDownload.path();
+    const icsRaw = fs.readFileSync(icsTmpPath, "utf8");
+    assert(icsRaw.startsWith("BEGIN:VCALENDAR\r\n"), "ICS file must start with BEGIN:VCALENDAR CRLF without BOM");
+    assert(icsRaw.includes("TRIGGER:-PT30M") && icsRaw.includes("TRIGGER:-P1D"), "ICS file missing 30m and 1d VALARM");
+
     // Verify 24px XL Font ergonomics on all 3 Almanac sub-tabs too
     await page.click("#btn-font-toggle");
     await inspectCurrentViewportErgonomics(page, "almanac-reminders-xl", 24);
@@ -662,6 +672,22 @@ async function main() {
     await page.click("#alm-tab-today");
     await inspectCurrentViewportErgonomics(page, "almanac-today-xl", 24);
     await page.click("#btn-font-toggle");
+
+    // Verify URL Deep Links ?lich=2026-02-17 (Tet Binh Ngo) and ?nhac=1 + Hometown Weekly Race
+    await page.goto(`${baseUrl}/?may=e2e&lich=2026-02-17`, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector("#bloc-calendar-card");
+    const tetText = await page.locator("#bloc-calendar-card").innerText();
+    assert(tetText.includes("1/1") && tetText.includes("Bính Ngọ"), `Expected Tet 1/1 Binh Ngo on ?lich=2026-02-17, got: ${tetText}`);
+
+    await page.goto(`${baseUrl}/?may=e2e&nhac=1`, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector("#rem-create-panel");
+
+    await page.goto(`${baseUrl}/?may=e2e`, { waitUntil: "domcontentloaded" });
+    await page.click('[data-bnav="home"]');
+    await page.click('[data-go="checkin"]');
+    await page.click("#chk-tab-rank");
+    await page.waitForSelector("#btn-invite-hometown-zalo");
+    await inspectCurrentViewportErgonomics(page, "checkin-weekly-race", 20);
 
     // Verify 12s Voice Greeting on Tea Table & .ics calendar alarm builder
     const icsPreview = await page.evaluate(() => {

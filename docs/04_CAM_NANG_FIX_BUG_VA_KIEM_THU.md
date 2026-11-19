@@ -98,8 +98,8 @@ Các tham số dưới đây được bóc tách trực tiếp từ `app.js` (tr
    ```powershell
    node "E:\DuAn\_Dashboard\doctor.mjs"
    ```
-3. **Bước 3 — Chạy bộ kiểm thử hồi quy & Pentest tự động toàn bộ 16 màn hình (`390×844` ở cả `20px` và `24px`):**
+3. **Bước 3 — Chạy bộ kiểm thử hồi quy & Pentest tự động toàn bộ 17 màn hình (`390×844` ở cả `20px` và `24px`):**
    ```powershell
    node scripts/e2e-regression.mjs
    ```
-   - Tự động duyệt đủ 16 `route` ở cả cỡ chữ chuẩn (`20px`) và Chữ to (`24px`), xác nhận `scrollWidth <= innerWidth`, `0` lỗi Console / CSP / mạng cục bộ, kiểm thử trọn bộ 6 không gian trà + 14 trang phục + 11 phụ kiện + 13 món đồ bàn trà và chạy bộ kiểm thử thâm nhập (Pentest: XSS đa ngữ cảnh, chống né bộ lọc SĐT/link lừa đảo qua khoảng trắng/từ điển phương ngữ, khóa tạm `60s` sau `5` lần nhập sai mã Admin).
+   - Tự động duyệt đủ 17 `route` (`34` lượt quét) ở cả cỡ chữ chuẩn (`20px`) và Chữ to (`24px`), xác nhận `scrollWidth <= innerWidth`, `0` lỗi Console / CSP / mạng cục bộ, kiểm thử trọn bộ 6 không gian trà + 14 trang phục + 11 phụ kiện + 13 món đồ bàn trà, kiểm thử Lịch Vạn Niên `UTC+7` + Tra giờ xuất phát + Sổ nhắc việc `.ics` + Lời chào giọng thật `12s` và chạy bộ kiểm thử thâm nhập (Pentest: XSS đa ngữ cảnh, chống né bộ lọc SĐT/link lừa đảo qua khoảng trắng/từ điển phương ngữ, khóa tạm `60s` sau `5` lần nhập sai mã Admin).

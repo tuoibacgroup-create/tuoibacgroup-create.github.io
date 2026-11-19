@@ -5,7 +5,7 @@ Dự án **Tuổi Bạc — Quán Trà Sinh Hoạt Người Cao Tuổi** sử d�
 Trước khi thực hiện bất kỳ thao tác sửa lỗi hay viết tính năng mới nào, bạn **BẮT BUỘC** đọc theo thứ tự:
 
 1. [AGENTS.md](AGENTS.md) — 11 bất biến kỹ thuật cấm vi phạm (đặc biệt là **Bất biến #11: Đồng bộ 100% hai chiều giữa Code thực tế và Hồ sơ `.md`**), bảng điều phối ngữ cảnh và quy trình 6 bước bàn giao.
-2. [ARCHITECTURE.md](ARCHITECTURE.md) — Sơ đồ kiến trúc tổng thể, bản đồ 9 tệp JavaScript và bảng định vị 16 màn hình (`route`) trong `app.js`.
+2. [ARCHITECTURE.md](ARCHITECTURE.md) — Sơ đồ kiến trúc tổng thể, bản đồ 9 tệp JavaScript và bảng định vị 17 màn hình (`route`) trong `app.js`.
 3. Các tài liệu chuyên sâu trong `docs/` tương ứng với phần việc đang làm:
    - [docs/01_NGUYEN_TAC_KY_THUAT_STUDIO.md](docs/01_NGUYEN_TAC_KY_THUAT_STUDIO.md)
    - [docs/02_SO_DO_DU_LIEU_VA_API_NOI_BO.md](docs/02_SO_DO_DU_LIEU_VA_API_NOI_BO.md)

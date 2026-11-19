@@ -23,9 +23,9 @@ Không đọc tràn lan toàn bộ kho mã nguồn cùng lúc. Trước khi sử
 
 | Nhóm công việc / Lỗi cần xử lý | Tài liệu bắt buộc đọc & đồng bộ | Tệp mã nguồn chính |
 | :--- | :--- | :--- |
-| Hiểu cấu trúc tổng thể, danh sách 16 màn hình (`route`) | [ARCHITECTURE.md](ARCHITECTURE.md) | `index.html`, `app.js`, `sw.js` |
+| Hiểu cấu trúc tổng thể, danh sách 17 màn hình (`route`) | [ARCHITECTURE.md](ARCHITECTURE.md) | `index.html`, `app.js`, `sw.js` |
 | Quy chuẩn bộ nhớ 3D, chống đua mạng, quy tắc đồng bộ Code ↔ Docs | [docs/01_NGUYEN_TAC_KY_THUAT_STUDIO.md](docs/01_NGUYEN_TAC_KY_THUAT_STUDIO.md) | Toàn dự án |
-| Tra cứu 20 nhánh `state`, chữ ký hàm 7 namespace, 14 bảng SQL & MQTT | [docs/02_SO_DO_DU_LIEU_VA_API_NOI_BO.md](docs/02_SO_DO_DU_LIEU_VA_API_NOI_BO.md) | `data.js`, `realtime.js`, `supabase_schema.sql` |
+| Tra cứu 22 nhánh `state`, chữ ký hàm 7 namespace, 15 bảng SQL & MQTT | [docs/02_SO_DO_DU_LIEU_VA_API_NOI_BO.md](docs/02_SO_DO_DU_LIEU_VA_API_NOI_BO.md) | `data.js`, `realtime.js`, `supabase_schema.sql` |
 | Kiểm tra tính năng nào đã xong, lịch sử bản dựng, hạng mục tồn đọng | [docs/03_TIEN_DO_VA_NHAT_KY.md](docs/03_TIEN_DO_VA_NHAT_KY.md) | Nhật ký dự án |
 | Chẩn đoán lỗi trắng 3D, tràn màn hình `390px`, Deep Link URL, mất đồng bộ | [docs/04_CAM_NANG_FIX_BUG_VA_KIEM_THU.md](docs/04_CAM_NANG_FIX_BUG_VA_KIEM_THU.md) | Tùy triệu chứng |
 | Lý do chọn kiến trúc hiện tại (tránh tự ý đập đi viết lại sai hướng) | [docs/05_QUYET_DINH_KIEN_TRUC_ADR.md](docs/05_QUYET_DINH_KIEN_TRUC_ADR.md) | Kiến trúc cốt lõi |

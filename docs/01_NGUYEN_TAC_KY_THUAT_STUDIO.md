@@ -24,8 +24,8 @@ Tài liệu này quy định các nguyên tắc lập trình thực chiến đ�
 Trong vận hành game lâu dài, lỗi nghiêm trọng nhất là cập nhật phiên bản mới làm mất Xu, mất Thẻ Hội Viên hoặc văng lỗi trắng màn hình do thiếu trường mới trong `localStorage` của người chơi cũ.
 
 1. **Hợp nhất sâu theo khuôn mẫu mặc định (`loadState`):**
-   - Mọi nhánh con của `state` (`auth`, `social`, `user`, `settings`, `privacy`, `analytics`, `teaRoom`, `newspaper`, `oaq`, `xiangqi`, `watch`, `zen`, `health`, `customTables`) đều phải gộp bằng `Object.assign({}, def.subKey, parsed.subKey || {})`.
-   - Với các trường kiểu mảng (`unlockedTitleFrames`, `giftedPoemIds`, `joinedGroupIds`, `prayers`, `memberLogs`) hoặc đối tượng con sâu hơn (`user.skillPoints`), phải kiểm tra `Array.isArray(...)` hoặc gộp riêng từng khóa sau `Object.assign`.
+   - Mọi nhánh con của `state` (`auth`, `social`, `user`, `settings`, `privacy`, `analytics`, `teaRoom`, `newspaper`, `quiz`, `oaq`, `xiangqi`, `watch`, `zen`, `health`, `customTables`, `almanac`, `reminders`) đều phải gộp bằng `Object.assign({}, def.subKey, parsed.subKey || {})`.
+   - Với các trường kiểu mảng (`unlockedTitleFrames`, `giftedPoemIds`, `joinedGroupIds`, `prayers`, `memberLogs`, `reminders.items`, `reminders.firedKeys`) hoặc đối tượng con sâu hơn (`user.skillPoints`), phải kiểm tra `Array.isArray(...)` hoặc gộp riêng từng khóa sau `Object.assign`.
 2. **Ghi kép chống hỏng tệp (`Dual-Key Vault`):**
    - Hàm `saveState()` luôn ghi bản JSON hợp lệ vào `STORAGE_KEY` chính trước, sau đó sao chép sang `VAULT_BACKUP_KEY` (`_vault_bak`). Khi `JSON.parse` ở khóa chính gặp lỗi do tắt máy đột ngột, `loadState()` tự khôi phục từ `_vault_bak`.
 3. **Tách dữ liệu tăng trưởng vô hạn sang `IndexedDB`:**
@@ -63,7 +63,7 @@ Trong vận hành game lâu dài, lỗi nghiêm trọng nhất là cập nhật 
 4. **Ngôn ngữ tôn trọng, ấm áp, tự nhiên:**
    - Xưng hô nhất quán theo lựa chọn của hội viên (`Anh` / `Chị` hoặc `bác`), không dùng thông báo lỗi mang tính trách phạt kỹ thuật (ví dụ thay *"Invalid input"* bằng *"Mời bác nhập đủ 4 chữ số dễ nhớ"*).
 5. **Ưu tiên khung nhìn đầu tiên (Above-the-Fold) & Dấu tiếng Việt sắc nét:**
-   - Thanh trạng thái `.user-strip` giữ gọn 1 hàng ngang trên màn hình `390px` (tự xuống dòng khi bật `24px`); `4 Việc Chính Hôm Nay` ở Trang chủ và sân khấu 2.5D ở Sảnh Quán Trà phải xuất hiện ngay phần đầu màn hình, không bị đẩy sâu xuống dưới bởi các khối phụ hoặc danh sách chip dài.
+   - Thanh trạng thái `.user-strip` giữ gọn 1 hàng ngang trên màn hình `390px` (tự xuống dòng khi bật `24px`); `6 Việc Chính Hôm Nay` ở Trang chủ, Tờ Lịch Bloc ở màn hình `Lịch Vạn Niên` và sân khấu 2.5D ở Sảnh Quán Trà phải xuất hiện ngay phần đầu màn hình, không bị đẩy sâu xuống dưới bởi các khối phụ hoặc danh sách chip dài.
    - Chuỗi font chữ có chân `--font-serif` bắt buộc đặt `"Merriweather", "Cambria", "Noto Serif", "Times New Roman", serif` (tránh dùng `Georgia` làm dự phòng trực tiếp trên Windows vì gây rời dấu tiếng Việt khi chạy ngoại tuyến).
 6. **Kỷ luật cắt khung bao `ACC_BBOX` & tách 2 lớp phụ kiện 2.5D (`tearoom3d.js`):**
    - Khi thêm hoặc chỉnh sửa phụ kiện đội đầu / khăn quàng trong `tearoom-accessories*.webp` hay `tearoom-regional-acc.webp`, bắt buộc đo khung bao điểm ảnh thật (`ACC_BBOX`) và tách 2 lượt vẽ (`drawSpritePreHeadAccessory` vẽ phần sau cổ/vành sau trước nhân vật → `drawSpriteAccessories` vẽ phần trước kèm cắt biên `browClipY` / `chinClipY` sau nhân vật) để khớp đồng bộ cả 3 tư thế Nam (`col 0`), Nữ (`col 1`) và Lưng (`col 2`).
@@ -83,4 +83,4 @@ Tài liệu kỹ thuật bị lệch so với code thực tế nguy hiểm hơn 
 | Thay đổi bảng màu, cỡ chữ, quy tắc bố cục hoặc phạm vi tính năng sản phẩm | `DESIGN.md` / `PRODUCT.md` |
 | **Mọi lần sửa đổi `.js`, `.css`, `.html`, `.sql`** (thêm tính năng, tinh chỉnh UI, sửa bug) | `docs/03_TIEN_DO_VA_NHAT_KY.md` (cập nhật bảng tiến độ + ghi nối mục mới vào Nhật ký phiên bản) |
 
-Trình kiểm định `scripts/studio-doctor.mjs` (Cổng 7 và Cổng 9) tự động bóc tách danh sách tệp `.js`, biến `window.*`, danh sách `route`, 20 khóa gốc của `state`, 14 bảng SQL, các tham số URL và trạng thái `git status / git log` để đối chiếu trực tiếp với các tệp `.md`. Nếu thiếu bất kỳ mục nào hoặc sửa code mà chưa cập nhật tiến độ, cổng kiểm định sẽ trả mã lỗi `1` (`[FAIL]`).
+Trình kiểm định `scripts/studio-doctor.mjs` (Cổng 7 và Cổng 9) tự động bóc tách danh sách tệp `.js`, biến `window.*`, danh sách 17 `route`, 22 khóa gốc của `state`, 15 bảng SQL, 13 tham số URL và trạng thái `git status / git log` để đối chiếu trực tiếp với các tệp `.md`. Nếu thiếu bất kỳ mục nào hoặc sửa code mà chưa cập nhật tiến độ, cổng kiểm định sẽ trả mã lỗi `1` (`[FAIL]`).

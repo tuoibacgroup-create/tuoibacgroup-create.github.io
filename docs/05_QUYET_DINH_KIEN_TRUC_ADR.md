@@ -1,6 +1,6 @@
 # 05 — Hồ Sơ Quyết Định Kiến Trúc (Architecture Decision Records — ADRs)
 
-Tài liệu này lưu lại **lý do cốt lõi (Why)** đằng sau 11 quyết định kỹ thuật quan trọng nhất của dự án **Tuổi Bạc**, giúp các lập trình viên và AI Agent về sau hiểu rõ bối cảnh, ưu nhược điểm và không vô tình quay lại các phương án đã bị loại bỏ.
+Tài liệu này lưu lại **lý do cốt lõi (Why)** đằng sau 14 quyết định kỹ thuật quan trọng nhất của dự án **Tuổi Bạc**, giúp các lập trình viên và AI Agent về sau hiểu rõ bối cảnh, ưu nhược điểm và không vô tình quay lại các phương án đã bị loại bỏ.
 
 ---
 
@@ -119,3 +119,24 @@ Tài liệu này lưu lại **lý do cốt lõi (Why)** đằng sau 11 quyết �
   - **Áp dụng ngôn ngữ "Mực & Chu Sa · Sáng" (Material Design 3 Light):** Chuyển nền sang giấy ngà sáng dịu `#F7F5F0`, thẻ trắng `#FFFFFF`, viền sáng mảnh `#E5DFD5`, mực chữ `#1C1917` (> 14:1), nhấn Đỏ Chu Sa `#B63A24` / `#FBEAE6` đồng bộ trên 5 thành phần chuẩn: Banner Chu Sa đầu trang (`.m3-hero-banner`), Thanh đáy Active Pill (`.bnav-pill`), Khay Segmented Control (`.m3-seg-bar`), Hàng List-Row (`.m3-list-row`) và Lưới công cụ 3 cột (`.m3-tool-grid`), giữ nguyên bất biến chữ `20px/24px` và nút chính `>= 56px`.
   - **Chia nhỏ thành thẻ & sub-tab gọn trong ~1–2 khung hình (giữ trạng thái tab trong RAM để không phình schema `state`):** Tách 2 ngăn Segmented Control cho `checkin`, `tearoom`, `zen`, `health`, `family`, `watch`; phân trang 4 tin + dải chuyên mục cuộn ngang cho `newspaper`; lật từng bài cho `poetry`; lưới 2 cột cho `profile`; lưới 3 cột + thanh 3 niềm vui ngang cho `home`; giữ toàn bộ các khu vực đồ họa văn hóa (Quán Trà 2.5D, Chánh Điện, Bản đồ GIS nền đêm, Bàn cờ) tương phản nổi bật trên nền sáng mới.
 - **Hệ quả:** Giảm `40%–80%` chiều dài cuộn dọc trên các màn hình nặng nhất, giao diện sáng – hiện đại – rõ mạch, người 55+ thao tác tức thì không phải vuốt dài, đồng thời giữ `0px` tràn ngang ở cả `20px` và `24px`, `0` cảnh báo Impeccable và `100% PASS` trên toàn bộ bộ kiểm định tự động.
+
+---
+
+## ADR-013: Neo Nhãn Tên 2.5D Không Che Mặt & Trật Tự Khung Nhìn Đầu Tiên `384×692` Trên Điện Thoại Android Thật (`?v=20261119d`)
+- **Trạng thái:** Đã chấp thuận & Đang vận hành (2026-11)
+- **Bối cảnh:** Khi kiểm thử thực tế trên Samsung Galaxy A56 (`SM-A566B`, Android 16, `1080×2340 @ 450dpi`), chiều cao hiển thị thực của Chrome di động khi có thanh địa chỉ là `384×692` (thấp hơn `152px` so với khung giả lập `390×844`), và độ lệch `tagDy > 0` trong `drawTableCloseUp25D` đẩy nhãn tên `.seat-status-tag` đè ngang mắt nhân vật.
+- **Quyết định:**
+  - Neo 3 ghế hàng sau (`slot 1, 2, 3`) phía trên chóp tóc/nón và 2 ghế hàng trước (`slot 0, 4`) phía dưới đế giày (`.anchor-below`), kèm bộ giải va chạm 2D tách ngang/nhấc lên và thu gọn nhãn thành `.seat-status-tag.is-compact-seat` dùng chấm màu danh hiệu `.tag-frame-gem` (`0%` che mặt, `0` nhãn chồng lấp trên cả 6 phòng).
+  - Chuyển thanh 6 phòng `.room-strip`, bộ chọn đối thủ/thế cờ Cờ Tướng và 5 bộ Đố Vui sang dải chip 1 hàng cuộn ngang để Sân khấu Bàn Trà, Bàn Cờ Tướng `9×10`, Bàn Ô Ăn Quan và 20 Chiếu Chánh Điện nằm gọn ngay trong khung nhìn đầu tiên `384×692`.
+- **Hệ quả:** Khung cảnh nhân vật 2.5D rõ nét không bị che khuất, thao tác thực tế trên Android thật gọn ngay từ màn hình đầu.
+
+---
+
+## ADR-014: Động Cơ Lịch Vạn Niên Việt Nam (`UTC+7`), Thông Báo Nhắc Việc 3 Tầng (`.ics` + `sw.js` + Web Push) & Lời Chào Giọng Thật `12s` (`?v=20261120a`)
+- **Trạng thái:** Đã chấp thuận & Đang vận hành (2026-11)
+- **Bối cảnh:** Để xây dựng thói quen mở ứng dụng hàng ngày và tạo bản sắc cộng đồng riêng cho người Việt 55+, sản phẩm cần kết hợp nghi thức xé lịch Âm – Dương truyền thống, tra giờ xuất hành cát lành, nhắc lịch công việc cá nhân (kể cả khi trình duyệt di động ngủ đông) và lời chào giọng nói ấm áp không cần gõ phím.
+- **Quyết định:**
+  - **Lịch Vạn Niên ngoại tuyến `UTC+7` trong `data.js` (`TuoiBacData.Almanac`):** Tính điểm Sóc và kinh độ Mặt Trời theo đúng múi giờ Việt Nam `TZ_VN = 7.0` (`0` phụ thuộc API ngoài, chính xác cả các năm lệch lịch Việt – Trung như Tết 2030), diễn giải 12 Trực, 24 Tiết khí dưỡng sinh, 6 Giờ Hoàng Đạo, Hỷ/Tài Thần và Lục Diệu Lý Thuần Phong theo hướng tích cực, không hù dọa mê tín (tuân thủ Bất biến #10).
+  - **Kiến trúc nhắc việc 3 tầng vượt rào ngủ đông PWA:** Phối hợp (1) Bộ canh `30s` gọi `ServiceWorkerRegistration.showNotification` khi mở máy, (2) Xuất tệp lịch chuẩn `RFC 5545 (.ics)` gắn 2 mốc báo thức `VALARM` (`-PT30M` và `-P1D`) vào thẳng ứng dụng Lịch gốc của Samsung/Apple để đổ chuông đúng giờ kể cả khi tắt mạng hoặc đóng hẳn Chrome, và (3) Trình lắng nghe `push` trong `sw.js` + bảng #15 `public.push_subscriptions` cho Web Push máy chủ 24/7.
+  - **Nhịp cộng đồng 3 Ca Vàng & Gói giọng nói `12s` giữ trong RAM:** Quy tụ hội viên vào 3 khung giờ cố định (`06:00`, `15:00`, `19:30`); thu âm giọng nói ngắn ở bitrate `14 kbps` (`<= 21.000` ký tự Base64 truyền qua MQTT `chat`, lưu trong `runtimeVoiceClips` trên RAM thay vì ghi vào `localStorage`).
+- **Hệ quả:** Giữ nguyên kiến trúc 8 module JS tĩnh không cần build, không làm phình `localStorage` hay nghẽn kênh MQTT `24 KB`, đồng thời đảm bảo lịch hẹn quan trọng của các bác đổ chuông chính xác trên điện thoại thật.

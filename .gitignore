@@ -5,3 +5,5 @@ DESIGN.md
 run.bat
 verify.bat
 .vercel/
+.env
+.env.*
