@@ -4189,6 +4189,12 @@
     if (cloneBtn) {
       cloneBtn.addEventListener("click", openCloneRoomDialog);
     }
+
+    const stripEl = els.main.querySelector(".room-strip");
+    const actBtn = stripEl && stripEl.querySelector(".room-tab-btn.active");
+    if (stripEl && actBtn) {
+      stripEl.scrollLeft = Math.max(0, actBtn.offsetLeft - Math.round(stripEl.clientWidth * 0.32));
+    }
   }
 
   function renderGraphicsModeSwitchHtml(opts) {
@@ -4519,25 +4525,19 @@
     const coolLeft = getCooldownRemaining();
     const userSeatIdx = Math.min(4, table.members.length);
 
+    const tableSubLabel = table.isArticleTable
+      ? "Bàn trà ghép theo chủ đề báo sáng"
+      : `${room.shortName} · ${table.members.length + 1}/5 chỗ${table.hostOwnerName ? ` · Chủ bàn: ${table.hostOwnerName}` : ""}`;
+
     els.main.innerHTML = `
       ${renderRoomSwitcherStrip()}
 
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; flex-wrap:wrap;">
-        <div>
-          <h1>${escHtml(table.name)}</h1>
-          <small style="color:var(--ink-secondary);">${escHtml(table.isArticleTable ? "Bàn trà ghép theo chủ đề báo sáng" : `${room.name} · ${table.topic}`)}</small>
-          ${
-            table.hostOwnerName
-              ? `<div style="margin-top:4px;"><span class="host-owner-pill">Chủ bàn: ${escHtml(table.hostOwnerName)}</span></div>`
-              : ""
-          }
-        </div>
-        <div style="display:flex; gap:6px; flex-wrap:wrap;">
-          ${!table.isArticleTable ? `<button type="button" class="btn-mini" id="btn-rename-this-table">Đặt tên bàn (Chủ bàn)</button>` : ""}
-          ${!table.isArticleTable ? `<button type="button" class="btn-mini" id="btn-switch-table-fast">${ico("refresh", "ico-sm")}<span>Đổi bàn khác</span></button>` : ""}
-          <button type="button" class="btn-mini" id="btn-back-lobby">Xem toàn phòng</button>
-        </div>
-      </div>
+      ${renderM3HeroBanner(
+        escHtml(table.name),
+        escHtml(tableSubLabel),
+        "tea",
+        `<button type="button" class="m3-hero-btn" id="btn-back-lobby">← Sảnh</button>`
+      )}
 
       ${
         table.isArticleTable && table.article
@@ -4557,101 +4557,51 @@
           : ""
       }
 
-      <!-- Người đang ngồi cùng bàn (Thu gọn gọn gàng để không che sân khấu 3D) -->
-      <details class="tb-details">
-        <summary>
-          <span>Cùng bàn (${table.members.length + 1}/5): ${escHtml(
-            table.members
-              .map((m) => m.name.split(" ").slice(-1)[0] || m.name)
-              .slice(0, 3)
-              .join(", ")
-          )}</span>
-          <span class="tb-details-hint">${table.realPeerCount ? `${table.realPeerCount} người thật` : "Chạm xem"}</span>
-        </summary>
-        <div class="member-pill-list" style="margin-top:8px;">
-          ${table.members
-            .map((m, mIdx) => {
-              const fObj = getTitleFrame(m.titleFrameId);
-              const frameBadge = fObj && fObj.shortTag ? ` · ${fObj.shortTag}` : "";
-              return `
-            <button type="button" class="member-chip-btn" data-tidx="${state.teaRoom.tableIdx}" data-midx="${mIdx}">
-              ${renderSeniorAvatarSvg(m)}
-              <span class="member-chip-meta">
-                <span class="member-chip-top">
-                  <strong>${escHtml(m.name)} <span class="member-age-inline">· ${m.age} tuổi${escHtml(frameBadge)}</span></strong>
-                  ${m.isRealPeer ? `<span class="real-peer-pill">Người thật</span>` : `<span class="member-chip-prov">${escHtml(m.province)}</span>`}
-                </span>
-                <small>${escHtml((m.habits || []).slice(0, 2).map(getHabitLabel).join(" · ") || m.province)}</small>
-              </span>
-            </button>
-          `;
-            })
-            .join("")}
-        </div>
-      </details>
-
-      <!-- 3D / 2.5D Controls Above Stage -->
-      ${renderGraphicsModeSwitchHtml()}
-
-      <!-- 3D Low-poly / 2.5D Fallback Scene -->
+      <!-- Sân khấu bàn trà 2.5D hiển thị trọn ngay khung hình đầu tiên -->
       <div class="tearoom-stage" id="tearoom-stage">
+        <span class="stage-floating-mode-pill" id="render-mode-badge">Full 2.5D</span>
         <canvas class="tearoom-canvas" id="tearoom-canvas"></canvas>
         <div class="avatar-tags-layer" id="avatar-tags-layer"></div>
       </div>
 
-      <button type="button" class="btn-secondary" id="btn-snap-tea">${ico("camera")}<span>Check-in bàn trà (Ảnh + Mã QR)</span></button>
-
-      ${
-        room.id === "phong-co"
-          ? `
-        <div class="section-block" id="phong-co-table-chess">
-          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
-            <h2>Bàn Cờ Tướng 9×10 Ngay Tại Bàn</h2>
-            <button type="button" class="btn-mini" id="btn-open-fullscreen-xq">Mở rộng toàn màn hình</button>
-          </div>
-          <div id="xq-host-container"></div>
-        </div>
-      `
-          : ""
-      }
-
-      <!-- Trợ lý tự gợi chuyện sau 60 giây im lặng -->
-      <div class="idle-assistant-bar" id="idle-assistant-bar">
-        <span id="idle-assistant-status">${escHtml(room.hostName || "Chị Trà (Trợ lý)")} tự gợi chuyện mới nếu bàn im lặng quá 60 giây</span>
-        <button type="button" class="btn-mini" id="btn-ask-host-icebreak">Nhờ Trợ lý gợi chuyện</button>
+      <!-- Thanh tác vụ nhanh 1 hàng gọn dưới bàn trà -->
+      <div class="table-quick-strip" role="group" aria-label="Tác vụ nhanh tại bàn trà">
+        ${!table.isArticleTable ? `<button type="button" class="table-qchip" id="btn-switch-table-fast">${ico("refresh", "ico-sm")}<span>Đổi bàn</span></button>` : ""}
+        ${!table.isArticleTable ? `<button type="button" class="table-qchip" id="btn-rename-this-table"><span>Tên bàn</span></button>` : ""}
+        <button type="button" class="table-qchip" id="btn-snap-tea">${ico("camera", "ico-sm")}<span>Ảnh QR</span></button>
+        <button type="button" class="table-qchip" id="btn-ask-host-icebreak"><span>Gợi chuyện</span></button>
       </div>
 
-      <!-- Fixed 2-line Tea Table Board -->
+      <!-- Bảng lời bàn trà 2 dòng ngay dưới sân khấu -->
       <div class="tea-board" aria-live="polite">
         <div class="tea-board-head">
-          <strong>Bảng lời bàn trà (Nhịp nhấp trà 5 giây)</strong>
-          <span>Hỗ trợ Sticker &amp; Giọng nói</span>
+          <strong>Bảng lời bàn trà (Nhịp 5s)</strong>
+          <span id="idle-assistant-status">${escHtml(room.hostName || "Chị Trà (Trợ lý)")} trực bàn</span>
         </div>
         <div class="tea-board-lines">
           <div class="tea-line-prev" id="tea-line-prev" ${prev ? "" : "hidden"}>${prev ? formatTeaLineRichHtml(prev, false) : ""}</div>
           <div class="tea-line-curr" id="tea-line-curr">${curr ? formatTeaLineRichHtml(curr, true) : ""}</div>
         </div>
         <div class="tea-board-actions">
-          <button type="button" class="btn-mini" id="btn-view-log">Xem lại 10 câu trước</button>
+          <button type="button" class="btn-mini" id="btn-view-log">10 câu trước</button>
           <button type="button" class="btn-mini" id="btn-listen-board">${ico("speaker", "ico-sm")}<span>Nghe câu mới</span></button>
           <button type="button" class="btn-mini report" id="btn-report-table">${ico("flag", "ico-sm")}<span>Báo cáo</span></button>
         </div>
       </div>
 
-      <!-- Non-verbal Tea Rituals -->
-      <div class="ritual-row">
-        <button type="button" class="ritual-btn" id="btn-pour-tea">${ico("tea", "ico-sm")}<span>Rót trà mời</span></button>
-        <button type="button" class="ritual-btn" id="btn-snack-tea">${ico("flower", "ico-sm")}<span>Mời hạt dưa</span></button>
-        <button type="button" class="ritual-btn" id="btn-poem-tea">${ico("poem", "ico-sm")}<span>Đố câu ca dao</span></button>
-      </div>
-
-      <!-- Khung giao tiếp thu gọn 2 tab: Nói nhanh & Sticker vs Gõ chữ & Giọng nói -->
+      <!-- Khung giao tiếp 2 tab + 3 nghi thức mời trà -->
       <div class="surface-panel">
         <div class="tab-bar" role="tablist" aria-label="Cách gửi lời chào trên bàn trà">
           <button type="button" class="tab-btn ${activeTeaInputTab === "quick" ? "active" : ""}" id="tea-in-tab-quick">Nói nhanh &amp; Sticker</button>
           <button type="button" class="tab-btn ${activeTeaInputTab === "compose" ? "active" : ""}" id="tea-in-tab-compose">Gõ chữ &amp; Nói giọng</button>
         </div>
         <div class="cooldown-note" id="tea-cooldown-note" ${coolLeft > 0 ? "" : "hidden"}>Bác nhấp ngụm trà nghe các bác khác nói nhé... (${coolLeft}s)</div>
+
+        <div class="ritual-row">
+          <button type="button" class="ritual-btn" id="btn-pour-tea">${ico("tea", "ico-sm")}<span>Rót trà mời</span></button>
+          <button type="button" class="ritual-btn" id="btn-snack-tea">${ico("flower", "ico-sm")}<span>Mời hạt dưa</span></button>
+          <button type="button" class="ritual-btn" id="btn-poem-tea">${ico("poem", "ico-sm")}<span>Đố ca dao</span></button>
+        </div>
 
         <div id="tea-pane-quick" ${activeTeaInputTab === "quick" ? "" : "hidden"}>
           <div class="reply-stack" id="tea-reply-stack" style="margin-bottom:10px;">
@@ -4688,6 +4638,53 @@
           <div id="inline-voice-box" hidden></div>
         </div>
       </div>
+
+      ${
+        room.id === "phong-co"
+          ? `
+        <div class="section-block" id="phong-co-table-chess">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+            <h2>Bàn Cờ Tướng 9×10 Ngay Tại Bàn</h2>
+            <button type="button" class="btn-mini" id="btn-open-fullscreen-xq">Mở rộng toàn màn hình</button>
+          </div>
+          <div id="xq-host-container"></div>
+        </div>
+      `
+          : ""
+      }
+
+      <!-- Danh sách bạn cùng bàn thu gọn sạch sẽ -->
+      <details class="tb-details">
+        <summary>
+          <span>Cùng bàn (${table.members.length + 1}/5): ${escHtml(
+            table.members
+              .map((m) => m.name.split(" ").slice(-1)[0] || m.name)
+              .slice(0, 3)
+              .join(", ")
+          )}</span>
+          <span class="tb-details-hint">${table.realPeerCount ? `${table.realPeerCount} người thật` : "Chạm xem"}</span>
+        </summary>
+        <div class="member-pill-list" style="margin-top:8px;">
+          ${table.members
+            .map((m, mIdx) => {
+              const fObj = getTitleFrame(m.titleFrameId);
+              const frameBadge = fObj && fObj.shortTag ? ` · ${fObj.shortTag}` : "";
+              return `
+            <button type="button" class="member-chip-btn" data-tidx="${state.teaRoom.tableIdx}" data-midx="${mIdx}">
+              ${renderSeniorAvatarSvg(m)}
+              <span class="member-chip-meta">
+                <span class="member-chip-top">
+                  <strong>${escHtml(m.name)} <span class="member-age-inline">· ${m.age} tuổi${escHtml(frameBadge)}</span></strong>
+                  ${m.isRealPeer ? `<span class="real-peer-pill">Người thật</span>` : `<span class="member-chip-prov">${escHtml(m.province)}</span>`}
+                </span>
+                <small>${escHtml((m.habits || []).slice(0, 2).map(getHabitLabel).join(" · ") || m.province)}</small>
+              </span>
+            </button>
+          `;
+            })
+            .join("")}
+        </div>
+      </details>
     `;
 
     bindRoomSwitcherEvents();
@@ -5588,11 +5585,11 @@
     const total = packQuestions.length;
 
     const packBarHtml = `
-      <div class="temple-cam-bar" role="tablist" aria-label="Chọn bộ câu đố vui">
+      <div class="news-cat-strip" role="tablist" aria-label="Chọn bộ câu đố vui">
         ${packs
           .map(
             (pk) =>
-              `<button type="button" class="temple-cam-btn ${pk.idx === curPackIdx ? "active" : ""}" data-qpack="${pk.idx}">${escHtml(pk.title.split("·")[0].trim())} · ${escHtml((pk.title.split("·")[1] || "").trim())}</button>`
+              `<button type="button" class="news-cat-chip ${pk.idx === curPackIdx ? "active" : ""}" data-qpack="${pk.idx}">${escHtml(pk.title.split("·")[0].trim())} · ${escHtml((pk.title.split("·")[1] || "").trim())}</button>`
           )
           .join("")}
       </div>
@@ -6776,8 +6773,8 @@
     const hostLabel = o.mode === "async" ? o.hostName || `${state.user.name}` : `${state.user.name}`;
     const guestLabel =
       o.mode === "ai"
-        ? "Máy (Đối thủ tự động)"
-        : o.guestName || "Bạn cờ qua link (Đang chờ)";
+        ? "Máy · Tự động"
+        : o.guestName || "Bạn cờ qua link";
 
     const renderCellStateClasses = (idx) => {
       const cls = [];
@@ -6797,27 +6794,21 @@
           ${renderOaqStoneGradientDefs()}
         </svg>
 
-        <div class="btn-row">
-          <button type="button" class="btn-secondary" id="oaq-mode-ai" ${isAnimating ? "disabled" : ""} style="${o.mode === "ai" ? "background:var(--accent-jade);color:#fff;" : ""}">Đấu với Máy</button>
-          <button type="button" class="btn-secondary" id="oaq-mode-async" ${isAnimating ? "disabled" : ""} style="${o.mode === "async" ? "background:var(--accent-jade);color:#fff;" : ""}">Ván treo thật (Qua link)</button>
+        <div class="m3-seg-bar" role="tablist" aria-label="Chọn chế độ Ô ăn quan">
+          <button type="button" class="m3-seg-btn ${o.mode === "ai" ? "active" : ""}" id="oaq-mode-ai" ${isAnimating ? "disabled" : ""}>Đấu với Máy</button>
+          <button type="button" class="m3-seg-btn ${o.mode === "async" ? "active" : ""}" id="oaq-mode-async" ${isAnimating ? "disabled" : ""}>Ván treo qua link</button>
         </div>
 
         ${
           o.mode === "ai"
             ? `
-          <div class="segmented-2" role="group" aria-label="Chọn mức độ Máy Ô ăn quan">
-            <button type="button" class="temple-cam-btn ${o.aiLevel === "easy" ? "active" : ""}" data-oaq-lvl="easy" ${isAnimating ? "disabled" : ""}>Máy Thư Giãn</button>
-            <button type="button" class="temple-cam-btn ${o.aiLevel !== "easy" ? "active" : ""}" data-oaq-lvl="club" ${isAnimating ? "disabled" : ""}>Máy Cao Thủ Làng</button>
+          <div class="m3-seg-bar" role="group" aria-label="Chọn mức độ Máy Ô ăn quan">
+            <button type="button" class="m3-seg-btn ${o.aiLevel === "easy" ? "active" : ""}" data-oaq-lvl="easy" ${isAnimating ? "disabled" : ""}>Máy Thư Giãn</button>
+            <button type="button" class="m3-seg-btn ${o.aiLevel !== "easy" ? "active" : ""}" data-oaq-lvl="club" ${isAnimating ? "disabled" : ""}>Máy Cao Thủ Làng</button>
           </div>
         `
             : ""
         }
-
-        <div class="game-stats-strip num">
-          <span>Thắng: <strong>${(state.user.gameStats && state.user.gameStats.oaqWins) || 0}</strong></span>
-          <span>Thua: <strong>${(state.user.gameStats && state.user.gameStats.oaqLosses) || 0}</strong></span>
-          <span>Chuỗi thắng: <strong>${(state.user.gameStats && state.user.gameStats.winStreak) || 0}</strong></span>
-        </div>
 
         <!-- Khay mây tre đựng sỏi đã ăn của Hàng Trên (cố định đúng 1 dòng không làm nhảy bàn cờ) -->
         <div class="oaq-score-tray">
@@ -6934,6 +6925,12 @@
         <div class="btn-row">
           <button type="button" class="btn-secondary" id="oaq-btn-hint" ${!isMyTurn || isGameOver || isAnimating ? "disabled" : ""}>Gợi ý nước ăn sỏi</button>
           <button type="button" class="btn-secondary" id="oaq-reset">${isAnimating ? "Bỏ qua &amp; Ván mới" : "Xếp ván mới"}</button>
+        </div>
+
+        <div class="game-stats-strip num">
+          <span>Thắng: <strong>${(state.user.gameStats && state.user.gameStats.oaqWins) || 0}</strong></span>
+          <span>Thua: <strong>${(state.user.gameStats && state.user.gameStats.oaqLosses) || 0}</strong></span>
+          <span>Chuỗi thắng: <strong>${(state.user.gameStats && state.user.gameStats.winStreak) || 0}</strong></span>
         </div>
 
         ${
@@ -7296,25 +7293,17 @@
 
     container.innerHTML = `
       <div class="surface-panel">
-        <!-- Chế độ lớn dễ chọn nhất: Đánh Ván Thật · Giải Cờ Thế · Cúp Đồng Ngũ -->
-        <div class="xq-top-switch" role="tablist" aria-label="Chọn Đánh ván thật, Giải cờ thế hoặc Cúp Đồng Ngũ">
-          <button type="button" class="xq-top-btn ${isPlayGameTab && !isCupTab ? "active" : ""}" id="xq-top-play">Đánh ván thật (32 quân)</button>
-          <button type="button" class="xq-top-btn ${!isPlayGameTab ? "active" : ""}" id="xq-top-puzzle">Giải Cờ thế (${solvedCount}/${XQ.PUZZLES.length} thế)</button>
-        </div>
-        <button type="button" class="xq-top-btn ${isCupTab ? "active" : ""}" id="xq-top-cup" style="width:100%;">
-          ${ico("trophy", "ico-sm")} Cúp Cờ Tướng Đồng Ngũ · 3 Vòng (${cupTitlesCount} Cúp)
-        </button>
-
-        <div class="game-stats-strip num">
-          <span>Thắng: <strong>${(state.user.gameStats && state.user.gameStats.xiangqiWins) || 0}</strong></span>
-          <span>Thua: <strong>${(state.user.gameStats && state.user.gameStats.xiangqiLosses) || 0}</strong></span>
-          <span>Cúp CLB: <strong>${cupTitlesCount}</strong></span>
+        <!-- Thanh chuyển nhanh 3 chế độ gọn 1 hàng để Bàn cờ 9x10 hiện ngay khung đầu -->
+        <div class="m3-seg-bar cols-3" role="tablist" aria-label="Chọn Đánh ván thật, Giải cờ thế hoặc Cúp Đồng Ngũ">
+          <button type="button" class="m3-seg-btn ${isPlayGameTab && !isCupTab ? "active" : ""}" id="xq-top-play">Ván 32 quân</button>
+          <button type="button" class="m3-seg-btn ${!isPlayGameTab ? "active" : ""}" id="xq-top-puzzle">Cờ thế (${solvedCount}/${XQ.PUZZLES.length})</button>
+          <button type="button" class="m3-seg-btn ${isCupTab ? "active" : ""}" id="xq-top-cup">Cúp CLB (${cupTitlesCount})</button>
         </div>
 
         ${
           isCupTab
             ? `
-          <div class="surface-panel jade" style="padding:10px 12px;">
+          <div class="surface-panel jade" style="padding:9px 11px; gap:6px;">
             <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
               <strong>Đại diện: ${escHtml(cupUnitLabel)}</strong>
               <span class="badge-tag jade num">${escHtml(cupRival.roundLabel)}</span>
@@ -7324,62 +7313,31 @@
               <div class="cup-step-pill ${cupObj.round > 1 || (cupObj.round === 1 && cupObj.justWonRound) ? "is-won" : cupObj.round === 1 ? "is-current" : ""}">2. Bán Kết</div>
               <div class="cup-step-pill ${cupObj.justWonTitle ? "is-won" : cupObj.round === 2 ? "is-current" : ""}">3. Chung Kết</div>
             </div>
-            <div style="font-size:0.88rem; color:var(--ink-primary);">
-              Đối thủ CLB bạn: <strong>${escHtml(cupRival.clubName)}</strong> · Đội trưởng ${escHtml(cupRival.captain)}
+            <div style="font-size:0.84rem; color:var(--ink-primary);">
+              Đối thủ: <strong>${escHtml(cupRival.clubName)}</strong> · ${escHtml(cupRival.captain)}
             </div>
-            <small style="font-size:0.84rem; color:var(--ink-secondary);">${escHtml(cupRival.motto)}</small>
-          </div>
-
-          <div class="xq-captured-strip">
-            <span>Đỏ ăn: <strong>${capInfo.capturedByRed.length ? escHtml(capInfo.capturedByRed.join(", ")) : "chưa ăn quân"}</strong></span>
-            <span>Đen ăn: <strong>${capInfo.capturedByBlack.length ? escHtml(capInfo.capturedByBlack.join(", ")) : "chưa ăn quân"}</strong></span>
           </div>
         `
             : isPlayGameTab
             ? `
-          <div class="xq-opp-grid" role="group" aria-label="Chọn đối thủ trên bàn 9×10">
-            <button type="button" class="xq-mode-btn ${x.mode === "ai" && x.aiLevel !== "easy" ? "active" : ""}" data-xq-play="ai-club">Đấu Máy CLB (Khá)</button>
-            <button type="button" class="xq-mode-btn ${x.mode === "ai" && x.aiLevel === "easy" ? "active" : ""}" data-xq-play="ai-easy">Đấu Máy (Thư giãn)</button>
-            <button type="button" class="xq-mode-btn ${x.mode === "local2p" ? "active" : ""}" data-xq-play="local2p">2 Người chung máy</button>
-            <button type="button" class="xq-mode-btn ${x.mode === "async" ? "active" : ""}" data-xq-play="async">Ván treo qua link</button>
-          </div>
-
-          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; font-size:0.92rem;">
-            <span><strong>Quân Đỏ:</strong> ${escHtml(x.mode === "async" ? x.hostName || state.user.name : state.user.name)}</span>
-            <span><strong>Quân Đen:</strong> ${escHtml(
-              x.mode === "local2p"
-                ? "Người chơi 2 (Tại chỗ)"
-                : x.mode === "async"
-                ? x.guestName || "Chờ kỳ hữu..."
-                : x.aiLevel === "easy"
-                ? "Máy (Thư giãn)"
-                : "Máy (Kỳ hữu CLB)"
-            )}</span>
-          </div>
-
-          <div class="xq-captured-strip">
-            <span>Đỏ ăn: <strong>${capInfo.capturedByRed.length ? escHtml(capInfo.capturedByRed.join(", ")) : "chưa ăn quân"}</strong></span>
-            <span>Đen ăn: <strong>${capInfo.capturedByBlack.length ? escHtml(capInfo.capturedByBlack.join(", ")) : "chưa ăn quân"}</strong></span>
+          <div class="news-cat-strip" role="group" aria-label="Chọn đối thủ trên bàn 9×10">
+            <button type="button" class="news-cat-chip ${x.mode === "ai" && x.aiLevel !== "easy" ? "active" : ""}" data-xq-play="ai-club">Máy CLB</button>
+            <button type="button" class="news-cat-chip ${x.mode === "ai" && x.aiLevel === "easy" ? "active" : ""}" data-xq-play="ai-easy">Máy Thư giãn</button>
+            <button type="button" class="news-cat-chip ${x.mode === "local2p" ? "active" : ""}" data-xq-play="local2p">2 Người</button>
+            <button type="button" class="news-cat-chip ${x.mode === "async" ? "active" : ""}" data-xq-play="async">Qua link</button>
           </div>
         `
             : `
-          <div class="surface-panel warm" style="padding:10px 12px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
-              <strong style="font-size:1.02rem;">${escHtml(pz.name)}</strong>
-              <span class="badge-tag amber">${escHtml(pz.difficulty || "Cờ thế")}</span>
-            </div>
-            <p style="font-size:0.88rem; color:var(--ink-secondary);">${escHtml(pz.story || pz.subtitle)}</p>
-          </div>
-
-          <div class="xq-puzzle-strip" role="group" aria-label="Danh sách 6 thế cờ">
+          <div class="news-cat-strip" role="group" aria-label="Danh sách 6 thế cờ">
             ${XQ.PUZZLES.map((item, idx) => {
               const isCurr = idx === (x.puzzleIdx || 0);
               const isDone = (x.solvedPuzzleIds || []).includes(item.id);
-              return `<button type="button" class="btn-mini" data-pz-idx="${idx}" style="justify-content:space-between; ${isCurr ? "background:var(--accent-jade);color:#fff;border-color:var(--accent-jade);" : ""}">
-                <span>${escHtml(item.shortTitle || `Thế ${idx + 1}`)}</span>
-                <span>${isDone ? "Đã giải" : item.difficulty}</span>
-              </button>`;
+              return `<button type="button" class="news-cat-chip ${isCurr ? "active" : ""}" data-pz-idx="${idx}">${escHtml(item.shortTitle || `Thế ${idx + 1}`)}${isDone ? " ✓" : ""}</button>`;
             }).join("")}
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; font-size:0.86rem;">
+            <strong>${escHtml(pz.name)}</strong>
+            <span class="badge-tag amber">${escHtml(pz.difficulty || "Cờ thế")}</span>
           </div>
         `
         }
@@ -7396,7 +7354,31 @@
           })}
         </div>
 
-        <p id="xq-status-line" style="font-weight:700; color:${x.solved ? "var(--accent-jade)" : "var(--accent-terracotta)"};">${escHtml(x.status)}</p>
+        <p id="xq-status-line" style="margin:0; font-size:0.88rem; font-weight:700; color:${x.solved ? "var(--accent-jade)" : "var(--accent-terracotta)"};">${escHtml(x.status)}</p>
+
+        ${
+          isPlayGameTab
+            ? `
+          <div class="xq-captured-strip">
+            <span><strong>Đỏ:</strong> ${escHtml(x.mode === "async" ? x.hostName || state.user.name : state.user.name)} (${capInfo.capturedByRed.length ? escHtml(capInfo.capturedByRed.join(", ")) : "0 ăn"})</span>
+            <span><strong>Đen:</strong> ${escHtml(
+              x.mode === "local2p"
+                ? "Người 2"
+                : x.mode === "async"
+                ? x.guestName || "Chờ bạn..."
+                : x.aiLevel === "easy"
+                ? "Máy dễ"
+                : "Máy CLB"
+            )} (${capInfo.capturedByBlack.length ? escHtml(capInfo.capturedByBlack.join(", ")) : "0 ăn"})</span>
+          </div>
+          <div class="game-stats-strip num">
+            <span>Thắng: <strong>${(state.user.gameStats && state.user.gameStats.xiangqiWins) || 0}</strong></span>
+            <span>Thua: <strong>${(state.user.gameStats && state.user.gameStats.xiangqiLosses) || 0}</strong></span>
+            <span>Cúp CLB: <strong>${cupTitlesCount}</strong></span>
+          </div>
+        `
+            : `<small style="font-size:0.84rem; color:var(--ink-secondary);">${escHtml(pz.story || pz.subtitle)}</small>`
+        }
 
         ${
           Array.isArray(x.moveLog) && x.moveLog.length > 0
@@ -8137,14 +8119,14 @@
         <article class="surface-panel">
           <div class="poem-pager-bar">
             <button type="button" class="btn-mini" id="btn-poem-prev" ${allPoems.length <= 1 ? "disabled" : ""}>← Bài trước</button>
-            <strong class="num" style="font-size:0.84rem; color:var(--accent-terracotta);">Bài ${safePoemIdx + 1}/${allPoems.length} · ${featuredPoem.flowers} hoa</strong>
+            <strong class="num" style="font-size:0.78rem; white-space:nowrap; color:var(--accent-terracotta);">Bài ${safePoemIdx + 1}/${allPoems.length} · ${featuredPoem.flowers} hoa</strong>
             <button type="button" class="btn-mini" id="btn-poem-next" ${allPoems.length <= 1 ? "disabled" : ""}>Bài sau →</button>
           </div>
           <div>
-            <h3 style="margin:0;">${escHtml(featuredPoem.title)}</h3>
-            <small style="color:var(--ink-secondary);">${escHtml(featuredPoem.reciter)} · ${escHtml(featuredPoem.author)}</small>
+            <h3 style="margin:0; font-size:0.98rem;">${escHtml(featuredPoem.title)}</h3>
+            <small style="color:var(--ink-secondary); font-size:0.78rem;">${escHtml(featuredPoem.reciter)} · ${escHtml(featuredPoem.author)}</small>
           </div>
-          <div style="font-family:var(--font-serif); line-height:1.68; background:var(--bg-paper); padding:11px 14px; border-radius:12px; border:1px solid var(--border-subtle);">
+          <div style="font-family:var(--font-serif); font-size:0.92rem; line-height:1.48; background:var(--bg-paper); padding:9px 12px; border-radius:12px; border:1px solid var(--border-subtle);">
             ${(featuredPoem.lines || []).map((l) => `<div>${escHtml(l)}</div>`).join("")}
           </div>
           <div class="btn-row">
@@ -8618,14 +8600,14 @@
 
       <div class="watch-screen">
         <div class="watch-canvas-area">
-          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; width:100%; flex-wrap:wrap;">
-            <span class="badge-tag amber" style="white-space:normal; max-width:100%; text-align:left;">${escHtml(ch.slot)}</span>
-            <small style="color:#E0D4BE; font-weight:600;">39 bác đang xem</small>
-          </div>
           <canvas id="watch-stage-canvas" class="watch-live-canvas" aria-label="Màn hình sân khấu trực tiếp ${escHtml(ch.title)}"></canvas>
-          <h2 style="color:#FFFDF7; font-size:1.05rem;">${escHtml(ch.title)}</h2>
-          <small style="color:#E0D4BE;">${escHtml(ch.instructor)}</small>
-          <button type="button" class="btn-primary btn-inline" id="btn-watch-play">${ico("speaker")}<span>Nghe thuyết minh</span></button>
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; width:100%; flex-wrap:wrap;">
+            <div style="min-width:0; flex:1; text-align:left;">
+              <h2 style="margin:0; color:#FFFDF7; font-size:0.96rem; line-height:1.28;">${escHtml(ch.title)}</h2>
+              <small style="color:#E0D4BE; font-size:0.78rem;">${escHtml(ch.instructor)}</small>
+            </div>
+            <button type="button" class="btn-primary btn-inline" id="btn-watch-play">${ico("speaker", "ico-sm")}<span>Thuyết minh</span></button>
+          </div>
         </div>
         <div class="watch-subtitle">${escHtml(ch.subtitle)}</div>
       </div>
@@ -13428,7 +13410,7 @@
           </div>
           <p style="font-size:0.88rem; color:var(--ink-secondary);">Đọc cho đồng đội 4 số Mã Thẻ (ví dụ <code>TB-103</code> hoặc mã máy bạn) để kết bạn và thấy nhau Online mỗi sáng:</p>
           <div style="display:flex; gap:8px;">
-            <input type="text" class="input-lg num" id="add-friend-code-in" placeholder="Nhập mã TB-xxxx (VD: TB-103)" style="flex:1;" />
+            <input type="text" class="input-lg num" id="add-friend-code-in" placeholder="Mã TB-xxxx" style="flex:1;" />
             <button type="button" class="btn-primary btn-inline" id="btn-add-friend-by-code">+ Kết bạn</button>
           </div>
         </div>

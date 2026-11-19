@@ -556,28 +556,30 @@ window.TempleScene3D = (function () {
     c.restore();
   }
 
-  function drawMiniSeatNameTag(c, w, rawX, rawY, text, isUser, isRealPeer) {
+  function drawMiniSeatNameTag(c, w, rawX, rawY, text, isUser, isRealPeer, canvasH) {
     c.save();
     c.font = `${isUser ? "700" : "600"} 8.5px 'Be Vietnam Pro', system-ui, sans-serif`;
-    const tw = Math.min(64, Math.max(36, c.measureText(text).width + 9));
+    const tw = Math.max(36, c.measureText(text).width + 10);
     const th = 13.5;
-    const px = Math.max(tw * 0.5 + 4, Math.min(w - tw * 0.5 - 4, rawX));
+    const px = Math.max(tw * 0.5 + 5, Math.min(w - tw * 0.5 - 5, rawX));
+    const maxH = canvasH || 9999;
+    const py = Math.max(th * 0.5 + 4, Math.min(maxH - th * 0.5 - 4, rawY));
 
-    roundRectPath(c, px - tw / 2, rawY - th / 2, tw, th, 6.5);
+    roundRectPath(c, px - tw / 2, py - th / 2, tw, th, 6.5);
     c.fillStyle = isUser
       ? "rgba(176, 52, 34, 0.95)"
       : isRealPeer
         ? "rgba(32, 102, 76, 0.92)"
-        : "rgba(24, 14, 9, 0.80)";
+        : "rgba(24, 14, 9, 0.84)";
     c.fill();
-    c.strokeStyle = isUser ? "#FFE082" : "rgba(242, 204, 126, 0.45)";
+    c.strokeStyle = isUser ? "#FFE082" : "rgba(242, 204, 126, 0.52)";
     c.lineWidth = isUser ? 1.2 : 0.8;
     c.stroke();
 
     c.fillStyle = "#FFFDF7";
     c.textAlign = "center";
     c.textBaseline = "middle";
-    c.fillText(text, px, rawY + 0.5);
+    c.fillText(text, px, py + 0.5);
     c.restore();
   }
 
@@ -641,7 +643,8 @@ window.TempleScene3D = (function () {
     });
     renderQueue.sort((a, b) => a.footY - b.footY);
 
-    // Bước 3: Vẽ từng Phật tử tả thực theo thứ tự xa trước - gần sau
+    // Bước 3: Vẽ từng Phật tử tả thực theo thứ tự xa trước - gần sau, gom nhãn tên vẽ lớp trên cùng để không bị đầu hàng trước che chữ
+    const pendingNameTags = [];
     renderQueue.forEach((item) => {
       const sa = item.sa;
       const occ = sa.occupant;
@@ -649,7 +652,7 @@ window.TempleScene3D = (function () {
         ? `BĐ${sa.idx + 1}·Bạn`
         : String(occ.shortLabel || occ.name || "Bác")
           .replace(/^(Anh|Chị|Bác|Cụ|Chú|Cô)\s+/i, "$1 ")
-          .slice(0, 9);
+          .slice(0, 10);
 
       if (item.kind === "seated") {
         const cx = mapX(sa.nx);
@@ -664,7 +667,13 @@ window.TempleScene3D = (function () {
         const breathY = Math.sin(tSec * 1.7 + sa.idx * 0.8) * 0.8;
 
         drawAtlasSprite(c, sitKey, cx - sw * 0.5, cy - sh + ch * 0.24 + breathY, sw, sh);
-        drawMiniSeatNameTag(c, w, cx, cy + ch * 0.52, shortName, sa.isUser, Boolean(occ.isRealPeer));
+        pendingNameTags.push({
+          x: cx,
+          y: cy - sh * 0.22,
+          text: shortName,
+          isUser: sa.isUser,
+          isRealPeer: Boolean(occ.isRealPeer)
+        });
       } else {
         // Nhân vật đang bước đi lên thắp nhang / gõ mõ / thỉnh chuông hoặc đang cúi vái hành lễ
         const wt = sa.walkTask;
@@ -704,8 +713,19 @@ window.TempleScene3D = (function () {
         drawAtlasSprite(c, standKey, -baseW * 0.5, -baseH + stepBobY, baseW, baseH);
         c.restore();
 
-        drawMiniSeatNameTag(c, w, wx, wy + 9, shortName, sa.isUser, Boolean(occ.isRealPeer));
+        pendingNameTags.push({
+          x: wx,
+          y: wy + 7,
+          text: shortName,
+          isUser: sa.isUser,
+          isRealPeer: Boolean(occ.isRealPeer)
+        });
       }
+    });
+
+    // Bước 4: Vẽ nhãn tên rõ nét trên lưng áo tràng, tự kẹp biên trong khung [w × h]
+    pendingNameTags.forEach((nt) => {
+      drawMiniSeatNameTag(c, w, nt.x, nt.y, nt.text, nt.isUser, nt.isRealPeer, h);
     });
   }
 
@@ -1641,6 +1661,14 @@ window.TempleScene3D = (function () {
     ctx = null;
     canvasEl = null;
     tagsLayerEl = null;
+  }
+
+  if (typeof window !== "undefined") {
+    setTimeout(() => {
+      try {
+        ensureImagesLoaded();
+      } catch (e) { }
+    }, 320);
   }
 
   return {

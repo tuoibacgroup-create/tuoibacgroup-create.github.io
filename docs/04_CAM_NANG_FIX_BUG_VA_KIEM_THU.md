@@ -56,9 +56,10 @@ Tài liệu này giúp bất kỳ AI Agent nào khi nhận báo lỗi từ Chủ
 13. **Giữ dữ liệu biên giới GIS Natural Earth 10m (`380×560`) cho Bản đồ Việt Nam & font serif `Cambria` an toàn dấu tiếng Việt:**
     - Đường viền `VN_MAINLAND_PATH` (`290` đỉnh) và `VN_ISLANDS_PATH` (`21` đảo thật) trong `renderCheckin()` cùng toàn bộ 34 tọa độ tỉnh đất liền trong `data.js` (`PROVINCES`) được trích xuất từ **Natural Earth 10m** theo phép chiếu chuẩn `cos 16°` (`SCALE_Y = 32.2`, `SCALE_X = 30.9`, `200 km = 58px`). Không tự sửa tọa độ bằng tay không đối chiếu GIS; mọi cập nhật phải kiểm tra điểm-trong-đa-giác đảm bảo `0` tỉnh trôi ngoài bờ biển, giữ đủ sao vàng Thủ đô Hà Nội, Hoàng Sa (TP. Đà Nẵng), Trường Sa (Khánh Hòa), Vịnh Bắc Bộ, Biển Đông, thước tỷ lệ và `user-select: none` trên `.map-card` / `#vn-map-svg`.
     - Không đổi `--font-serif` về `Georgia` đứng ngay sau `Merriweather` vì Windows tách rời dấu thanh tiếng Việt khi ngoại tuyến; luôn giữ `Cambria`, `Noto Serif`, `Times New Roman`.
-14. **Trật tự khung nhìn đầu tiên (Above-the-Fold) & Cân lưới nút theo đúng số cột:**
-    - Giữ `.user-strip` trên 1 hàng ngang ở chế độ `20px` (tự xuống dòng khi bật `html.xl-font` `24px`), giữ `4 Việc Chính Hôm Nay` ngay phần đầu Trang chủ và sân khấu 2.5D ngay đầu Sảnh Quán Trà.
-    - Không dùng lớp 3 cột `.temple-cam-bar` cho nhóm chỉ có 2 nút (dùng `.segmented-2`), dùng `.tab-bar.tabs-3` cho thanh 3 tab để không tạo khoảng trống hoặc dòng mồ côi.
+14. **Trật tự khung nhìn đầu tiên trên điện thoại thật (`384×692` Android Chrome) & Nhãn nổi 2.5D không che mặt:**
+    - Trên điện thoại Android thật (VD: Samsung Galaxy A56 `1080×2340 @ 450dpi`), chiều cao hiển thị thực tế khi hiện thanh địa chỉ Chrome chỉ còn `692px` (thấp hơn `152px` so với khung giả lập `844px`). Luôn giữ thanh chọn phòng `.room-strip`, bộ chọn đối thủ/thế cờ Cờ Tướng và 5 bộ Đố Vui ở dạng dải chip 1 hàng cuộn ngang (kèm `min-width: 0; max-width: 100%` trên `.surface-panel` để không tràn ngang ở chế độ Chữ to `24px`), giúp Sân khấu Bàn Trà 2.5D, Bàn Cờ Tướng `9×10`, Bàn Ô Ăn Quan và 20 Chiếu Chánh Điện hiển thị trọn ngay khung hình đầu tiên.
+    - Trong `tearoom3d.js` (`drawTableCloseUp25D`), **tuyệt đối không cộng `tagDy` dương đẩy `.seat-status-tag` xuống vùng đầu/mặt nhân vật**: 3 ghế hàng sau (`slot 1, 2, 3`) luôn neo phía trên chóp tóc/nón, 2 ghế hàng trước (`slot 0, 4`) luôn neo dưới đế giày/chân ghế (`.anchor-below`), và bộ giải va chạm 2D chỉ tách ngang hoặc nhấc nhãn hàng sau lên trên.
+    - Khi viết script điều khiển cảm ứng tự động qua `adb` + CDP (`Input.dispatchTouchEvent`), dùng `scrollIntoView({ block: "center" })` cho các nút nằm trong `#app-main` (tránh `block: "nearest"` vì phần tử ở sát đáy viewport sẽ nằm khuất dưới thanh cố định `.bottom-nav` cao `68px`).
 
 ---
 

@@ -67,12 +67,12 @@ window.TeaRoomScene = (function () {
   };
   const roomBackdropsCache = Object.create(null);
   const ROOM_BACKDROP_URLS = {
-    "phong-tra": { lobby: "./assets/tearoom-lobby-25d.jpg?v=20261119c", table: "./assets/tearoom-table-25d.jpg?v=20261119c" },
-    "via-he": { lobby: "./assets/room-viahe-lobby.jpg?v=20261119c", table: "./assets/room-viahe-table.jpg?v=20261119c" },
-    "phong-tho": { lobby: "./assets/room-tho-lobby.jpg?v=20261119c", table: "./assets/room-tho-table.jpg?v=20261119c" },
-    "phong-co": { lobby: "./assets/room-co-lobby.jpg?v=20261119c", table: "./assets/room-co-table.jpg?v=20261119c" },
-    "phong-ccb": { lobby: "./assets/room-ccb-lobby.jpg?v=20261119c", table: "./assets/room-ccb-table.jpg?v=20261119c" },
-    "phong-cay-canh": { lobby: "./assets/room-caycanh-lobby.jpg?v=20261119c", table: "./assets/room-caycanh-table.jpg?v=20261119c" }
+    "phong-tra": { lobby: "./assets/tearoom-lobby-25d.jpg?v=20261119d", table: "./assets/tearoom-table-25d.jpg?v=20261119d" },
+    "via-he": { lobby: "./assets/room-viahe-lobby.jpg?v=20261119d", table: "./assets/room-viahe-table.jpg?v=20261119d" },
+    "phong-tho": { lobby: "./assets/room-tho-lobby.jpg?v=20261119d", table: "./assets/room-tho-table.jpg?v=20261119d" },
+    "phong-co": { lobby: "./assets/room-co-lobby.jpg?v=20261119d", table: "./assets/room-co-table.jpg?v=20261119d" },
+    "phong-ccb": { lobby: "./assets/room-ccb-lobby.jpg?v=20261119d", table: "./assets/room-ccb-table.jpg?v=20261119d" },
+    "phong-cay-canh": { lobby: "./assets/room-caycanh-lobby.jpg?v=20261119d", table: "./assets/room-caycanh-table.jpg?v=20261119d" }
   };
 
   function getRoomBackdropImg(roomId, kind) {
@@ -157,7 +157,7 @@ window.TeaRoomScene = (function () {
     tblImg.onerror = () => {
       assets25D.tableReady = false;
     };
-    tblImg.src = "./assets/tearoom-table-25d.jpg?v=20261119c";
+    tblImg.src = "./assets/tearoom-table-25d.jpg?v=20261119d";
 
     const lobImg = new Image();
     lobImg.onload = () => {
@@ -168,7 +168,7 @@ window.TeaRoomScene = (function () {
     lobImg.onerror = () => {
       assets25D.lobbyReady = false;
     };
-    lobImg.src = "./assets/tearoom-lobby-25d.jpg?v=20261119c";
+    lobImg.src = "./assets/tearoom-lobby-25d.jpg?v=20261119d";
 
     const sprImg = new Image();
     sprImg.onload = () => {
@@ -181,7 +181,7 @@ window.TeaRoomScene = (function () {
     sprImg.onerror = () => {
       assets25D.spritesReady = false;
     };
-    sprImg.src = "./assets/tearoom-sprites.webp?v=20261119c";
+    sprImg.src = "./assets/tearoom-sprites.webp?v=20261119d";
 
     const itmImg = new Image();
     itmImg.onload = () => {
@@ -192,7 +192,7 @@ window.TeaRoomScene = (function () {
     itmImg.onerror = () => {
       assets25D.itemsReady = false;
     };
-    itmImg.src = "./assets/tearoom-items.webp?v=20261119c";
+    itmImg.src = "./assets/tearoom-items.webp?v=20261119d";
 
     const acImg = new Image();
     acImg.onload = () => {
@@ -205,7 +205,7 @@ window.TeaRoomScene = (function () {
     acImg.onerror = () => {
       assets25D.accReady = false;
     };
-    acImg.src = "./assets/tearoom-accessories.webp?v=20261119c";
+    acImg.src = "./assets/tearoom-accessories.webp?v=20261119d";
 
     const itmExImg = new Image();
     itmExImg.onload = () => {
@@ -216,7 +216,7 @@ window.TeaRoomScene = (function () {
     itmExImg.onerror = () => {
       assets25D.itemsExtraReady = false;
     };
-    itmExImg.src = "./assets/tearoom-items-extra.webp?v=20261119c";
+    itmExImg.src = "./assets/tearoom-items-extra.webp?v=20261119d";
 
     const vhItmImg = new Image();
     vhItmImg.onload = () => {
@@ -227,7 +227,7 @@ window.TeaRoomScene = (function () {
     vhItmImg.onerror = () => {
       assets25D.viaheItemReady = false;
     };
-    vhItmImg.src = "./assets/tearoom-viahe-item.webp?v=20261119c";
+    vhItmImg.src = "./assets/tearoom-viahe-item.webp?v=20261119d";
 
     const acExImg = new Image();
     acExImg.onload = () => {
@@ -240,7 +240,7 @@ window.TeaRoomScene = (function () {
     acExImg.onerror = () => {
       assets25D.accExtraReady = false;
     };
-    acExImg.src = "./assets/tearoom-accessories-extra.webp?v=20261119c";
+    acExImg.src = "./assets/tearoom-accessories-extra.webp?v=20261119d";
 
     const regImg = new Image();
     regImg.onload = () => {
@@ -253,7 +253,7 @@ window.TeaRoomScene = (function () {
     regImg.onerror = () => {
       assets25D.regAccReady = false;
     };
-    regImg.src = "./assets/tearoom-regional-acc.webp?v=20261119c";
+    regImg.src = "./assets/tearoom-regional-acc.webp?v=20261119d";
   }
 
   function createCanvas2D(w, h) {
@@ -2403,11 +2403,31 @@ window.TeaRoomScene = (function () {
   function formatSeatTagHtml(opts) {
     const fId = String(opts.titleFrameId || "none").replace(/[^a-z0-9_-]/gi, "");
     const fShort = FRAME_SHORT_LABELS[fId] || "";
-    const prefix = fShort ? `<em class="tag-frame-pill">${escHtml(fShort)}</em> ` : "";
+    const isCompact = Boolean(opts.compact);
+    const gemHex = FRAME_HEX[fId] || "#E2B86B";
+    const prefix = fShort
+      ? isCompact
+        ? `<i class="tag-frame-gem" style="background:${gemHex}" aria-hidden="true"></i>`
+        : `<em class="tag-frame-pill">${escHtml(fShort)}</em> `
+      : "";
     const liveDot = opts.isRealPeer ? `<i class="tag-live-dot" aria-hidden="true"></i>` : "";
     const frameCls = fId !== "none" ? `has-frame frame-${fId}` : "";
     const spkCls = opts.isActive ? "active-speaker" : "";
-    return `<span class="seat-status-tag ${spkCls} ${frameCls}" style="left:${opts.sx.toFixed(0)}px;top:${opts.sy.toFixed(0)}px">${liveDot}${prefix}${escHtml(opts.label)}</span>`;
+    const cmpCls = isCompact ? "is-compact-seat" : "";
+    const ancCls = opts.anchorBelow ? "anchor-below" : "";
+    return `<span class="seat-status-tag ${spkCls} ${frameCls} ${cmpCls} ${ancCls}" style="left:${opts.sx.toFixed(0)}px;top:${opts.sy.toFixed(0)}px">${liveDot}${prefix}${escHtml(opts.label)}</span>`;
+  }
+
+  function shortenSeatDisplayName(rawName, isUser) {
+    if (isUser) return "Bạn";
+    const clean = String(rawName || "").trim().replace(/\s+/g, " ");
+    if (clean.length <= 13) return clean;
+    const parts = clean.split(" ");
+    if (parts.length >= 3) {
+      const candidate = `${parts[0]} ${parts[parts.length - 1]}`;
+      if (candidate.length <= 13) return candidate;
+    }
+    return clean.slice(0, 12).trim() + "…";
   }
 
   function updateTagOverlays3D() {
@@ -2424,7 +2444,7 @@ window.TeaRoomScene = (function () {
       const sx = Math.max(82, Math.min(width - 82, (v.x * 0.5 + 0.5) * width));
       const sy = Math.max(28, Math.min(height - 8, (-v.y * 0.5 + 0.5) * height));
       const isActive = i === activeSeatIdx;
-      const shortName = s.isUser ? "Bạn" : s.name;
+      const shortName = shortenSeatDisplayName(s.name, s.isUser);
       const label = isActive ? `${shortName} · Nói` : s.badge === "Mời trà" ? `${shortName} · Trà` : shortName;
       html += formatSeatTagHtml({
         sx,
@@ -2432,7 +2452,8 @@ window.TeaRoomScene = (function () {
         isActive,
         label,
         titleFrameId: s.titleFrameId,
-        isRealPeer: s.isRealPeer
+        isRealPeer: s.isRealPeer,
+        compact: true
       });
       if (activeStickerPop && activeStickerPop.seatIdx === i && activeStickerPop.expiresAt > Date.now()) {
         const popY = Math.max(26, sy - 30);
@@ -2694,12 +2715,11 @@ window.TeaRoomScene = (function () {
       });
       ctx.restore();
 
-      const sx = Math.max(76, Math.min(w - 76, cx));
-      const sy = Math.max(24, Math.min(h - 10, cy - 28 * sc));
+      const sx = Math.max(58, Math.min(w - 58, cx));
+      const sy = Math.max(22, Math.min(h - 10, cy - 31 * sc));
       const count = tbl.members.length;
-      const hostMark = tbl.isHostNamed ? " · Chủ bàn" : "";
-      const text = isRec ? `${tbl.shortLabel} · Gợi ý (${count}/5)` : `${tbl.shortLabel}${hostMark} · ${count}/5`;
-      tagHtml += `<span class="seat-status-tag ${isRec ? "active-speaker" : ""}" style="left:${sx.toFixed(0)}px;top:${sy.toFixed(0)}px">${escHtml(text)}</span>`;
+      const text = isRec ? `${tbl.shortLabel} · Gợi ý` : `${tbl.shortLabel} · ${count}/5`;
+      tagHtml += `<span class="seat-status-tag is-compact-seat ${isRec ? "active-speaker" : ""}" style="left:${sx.toFixed(0)}px;top:${sy.toFixed(0)}px">${escHtml(text)}</span>`;
     });
 
     if (tagsLayerEl) {
@@ -2777,7 +2797,10 @@ window.TeaRoomScene = (function () {
       ctx.restore();
       return {
         cx: ax,
+        ay: ay + dy,
         headTopY: ay - anchor.v * sprH + dy,
+        footBottomY: ay + (1 - anchor.v) * sprH + dy,
+        sprW,
         sprH
       };
     }
@@ -3071,36 +3094,104 @@ window.TeaRoomScene = (function () {
     ctx.restore();
     const hostMetrics = drawAnchoredSprite(hostSpr, 3, hostNx, hostNy, hostScale, hostFlip, false, stepBob);
 
-    // Generate clean floating status pills & sticker pops anchored right over each person's head
-    let tagHtml = "";
+    // Generate ultra-clean floating status pills (back row above hair/hat, front row below shoes — 0% face occlusion & 0 overlaps)
+    const TAG_H = 19;
+    const placedTags = [];
     list.forEach((entry) => {
-      const slot = chairSlots[entry.slotIdx];
       const m = entry.member;
       const isActive = entry.seatPosIdx === activeSeatIdx;
       const dm = drawnAnchors[entry.slotIdx];
       if (!dm) return;
 
-      const shortName = entry.isUser ? "Bạn" : m.name;
-      const label = isActive ? `${shortName} · Nói` : m.badge === "Mời trà" || m.badge === "Mời bánh" ? `${shortName} · ${m.badge}` : shortName;
-      const sx = Math.max(80, Math.min(w - 80, dm.cx + slot.tagDx));
-      const sy = Math.max(24, Math.min(h - 8, dm.headTopY - 2 + slot.tagDy));
-      tagHtml += formatSeatTagHtml({
-        sx,
-        sy,
+      const shortName = shortenSeatDisplayName(m.name, entry.isUser);
+      const badgeShort = m.badge === "Mời trà" ? "Trà" : m.badge === "Mời bánh" ? "Bánh" : "";
+      const rawLabel = isActive ? `${shortName} · Nói` : badgeShort ? `${shortName} · ${badgeShort}` : shortName;
+      const label = rawLabel.length > 17 ? rawLabel.slice(0, 16).trim() + "…" : rawLabel;
+      const hasGem = Boolean(FRAME_SHORT_LABELS[String(m.titleFrameId || "none")]);
+      const estW = Math.max(46, Math.round(label.length * 6.4 + (hasGem ? 24 : 16)));
+      const halfW = Math.ceil(estW * 0.5);
+      const minX = Math.max(58, halfW + 6);
+      const maxX = Math.min(w - 58, w - halfW - 6);
+
+      const isFrontRow = entry.slotIdx === 0 || entry.slotIdx === 4;
+      const horizShift = entry.slotIdx === 1 ? -14 : entry.slotIdx === 3 ? 14 : entry.slotIdx === 0 ? -4 : 0;
+      const sx = Math.max(minX, Math.min(maxX, dm.cx + horizShift));
+
+      let topY;
+      if (isFrontRow) {
+        const baseUnder = entry.slotIdx === 4 ? dm.ay + dm.sprH * 0.20 : dm.footBottomY + 2;
+        topY = Math.max(Math.round(dm.ay + 12), Math.min(h - TAG_H - 4, Math.round(baseUnder)));
+      } else {
+        // Strictly above the character's crown/headwear (never positive onto forehead/eyes)
+        const crownClearY = Math.round(dm.headTopY + dm.sprH * 0.01);
+        const bottomY = Math.max(TAG_H + 3, Math.min(h - 28, crownClearY));
+        topY = bottomY - TAG_H;
+      }
+
+      placedTags.push({
+        entry,
+        m,
         isActive,
         label,
-        titleFrameId: m.titleFrameId,
-        isRealPeer: m.isRealPeer
+        isFrontRow,
+        sx,
+        topY,
+        estW,
+        halfW,
+        minX,
+        maxX
       });
-      const matchStickerIdx = entry.seatPosIdx;
+    });
+
+    // Deterministic 2D anti-overlap pass (separates horizontally or lifts back-row tags upward, never onto faces)
+    for (let pass = 0; pass < 4; pass++) {
+      for (let i = 0; i < placedTags.length; i++) {
+        for (let j = i + 1; j < placedTags.length; j++) {
+          const a = placedTags[i];
+          const b = placedTags[j];
+          const dx = b.sx - a.sx;
+          const overlapX = a.halfW + b.halfW + 5 - Math.abs(dx);
+          const overlapY = TAG_H + 3 - Math.abs(b.topY - a.topY);
+          if (overlapX > 0 && overlapY > 0) {
+            if (overlapX < overlapY * 2.2) {
+              const push = Math.ceil(overlapX * 0.52) * (dx >= 0 ? 1 : -1);
+              a.sx = Math.max(a.minX, Math.min(a.maxX, a.sx - push));
+              b.sx = Math.max(b.minX, Math.min(b.maxX, b.sx + push));
+            } else if (!a.isFrontRow && !b.isFrontRow) {
+              if (a.topY <= b.topY) {
+                a.topY = Math.max(3, b.topY - TAG_H - 3);
+              } else {
+                b.topY = Math.max(3, a.topY - TAG_H - 3);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    let tagHtml = "";
+    placedTags.forEach((t) => {
+      const sy = t.isFrontRow ? t.topY : t.topY + TAG_H;
+      tagHtml += formatSeatTagHtml({
+        sx: t.sx,
+        sy,
+        isActive: t.isActive,
+        label: t.label,
+        titleFrameId: t.m.titleFrameId,
+        isRealPeer: t.m.isRealPeer,
+        compact: true,
+        anchorBelow: t.isFrontRow
+      });
+      const matchStickerIdx = t.entry.seatPosIdx;
       if (activeStickerPop && activeStickerPop.seatIdx === matchStickerIdx && activeStickerPop.expiresAt > Date.now()) {
-        const popY = Math.max(24, sy - 30);
-        tagHtml += `<span class="seat-sticker-pop" style="left:${sx.toFixed(0)}px;top:${popY.toFixed(0)}px;background:${escHtml(activeStickerPop.bg)};color:${escHtml(activeStickerPop.color)};border-color:${escHtml(activeStickerPop.color)}">${escHtml(activeStickerPop.label)}</span>`;
+        const popY = Math.max(24, t.topY - 6);
+        tagHtml += `<span class="seat-sticker-pop" style="left:${t.sx.toFixed(0)}px;top:${popY.toFixed(0)}px;background:${escHtml(activeStickerPop.bg)};color:${escHtml(activeStickerPop.color)};border-color:${escHtml(activeStickerPop.color)}">${escHtml(activeStickerPop.label)}</span>`;
       }
     });
 
     if (hostServingTimer > 0 && hostMetrics) {
-      tagHtml += `<span class="seat-status-tag" style="left:${Math.max(86, Math.min(w - 86, hostMetrics.cx)).toFixed(0)}px;top:${Math.max(22, hostMetrics.headTopY - 2).toFixed(0)}px">${escHtml(hostActionLabel)}</span>`;
+      const hostShort = hostActionLabel.length > 18 ? hostActionLabel.slice(0, 17).trim() + "…" : hostActionLabel;
+      tagHtml += `<span class="seat-status-tag is-compact-seat" style="left:${Math.max(66, Math.min(w - 66, hostMetrics.cx)).toFixed(0)}px;top:${Math.max(22, hostMetrics.headTopY - 2).toFixed(0)}px">${escHtml(hostShort)}</span>`;
     }
 
     if (tagsLayerEl) {
