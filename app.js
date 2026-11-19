@@ -2750,13 +2750,21 @@
     };
     const totalLamps = D.PROVINCES.reduce((sum, p) => sum + lampsOf(p), 0);
 
-    // Real lat/lon projected smooth cubic Bezier Vietnam mainland coastline + islands (380x560)
+    // Official Natural Earth 10m GIS Vietnam boundary (290 mainland vertices + 21 authentic coastal islands, cos 16° projection on 380x560)
     const VN_MAINLAND_PATH =
-      "M218.2,92.5 C217.2,94 209.1,96.9 205.4,99.7 C201.7,102.5 200.7,106.1 197.7,108.1 C194.7,110.1 191.4,109.7 188.5,111 C185.6,112.3 183.6,113.5 181.5,115.2 C179.4,116.9 178,117.3 176.6,120.4 C175.2,123.5 176.6,129 173.5,132.7 C170.4,136.4 163.1,138.1 159.5,141.1 C155.9,144.1 155.3,145.5 153.6,149.6 C151.9,153.7 151.3,158.7 150.3,163.8 C149.3,168.9 147.7,173.9 147.8,178.1 C147.9,182.3 149.1,183.7 150.9,187.1 C152.7,190.5 154.6,193.5 157.9,196.9 C161.2,200.3 166.3,201.5 169.3,205.9 C172.3,210.3 170.9,215.4 174.8,221.2 C178.7,227 185.8,233.1 190.7,238.3 C195.6,243.5 196.6,245.6 202.3,250.3 C208,255 218,260.9 222.2,264.3 C226.4,267.7 224.6,267.3 225.9,269.4 C227.2,271.5 226.5,272.5 229.2,275.9 C231.9,279.3 237.9,284 240.9,288.2 C243.9,292.4 244.1,294.4 245.8,299.2 C247.5,304 249,309.1 250.6,315.1 C252.2,321.1 253.8,327.1 254.9,332.3 C256,337.5 256.1,339.7 256.5,344 C256.9,348.3 256.4,351.3 257.4,356.3 C258.4,361.3 261.1,367.5 262,371.8 C262.9,376.1 263.6,376.3 262.3,380.2 C261,384.1 256.2,388.8 254.9,393.2 C253.6,397.6 255.4,400.9 254.9,404.9 C254.4,408.9 254.7,411.5 251.9,415.6 C249.1,419.7 244.2,423.8 239.6,427.5 C235,431.2 231.1,433.1 226.2,436 C221.3,438.9 218.5,440.4 212.1,443.7 C205.7,447 196.5,451.9 190.7,454.4 C184.9,456.9 182.2,455.4 179.7,457.7 C177.2,460 178.3,463.7 176.6,467.4 C174.9,471.1 173,474.8 170.2,478.1 C167.4,481.4 165,483.3 161,485.9 C157,488.5 152.4,489.3 147.8,492.3 C143.2,495.3 140.5,499.3 135.6,502.7 C130.7,506.1 123.4,510.3 120.3,511.1 C117.2,511.9 118.5,510.6 118.5,507.3 C118.5,504 118.7,498.8 120.3,493 C121.9,487.2 127.5,480.7 127.3,474.9 C127.1,469.1 122.2,464.5 119.1,460.6 C116,456.7 109.1,456.2 109.9,453.5 C110.7,450.8 119,449 123.4,445.7 C127.8,442.4 129.3,436.8 134.4,435.3 C139.5,433.8 146.6,438.1 151.5,437.3 C156.4,436.5 161.5,435.1 161.9,430.8 C162.3,426.5 151.9,418.6 154,413.3 C156.1,408 164.7,405.7 173.5,401.6 C182.3,397.5 197.4,396.8 202.9,390.6 C208.4,384.4 204.3,375.5 204.1,367 C203.9,358.5 201.7,352.8 201.7,343.3 C201.7,333.8 204.7,324 204.1,314.1 C203.5,304.2 200.7,296.2 198.6,288.2 C196.5,280.2 197.1,276.4 192.5,269.8 C187.9,263.2 178.1,257.5 173.2,251.3 C168.3,245.1 169.6,241.9 165,235.1 C160.4,228.3 153.3,220.9 147.8,213.7 C142.3,206.5 139.7,201.8 134.4,195.2 C129.1,188.6 125,182.6 118.2,176.8 C111.4,171 97.7,168.3 96.7,162.8 C95.7,157.3 110.1,151.7 112.9,146.3 C115.7,140.9 113.3,138.1 112,132.7 C110.7,127.3 111.4,121 105.9,116.5 C100.4,112 89.1,110 81.4,107.8 C73.7,105.6 68.8,109 63.1,104.5 C57.4,100 54.3,90.1 49.9,82.8 C45.5,75.5 37.8,69.5 38.6,64 C39.4,58.5 46.7,54.4 54.2,52.4 C61.7,50.4 72.7,52 80.5,53 C88.3,54 91.6,59.2 97.6,58.2 C103.6,57.2 106.7,51.9 113.6,47.2 C120.5,42.5 130.3,33.2 135.9,32.3 C141.5,31.4 140.8,39.6 144.8,42 C148.8,44.4 152.7,45.1 157.9,45.9 C163.1,46.7 170,43.1 173.5,46.5 C177,49.9 176.1,59 177.2,64.7 C178.3,70.4 176.5,73.9 179.7,78.3 C182.8,82.7 189.1,87 194.7,89.3 C200.3,91.6 206.7,90.6 210.9,91.2 C215.1,91.8 219.2,91 218.2,92.5 Z";
-    const PHU_QUOC_PATH =
-      "M90.6,451.5 C91.3,449.8 95.1,450.8 96.4,452.2 C97.7,453.6 97.2,456.1 97,458.7 C96.8,461.3 96.3,464.7 95.5,465.1 C94.7,465.5 93.8,463.3 92.8,460.6 C91.8,457.9 89.9,453.2 90.6,451.5 Z";
-    const CAT_BA_PATH =
-      "M185.5,114.6 C186.4,114.1 189.1,114.4 189.8,115.2 C190.5,116 189.7,118 188.8,118.5 C187.9,119 185.9,118.3 185.2,117.5 C184.5,116.7 184.6,115.1 185.5,114.6 Z";
+      "M201,310.6L202.2,304.8L198.7,300.3L203.2,299.3L205.5,292.5L189.6,276.2L190.7,273.5L196.6,271.5L198.4,266.7L194.2,266.9L188.3,260.3L183.9,259.3L180.2,251.9L177,255.4L174.8,254.6L170.8,247.7L170.3,237.1L167,237.1L162.8,227.6L159.8,228.4L145.5,215L137.6,198.7L134.5,199.7L128.3,194.6L125.6,189.9L128.4,184.7L126.6,182L114.2,178.9L96.8,166.4L87.6,162.7L95.2,156.4L92.3,150.4L99.3,149.6L111.2,152.8L117.1,146.9L115.8,143.8L121.6,140.3L120.3,134.5L112.6,133.3L113.3,129.1L103.4,126L111.3,119.3L95.1,109.2L85.6,112.9L82.3,119L74.5,113.7L64.9,112.2L57.9,100.6L55.2,99.7L60.6,89.4L60,84.6L56.6,85.2L55.4,81L53.7,86L50.6,86.8L48.7,78.9L34.1,62.9L37.2,62.5L44.1,51.1L56.2,56.4L61.6,61.9L71.3,50.3L76.9,57L81.3,50L91,59.4L94.9,50.2L99.7,49.2L99.6,51.8L102.8,53.6L109.4,48.8L113.9,49.4L117.7,46L116.9,40.8L119.1,38.3L129.4,35.3L132.8,31.7L140.2,41.6L144.5,42.1L149.5,46.6L156.5,44.1L161.9,48.2L169.1,45.9L178.5,50.1L175.1,57.1L171.9,56.6L170.3,61.6L174.5,68.5L174.2,76.7L184.7,77.8L185,81.8L193.4,84.8L195.7,88.6L209,86.8L215.6,92.3L213.7,93.7L213.1,91L209.2,91L203.2,98.5L197.8,97.3L196.5,107L191,109.9L187,109.3L189.6,106.6L185.7,106.8L185,109.5L180.4,108.2L183.2,110.8L181.1,109.9L180.9,111.7L177.9,109.3L178.7,107.1L173.9,107.3L177.4,109.9L175.7,111.7L179,118.3L174.5,117.6L175.8,118.9L172.2,118.8L173.4,121L170.1,122.7L172,122.5L170.1,126L172.4,125.7L172.4,131.3L169.4,130.2L171.7,132.7L165.8,133.3L159.5,140.4L157.4,141.3L157.4,139.1L152.7,142.5L147.6,152.9L148.1,163.5L142.1,172.8L146.4,183.2L146.8,180.1L156.9,196.2L162.2,197.8L164.8,202.6L167.5,200.5L170.3,206.1L167.5,208.3L169.4,213.8L162.9,211.9L169.6,214.7L177.7,225.9L188.4,233.9L191.3,239.3L189.3,241L191.6,239.7L204.6,250L198.7,248.1L208.1,253.7L210.4,259.1L217.2,257.8L217.5,261.3L222.2,261.9L220.3,264.1L222.9,266L222,268.8L223.9,268.6L223.4,263.7L226.1,263.9L224.5,269.1L237,284.5L235.3,286.4L237.4,285.3L239.7,290.6L241.4,287.3L245.3,293.1L242.5,296.2L249.3,309.8L248.6,315.2L256.3,337.3L256,339.8L256.1,341.1L254.5,336.8L253.6,339.3L255.8,348.4L253.2,345.2L257.3,350.5L256.3,352.4L254.3,349.9L253.9,352.9L256.3,354.2L256.3,361.2L261.2,368.8L258.2,371.2L260.7,379.3L259.2,375.6L257.3,376.5L257.8,372.1L253.1,376.9L257.4,385L255.5,386.3L251.4,383.5L254.2,387.9L252.5,391.5L255.8,401.9L253.7,401.6L252.2,393.6L253.2,398.5L250.6,402.1L253.1,402L254.3,406.2L251,411.6L247.4,409.5L246.9,418.9L241.2,419.5L238.4,424.1L232.3,425L225.1,432.7L219.1,432.6L215.8,439.6L210.4,439.8L193.4,449.9L190.4,446.8L184.7,446.6L184.5,439.6L185.8,444.6L184.7,442L183.8,447.1L183.2,442.8L177.2,440.4L176.7,445.3L172,447.5L177,447.1L178.5,453L167.1,451.9L178.6,456.9L176.8,460.4L172.3,462.7L163.1,453.7L168.3,461L175.6,465.5L174.7,467.2L172.2,467.8L157.6,454.6L171.8,470.5L170.9,475.5L166,476.7L148.5,461.9L160.1,476.9L160,482.4L139.8,490.2L126.3,506.1L114.8,507.2L122,503.4L118.6,503.6L120.7,500.5L116.2,500.2L118.7,470.6L119.2,468.8L119.8,466.9L125.5,463.9L126.7,466.7L126.5,463.6L116.1,454.8L111.2,457.5L108.5,448.6L106.2,448.6L109.8,445.1L118.7,445L125.2,439.1L123.5,433.7L125.6,431.6L133,435.1L135.8,431.1L146.4,429.4L150.3,435.5L151.9,433.3L159.5,437.4L158.7,427.6L156.7,428.1L149.2,420.6L148.4,409.3L152,409.2L154.5,405.1L167.2,408.6L166.2,398.7L175.7,398.7L191.5,387.9L194.8,387.1L197.1,389.6L200.8,386.7L202.5,379.2L199.2,364.8L203.6,349.5L194.8,329.5L201,310.6Z";
+    const VN_ISLANDS_PATH =
+      "M187.4,114.3L185.9,114.8L187.2,116.5L186.4,117.4L182.2,113.8L183.6,111.9L188.3,114.3L187.4,114.3Z M181.1,447.3L179.4,447.1L180.6,448.2L180.6,448.8L180,449.1L177.9,447.2L177.3,443.9L178.3,442.8L178.1,442L177.3,440.7L180.3,442.4L181,445.5L180,446.2L181.1,447.3Z M202.9,101.1L203.6,100.9L203.7,100.9L199.5,104.8L196.5,106L199,99L201.4,101.5L202.9,101.1Z M182.1,445L180.4,444L180.4,441.8L182.8,442.9L182.5,444.6L181.7,443.6L182.1,445Z M94.8,450.2L93.8,461.9L92.6,461.1L90.9,454.6L87.5,450.2L90.2,450.3L92,447.6L94.8,450.2Z M160.6,474.3L163.1,475.4L163,476.2L162.8,476.8L162.4,477.1L161.6,477.1L160.1,474.7L161.1,476.1L160.5,476.2L160.1,475.9L156.9,469.8L160.6,474.3Z M174.5,502.7L172.1,505.6L171.7,503.8L174.4,501.8L174.5,502.7Z M256.9,390.6L257.5,391.3L256.3,391.7L254.3,390.4L256.9,390.6Z M201.4,107.3L202.2,106.8L200.8,110.4L197.2,111.2L201.4,107.3Z M190.3,447.2L191.2,448L191.5,448.4L187.6,451.7L187.2,450.1L187.4,449.5L190.3,447.2Z M183,448L184.3,449.1L181.5,450.2L181.2,446.3L182.7,445.3L183,448Z M180,111.8L181,114.7L179.4,111.9L179.4,113L177.9,112.5L178.3,110.2L180,111.8Z M196.8,111.5L196.5,112.5L195.2,111.7L196.8,111.5Z M211.8,95.4L215.8,94.9L210.9,96.7L211.9,95.9L210.5,95.8L211.5,95.5L211.8,95.4Z M201.2,110.8L201.9,109.3L202,108.8L199.3,113.9L199.5,111.7L201.2,110.8Z M204.2,104.2L202.2,108.4L204.2,104.2Z M176.4,453.5L177.5,454.3L169.9,452.6L176.4,453.5Z M208,107.3L209.5,108.4L207.8,109.9L208,107.3Z M258.9,378.3L259.1,379.8L256.4,377.9L258.9,378.3Z M169.4,465.6L170.6,467.6L167.1,464.1L169.4,465.6Z M210.1,96.3L206.9,98L210.1,96.3Z";
+
+    const buildStarPoints = (cx, cy, outerR, innerR) => {
+      const pts = [];
+      for (let i = 0; i < 10; i++) {
+        const ang = (-Math.PI / 2) + (i * Math.PI) / 5;
+        const rad = i % 2 === 0 ? outerR : innerR;
+        pts.push(`${(cx + Math.cos(ang) * rad).toFixed(1)},${(cy + Math.sin(ang) * rad).toFixed(1)}`);
+      }
+      return pts.join(" ");
+    };
 
     const renderMapPillLabel = (cx, cy, labelText, accentStroke) => {
       const estW = Math.max(58, Math.min(116, labelText.length * 6.8 + 18));
@@ -2801,6 +2809,17 @@
           ? "url(#vn-glow-jade)"
           : "url(#vn-glow-amber)";
 
+        const isCapital = p.id === "ha-noi";
+        const markerShape = isCapital
+          ? `
+            <circle cx="${p.x}" cy="${p.y}" r="${(isMe ? 7.4 : 6.2).toFixed(1)}" fill="${isMe ? coreFill : "#C92A2A"}" stroke="#0A1624" stroke-width="1.15" />
+            <polygon points="${buildStarPoints(p.x, p.y, isMe ? 5.2 : 4.4, isMe ? 2.2 : 1.85)}" fill="#FFE37D" stroke="#8C1D18" stroke-width="0.4" pointer-events="none" />
+          `
+          : `
+            <circle cx="${p.x}" cy="${p.y}" r="${r.toFixed(1)}" fill="${coreFill}" stroke="#0A1624" stroke-width="1.15" />
+            <circle cx="${(p.x - r * 0.25).toFixed(1)}" cy="${(p.y - r * 0.25).toFixed(1)}" r="${Math.max(1.0, r * 0.32).toFixed(1)}" fill="#FFFDF4" fill-opacity="0.88" pointer-events="none" />
+          `;
+
         return `
           <g class="map-dot ${isMe ? "is-me" : ""} ${isFocused ? "is-focused" : ""}" data-prov="${p.id}" role="button" tabindex="0" aria-label="${escHtml(p.name)} — ${lamps.toLocaleString("vi-VN")} đèn">
             <circle cx="${p.x}" cy="${p.y}" r="${Math.max(12, haloR).toFixed(1)}" fill="transparent" />
@@ -2812,8 +2831,7 @@
                 ? `<circle cx="${p.x}" cy="${p.y}" r="9.5" fill="none" stroke="#F6D17B" stroke-width="1.2" stroke-opacity="0.8" pointer-events="none" />`
                 : ""
             }
-            <circle cx="${p.x}" cy="${p.y}" r="${r.toFixed(1)}" fill="${coreFill}" stroke="#0A1624" stroke-width="1.15" />
-            <circle cx="${(p.x - r * 0.25).toFixed(1)}" cy="${(p.y - r * 0.25).toFixed(1)}" r="${Math.max(1.0, r * 0.32).toFixed(1)}" fill="#FFFDF4" fill-opacity="0.88" pointer-events="none" />
+            ${markerShape}
           </g>
         `;
       })
@@ -2943,94 +2961,125 @@
               </filter>
             </defs>
 
-            <!-- Deep maritime background & subtle latitude/longitude graticule -->
+            <!-- Deep maritime background & official double cartographic border frame -->
             <rect width="380" height="560" fill="url(#vn-sea-bg)" />
-            <g stroke="#294D6E" stroke-opacity="0.24" stroke-width="0.75" stroke-dasharray="3 5">
-              <line x1="12" y1="142" x2="368" y2="142" />
-              <line x1="12" y1="304" x2="368" y2="304" />
-              <line x1="12" y1="466" x2="368" y2="466" />
-              <line x1="126" y1="14" x2="126" y2="546" />
-              <line x1="278" y1="14" x2="278" y2="546" />
+            <rect x="5" y="5" width="370" height="550" rx="8" fill="none" stroke="#B79252" stroke-opacity="0.34" stroke-width="1" />
+            <rect x="9" y="9" width="362" height="542" rx="5" fill="none" stroke="#4F799E" stroke-opacity="0.28" stroke-width="0.7" />
+
+            <!-- Exact Natural Earth 10m latitude/longitude graticule (20°B, 15°B, 10°B / 105°Đ, 110°Đ) -->
+            <g stroke="#2E567B" stroke-opacity="0.28" stroke-width="0.75" stroke-dasharray="3 5">
+              <line x1="9" y1="140.1" x2="371" y2="140.1" />
+              <line x1="9" y1="301.1" x2="371" y2="301.1" />
+              <line x1="9" y1="462.1" x2="371" y2="462.1" />
+              <line x1="123.2" y1="9" x2="123.2" y2="551" />
+              <line x1="277.7" y1="9" x2="277.7" y2="551" />
             </g>
-            <g fill="#7094B5" fill-opacity="0.52" font-size="8.5" font-family="Be Vietnam Pro, sans-serif">
-              <text x="16" y="138">20°B</text>
-              <text x="16" y="300">15°B</text>
-              <text x="16" y="462">10°B</text>
-            </g>
-
-            <!-- Subtle Compass Rose (top-right) -->
-            <g transform="translate(340, 48)" opacity="0.76">
-              <circle cx="0" cy="0" r="18" fill="#0B1929" fill-opacity="0.65" stroke="#B79252" stroke-opacity="0.45" stroke-width="1" />
-              <path d="M0,-14 L3.2,-3.2 L14,0 L3.2,3.2 L0,14 L-3.2,3.2 L-14,0 L-3.2,-3.2 Z" fill="#D4AE6A" fill-opacity="0.3" stroke="#D4AE6A" stroke-opacity="0.65" stroke-width="0.7" />
-              <polygon points="0,-14 3,-3 0,-5 -3,-3" fill="#F2C96B" />
-              <text x="0" y="-21" text-anchor="middle" fill="#E3C382" font-size="9" font-weight="700">B</text>
-            </g>
-
-            <!-- Sea Watermark -->
-            <text x="292" y="182" text-anchor="middle" fill="#7CA3C6" fill-opacity="0.28" font-size="11.5" font-style="italic" letter-spacing="2.8" font-family="Merriweather, Cambria, serif">BIỂN ĐÔNG</text>
-
-            <!-- Subtle bathymetric coast aura -->
-            <path d="${VN_MAINLAND_PATH}" fill="none" stroke="#3B79A8" stroke-opacity="0.26" stroke-width="7.5" stroke-linejoin="round" />
-
-            <!-- Accurate Vietnam Mainland S-Curve -->
-            <path d="${VN_MAINLAND_PATH}" fill="url(#vn-land-fill)" stroke="#D8B36A" stroke-opacity="0.72" stroke-width="1.5" stroke-linejoin="round" filter="url(#vn-land-shadow)" />
-
-            <!-- Coastal Vietnamese Islands: Phú Quốc, Cát Bà, Bạch Long Vĩ, Lý Sơn, Côn Đảo -->
-            <g fill="#23486B" stroke="#D8B36A" stroke-opacity="0.78" stroke-width="1.1">
-              <path d="${PHU_QUOC_PATH}" />
-              <path d="${CAT_BA_PATH}" />
-              <circle cx="209.3" cy="137.6" r="1.8" />
-              <circle cx="251.9" cy="291.5" r="1.8" />
-              <ellipse cx="174.8" cy="508.2" rx="3.4" ry="2.2" transform="rotate(-24 174.8 508.2)" />
-            </g>
-            <g fill="#9BBAD6" fill-opacity="0.72" font-size="8.5" font-family="Be Vietnam Pro, sans-serif">
-              <text x="80" y="476" text-anchor="middle">Phú Quốc</text>
-              <text x="195" y="516" text-anchor="start">Côn Đảo</text>
+            <g fill="#7FA4C5" fill-opacity="0.62" font-size="8" font-family="Be Vietnam Pro, sans-serif">
+              <text x="14" y="136.5">20°B</text>
+              <text x="14" y="297.5">15°B</text>
+              <text x="14" y="458.5">10°B</text>
+              <text x="123.2" y="21" text-anchor="middle">105°Đ</text>
+              <text x="277.7" y="21" text-anchor="middle">110°Đ</text>
+              <text x="123.2" y="544" text-anchor="middle">105°Đ</text>
+              <text x="277.7" y="544" text-anchor="middle">110°Đ</text>
             </g>
 
-            <!-- Quần đảo Hoàng Sa Cartographic Sovereignty Medallion -->
+            <!-- Cartographic Title (top-left open margin, cleanly left of 105°Đ meridian & Lũng Cú) -->
             <g>
-              <rect x="282" y="218" width="86" height="68" rx="12" fill="#0B1928" fill-opacity="0.82" stroke="#C9A35E" stroke-opacity="0.52" stroke-width="1.1" />
-              <circle cx="325" cy="256" r="20" fill="none" stroke="#3B6488" stroke-opacity="0.35" stroke-dasharray="2 3" />
-              <!-- Paracel archipelago islet silhouettes -->
-              <g fill="#4F7DA3" fill-opacity="0.75">
-                <circle cx="315" cy="252" r="1.8" />
-                <circle cx="321" cy="249" r="1.5" />
-                <circle cx="333" cy="251" r="2.0" />
-                <circle cx="329" cy="260" r="1.6" />
-                <circle cx="318" cy="262" r="1.4" />
-                <circle cx="338" cy="257" r="1.3" />
+              <text x="15" y="25" fill="#F2D89A" font-size="9.2" font-weight="700" letter-spacing="0.4" font-family="Merriweather, Cambria, serif">BẢN ĐỒ VIỆT NAM</text>
+              <text x="15" y="36" fill="#92B2CE" font-size="7.3" font-family="Be Vietnam Pro, sans-serif">34 tỉnh, thành phố</text>
+            </g>
+
+            <!-- Official Compass Rose (top-right) -->
+            <g transform="translate(338, 48)" opacity="0.84">
+              <circle cx="0" cy="0" r="17" fill="#0A1726" fill-opacity="0.72" stroke="#C7A25D" stroke-opacity="0.52" stroke-width="1" />
+              <path d="M0,-13.5 L3,-3 L13.5,0 L3,3 L0,13.5 L-3,3 L-13.5,0 L-3,-3 Z" fill="#D4AE6A" fill-opacity="0.32" stroke="#D4AE6A" stroke-opacity="0.7" stroke-width="0.7" />
+              <polygon points="0,-13.5 2.8,-2.8 0,-4.8 -2.8,-2.8" fill="#F6CE70" />
+              <text x="0" y="-20" text-anchor="middle" fill="#EAD093" font-size="8.8" font-weight="700">B</text>
+              <text x="22" y="3" text-anchor="middle" fill="#89ACC9" font-size="7">Đ</text>
+              <text x="0" y="25" text-anchor="middle" fill="#89ACC9" font-size="7">N</text>
+              <text x="-22" y="3" text-anchor="middle" fill="#89ACC9" font-size="7">T</text>
+            </g>
+
+            <!-- Sea & Gulf Names -->
+            <text x="226" y="162" text-anchor="middle" fill="#84ABD0" fill-opacity="0.44" font-size="8.5" font-style="italic" letter-spacing="1.4" font-family="Merriweather, Cambria, serif">VỊNH BẮC BỘ</text>
+            <text x="306" y="186" text-anchor="middle" fill="#8BB2D6" fill-opacity="0.4" font-size="11.5" font-style="italic" letter-spacing="2.6" font-family="Merriweather, Cambria, serif">BIỂN ĐÔNG</text>
+
+            <!-- Subtle bathymetric shallow-shelf aura -->
+            <path d="${VN_MAINLAND_PATH}" fill="none" stroke="#3C7DAE" stroke-opacity="0.25" stroke-width="6.5" stroke-linejoin="round" stroke-linecap="round" />
+
+            <!-- Authentic Natural Earth 10m Vietnam Mainland Boundary -->
+            <path d="${VN_MAINLAND_PATH}" fill="url(#vn-land-fill)" stroke="#E0BC74" stroke-opacity="0.82" stroke-width="1.35" stroke-linejoin="round" stroke-linecap="round" filter="url(#vn-land-shadow)" />
+
+            <!-- 21 Authentic Coastal Vietnamese Islands (Phú Quốc, Cát Bà, Vân Đồn, Côn Đảo, Hòn Tre...) + Bạch Long Vĩ & Lý Sơn -->
+            <g fill="#23486B" stroke="#E0BC74" stroke-opacity="0.82" stroke-width="0.95" stroke-linejoin="round">
+              <path d="${VN_ISLANDS_PATH}" />
+              <circle cx="207.5" cy="135.9" r="1.7" />
+              <circle cx="250.5" cy="288.9" r="1.7" />
+            </g>
+            <g fill="#9EC0DC" fill-opacity="0.78" font-size="7.8" font-family="Be Vietnam Pro, sans-serif">
+              <text x="212.5" y="138.2" text-anchor="start">Bạch Long Vĩ</text>
+              <text x="255" y="294" text-anchor="start">Lý Sơn</text>
+              <text x="80" y="474" text-anchor="middle">Đảo Phú Quốc</text>
+              <text x="179" y="507" text-anchor="start">Côn Đảo</text>
+            </g>
+
+            <!-- Quần đảo Hoàng Sa Official Sovereignty Inset (TP. Đà Nẵng · Việt Nam) -->
+            <g>
+              <rect x="269" y="206" width="98" height="74" rx="10" fill="#0B1928" fill-opacity="0.84" stroke="#D4AE6A" stroke-opacity="0.62" stroke-width="1.05" stroke-dasharray="4 3" />
+              <circle cx="318" cy="246" r="19" fill="none" stroke="#427097" stroke-opacity="0.34" stroke-dasharray="2 3" />
+              <!-- Paracel archipelago islet clusters -->
+              <g fill="#5C8EB8" fill-opacity="0.84">
+                <circle cx="307" cy="242" r="1.7" />
+                <circle cx="313" cy="238" r="1.5" />
+                <circle cx="326" cy="240" r="2.0" />
+                <circle cx="322" cy="250" r="1.6" />
+                <circle cx="311" cy="252" r="1.4" />
+                <circle cx="332" cy="246" r="1.4" />
+                <circle cx="304" cy="249" r="1.2" />
               </g>
-              <text x="325" y="234" text-anchor="middle" fill="#EFE0BE" font-size="9.8" font-weight="700" font-family="Be Vietnam Pro, sans-serif">Hoàng Sa</text>
-              <text x="325" y="279" text-anchor="middle" fill="#8FB1CE" font-size="8" font-family="Be Vietnam Pro, sans-serif">Việt Nam</text>
+              <text x="318" y="220" text-anchor="middle" fill="#F5E5BF" font-size="8.2" font-weight="700" font-family="Be Vietnam Pro, sans-serif">Quần đảo Hoàng Sa</text>
+              <text x="318" y="273" text-anchor="middle" fill="#9BBCD8" font-size="7.2" font-family="Be Vietnam Pro, sans-serif">TP. Đà Nẵng · Việt Nam</text>
             </g>
 
-            <!-- Quần đảo Trường Sa Cartographic Sovereignty Medallion -->
+            <!-- Quần đảo Trường Sa Official Sovereignty Inset (Khánh Hòa · Việt Nam) -->
             <g>
-              <rect x="276" y="408" width="92" height="72" rx="12" fill="#0B1928" fill-opacity="0.82" stroke="#C9A35E" stroke-opacity="0.52" stroke-width="1.1" />
-              <circle cx="320" cy="446" r="22" fill="none" stroke="#3B6488" stroke-opacity="0.35" stroke-dasharray="2 3" />
-              <!-- Spratly archipelago islet silhouettes -->
-              <g fill="#4F7DA3" fill-opacity="0.75">
-                <circle cx="308" cy="442" r="1.8" />
-                <circle cx="316" cy="437" r="1.6" />
-                <circle cx="328" cy="440" r="2.0" />
-                <circle cx="336" cy="447" r="1.5" />
-                <circle cx="324" cy="454" r="1.7" />
-                <circle cx="312" cy="452" r="1.4" />
-                <circle cx="333" cy="456" r="1.3" />
+              <rect x="269" y="406" width="98" height="80" rx="10" fill="#0B1928" fill-opacity="0.84" stroke="#D4AE6A" stroke-opacity="0.62" stroke-width="1.05" stroke-dasharray="4 3" />
+              <circle cx="318" cy="448" r="21" fill="none" stroke="#427097" stroke-opacity="0.34" stroke-dasharray="2 3" />
+              <!-- Spratly archipelago islet clusters -->
+              <g fill="#5C8EB8" fill-opacity="0.84">
+                <circle cx="305" cy="442" r="1.7" />
+                <circle cx="313" cy="437" r="1.6" />
+                <circle cx="326" cy="440" r="2.0" />
+                <circle cx="334" cy="447" r="1.5" />
+                <circle cx="322" cy="456" r="1.7" />
+                <circle cx="310" cy="454" r="1.4" />
+                <circle cx="331" cy="458" r="1.3" />
+                <circle cx="302" cy="451" r="1.2" />
               </g>
-              <text x="322" y="424" text-anchor="middle" fill="#EFE0BE" font-size="9.8" font-weight="700" font-family="Be Vietnam Pro, sans-serif">Trường Sa</text>
-              <text x="322" y="473" text-anchor="middle" fill="#8FB1CE" font-size="8" font-family="Be Vietnam Pro, sans-serif">Việt Nam</text>
+              <text x="318" y="421" text-anchor="middle" fill="#F5E5BF" font-size="8.2" font-weight="700" font-family="Be Vietnam Pro, sans-serif">Quần đảo Trường Sa</text>
+              <text x="318" y="479" text-anchor="middle" fill="#9BBCD8" font-size="7.2" font-family="Be Vietnam Pro, sans-serif">Khánh Hòa · Việt Nam</text>
             </g>
 
-            <!-- Người Việt Xa Quê Medallion (cleanly placed in lower-left open zone) -->
+            <!-- Người Việt Xa Quê Medallion (western margin, distinct cool-slate frame) -->
             <g>
-              <rect x="14" y="304" width="88" height="72" rx="12" fill="#0B1928" fill-opacity="0.82" stroke="#5386A8" stroke-opacity="0.52" stroke-width="1.1" />
-              <circle cx="58" cy="342" r="15" fill="none" stroke="#649AC0" stroke-opacity="0.4" stroke-width="0.9" />
-              <ellipse cx="58" cy="342" rx="7.5" ry="15" fill="none" stroke="#649AC0" stroke-opacity="0.35" stroke-width="0.8" />
-              <line x1="43" y1="342" x2="73" y2="342" stroke="#649AC0" stroke-opacity="0.35" stroke-width="0.8" />
-              <text x="58" y="320" text-anchor="middle" fill="#EFE0BE" font-size="9.8" font-weight="700" font-family="Be Vietnam Pro, sans-serif">Xa quê</text>
-              <text x="58" y="369" text-anchor="middle" fill="#8FB1CE" font-size="8" font-family="Be Vietnam Pro, sans-serif">Năm châu</text>
+              <rect x="16" y="308" width="84" height="72" rx="10" fill="#0B1928" fill-opacity="0.84" stroke="#5789AC" stroke-opacity="0.54" stroke-width="1.05" />
+              <circle cx="58" cy="344" r="15" fill="none" stroke="#689EC4" stroke-opacity="0.42" stroke-width="0.9" />
+              <ellipse cx="58" cy="344" rx="7.5" ry="15" fill="none" stroke="#689EC4" stroke-opacity="0.36" stroke-width="0.8" />
+              <line x1="43" y1="344" x2="73" y2="344" stroke="#689EC4" stroke-opacity="0.36" stroke-width="0.8" />
+              <text x="58" y="323" text-anchor="middle" fill="#EFE0BE" font-size="9.2" font-weight="700" font-family="Be Vietnam Pro, sans-serif">Xa quê</text>
+              <text x="58" y="372" text-anchor="middle" fill="#93B6D4" font-size="7.6" font-family="Be Vietnam Pro, sans-serif">Năm châu</text>
+            </g>
+
+            <!-- True Graphic Scale Bar (bottom-left: 58 px = 200 km at SCALE_Y 32.2 px/deg) -->
+            <g transform="translate(20, 524)">
+              <rect x="0" y="3" width="29" height="4" fill="#D8B36A" stroke="#D8B36A" stroke-width="0.7" />
+              <rect x="29" y="3" width="29" height="4" fill="#0B1928" stroke="#D8B36A" stroke-width="0.7" />
+              <g fill="#9BBCD8" font-size="7.2" font-family="Be Vietnam Pro, sans-serif">
+                <text x="0" y="0" text-anchor="start">0</text>
+                <text x="29" y="0" text-anchor="middle">100</text>
+                <text x="58" y="0" text-anchor="middle">200 km</text>
+              </g>
             </g>
 
             <!-- 34 Province + Island + Diaspora Lantern Dots -->

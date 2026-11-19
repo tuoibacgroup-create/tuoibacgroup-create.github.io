@@ -9,8 +9,8 @@
 | STT | Phân hệ chức năng | Trạng thái | Tệp phụ trách chính | Ghi chú kỹ thuật |
 | :---: | :--- | :---: | :--- | :--- |
 | 1 | Trang chủ Mobile-First, Sổ Tay 3 Niềm Vui & Tự Chuyển Ngày Mới | Hoàn thành | `app.js`, `styles.css` | Đưa 4 Việc Chính lên ngay khung nhìn đầu tiên, thanh `.user-strip` gọn 1 hàng, `ensureDailyRollover`, chữ 20px/24px |
-| 2 | Điểm danh bình an & Bản đồ Địa lý chữ S 34 tỉnh thành mới | Hoàn thành | `app.js`, `data.js`, `styles.css` | Bản đồ SVG chiếu kinh vĩ độ thực có Phú Quốc/Côn Đảo/Hoàng Sa/Trường Sa/Xa quê, la bàn, đèn lồng tỏa sáng & thanh xem nhanh tỉnh chạm |
-| 3 | 6 Không Gian Trà (Có Trà Đá Vỉa Hè), 14 Áo Ba Miền · 11 Phụ Kiện Khớp Tọa Độ · 13 Đồ Bày | Hoàn thành | `tearoom3d.js`, `assets/room-*`, `assets/tearoom-*`, `data.js` | Cắt sát khung bao `ACC_BBOX` + tách lớp trước/sau cho 11 phụ kiện khớp tuyệt đối Nam/Nữ/Lưng, bảng thông số 2×2 Tủ đồ & sân khấu Sảnh đặt đầu trang |
+| 2 | Điểm danh bình an & Bản đồ Việt Nam chuẩn GIS Natural Earth 10m | Hoàn thành | `app.js`, `data.js`, `styles.css` | Bản đồ GIS 290 đỉnh đất liền + 21 đảo ven bờ (`cos 16°`), sao vàng Thủ đô Hà Nội, Hoàng Sa (TP. Đà Nẵng) & Trường Sa (Khánh Hòa), Vịnh Bắc Bộ, Biển Đông, thước tỷ lệ `0–200 km` & `0` tỉnh trôi ngoài bờ |
+| 3 | 6 Không Gian Trà (Có Trà Đá Vỉa Hè), 14 Áo Ba Miền · 11 Phụ Kiện Khớp Tọa Độ · 13 Đồ Bày | Hoàn thành | `tearoom3d.js`, `assets/room-*`, `assets/tearoom-*`, `data.js` | Cắt sát `ACC_BBOX` + mặt nạ `evenodd` đảo ngược & vòng cung trán cong cho 11 phụ kiện liền mạch tuyệt đối Nam/Nữ/Lưng (không cắt ngang khăn rằn, không cắt dây qua mặt nón quai thao), lưới 2×2 Tủ đồ |
 | 4 | Chủ bàn đặt tên bàn đàm đạo & Gửi 8 Sticker 1 chạm | Hoàn thành | `app.js`, `tearoom3d.js` | Bong bóng Sticker nổi trên đầu nhân vật 3D, đồng bộ qua `custom_tea_tables` |
 | 5 | Trợ lý Quán Trà tự gợi chuyện sau 60s & Nhịp nhấp trà 10s | Hoàn thành | `app.js` | Rót trà 3D tự động khi bàn yên ắng quá 60 giây |
 | 6 | Nhập liệu giọng nói, Sổ phương ngữ & 15 Clip Giọng Thu Sẵn | Hoàn thành | `app.js`, `data.js`, `assets/audio/*.mp3` | 15 tệp `.mp3` tiếng Việt ngoại tuyến cho máy Android cũ + đồng bộ `phonetic_dictionary` |
@@ -28,6 +28,17 @@
 ---
 
 ## 2. Nhật Ký Phiên Bản Kỹ Thuật (Append-Only Engineering Log)
+
+### [2026-11-19] — Chuẩn Hóa Bản Đồ Việt Nam Bằng Dữ Liệu GIS Thực Natural Earth 10m & Khử Tuyệt Đối Mối Cắt Phụ Kiện 2.5D Bằng Mặt Nạ `evenodd` (`?v=20261119b`)
+- **Tệp cập nhật:** `data.js`, `app.js`, `tearoom3d.js`, `index.html` (`?v=20261119b`), `sw.js` (`tuoibac-pwa-v30`), `ARCHITECTURE.md`, `DESIGN.md`, `docs/03_TIEN_DO_VA_NHAT_KY.md`, `docs/04_CAM_NANG_FIX_BUG_VA_KIEM_THU.md`, `docs/05_QUYET_DINH_KIEN_TRUC_ADR.md`.
+- **Chi tiết 2 cụm nâng cấp độ chính xác tuyệt đối (sau rà soát ảnh thực tế cùng Chủ dự án):**
+  1. **Thay đường viền vẽ tay bằng biên giới GIS chuẩn Natural Earth 10m & quy chuẩn bản đồ hành chính Việt Nam (`data.js`, `app.js`):**
+     - Trích xuất trực tiếp ranh giới quốc gia Việt Nam (`VNM`) từ dữ liệu GIS **Natural Earth 10m** (`290` đỉnh đất liền tối ưu bằng Douglas-Peucker `eps = 1.55px` + `21` đảo ven bờ thật: Phú Quốc, Cát Bà, Vân Đồn, Côn Đảo, Cần Giờ, Cù Lao Dung, Hòn Tre...) chiếu theo tỷ lệ kinh vĩ độ thực `cos(16°)` lên khung `viewBox="0 0 380 560"`; hiệu chuẩn lại toàn bộ 34 tỉnh thành mới với `0` điểm nằm ngoài bờ biển.
+     - Bổ sung đầy đủ quy chuẩn bản đồ Việt Nam: khung viền kép, tiêu đề `BẢN ĐỒ VIỆT NAM · 34 tỉnh, thành phố`, lưới kinh vĩ tuyến chính xác (`10°B / 15°B / 20°B` và `105°Đ / 110°Đ`), la bàn 4 hướng `B–Đ–N–T`, thước tỷ lệ đồ họa đúng toán học `0 — 100 — 200 km` (`58px = 200 km`), **ngôi sao vàng 5 cánh nền đỏ** đánh dấu Thủ đô Hà Nội, tên `VỊNH BẮC BỘ` và `BIỂN ĐÔNG`, các đảo `Bạch Long Vĩ`, `Lý Sơn`, `Đảo Phú Quốc`, `Côn Đảo`, cùng hai khung chủ quyền nét đứt `Quần đảo Hoàng Sa (TP. Đà Nẵng · Việt Nam)` và `Quần đảo Trường Sa (Khánh Hòa · Việt Nam)` căn chỉnh hoàn toàn không chồng chữ.
+  2. **Khử sạch mối cắt ngang & hở mép trên toàn bộ 11 Phụ kiện 2.5D (`tearoom3d.js`):**
+     - **`Khăn rằn Nam Bộ` (`khan-ran-nam-bo`):** Bỏ hẳn cơ chế cắt ngang `startRatio = 0.28` vốn tạo vệt cắt thẳng và khoảng trống cổ áo; chuyển sang vẽ liền mạch toàn bộ dải khăn với mặt nạ Canvas `"evenodd"` loại trừ duy nhất vùng bầu dục đầu/cằm, giúp khăn ôm liền mạch quanh cổ áo và rủ mượt hai bên ngực trên cả Nam lẫn Nữ.
+     - **`Nón quai thao Quan họ` (`non-quai-thao`):** Hạ nhẹ vành nón ôm sát đỉnh đầu (`+1.5px`), dùng mặt nạ `"evenodd"` trừ gọn vùng mặt/cằm để không bao giờ cắt dây qua miệng/má trong khi vẫn giữ trọn vẹn đôi tua lụa hai bên và vẽ dải quai lụa trắng ngà uốn mềm dọc dưới cằm.
+     - **`Khăn xếp the đen` (`khan-xep-kinh-bac`), `Khăn đóng gấm đỏ` (`khan-dong`), `Mũ cối` & `Mũ tai bèo`:** Bỏ lớp vẽ sau đầu thừa vốn ló góc đen cạnh tai trái, thay đường cắt ngang phẳng bằng cung bậc hai (`quadraticCurveTo`) ôm tự nhiên theo viền trán và thái dương, đồng thời hạ `+1.5px` cho `Mũ cối` và `Mũ tai bèo` ôm sát chân mày.
 
 ### [2026-11-19] — Vẽ Lại Bản Đồ Địa Lý Việt Nam Chuẩn Chữ S, Hiệu Chuẩn Tuyệt Đối 11 Phụ Kiện & Đồ Bày 2.5D, Và Sắp Xếp Lại Bố Cục Khoa Học Toàn Ứng Dụng (`?v=20261119a`)
 - **Tệp cập nhật:** `data.js`, `tearoom3d.js`, `temple3d.js`, `app.js`, `styles.css`, `index.html` (`?v=20261119a`), `sw.js` (`tuoibac-pwa-v29`), `scripts/e2e-regression.mjs`, `README.md`, `ARCHITECTURE.md`, `DESIGN.md`, `docs/01_NGUYEN_TAC_KY_THUAT_STUDIO.md`, `docs/02_SO_DO_DU_LIEU_VA_API_NOI_BO.md`, `docs/03_TIEN_DO_VA_NHAT_KY.md`, `docs/04_CAM_NANG_FIX_BUG_VA_KIEM_THU.md`, `docs/05_QUYET_DINH_KIEN_TRUC_ADR.md`.

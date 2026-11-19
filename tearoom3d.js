@@ -67,12 +67,12 @@ window.TeaRoomScene = (function () {
   };
   const roomBackdropsCache = Object.create(null);
   const ROOM_BACKDROP_URLS = {
-    "phong-tra": { lobby: "./assets/tearoom-lobby-25d.jpg?v=20261119a", table: "./assets/tearoom-table-25d.jpg?v=20261119a" },
-    "via-he": { lobby: "./assets/room-viahe-lobby.jpg?v=20261119a", table: "./assets/room-viahe-table.jpg?v=20261119a" },
-    "phong-tho": { lobby: "./assets/room-tho-lobby.jpg?v=20261119a", table: "./assets/room-tho-table.jpg?v=20261119a" },
-    "phong-co": { lobby: "./assets/room-co-lobby.jpg?v=20261119a", table: "./assets/room-co-table.jpg?v=20261119a" },
-    "phong-ccb": { lobby: "./assets/room-ccb-lobby.jpg?v=20261119a", table: "./assets/room-ccb-table.jpg?v=20261119a" },
-    "phong-cay-canh": { lobby: "./assets/room-caycanh-lobby.jpg?v=20261119a", table: "./assets/room-caycanh-table.jpg?v=20261119a" }
+    "phong-tra": { lobby: "./assets/tearoom-lobby-25d.jpg?v=20261119b", table: "./assets/tearoom-table-25d.jpg?v=20261119b" },
+    "via-he": { lobby: "./assets/room-viahe-lobby.jpg?v=20261119b", table: "./assets/room-viahe-table.jpg?v=20261119b" },
+    "phong-tho": { lobby: "./assets/room-tho-lobby.jpg?v=20261119b", table: "./assets/room-tho-table.jpg?v=20261119b" },
+    "phong-co": { lobby: "./assets/room-co-lobby.jpg?v=20261119b", table: "./assets/room-co-table.jpg?v=20261119b" },
+    "phong-ccb": { lobby: "./assets/room-ccb-lobby.jpg?v=20261119b", table: "./assets/room-ccb-table.jpg?v=20261119b" },
+    "phong-cay-canh": { lobby: "./assets/room-caycanh-lobby.jpg?v=20261119b", table: "./assets/room-caycanh-table.jpg?v=20261119b" }
   };
 
   function getRoomBackdropImg(roomId, kind) {
@@ -157,7 +157,7 @@ window.TeaRoomScene = (function () {
     tblImg.onerror = () => {
       assets25D.tableReady = false;
     };
-    tblImg.src = "./assets/tearoom-table-25d.jpg?v=20261119a";
+    tblImg.src = "./assets/tearoom-table-25d.jpg?v=20261119b";
 
     const lobImg = new Image();
     lobImg.onload = () => {
@@ -168,7 +168,7 @@ window.TeaRoomScene = (function () {
     lobImg.onerror = () => {
       assets25D.lobbyReady = false;
     };
-    lobImg.src = "./assets/tearoom-lobby-25d.jpg?v=20261119a";
+    lobImg.src = "./assets/tearoom-lobby-25d.jpg?v=20261119b";
 
     const sprImg = new Image();
     sprImg.onload = () => {
@@ -181,7 +181,7 @@ window.TeaRoomScene = (function () {
     sprImg.onerror = () => {
       assets25D.spritesReady = false;
     };
-    sprImg.src = "./assets/tearoom-sprites.webp?v=20261119a";
+    sprImg.src = "./assets/tearoom-sprites.webp?v=20261119b";
 
     const itmImg = new Image();
     itmImg.onload = () => {
@@ -192,7 +192,7 @@ window.TeaRoomScene = (function () {
     itmImg.onerror = () => {
       assets25D.itemsReady = false;
     };
-    itmImg.src = "./assets/tearoom-items.webp?v=20261119a";
+    itmImg.src = "./assets/tearoom-items.webp?v=20261119b";
 
     const acImg = new Image();
     acImg.onload = () => {
@@ -205,7 +205,7 @@ window.TeaRoomScene = (function () {
     acImg.onerror = () => {
       assets25D.accReady = false;
     };
-    acImg.src = "./assets/tearoom-accessories.webp?v=20261119a";
+    acImg.src = "./assets/tearoom-accessories.webp?v=20261119b";
 
     const itmExImg = new Image();
     itmExImg.onload = () => {
@@ -216,7 +216,7 @@ window.TeaRoomScene = (function () {
     itmExImg.onerror = () => {
       assets25D.itemsExtraReady = false;
     };
-    itmExImg.src = "./assets/tearoom-items-extra.webp?v=20261119a";
+    itmExImg.src = "./assets/tearoom-items-extra.webp?v=20261119b";
 
     const vhItmImg = new Image();
     vhItmImg.onload = () => {
@@ -227,7 +227,7 @@ window.TeaRoomScene = (function () {
     vhItmImg.onerror = () => {
       assets25D.viaheItemReady = false;
     };
-    vhItmImg.src = "./assets/tearoom-viahe-item.webp?v=20261119a";
+    vhItmImg.src = "./assets/tearoom-viahe-item.webp?v=20261119b";
 
     const acExImg = new Image();
     acExImg.onload = () => {
@@ -240,7 +240,7 @@ window.TeaRoomScene = (function () {
     acExImg.onerror = () => {
       assets25D.accExtraReady = false;
     };
-    acExImg.src = "./assets/tearoom-accessories-extra.webp?v=20261119a";
+    acExImg.src = "./assets/tearoom-accessories-extra.webp?v=20261119b";
 
     const regImg = new Image();
     regImg.onload = () => {
@@ -253,7 +253,7 @@ window.TeaRoomScene = (function () {
     regImg.onerror = () => {
       assets25D.regAccReady = false;
     };
-    regImg.src = "./assets/tearoom-regional-acc.webp?v=20261119a";
+    regImg.src = "./assets/tearoom-regional-acc.webp?v=20261119b";
   }
 
   function createCanvas2D(w, h) {
@@ -305,45 +305,21 @@ window.TeaRoomScene = (function () {
       ctx.drawImage(assets25D.accImg, ACC_CELL_W * 3, 0, ACC_CELL_W, ACC_CELL_H, hx, hy, 94, 75);
     }
 
-    // Rear neck wrap of Khăn rằn Nam Bộ passes cleanly behind head/chin
+    // Rear neck wrap of Khăn rằn Nam Bộ passes cleanly behind nape & jawline
     const showKhanRan = acc === "khan-ran-nam-bo" || (outfitId === "ao-ba-ba-nam-bo" && acc !== "scarf");
     if (showKhanRan && assets25D.regAccReady && assets25D.regAccImg) {
       const b = ACC_BBOX.khanran_f;
-      const cx = isFemale ? 93.5 : 94;
-      const topY = isFemale ? 60 : 57;
-      const dw = isFemale ? 52 : 54;
-      const dh = isFemale ? 71 : 73;
-      const cutRatio = 0.34;
-      ctx.drawImage(
-        assets25D.regAccImg,
-        b.sx,
-        b.sy,
-        b.sw,
-        b.sh * cutRatio,
-        cx - dw * 0.5,
-        topY,
-        dw,
-        dh * cutRatio
-      );
+      const cx = isFemale ? 94 : 94.5;
+      const topY = isFemale ? 58 : 55;
+      const dw = isFemale ? 53 : 55;
+      const dh = isFemale ? 72 : 74;
+      ctx.drawImage(assets25D.regAccImg, b.sx, b.sy, b.sw, b.sh, cx - dw * 0.5, topY, dw, dh);
     }
 
-    // Rear/underside ring of open turbans sits behind the crown so hair never pokes through a front hole
-    if (acc === "khan-xep-kinh-bac" && assets25D.regAccReady && assets25D.regAccImg) {
-      const cx = isFemale ? 94.5 : 95;
-      const cy = isFemale ? 26 : 24;
-      const dw = isFemale ? 44 : 42;
-      const dh = isFemale ? 34 : 32;
-      drawCroppedRotated(ctx, assets25D.regAccImg, ACC_BBOX.khanxep_f, cx, cy, dw, dh, 0.36);
-    } else if (acc === "khan-dong" && assets25D.accExtraReady && assets25D.accExtraImg) {
-      const cx = isFemale ? 94.5 : 95;
-      const cy = isFemale ? 26.5 : 24.5;
-      const dw = isFemale ? 46 : 44;
-      const dh = isFemale ? 32 : 30.5;
-      drawCroppedRotated(ctx, assets25D.accExtraImg, ACC_BBOX.khandong_f, cx, cy, dw, dh, 0.28);
-    } else if (acc === "non-quai-thao" && assets25D.regAccReady && assets25D.regAccImg) {
-      // Rear shadow/rim behind head bun before front palm disc & chin cords
-      const cx = isFemale ? 92.5 : 93.5;
-      const cy = isFemale ? 35.5 : 33.5;
+    // Rear brim & rear cords of Nón quai thao behind head/hair bun
+    if (acc === "non-quai-thao" && assets25D.regAccReady && assets25D.regAccImg) {
+      const cx = isFemale ? 93 : 94;
+      const cy = isFemale ? 36.5 : 34.5;
       const dw = isFemale ? 84 : 82;
       const dh = isFemale ? 66 : 65;
       drawCroppedRotated(ctx, assets25D.regAccImg, ACC_BBOX.nonquaithao_f, cx, cy, dw, dh, 0.14);
@@ -481,7 +457,8 @@ window.TeaRoomScene = (function () {
     }
 
     // 1b. Khăn rằn Nam Bộ quàng vai (từ phụ kiện hoặc đi kèm bộ Áo bà ba đen Khăn rằn)
-    // Neck-back band already drawn behind head in drawSpritePreHeadAccessory; here we drape the front checkered tails cleanly below chin!
+    // Full scarf drawn behind head in drawSpritePreHeadAccessory; here we draw the FULL continuous scarf
+    // using an even-odd inverse face/chin ellipse mask so it wraps seamlessly around BOTH sides of the neck collar!
     const showKhanRan = acc === "khan-ran-nam-bo" || (outfitId === "ao-ba-ba-nam-bo" && acc !== "scarf");
     if (showKhanRan) {
       if (assets25D.regAccReady && assets25D.regAccImg) {
@@ -490,26 +467,17 @@ window.TeaRoomScene = (function () {
         } else {
           const isFemale = col === 1;
           const b = ACC_BBOX.khanran_f;
-          const cx = isFemale ? 93.5 : 94;
-          const topY = isFemale ? 60 : 57;
-          const dw = isFemale ? 52 : 54;
-          const dh = isFemale ? 71 : 73;
-          const startRatio = 0.28;
+          const cx = isFemale ? 94 : 94.5;
+          const topY = isFemale ? 58 : 55;
+          const dw = isFemale ? 53 : 55;
+          const dh = isFemale ? 72 : 74;
           ctx.save();
           ctx.beginPath();
-          ctx.rect(0, isFemale ? 62 : 59, SPRITE_CELL_W, SPRITE_CELL_H);
-          ctx.clip();
-          ctx.drawImage(
-            assets25D.regAccImg,
-            b.sx,
-            b.sy + b.sh * startRatio,
-            b.sw,
-            b.sh * (1 - startRatio),
-            cx - dw * 0.5,
-            topY + dh * startRatio,
-            dw,
-            dh * (1 - startRatio)
-          );
+          // Outer canvas rect minus ONLY the head/chin oval -> zero horizontal chop, unbroken collar wrap!
+          ctx.rect(0, 0, SPRITE_CELL_W, SPRITE_CELL_H);
+          ctx.ellipse(isFemale ? 96.5 : 97, isFemale ? 42 : 39.5, 16.5, 20.5, 0, 0, Math.PI * 2);
+          ctx.clip("evenodd");
+          ctx.drawImage(assets25D.regAccImg, b.sx, b.sy, b.sw, b.sh, cx - dw * 0.5, topY, dw, dh);
           ctx.restore();
         }
       }
@@ -617,9 +585,9 @@ window.TeaRoomScene = (function () {
         } else {
           const isFemale = col === 1;
           const cx = isFemale ? 94.5 : 95.5;
-          const cy = isFemale ? 25.5 : 23.5;
-          const dw = isFemale ? 54 : 52;
-          const dh = isFemale ? 40 : 39;
+          const cy = isFemale ? 26.5 : 24.8;
+          const dw = isFemale ? 54.5 : 53;
+          const dh = isFemale ? 40.5 : 39.5;
           drawCroppedRotated(ctx, assets25D.accImg, ACC_BBOX.cap_f, cx, cy, dw, dh, -0.04);
         }
       } else {
@@ -677,21 +645,26 @@ window.TeaRoomScene = (function () {
           if (col === 2) {
             drawCroppedRotated(ctx, assets25D.accExtraImg, ACC_BBOX.khandong_b, 118, 33, 64, 54, 0);
           } else {
-            // Front pleated turban band sits cleanly over forehead & crown (underside already drawn behind head)
+            // Smooth curved forehead arch clip so the brocade turban hugs brow & temples organically
             const cx = isFemale ? 94.5 : 95;
-            const cy = isFemale ? 26.5 : 24.5;
-            const dw = isFemale ? 46 : 44;
-            const dh = isFemale ? 32 : 30.5;
-            const browClipY = isFemale ? 34 : 32;
+            const cy = isFemale ? 27 : 25;
+            const dw = isFemale ? 47.5 : 45.5;
+            const dh = isFemale ? 31 : 29.5;
+            const archY = isFemale ? 32 : 30;
             ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(SPRITE_CELL_W, 0);
+            ctx.lineTo(SPRITE_CELL_W, archY + 5);
+            ctx.quadraticCurveTo(cx + 6, archY - 2, cx - 26, archY + 7);
+            ctx.lineTo(0, archY + 7);
+            ctx.closePath();
+            ctx.clip();
             ctx.fillStyle = "#521012";
             ctx.beginPath();
-            ctx.ellipse(cx, cy - 1.5, dw * 0.34, dh * 0.24, 0.04, 0, Math.PI * 2);
+            ctx.ellipse(cx, cy - 1, dw * 0.36, dh * 0.28, 0.04, 0, Math.PI * 2);
             ctx.fill();
-            ctx.beginPath();
-            ctx.rect(0, 0, SPRITE_CELL_W, browClipY);
-            ctx.clip();
-            drawCroppedRotated(ctx, assets25D.accExtraImg, ACC_BBOX.khandong_f, cx, cy, dw, dh, 0.28);
+            drawCroppedRotated(ctx, assets25D.accExtraImg, ACC_BBOX.khandong_f, cx, cy, dw, dh, 0.22);
             ctx.restore();
           }
         } else {
@@ -699,8 +672,8 @@ window.TeaRoomScene = (function () {
             drawCroppedRotated(ctx, assets25D.accExtraImg, ACC_BBOX.mutaibeo_b, 118, 34, 82, 64, 0);
           } else {
             const cx = isFemale ? 94.5 : 95.5;
-            const cy = isFemale ? 25.5 : 23.5;
-            const dw = isFemale ? 60 : 57;
+            const cy = isFemale ? 27 : 25;
+            const dw = isFemale ? 60 : 57.5;
             const dh = isFemale ? 42 : 40;
             drawCroppedRotated(ctx, assets25D.accExtraImg, ACC_BBOX.mutaibeo_f, cx, cy, dw, dh, 0.03);
           }
@@ -723,47 +696,61 @@ window.TeaRoomScene = (function () {
           if (col === 2) {
             drawCroppedRotated(ctx, assets25D.regAccImg, ACC_BBOX.nonquaithao_b, 117, 42, 92, 84, 0);
           } else {
-            const cx = isFemale ? 92.5 : 93.5;
-            const cy = isFemale ? 35.5 : 33.5;
+            const cx = isFemale ? 93 : 94;
+            const cy = isFemale ? 36.5 : 34.5;
             const dw = isFemale ? 84 : 82;
             const dh = isFemale ? 66 : 65;
-            // Draw top palm hat disc above browline cleanly on the crown
+            // Even-odd inverse face+chin oval exclusion: keeps full golden palm disc on crown AND both hanging silk tassels intact,
+            // while cleanly excluding the sprite's mid-chin cord so nothing ever crosses the mouth/cheek!
             ctx.save();
             ctx.beginPath();
-            ctx.rect(0, 0, SPRITE_CELL_W, isFemale ? 34 : 32);
-            ctx.clip();
+            ctx.rect(0, 0, SPRITE_CELL_W, SPRITE_CELL_H);
+            ctx.ellipse(isFemale ? 97 : 97.5, isFemale ? 47.5 : 45, 14.5, 17.5, 0, 0, Math.PI * 2);
+            ctx.clip("evenodd");
             drawCroppedRotated(ctx, assets25D.regAccImg, ACC_BBOX.nonquaithao_f, cx, cy, dw, dh, 0.14);
             ctx.restore();
-            // Draw hanging ivory silk quai thao tassels outside cheeks & graceful chin loop below jaw
+            // Delicate cream-silk quai thao ribbon curving organically along the jawline below chin
             ctx.save();
+            ctx.strokeStyle = "rgba(232, 224, 206, 0.88)";
+            ctx.lineWidth = 1.45;
+            ctx.lineCap = "round";
             ctx.beginPath();
-            ctx.rect(0, isFemale ? 56.5 : 54.5, SPRITE_CELL_W, 42);
-            ctx.rect(0, isFemale ? 31 : 29, isFemale ? 79 : 80, 46);
-            ctx.rect(isFemale ? 114 : 113, isFemale ? 31 : 29, 60, 46);
-            ctx.clip();
-            drawCroppedRotated(ctx, assets25D.regAccImg, ACC_BBOX.nonquaithao_f, cx, cy, dw, dh, 0.14);
+            if (isFemale) {
+              ctx.moveTo(81.5, 49.5);
+              ctx.quadraticCurveTo(93, 64.5, 104.5, 62.5);
+              ctx.quadraticCurveTo(109.5, 60.5, 112.5, 53);
+            } else {
+              ctx.moveTo(82.5, 47);
+              ctx.quadraticCurveTo(94, 61.5, 105, 59.5);
+              ctx.quadraticCurveTo(110, 57.5, 113, 50.5);
+            }
+            ctx.stroke();
             ctx.restore();
           }
         } else {
           if (col === 2) {
             drawCroppedRotated(ctx, assets25D.regAccImg, ACC_BBOX.khanxep_b, 118, 32, 64, 52, 0);
           } else {
-            // Front black silk chữ-Nhân pleats clipped cleanly at browline (no awkward white donut hole!)
+            // Smooth curved forehead arch clip so black silk chữ-Nhân turban hugs brow & temples with zero flat cut or corner poke
             const cx = isFemale ? 94.5 : 95;
-            const cy = isFemale ? 26 : 24;
-            const dw = isFemale ? 44 : 42;
-            const dh = isFemale ? 34 : 32;
-            const browClipY = isFemale ? 33 : 31;
+            const cy = isFemale ? 27 : 25;
+            const dw = isFemale ? 46.5 : 44.5;
+            const dh = isFemale ? 32 : 30.5;
+            const archY = isFemale ? 31.5 : 29.5;
             ctx.save();
-            // Subtle dark silk cap fill inside the upper turban arch so white scalp doesn't peek out awkwardly
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(SPRITE_CELL_W, 0);
+            ctx.lineTo(SPRITE_CELL_W, archY + 5);
+            ctx.quadraticCurveTo(cx + 6, archY - 2, cx - 26, archY + 7);
+            ctx.lineTo(0, archY + 7);
+            ctx.closePath();
+            ctx.clip();
             ctx.fillStyle = "#1E2024";
             ctx.beginPath();
-            ctx.ellipse(cx, cy - 1.5, dw * 0.36, dh * 0.28, 0.04, 0, Math.PI * 2);
+            ctx.ellipse(cx, cy - 1, dw * 0.36, dh * 0.28, 0.04, 0, Math.PI * 2);
             ctx.fill();
-            ctx.beginPath();
-            ctx.rect(0, 0, SPRITE_CELL_W, browClipY);
-            ctx.clip();
-            drawCroppedRotated(ctx, assets25D.regAccImg, ACC_BBOX.khanxep_f, cx, cy, dw, dh, 0.36);
+            drawCroppedRotated(ctx, assets25D.regAccImg, ACC_BBOX.khanxep_f, cx, cy, dw, dh, 0.28);
             ctx.restore();
           }
         }
