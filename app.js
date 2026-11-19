@@ -2201,6 +2201,35 @@
   }
 
   // ==================== HOME VIEW ====================
+  let activeCheckinTab = "map";
+  let activeLobbyTab = "overview";
+  let newsVisibleLimit = 4;
+  let activeZenSubTab = "ritual";
+  let activePoetryIdx = 0;
+  let activeHealthTab = "daily";
+  let activeFamilyTab = "status";
+  let activeWatchTab = "channels";
+
+  function renderM3HeroBanner(titleHtml, subtitleHtml, iconName, rightHtml) {
+    return `
+      <div class="m3-hero-banner">
+        <div class="m3-hero-row">
+          <div class="m3-hero-copy">
+            <h1>${titleHtml}</h1>
+            ${subtitleHtml ? `<p class="m3-hero-sub">${subtitleHtml}</p>` : ""}
+          </div>
+          ${
+            rightHtml
+              ? `<div class="m3-hero-right">${rightHtml}</div>`
+              : iconName
+              ? `<span class="m3-hero-ico">${ico(iconName, "ico-sm")}</span>`
+              : ""
+          }
+        </div>
+      </div>
+    `;
+  }
+
   function renderHome() {
     const prov = getProvince(state.user.provinceId);
     const pron = getUserPronoun();
@@ -2226,185 +2255,135 @@
         : "Buổi tối tĩnh tâm · An nhiên bên tách trà";
 
     els.main.innerHTML = `
-      <section class="section-block home-top-zone">
-        <div class="home-pavilion-hero">
-          <div class="home-pavilion-title-row">
-            <div class="home-hero-heading">
-              <h1>Chào ${escHtml(state.user.name)} · <span class="num">${age}t</span></h1>
-              <p class="home-hero-sub">${timeGreeting}</p>
-            </div>
-            <button type="button" class="btn-mini btn-compact-edit" id="btn-home-edit-identity">${ico("user", "ico-sm")}<span>Đổi tên</span></button>
+      <div class="home-pavilion-hero">
+        <div class="home-pavilion-title-row">
+          <div class="home-hero-heading">
+            <h1>Chào ${escHtml(state.user.name)} · <span class="num">${age}t</span></h1>
+            <p class="home-hero-sub">${timeGreeting}</p>
           </div>
-          <div class="home-pavilion-meta">
-            <span class="home-streak-pill num">${ico("sun", "ico-sm")}<span>${escHtml(prov.short)} · Chuỗi ${state.user.streakDays || 1} ngày</span></span>
-            <span class="home-rank-chip num">${escHtml(prog.cohort.tag)} · ${prog.points} XP</span>
-          </div>
+          <button type="button" class="btn-mini btn-compact-edit" id="btn-home-edit-identity">${ico("user", "ico-sm")}<span>Đổi tên</span></button>
         </div>
-      </section>
+        <div class="home-pavilion-meta">
+          <span class="home-streak-pill num">${ico("sun", "ico-sm")}<span>${escHtml(prov.short)} · Chuỗi ${state.user.streakDays || 1} ngày</span></span>
+          <span class="home-rank-chip num">${escHtml(prog.cohort.tag)} · ${prog.points} XP</span>
+        </div>
+      </div>
 
       <section class="section-block">
-        <h2>4 Việc Chính Hôm Nay</h2>
+        <div class="m3-section-head">
+          <h2>4 Việc Chính Hôm Nay</h2>
+          <span class="m3-section-meta num">${countOnlineFriendsNow()} bạn trực tuyến</span>
+        </div>
         <div class="home-hero-grid-4">
           <button type="button" class="home-core-card is-primary" data-go="checkin">
-            <span class="home-main-icon">${ico("sun", "ico-lg")}</span>
-            <strong>${state.user.checkedInToday ? "Bản đồ Điểm danh" : "Điểm danh sáng nay"}</strong>
-            <small>${state.user.checkedInToday ? `${prov.short} đã sáng đèn` : "Báo bình an cho con cháu"}</small>
+            <span class="home-main-icon">${ico("sun")}</span>
+            <strong>${state.user.checkedInToday ? "Bản đồ Điểm danh" : "Điểm danh sáng"}</strong>
+            <small>${state.user.checkedInToday ? `${prov.short} đã sáng đèn` : "Báo bình an con cháu"}</small>
           </button>
 
           <button type="button" class="home-core-card is-jade" data-go="tearoom">
-            <span class="home-main-icon">${ico("tea", "ico-lg")}</span>
+            <span class="home-main-icon">${ico("tea")}</span>
             <strong>Vào Quán Trà 2.5D</strong>
-            <small>${escHtml(getCurrentRoom().shortName)} · ${getCurrentRoom().tables.length} bàn mở</small>
+            <small>${escHtml(getCurrentRoom().shortName)} · ${getCurrentRoom().tables.length} bàn</small>
           </button>
 
           <button type="button" class="home-core-card" data-go="newspaper">
-            <span class="home-main-icon">${ico("paper", "ico-lg")}</span>
-            <strong>Đọc Tờ Báo Sáng</strong>
+            <span class="home-main-icon">${ico("paper")}</span>
+            <strong>Đọc Báo Sáng</strong>
             <small>${state.newspaper.articles.length} tin chữ to dễ đọc</small>
           </button>
 
           <button type="button" class="home-core-card is-wood" data-go="games">
-            <span class="home-main-icon">${ico("xiangqi", "ico-lg")}</span>
-            <strong>Đánh Cờ &amp; Ô Ăn Quan</strong>
-            <small>Cờ tướng 9×10 &amp; Ca dao</small>
+            <span class="home-main-icon">${ico("xiangqi")}</span>
+            <strong>Đánh Cờ &amp; Ca Dao</strong>
+            <small>Cờ 9×10 · Ô ăn quan</small>
           </button>
         </div>
 
         <button type="button" class="btn-secondary viahe-home-cta" id="btn-home-open-viahe">
           ${ico("tea")}
-          <span>Ghé Quán Trà Đá Vỉa Hè · Gốc Sấu &amp; Kẹo Lạc</span>
+          <span>Ghé Quán Trà Đá Vỉa Hè · Kẹo Lạc</span>
         </button>
       </section>
 
+      <div class="daily-quest-card" id="home-daily-quest-card">
+        <div class="passcard-head">
+          <strong style="font-size:0.88rem;">Sổ Tay 3 Niềm Vui Hôm Nay</strong>
+          <span class="badge-tag ${doneQuestCount === 3 ? "jade" : "amber"} num">${doneQuestCount}/3 việc</span>
+        </div>
+        <div class="m3-quest-strip">
+          <button type="button" class="m3-quest-pill ${dq.morningDone ? "is-done" : ""}" data-go="${state.user.checkedInToday ? "newspaper" : "checkin"}">
+            <strong>1. Sáng nay</strong>
+            <small>${dq.morningDone ? "Đã xong" : "Điểm danh"}</small>
+          </button>
+          <button type="button" class="m3-quest-pill ${dq.socialDone ? "is-done" : ""}" data-go="tearoom">
+            <strong>2. Tình thân</strong>
+            <small>${dq.socialDone ? "Đã xong" : "Vào trà"}</small>
+          </button>
+          <button type="button" class="m3-quest-pill ${dq.mindDone ? "is-done" : ""}" data-go="games">
+            <strong>3. Minh mẫn</strong>
+            <small>${dq.mindDone ? "Đã xong" : "Chơi cờ"}</small>
+          </button>
+        </div>
+        ${
+          canClaimDailyChest
+            ? `<button type="button" class="btn-primary" id="btn-claim-daily-chest">${ico("award")}<span>Nhận Lộc Ngày Mới (+12 Xu · +15 XP)</span></button>`
+            : dq.chestClaimed
+            ? `<small class="quest-done-note">Đã nhận trọn Rương Lộc hôm nay. Hẹn ${pron} sáng mai!</small>`
+            : ""
+        }
+      </div>
+
       <section class="section-block">
-        <div class="daily-quest-card" id="home-daily-quest-card">
-          <div class="passcard-head">
-            <h2>Sổ Tay 3 Niềm Vui Hôm Nay</h2>
-            <span class="badge-tag ${doneQuestCount === 3 ? "jade" : "amber"} num">${doneQuestCount}/3 việc</span>
-          </div>
-          <div class="daily-quest-list">
-            <button type="button" class="daily-quest-row ${dq.morningDone ? "is-done" : ""}" data-go="${state.user.checkedInToday ? "newspaper" : "checkin"}">
-              <span>1. Khởi đầu bình an (Điểm danh hoặc Đọc báo)</span>
-              <span class="daily-quest-status">${dq.morningDone ? "Đã xong" : "Mở ngay"}</span>
-            </button>
-            <button type="button" class="daily-quest-row ${dq.socialDone ? "is-done" : ""}" data-go="tearoom">
-              <span>2. Kết nối tình thân (Trà đàm, Thơ hoặc Hoa đăng)</span>
-              <span class="daily-quest-status">${dq.socialDone ? "Đã xong" : "Mở ngay"}</span>
-            </button>
-            <button type="button" class="daily-quest-row ${dq.mindDone ? "is-done" : ""}" data-go="games">
-              <span>3. Rèn trí minh mẫn (Cờ, Ca dao hoặc Đố vui)</span>
-              <span class="daily-quest-status">${dq.mindDone ? "Đã xong" : "Mở ngay"}</span>
-            </button>
-          </div>
-          ${
-            canClaimDailyChest
-              ? `<button type="button" class="btn-primary" id="btn-claim-daily-chest">${ico("award")}<span>Nhận Lộc Ngày Mới (+12 Xu · +15 XP)</span></button>`
-              : dq.chestClaimed
-              ? `<div class="quest-done-note">Đã nhận trọn vẹn Rương Lộc Ngày Mới hôm nay. Hẹn gặp lại ${pron} sáng mai!</div>`
-              : `<small class="quest-hint-copy">Hoàn thành đủ 3 niềm vui để mở Rương Lộc <strong>+12 Xu &amp; +15 XP</strong> mỗi ngày.</small>`
-          }
+        <div class="m3-section-head">
+          <h2>Góc Sinh Hoạt &amp; Tiện Ích</h2>
+          <span class="m3-section-meta">11 mục</span>
+        </div>
+        <div class="m3-tool-grid">
+          <button type="button" class="m3-tool-tile" data-go="groups">${ico("users")}<strong>Đồng Ngũ</strong></button>
+          <button type="button" class="m3-tool-tile" data-go="zen">${ico("lotus")}<strong>Tĩnh Tâm</strong></button>
+          <button type="button" class="m3-tool-tile" data-go="poetry">${ico("poem")}<strong>Chiếu Thơ</strong></button>
+          <button type="button" class="m3-tool-tile" data-go="quiz">${ico("quiz")}<strong>Đố Vui</strong></button>
+          <button type="button" class="m3-tool-tile" data-go="watch">${ico("tv")}<strong>Xem Chung</strong></button>
+          <button type="button" class="m3-tool-tile" data-go="health">${ico("heart")}<strong>Sức Khỏe</strong></button>
+          <button type="button" class="m3-tool-tile" data-go="xiangqi">${ico("xiangqi")}<strong>Cờ 9×10</strong></button>
+          <button type="button" class="m3-tool-tile" id="btn-home-open-96titles" data-go="leaderboard">${ico("trophy")}<strong>Bảng Vàng</strong></button>
+          <button type="button" class="m3-tool-tile" data-go="family">${ico("family")}<strong>Con Cái</strong></button>
+          <button type="button" class="m3-tool-tile" data-go="privacy">${ico("shield")}<strong>Cài Đặt</strong></button>
+          <button type="button" class="m3-tool-tile" id="btn-home-feedback">${ico("feedback")}<strong>Góp Ý</strong></button>
         </div>
       </section>
 
-      <section class="section-block">
-        <h2>Góc Sinh Hoạt Cộng Đồng</h2>
-        <div class="module-grid">
-          <button type="button" class="module-tile" data-go="groups">
-            <span class="module-tile-ico">${ico("users")}</span>
-            <strong>Hội Đồng Ngũ &amp; Bạn</strong>
-            <span class="sub">${countOnlineFriendsNow()} bạn đang trực tuyến</span>
-          </button>
-
-          <button type="button" class="module-tile" data-go="zen">
-            <span class="module-tile-ico">${ico("lotus")}</span>
-            <strong>Chùa Quê &amp; Từ Đường</strong>
-            <span class="sub">Chánh điện, Nhà thờ họ, Hồ sen</span>
-          </button>
-
-          <button type="button" class="module-tile" data-go="poetry">
-            <span class="module-tile-ico">${ico("poem")}</span>
-            <strong>Ngâm thơ &amp; Tặng hoa</strong>
-            <span class="sub">Thơ lục bát &amp; đàn tranh</span>
-          </button>
-
-          <button type="button" class="module-tile" data-go="quiz">
-            <span class="module-tile-ico">${ico("quiz")}</span>
-            <strong>Đố vui hôm nay</strong>
-            <span class="sub">5 câu rèn trí nhớ vui</span>
-          </button>
-
-          <button type="button" class="module-tile" data-go="watch">
-            <span class="module-tile-ico">${ico("tv")}</span>
-            <strong>Phòng xem chung</strong>
-            <span class="sub">Dưỡng sinh 8h &amp; Hài 20h</span>
-          </button>
-
-          <button type="button" class="module-tile" data-go="health">
-            <span class="module-tile-ico">${ico("heart")}</span>
-            <strong>Trợ lý sức khỏe</strong>
-            <span class="sub">Nhắc thuốc, huyết áp, 115</span>
-          </button>
-        </div>
-      </section>
-
-      <section class="section-block">
-        <h2>Thẻ Hội Viên &amp; Tiện Ích Gia Đình</h2>
-        <div class="passcard-banner ${state.auth.isRegistered ? "verified" : ""}" id="home-passcard-banner">
-          <div class="passcard-head">
+      <div class="m3-list-stack">
+        <button type="button" class="m3-list-row" id="btn-home-open-auth">
+          <span class="m3-row-ico ${state.auth.isRegistered ? "is-jade" : ""}">${ico("card", "ico-sm")}</span>
+          <span class="m3-row-text">
             <strong>${escHtml(prog.current.name)}</strong>
-            <span class="cohort-pill ${escHtml(prog.cohort.cls)}">${escHtml(prog.cohort.tag)} · ${prog.points} XP</span>
-          </div>
-          <div class="seniority-progress-wrap">
-            <div class="seniority-progress-track">
-              <div class="seniority-progress-fill" style="width:${prog.percent}%"></div>
-            </div>
-            <small class="quest-hint-copy">
-              ${
-                prog.isGuest
-                  ? `Mở Thẻ 10 giây để lưu tên, nhận <strong>+35 XP &amp; +15 Xu</strong>${totalWins > 0 ? ` · Đã thắng <strong class="num">${totalWins}</strong> ván` : ""}.`
-                  : `${prog.next ? `Còn <strong class="num">${prog.xpNeededForNext}</strong> XP lên ${escHtml(prog.next.name)}` : "Đã đạt đỉnh cao sinh hoạt"} · Thắng cờ/trò chơi: <strong class="num">${totalWins}</strong> ván`
-              }
-            </small>
-          </div>
-          <div class="btn-row">
-            <button type="button" class="btn-${state.auth.isRegistered ? "jade" : "primary"}" id="btn-home-open-auth">
-              ${ico("card")}
-              <span>${state.auth.isRegistered ? "Thẻ QR Hội Viên" : "Mở Thẻ Lên Tầng 1"}</span>
-            </button>
-            <button type="button" class="btn-secondary" id="btn-home-open-96titles" data-go="leaderboard">
-              ${ico("trophy")}
-              <span>Bảng Danh Hiệu</span>
-            </button>
-          </div>
-        </div>
-
-        <div class="btn-row">
-          <button type="button" class="btn-secondary" data-go="family">${ico("family", "ico-sm")}<span>Góc Con Cái</span></button>
-          <button type="button" class="btn-secondary" data-go="xiangqi">${ico("xiangqi", "ico-sm")}<span>Bàn Cờ 9×10</span></button>
-          <button type="button" class="btn-secondary" id="btn-home-feedback">${ico("feedback", "ico-sm")}<span>Góp ý nhanh</span></button>
-          <button type="button" class="btn-secondary" data-go="privacy">${ico("shield", "ico-sm")}<span>Riêng tư &amp; Admin</span></button>
-        </div>
+            <small class="num">${
+              prog.isGuest
+                ? `Mở Thẻ Hội Viên 10 giây nhận +35 XP & +15 Xu`
+                : `${prog.points} XP · Thắng ${totalWins} ván cờ · Xem Thẻ QR`
+            }</small>
+          </span>
+          <span class="m3-row-chevron">${ico("chevron", "ico-sm")}</span>
+        </button>
 
         ${
           showPwaCard
             ? `
-          <div class="pwa-install-card" id="pwa-install-card">
-            <div class="pwa-install-top">
-              <img src="icons/icon-192.png" alt="Biểu tượng ứng dụng Tuổi Bạc" class="pwa-app-icon" />
-              <div>
-                <strong>Đặt Quán Trà ra màn hình chính</strong>
-                <div class="quest-hint-copy">Mở 1 chạm như ứng dụng riêng trên điện thoại.</div>
-              </div>
-            </div>
-            <div class="btn-row">
-              <button type="button" class="btn-jade" id="btn-pwa-install">${ico("download")}<span>${deferredPwaPrompt ? "Cài ra màn hình ngay" : "Hướng dẫn cài nhanh"}</span></button>
-              <button type="button" class="btn-secondary" id="btn-pwa-hide">Để sau</button>
-            </div>
+          <div class="m3-list-row" id="pwa-install-card">
+            <span class="m3-row-ico is-jade">${ico("download", "ico-sm")}</span>
+            <span class="m3-row-text">
+              <strong>Cài Quán Trà ra màn hình</strong>
+              <small>Mở 1 chạm như ứng dụng riêng</small>
+            </span>
+            <button type="button" class="m3-row-pill is-on" id="btn-pwa-install" style="border:none;">Cài ngay</button>
+            <button type="button" class="m3-row-pill" id="btn-pwa-hide" style="border:none;" aria-label="Ẩn gợi ý cài">Ẩn</button>
           </div>
         `
             : ""
         }
-      </section>
+      </div>
     `;
 
     els.main.querySelectorAll("[data-go]").forEach((btn) => {
@@ -2852,9 +2831,21 @@
     const maxRankLamps = Math.max(1, lampsOf(sortedProvinces[0] || myProv));
 
     els.main.innerHTML = `
-      <h1>Điểm danh bình an</h1>
-      <p class="lead-copy">Chạm 1 nút mỗi sáng để thắp sáng tỉnh nhà trên bản đồ Việt Nam và báo tin bình an cho con cháu.</p>
+      ${renderM3HeroBanner(
+        "Điểm danh bình an",
+        `${escHtml(myProv.short)} · ${totalLamps.toLocaleString("vi-VN")} đèn sáng toàn quốc`,
+        "sun",
+        `<span class="m3-hero-pill num">${state.user.checkedInToday ? "Đã sáng đèn" : "Chưa điểm danh"}</span>`
+      )}
 
+      <div class="m3-seg-bar" role="tablist" aria-label="Chọn góc xem điểm danh">
+        <button type="button" class="m3-seg-btn ${activeCheckinTab === "map" ? "active" : ""}" id="chk-tab-map">Điểm danh &amp; Bản đồ</button>
+        <button type="button" class="m3-seg-btn ${activeCheckinTab === "rank" ? "active" : ""}" id="chk-tab-rank">Xếp hạng tỉnh (${sortedProvinces.length})</button>
+      </div>
+
+      ${
+        activeCheckinTab === "map"
+          ? `
       <div class="surface-panel">
         <label class="field-label">
           Tỉnh thành của bác (34 tỉnh thành sau sáp nhập)
@@ -2863,53 +2854,28 @@
           </select>
         </label>
 
-        <div>
-          <p class="checkin-field-sub">Hôm nay bác thấy thế nào?</p>
-          <div class="mood-row">
-            ${["Khỏe khoắn", "Bình thường", "Hơi mỏi"].map((m) => `
-              <button type="button" class="mood-btn ${state.user.mood === m ? "selected" : ""}" data-mood="${m}">${m}</button>
-            `).join("")}
-          </div>
+        <div class="mood-row">
+          ${["Khỏe khoắn", "Bình thường", "Hơi mỏi"].map((m) => `
+            <button type="button" class="mood-btn ${state.user.mood === m ? "selected" : ""}" data-mood="${m}">${m}</button>
+          `).join("")}
         </div>
 
         <button type="button" class="btn-primary" id="btn-do-checkin">
           ${ico("check")}
-          <span>${state.user.checkedInToday ? "Đã điểm danh sáng nay (Thắp lại lời chúc)" : "Điểm danh bình an hôm nay (+5 Xu)"}</span>
+          <span>${state.user.checkedInToday ? "Đã điểm danh sáng nay (Thắp lại)" : "Điểm danh bình an hôm nay (+5 Xu)"}</span>
         </button>
 
         ${state.user.checkedInToday ? `
-          <div class="surface-panel jade">
-            <strong>${state.privacy.consentFamilyCheckin ? "Đã gửi thông báo bình an miễn phí tới Anh Hùng (Con trai)" : "Đã ghi nhận điểm danh riêng tư trên máy"}</strong>
-            <p class="quest-hint-copy">"Hôm nay ${escHtml(state.user.name)} đã ghé quán trà và chọn trạng thái: ${escHtml(state.user.mood)}."</p>
-            <button type="button" class="btn-secondary" id="btn-share-zalo-card">
-              ${ico("share")}
-              <span>Chia sẻ thiệp chúc qua Zalo (1 chạm)</span>
-            </button>
-          </div>
+          <button type="button" class="m3-list-row" id="btn-share-zalo-card">
+            <span class="m3-row-ico is-jade">${ico("share", "ico-sm")}</span>
+            <span class="m3-row-text">
+              <strong>Chia sẻ thiệp chúc qua Zalo (1 chạm)</strong>
+              <small>${state.privacy.consentFamilyCheckin ? "Đã báo tin bình an cho con cháu" : "Đã ghi nhận riêng tư trên máy"}</small>
+            </span>
+            <span class="m3-row-chevron">${ico("chevron", "ico-sm")}</span>
+          </button>
         ` : ""}
       </div>
-
-      ${
-        rtSummary.recentList.length > 0
-          ? `
-        <div class="surface-panel warm" id="real-checkins-live-box">
-          <div class="passcard-head">
-            <strong>Đèn thật vừa thắp sáng trực tuyến</strong>
-            <span class="real-peer-pill num">+${rtSummary.totalRealCheckins} thiết bị thật</span>
-          </div>
-          <div class="metrics-stat-list">
-            ${rtSummary.recentList
-              .slice(0, 5)
-              .map(
-                (item) =>
-                  `<div style="font-size:0.9rem;">• <strong>${escHtml(item.name)} · ${item.age}t</strong> (${escHtml(item.provinceShort)}) — <span>${escHtml(item.mood)}</span></div>`
-              )
-              .join("")}
-          </div>
-        </div>
-      `
-          : ""
-      }
 
       <div class="map-card">
         <div class="map-kpi-strip">
@@ -3108,6 +3074,29 @@
           <span class="map-legend-item"><i class="map-dot-swatch is-live"></i>Đang trực tuyến</span>
         </div>
       </div>
+      `
+          : `
+      ${
+        rtSummary.recentList.length > 0
+          ? `
+        <div class="surface-panel warm" id="real-checkins-live-box">
+          <div class="passcard-head">
+            <strong>Đèn thật vừa thắp sáng trực tuyến</strong>
+            <span class="real-peer-pill num">+${rtSummary.totalRealCheckins} thiết bị</span>
+          </div>
+          <div class="metrics-stat-list">
+            ${rtSummary.recentList
+              .slice(0, 5)
+              .map(
+                (item) =>
+                  `<div style="font-size:0.86rem;">• <strong>${escHtml(item.name)} · ${item.age}t</strong> (${escHtml(item.provinceShort)}) — <span>${escHtml(item.mood)}</span></div>`
+              )
+              .join("")}
+          </div>
+        </div>
+      `
+          : ""
+      }
 
       <div class="surface-panel">
         <h3>Xếp hạng tỉnh sáng đèn hôm nay</h3>
@@ -3129,15 +3118,25 @@
             .join("")}
         </div>
       </div>
+      `
+      }
     `;
 
-    document.getElementById("checkin-province").addEventListener("change", (e) => {
-      state.user.provinceId = e.target.value;
-      mapFocusedProvinceId = e.target.value;
-      saveState();
-      updateGlobalChrome();
-      renderCheckin();
-    });
+    const chkTabMap = document.getElementById("chk-tab-map");
+    const chkTabRank = document.getElementById("chk-tab-rank");
+    if (chkTabMap) chkTabMap.addEventListener("click", () => { if (activeCheckinTab !== "map") { activeCheckinTab = "map"; renderCheckin(); } });
+    if (chkTabRank) chkTabRank.addEventListener("click", () => { if (activeCheckinTab !== "rank") { activeCheckinTab = "rank"; renderCheckin(); } });
+
+    const provSelectEl = document.getElementById("checkin-province");
+    if (provSelectEl) {
+      provSelectEl.addEventListener("change", (e) => {
+        state.user.provinceId = e.target.value;
+        mapFocusedProvinceId = e.target.value;
+        saveState();
+        updateGlobalChrome();
+        renderCheckin();
+      });
+    }
 
     els.main.querySelectorAll(".mood-btn").forEach((b) => {
       b.addEventListener("click", () => {
@@ -3147,7 +3146,9 @@
       });
     });
 
-    document.getElementById("btn-do-checkin").addEventListener("click", () => {
+    const doCheckinBtn = document.getElementById("btn-do-checkin");
+    if (doCheckinBtn) {
+      doCheckinBtn.addEventListener("click", () => {
       if (!state.user.checkedInToday) {
         state.user.checkedInToday = true;
         state.user.streakDays += 1;
@@ -3173,7 +3174,8 @@
         speak(D.VOICE_CLIPS["diem-danh-xong"].text, { clipId: "diem-danh-xong" });
       }
       renderCheckin();
-    });
+      });
+    }
 
     const shareBtn = document.getElementById("btn-share-zalo-card");
     if (shareBtn) {
@@ -4285,21 +4287,25 @@
     const selectedHabitsCount = (state.user.habits || []).length;
 
     els.main.innerHTML = `
+      ${renderM3HeroBanner(
+        escHtml(room.name),
+        `${totalSeated} anh chị đang ngồi · ${room.tables.length} bàn mở`,
+        "tea"
+      )}
+
       ${renderRoomSwitcherStrip()}
 
-      <div class="room-heading-block">
-        <h1>${escHtml(room.name)}</h1>
-        <p class="lead-copy">${escHtml(room.description)} · <strong class="num">${totalSeated}</strong> anh chị tại <strong class="num">${room.tables.length}</strong> bàn.</p>
+      <div class="m3-seg-bar" role="tablist" aria-label="Chọn góc xem sảnh trà">
+        <button type="button" class="m3-seg-btn ${activeLobbyTab === "overview" ? "active" : ""}" id="lobby-tab-overview">Sảnh 2.5D &amp; Ghép bàn</button>
+        <button type="button" class="m3-seg-btn ${activeLobbyTab === "tables" ? "active" : ""}" id="lobby-tab-tables">Chi tiết ${room.tables.length} bàn</button>
       </div>
 
       ${
         room.id === "phong-co"
           ? `
         <div class="surface-panel warm" id="phong-co-quick-banner">
-          <h3>Bàn Cờ Tướng 9×10 &amp; Kho 6 Thế Cờ Giang Hồ</h3>
-          <p class="quest-hint-copy">Mỗi bàn bên dưới đều mở sẵn cờ tướng 9×10, hoặc bấm đánh toàn màn hình ngay:</p>
           <div class="btn-row">
-            <button type="button" class="btn-primary" id="btn-lobby-play-full9x10">${ico("xiangqi")}<span>Đánh ván 9×10</span></button>
+            <button type="button" class="btn-primary" id="btn-lobby-play-full9x10">${ico("xiangqi")}<span>Đánh Cờ 9×10</span></button>
             <button type="button" class="btn-jade" id="btn-lobby-play-cothe">${ico("award")}<span>Giải 6 Cờ thế</span></button>
           </div>
         </div>
@@ -4307,7 +4313,10 @@
           : ""
       }
 
-      <!-- Toàn cảnh 2.5D góc rộng 5 gian đặt ngay đầu màn hình để nhìn thấy quán trà lập tức -->
+      ${
+        activeLobbyTab === "overview"
+          ? `
+      <!-- Toàn cảnh 2.5D góc rộng 5 gian đặt ngay đầu màn hình -->
       <div class="stage-showcase-card">
         ${renderGraphicsModeSwitchHtml({
           extraHtml: `<button type="button" class="stage-badge-btn" id="btn-toggle-overview-wide">Góc siêu rộng</button>`
@@ -4318,25 +4327,35 @@
         </div>
       </div>
 
-      <!-- Thẻ gợi ý ghép bàn phù hợp nhất ngay dưới sân khấu -->
-      <div class="surface-panel warm" id="smart-match-card">
+      <!-- Gợi ý bàn hợp nhất + lưới chọn nhanh 6 bàn gọn trong 1 màn hình -->
+      <div class="surface-panel" id="smart-match-card">
         <div class="passcard-head">
-          <h3>Gợi ý bàn hợp nhất</h3>
+          <strong>Gợi ý: ${escHtml(best.table.name)} (${best.table.members.length}/5)</strong>
           <span class="badge-tag amber num">${best.match.percent}% hợp</span>
         </div>
-        <p><strong>${escHtml(best.table.name)}</strong> <span class="num">(${best.table.members.length}/5 người)</span></p>
-        <p class="quest-hint-copy">${escHtml(best.match.reasons.join(" · "))}</p>
-        <button type="button" class="btn-primary" id="btn-join-recommended" data-join-idx="${best.idx}">
+        <button type="button" class="btn-primary join-table-btn" id="btn-join-recommended" data-join-idx="${best.idx}">
           ${ico("tea")}
           <span>Ngồi vào ${escHtml(best.table.name)} ngay</span>
         </button>
+
+        <div class="lobby-quick-tables">
+          ${scoredTables
+            .map(
+              (item) => `
+            <button type="button" class="lobby-qtable-btn join-table-btn ${item.idx === best.idx ? "is-best" : ""}" data-join-idx="${item.idx}">
+              <strong>${escHtml(item.table.name.replace(/^Bàn\s*/i, "Bàn "))}</strong>
+              <small class="num">${item.table.members.length}/5 · ${item.match.percent}%</small>
+            </button>
+          `
+            )
+            .join("")}
+        </div>
       </div>
 
-      <!-- Thói quen & Sở thích gọn gàng trong ngăn mở rộng -->
       <details class="tb-details">
         <summary>
-          <span>Chọn sở thích ghép bàn hợp ý</span>
-          <span class="tb-details-hint num">${selectedHabitsCount} mục đã chọn</span>
+          <span>Sở thích ghép bàn &amp; Đặt tên bàn riêng</span>
+          <span class="tb-details-hint num">${selectedHabitsCount} mục</span>
         </summary>
         <div class="habit-grid" style="margin-top:8px;">
           ${D.HABIT_TAGS.map((h) => {
@@ -4344,16 +4363,20 @@
             return `<button type="button" class="habit-chip ${active ? "selected" : ""}" data-habit="${h.id}">${escHtml(h.label)}</button>`;
           }).join("")}
         </div>
+        <button type="button" class="btn-secondary" id="btn-lobby-host-rename" style="margin-top:10px;">
+          ${ico("tea")}
+          <span>+ Đặt Tên Bàn Trà Riêng (Làm Chủ Bàn)</span>
+        </button>
       </details>
-
+      `
+          : `
       <button type="button" class="btn-secondary" id="btn-lobby-host-rename">
         ${ico("tea")}
         <span>+ Đặt Tên Bàn Trà Đàm Đạo Riêng (Làm Chủ Bàn)</span>
       </button>
 
-      <!-- Danh sách 6 bàn & người đang ngồi -->
+      <!-- Danh sách chi tiết 6 bàn & người đang ngồi -->
       <div class="section-block">
-        <h2>Trong phòng đang có ai? (<span class="num">${room.tables.length}</span> bàn)</h2>
         ${scoredTables
           .map(
             (item) => `
@@ -4401,10 +4424,19 @@
           )
           .join("")}
       </div>
+      `
+      }
     `;
 
+    const tabOv = document.getElementById("lobby-tab-overview");
+    const tabTbl = document.getElementById("lobby-tab-tables");
+    if (tabOv) tabOv.addEventListener("click", () => { if (activeLobbyTab !== "overview") { activeLobbyTab = "overview"; renderTeaRoomLobby(room); } });
+    if (tabTbl) tabTbl.addEventListener("click", () => { if (activeLobbyTab !== "tables") { window.TeaRoomScene.dispose(); activeLobbyTab = "tables"; renderTeaRoomLobby(room); } });
+
     bindRoomSwitcherEvents();
-    mountRoomSceneView("overview", room, room.tables[0], best.idx);
+    if (activeLobbyTab === "overview") {
+      mountRoomSceneView("overview", room, room.tables[0], best.idx);
+    }
 
     const wideBtn = document.getElementById("btn-toggle-overview-wide");
     if (wideBtn && window.TeaRoomScene && typeof window.TeaRoomScene.toggleOverviewWide === "function") {
@@ -5251,20 +5283,24 @@
     const adminUnlocked = isAdminUnlocked();
     const showAdminRssBox = Boolean(state.newspaper.adminOpen && adminUnlocked);
 
-    els.main.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
-        <h1>Tờ Báo Sáng</h1>
-        <button type="button" class="btn-mini" id="btn-toggle-rss-admin">${
-          !adminUnlocked
-            ? `${ico("shield", "ico-sm")}<span>Duyệt RSS (Admin)</span>`
-            : showAdminRssBox
-            ? "Đóng góc Admin RSS"
-            : `Duyệt RSS (${state.newspaper.drafts.length})`
-        }</button>
-      </div>
-      <p class="lead-copy">Chọn chuyên mục hoặc tìm chủ đề (${pron} gõ hoặc chạm gợi ý như <strong>Giá dầu, Thế giới...</strong>), rồi ấn vào tin để ngồi đàm đạo cùng những người đang đọc tin đó.</p>
+    const pagedArticles = visibleArticles.slice(0, newsVisibleLimit);
+    const hasMoreArticles = visibleArticles.length > pagedArticles.length;
 
-      <!-- Khung tìm kiếm & Chuyên mục gọn gàng -->
+    els.main.innerHTML = `
+      ${renderM3HeroBanner(
+        "Tờ Báo Sáng",
+        `${visibleArticles.length} bản tin chữ to · Ấn tiêu đề để đọc chi tiết`,
+        "paper",
+        `<button type="button" class="m3-hero-btn" id="btn-toggle-rss-admin">${
+          !adminUnlocked
+            ? `${ico("shield", "ico-sm")}<span>RSS</span>`
+            : showAdminRssBox
+            ? "Đóng RSS"
+            : `Duyệt (${state.newspaper.drafts.length})`
+        }</button>`
+      )}
+
+      <!-- Thanh tìm kiếm & chuyên mục gọn kiểu Apps -->
       <div class="surface-panel news-toolbar-card">
         <div class="news-search-row">
           <input
@@ -5308,8 +5344,8 @@
           hasFilter
             ? `
           <div class="news-filter-bar">
-            <span>Đang hiện <strong>${visibleArticles.length}</strong> tin phù hợp${searchQ ? ` với "${escHtml(searchQ)}"` : ""}</span>
-            <button type="button" class="btn-mini" id="btn-clear-news-filter">Xem tất cả (${state.newspaper.articles.length})</button>
+            <span>Hiện <strong>${visibleArticles.length}</strong> tin${searchQ ? ` cho "${escHtml(searchQ)}"` : ""}</span>
+            <button type="button" class="btn-mini" id="btn-clear-news-filter">Tất cả (${state.newspaper.articles.length})</button>
           </div>
         `
             : ""
@@ -5324,14 +5360,14 @@
             <h3>Góc Admin duyệt RSS 05:30 (1 chạm)</h3>
             <button type="button" class="btn-mini" id="btn-lock-rss-admin">Khóa lại</button>
           </div>
-          <p style="font-size:0.88rem;">GitHub Action 05:30 sáng tự kéo RSS báo chính thống, lọc tin tích cực lưu vào <code>assets/morning-rss.json</code>. Quản trị viên bấm duyệt để đăng đồng bộ lên Báo Sáng:</p>
+          <p style="font-size:0.84rem;">GitHub Action 05:30 sáng tự kéo RSS báo chính thống, lọc tin tích cực lưu vào <code>assets/morning-rss.json</code>:</p>
           ${
             state.newspaper.drafts.length === 0
               ? `<p style="font-size:0.88rem; font-weight:700;">Đã duyệt hết bản nháp RSS sáng nay.</p>`
               : state.newspaper.drafts
                   .map(
                     (dr, i) => `
-              <div class="dict-row" style="background:#FFFDF7; padding:10px; gap:6px;">
+              <div class="dict-row" style="background:#FFFFFF; padding:10px; gap:6px;">
                 <span class="badge-tag amber">${escHtml(dr.tag)}</span>
                 <strong>${escHtml(dr.title)}</strong>
                 <small style="color:var(--ink-secondary);">${escHtml(dr.source)}</small>
@@ -5347,63 +5383,58 @@
           : ""
       }
 
-      <article class="broadsheet">
-        <div class="broadsheet-masthead">
-          <h2>BÁO SÁNG QUÁN TRÀ TUỔI BẠC</h2>
-          <div class="broadsheet-meta">
-            <span>Số ra sáng hôm nay (${visibleArticles.length} tin)</span>
-            <span>Ấn vào tin để cùng ngồi đàm đạo</span>
-          </div>
-        </div>
-
+      <!-- Danh sách thẻ báo sáng siêu gọn (4 tin trang nhất · Chạm mở đọc đủ bài) -->
+      <div class="news-list-stack">
         ${
           newsLiveSearching
             ? `<div class="surface-panel warm"><p style="font-weight:700;">Đang tìm bản tin mới nhất về "${escHtml(searchQ)}"...</p></div>`
-            : visibleArticles.length === 0
+            : pagedArticles.length === 0
               ? `
             <div class="surface-panel warm">
               <p>Chưa có sẵn tin trong mục này cho từ khóa <strong>"${escHtml(searchQ)}"</strong>.</p>
               <button type="button" class="btn-primary" id="btn-fetch-live-news">Tìm tin thời sự trực tuyến về "${escHtml(searchQ)}"</button>
             </div>
           `
-              : visibleArticles
+              : pagedArticles
                   .map((art, idx) => {
                     const readers = getReadersForArticle(art);
-                    const readerSummary = readers.map((r) => `${r.name} (${r.age}t)`).join(", ");
                     return `
-                  <section class="news-article" data-art-idx="${idx}">
-                    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+                  <article class="news-row-card" data-art-idx="${idx}">
+                    <div class="news-row-top">
                       <span class="badge-tag">${escHtml(art.tag)}</span>
-                      <span class="news-reader-count">${readers.length} người đang đọc</span>
+                      <span class="news-reader-count num">${readers.length} bác đang đọc</span>
                     </div>
 
-                    <button type="button" class="news-open-detail-btn" data-open-idx="${idx}">
+                    <button type="button" class="news-row-title-btn news-open-detail-btn" data-open-idx="${idx}">
                       <h3>${escHtml(art.title)}</h3>
-                      <span class="news-source">${escHtml(art.source)}</span>
-                      <span class="news-body">${escHtml(art.body)}</span>
-                      <span class="news-read-more-hint">Chạm vào bản tin để xem các điểm chính & danh sách người đọc →</span>
+                      <span class="news-row-meta">${escHtml(art.source)} · Chạm đọc chi tiết →</span>
                     </button>
 
-                    <div class="news-readers-strip">
-                      <div class="news-readers-avatars">
-                        ${readers.slice(0, 3).map((r) => renderSeniorAvatarSvg(r)).join("")}
-                      </div>
-                      <div class="news-readers-text">
-                        <strong>Đang đọc & bàn tin này:</strong> ${escHtml(readerSummary)}
-                      </div>
+                    <div class="news-row-actions">
+                      <button type="button" class="btn-mini read-news-btn" data-idx="${idx}">${ico("speaker", "ico-sm")}<span>Nghe đọc</span></button>
+                      <button type="button" class="btn-mini active-equip bring-tea-btn" data-idx="${idx}">${ico("tea", "ico-sm")}<span>Đàm đạo (${readers.length})</span></button>
                     </div>
-
-                    <div class="btn-row">
-                      <button type="button" class="btn-secondary read-news-btn" data-idx="${idx}">${ico("speaker")}<span>Nghe đọc báo</span></button>
-                      <button type="button" class="btn-primary bring-tea-btn" data-idx="${idx}">${ico("tea")}<span>Cùng đàm đạo (${readers.length})</span></button>
-                    </div>
-                  </section>
+                  </article>
                 `;
                   })
                   .join("")
         }
-      </article>
+      </div>
+
+      ${
+        hasMoreArticles
+          ? `<button type="button" class="btn-secondary" id="btn-news-show-more">Xem thêm tin khác (còn ${visibleArticles.length - pagedArticles.length} tin)</button>`
+          : ""
+      }
     `;
+
+    const newsMoreBtn = document.getElementById("btn-news-show-more");
+    if (newsMoreBtn) {
+      newsMoreBtn.addEventListener("click", () => {
+        newsVisibleLimit += 4;
+        renderNewspaper();
+      });
+    }
 
     const runSearch = (rawVal) => {
       const q = String(rawVal || "").trim();
@@ -5609,10 +5640,12 @@
     const letters = ["A", "B", "C", "D"];
 
     els.main.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
-        <h1>Đố vui minh mẫn</h1>
-        <span class="badge-tag amber num">Câu ${safeIdx + 1}/${total} · ${qState.score}đ</span>
-      </div>
+      ${renderM3HeroBanner(
+        "Đố Vui Minh Mẫn",
+        `${escHtml(curPack.title)} · 50/50 &amp; đọc to câu hỏi`,
+        "quiz",
+        `<span class="m3-hero-pill num">Câu ${safeIdx + 1}/${total} · ${qState.score}đ</span>`
+      )}
 
       ${packBarHtml}
 
@@ -6092,7 +6125,11 @@
 
   function renderGames() {
     els.main.innerHTML = `
-      <h1>Trò chơi dân gian &amp; Rèn trí nhớ</h1>
+      ${renderM3HeroBanner(
+        "Trò Chơi Dân Gian",
+        "Ô ăn quan · Ca dao trí nhớ · Cờ tướng 9×10",
+        "xiangqi"
+      )}
       <div class="tab-bar tabs-3" role="tablist" aria-label="Chọn trò chơi dân gian">
         <button type="button" class="tab-btn ${activeGameTab === "oaq" ? "active" : ""}" id="tab-oaq">Ô ăn quan</button>
         <button type="button" class="tab-btn ${activeGameTab === "cadao" ? "active" : ""}" id="tab-cadao">Ca dao</button>
@@ -7213,11 +7250,12 @@
 
   function renderXiangqiScreen() {
     els.main.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
-        <h1>Cờ Tướng 9×10 &amp; Giải Cờ Thế</h1>
-        <button type="button" class="btn-mini" id="btn-xq-goto-oaq">Sang Ô ăn quan</button>
-      </div>
-      <p class="lead-copy">Bàn cờ chuẩn 9 cột × 10 hàng đầy đủ luật Cửu cung, cản Mã, cản Tượng, ngòi Pháo và lộ mặt Tướng. Chơi ván thật 32 quân hoặc thử sức 6 thế cờ cổ phổ.</p>
+      ${renderM3HeroBanner(
+        "Cờ Tướng 9×10 &amp; Cờ Thế",
+        "32 quân chuẩn luật · Cúp Đồng Ngũ 3 vòng · 6 thế cổ phổ",
+        "xiangqi",
+        `<button type="button" class="m3-hero-btn" id="btn-xq-goto-oaq">Ô ăn quan</button>`
+      )}
       <div id="xq-host-container"></div>
     `;
     document.getElementById("btn-xq-goto-oaq").addEventListener("click", () => {
@@ -8080,22 +8118,53 @@
     const allPoems = getMergedPoemsList();
     const activeFrame = getTitleFrame(state.user.titleFrameId);
 
-    els.main.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
-        <h1>Ngâm thơ &amp; Tặng hoa</h1>
-        <span class="badge-tag amber num">Còn ${state.user.flowersLeft}/3 hoa hôm nay</span>
-      </div>
-      <p class="lead-copy">Tự sáng tác hoặc đọc thơ bằng giọng nói, nghe ngâm thơ cùng tiếng đàn tranh, in Thiệp Lụa gửi Zalo và nhận khung danh hiệu <strong>Thi Hữu Tao Đàn</strong>.</p>
+    const safePoemIdx = allPoems.length > 0 ? ((activePoetryIdx % allPoems.length) + allPoems.length) % allPoems.length : 0;
+    activePoetryIdx = safePoemIdx;
+    const featuredPoem = allPoems[safePoemIdx];
+    const featuredGifted = featuredPoem ? (state.user.giftedPoemIds || []).includes(featuredPoem.id) : false;
 
-      <div class="surface-panel warm">
-        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
-          <span>Khung danh hiệu 3D đang đeo: <strong>${escHtml(activeFrame.name)}</strong></span>
-          <button type="button" class="btn-mini" id="btn-go-frame-preview">${ico("award", "ico-sm")}<span>Xem trên 3D</span></button>
-        </div>
-      </div>
+    els.main.innerHTML = `
+      ${renderM3HeroBanner(
+        "Chiếu Thơ Lục Bát",
+        `Khung 3D: ${escHtml(activeFrame.name)} · Còn ${state.user.flowersLeft}/3 bông hoa`,
+        "poem",
+        `<button type="button" class="m3-hero-btn" id="btn-go-frame-preview">${ico("award", "ico-sm")}<span>Khung 3D</span></button>`
+      )}
+
+      ${
+        featuredPoem
+          ? `
+        <article class="surface-panel">
+          <div class="poem-pager-bar">
+            <button type="button" class="btn-mini" id="btn-poem-prev" ${allPoems.length <= 1 ? "disabled" : ""}>← Bài trước</button>
+            <strong class="num" style="font-size:0.84rem; color:var(--accent-terracotta);">Bài ${safePoemIdx + 1}/${allPoems.length} · ${featuredPoem.flowers} hoa</strong>
+            <button type="button" class="btn-mini" id="btn-poem-next" ${allPoems.length <= 1 ? "disabled" : ""}>Bài sau →</button>
+          </div>
+          <div>
+            <h3 style="margin:0;">${escHtml(featuredPoem.title)}</h3>
+            <small style="color:var(--ink-secondary);">${escHtml(featuredPoem.reciter)} · ${escHtml(featuredPoem.author)}</small>
+          </div>
+          <div style="font-family:var(--font-serif); line-height:1.68; background:var(--bg-paper); padding:11px 14px; border-radius:12px; border:1px solid var(--border-subtle);">
+            ${(featuredPoem.lines || []).map((l) => `<div>${escHtml(l)}</div>`).join("")}
+          </div>
+          <div class="btn-row">
+            <button type="button" class="btn-secondary listen-poem-btn" data-idx="${safePoemIdx}">${ico("speaker")}<span>Ngâm đàn tranh</span></button>
+            <button type="button" class="btn-primary gift-flower-btn" data-idx="${safePoemIdx}" ${state.user.flowersLeft <= 0 || featuredGifted ? "disabled" : ""}>
+              ${ico("flower")}
+              <span>${featuredGifted ? "Đã tặng hoa" : "Tặng 1 hoa"}</span>
+            </button>
+          </div>
+          <button type="button" class="btn-secondary export-poem-card-btn" data-idx="${safePoemIdx}">
+            ${ico("camera")}
+            <span>In Thiệp Lụa Bài Thơ (Gửi Zalo)</span>
+          </button>
+        </article>
+      `
+          : ""
+      }
 
       <div class="surface-panel">
-        <h3>Sáng tác &amp; Đăng bài thơ mới</h3>
+        <h3 style="margin:0;">Sáng tác bài thơ mới (+4 Xu)</h3>
         <div class="setup-inline-fields">
           <label class="field-label" style="flex:1.3;">
             Tên bài thơ
@@ -8110,47 +8179,23 @@
             </select>
           </label>
         </div>
-        <textarea class="textarea-lg" id="poem-body-in" rows="3" placeholder="Gõ từng câu thơ xuống dòng, hoặc bấm Đọc thơ bằng giọng / Gợi ý câu Lục Bát..."></textarea>
-        <div id="poem-meter-feedback" style="font-size:0.88rem; color:var(--accent-jade); font-weight:600;" hidden></div>
+        <textarea class="textarea-lg" id="poem-body-in" rows="2" placeholder="Gõ từng câu thơ, hoặc bấm Gợi ý Lục Bát / Đọc bằng giọng..."></textarea>
+        <div id="poem-meter-feedback" style="font-size:0.84rem; color:var(--accent-jade); font-weight:600;" hidden></div>
         <div class="btn-row">
-          <button type="button" class="btn-secondary" id="btn-mic-poem">${ico("mic")}<span>Đọc thơ bằng giọng</span></button>
-          <button type="button" class="btn-secondary" id="btn-rhyme-helper">Gợi ý câu Lục Bát</button>
+          <button type="button" class="btn-secondary" id="btn-mic-poem">${ico("mic")}<span>Đọc giọng</span></button>
+          <button type="button" class="btn-secondary" id="btn-rhyme-helper">Gợi ý Lục Bát</button>
         </div>
-        <button type="button" class="btn-secondary" id="btn-check-meter">Kiểm tra nhịp thơ 6–8</button>
-        <button type="button" class="btn-jade" id="btn-post-poem">${ico("poem")}<span>Đăng bài thơ &amp; Mở danh hiệu Thi Hữu (+4 Xu)</span></button>
+        <div class="btn-row">
+          <button type="button" class="btn-secondary" id="btn-check-meter">Kiểm nhịp 6–8</button>
+          <button type="button" class="btn-jade" id="btn-post-poem">${ico("poem")}<span>Đăng thơ</span></button>
+        </div>
       </div>
-
-      ${allPoems
-        .map((p, idx) => {
-          const alreadyGifted = (state.user.giftedPoemIds || []).includes(p.id);
-          return `
-        <article class="surface-panel">
-          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
-            <div>
-              <h3>${escHtml(p.title)}</h3>
-              <small style="color:var(--ink-secondary);">${escHtml(p.reciter)} · ${escHtml(p.author)}</small>
-            </div>
-            <span class="badge-tag jade num">${p.flowers} hoa</span>
-          </div>
-          <div style="font-family:var(--font-serif); line-height:1.7; background:var(--bg-paper); padding:10px 14px; border-radius:12px; border:1px solid var(--border-subtle);">
-            ${(p.lines || []).map((l) => `<div>${escHtml(l)}</div>`).join("")}
-          </div>
-          <div class="btn-row">
-            <button type="button" class="btn-secondary listen-poem-btn" data-idx="${idx}">${ico("speaker")}<span>Ngâm cùng đàn tranh</span></button>
-            <button type="button" class="btn-primary gift-flower-btn" data-idx="${idx}" ${state.user.flowersLeft <= 0 || alreadyGifted ? "disabled" : ""}>
-              ${ico("flower")}
-              <span>${alreadyGifted ? "Đã tặng hoa" : "Tặng 1 bông hoa"}</span>
-            </button>
-          </div>
-          <button type="button" class="btn-secondary export-poem-card-btn" data-idx="${idx}">
-            ${ico("camera")}
-            <span>In Thiệp Lụa Bài Thơ (Lưu gửi Zalo)</span>
-          </button>
-        </article>
-      `;
-        })
-        .join("")}
     `;
+
+    const prevPoemBtn = document.getElementById("btn-poem-prev");
+    const nextPoemBtn = document.getElementById("btn-poem-next");
+    if (prevPoemBtn) prevPoemBtn.addEventListener("click", () => { activePoetryIdx = (safePoemIdx - 1 + allPoems.length) % Math.max(1, allPoems.length); renderPoetry(); });
+    if (nextPoemBtn) nextPoemBtn.addEventListener("click", () => { activePoetryIdx = (safePoemIdx + 1) % Math.max(1, allPoems.length); renderPoetry(); });
 
     document.getElementById("btn-go-frame-preview").addEventListener("click", () => navigate("profile"));
 
@@ -8565,8 +8610,11 @@
     const r = state.watch.reactions;
 
     els.main.innerHTML = `
-      <h1>Phòng xem chung</h1>
-      <p class="lead-copy">Chiếu theo giờ hẹn cố định cùng 38 bác khác. Nội dung có giấy phép rõ ràng, phụ đề chữ lớn.</p>
+      ${renderM3HeroBanner(
+        "Phòng xem chung",
+        `${escHtml(ch.slot)} · 39 bác đang xem · Phụ đề chữ lớn`,
+        "tv"
+      )}
 
       <div class="watch-screen">
         <div class="watch-canvas-area">
@@ -8575,9 +8623,9 @@
             <small style="color:#E0D4BE; font-weight:600;">39 bác đang xem</small>
           </div>
           <canvas id="watch-stage-canvas" class="watch-live-canvas" aria-label="Màn hình sân khấu trực tiếp ${escHtml(ch.title)}"></canvas>
-          <h2 style="color:#FFFDF7; font-size:1.12rem;">${escHtml(ch.title)}</h2>
+          <h2 style="color:#FFFDF7; font-size:1.05rem;">${escHtml(ch.title)}</h2>
           <small style="color:#E0D4BE;">${escHtml(ch.instructor)}</small>
-          <button type="button" class="btn-primary btn-inline" id="btn-watch-play">${ico("speaker")}<span>Nghe thuyết minh đoạn đang chiếu</span></button>
+          <button type="button" class="btn-primary btn-inline" id="btn-watch-play">${ico("speaker")}<span>Nghe thuyết minh</span></button>
         </div>
         <div class="watch-subtitle">${escHtml(ch.subtitle)}</div>
       </div>
@@ -8589,38 +8637,51 @@
         <button type="button" class="reaction-btn" data-rx="wow"><span>Hay quá</span><strong class="num">${r.wow}</strong></button>
       </div>
 
+      <div class="m3-seg-bar" role="tablist" aria-label="Chọn mục Phòng xem chung">
+        <button type="button" class="m3-seg-btn ${activeWatchTab === "channels" ? "active" : ""}" id="watch-tab-ch">Chọn tiết mục (${D.WATCH_CHANNELS.length})</button>
+        <button type="button" class="m3-seg-btn ${activeWatchTab === "utility" ? "active" : ""}" id="watch-tab-util">Góc tiện ích</button>
+      </div>
+
+      ${
+        activeWatchTab === "channels"
+          ? `
       <div class="surface-panel">
-        <h3>Bỏ phiếu tiết mục tiếp theo</h3>
         ${D.WATCH_CHANNELS.map(
           (c, i) => `
-          <button type="button" class="btn-secondary vote-ch-btn" data-idx="${i}" style="justify-content:space-between; ${state.watch.channelIdx === i ? "border-color:var(--accent-terracotta);background:var(--accent-amber-soft);" : ""}">
+          <button type="button" class="btn-secondary vote-ch-btn" data-idx="${i}" style="justify-content:space-between; ${state.watch.channelIdx === i ? "border-color:var(--accent-terracotta);background:var(--accent-cinnabar-soft);" : ""}">
             <span style="text-align:left;">${escHtml(c.slot)}</span>
             <span class="badge-tag num">${state.watch.votes[i]} phiếu</span>
           </button>
         `
         ).join("")}
       </div>
-
-      <!-- Separated Utility Shelf (Never overlapping video, no supplements/medicine) -->
+      `
+          : `
       <div class="surface-panel">
         <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
-          <h3>Góc đồ dùng tiện ích</h3>
-          <small style="color:var(--ink-secondary);">Chúng tôi có thể nhận hoa hồng</small>
+          <h3 style="margin:0;">Góc đồ dùng tiện ích</h3>
+          <small style="color:var(--ink-secondary);">An toàn đã kiểm duyệt</small>
         </div>
-        <p style="font-size:0.82rem; color:var(--ink-secondary);">Chỉ giới thiệu vật dụng sinh hoạt an toàn đã kiểm duyệt, không bán thuốc hay thực phẩm chức năng.</p>
         ${D.SAFE_AFFILIATE_ITEMS.map(
           (it) => `
           <div class="province-rank-item">
             <div>
               <strong>${escHtml(it.name)}</strong>
-              <div style="font-size:0.88rem; color:var(--ink-secondary);">${escHtml(it.note)}</div>
+              <div style="font-size:0.84rem; color:var(--ink-secondary);">${escHtml(it.note)}</div>
             </div>
             <span class="badge-tag amber num">${escHtml(it.price)}</span>
           </div>
         `
         ).join("")}
       </div>
+      `
+      }
     `;
+
+    const wTabCh = document.getElementById("watch-tab-ch");
+    const wTabUtil = document.getElementById("watch-tab-util");
+    if (wTabCh) wTabCh.addEventListener("click", () => { if (activeWatchTab !== "channels") { activeWatchTab = "channels"; renderWatch(); } });
+    if (wTabUtil) wTabUtil.addEventListener("click", () => { if (activeWatchTab !== "utility") { activeWatchTab = "utility"; renderWatch(); } });
 
     mountWatchStageCanvas(state.watch.channelIdx);
 
@@ -9155,7 +9216,11 @@
     const initWishCd = getWishCooldownSec();
 
     els.main.innerHTML = `
-      <h1>${escHtml(spMeta.heading)}</h1>
+      ${renderM3HeroBanner(
+        escHtml(spMeta.heading),
+        `Chiếu số ${myCushion + 1} · ${attendees.length}/20 bác đang tĩnh tâm`,
+        "lotus"
+      )}
 
       <div class="zen-space-tabs" role="tablist" aria-label="Chọn không gian tĩnh tâm">
         ${D.ZEN_SPACES.map(
@@ -9172,11 +9237,14 @@
         </div>
       </div>
 
-      <button type="button" class="btn-${isAutoMuyuActive ? "primary" : "jade"}" id="btn-temple-auto-muyu">
-        ${ico("bell")}
-        <span id="auto-muyu-label">${escHtml(isAutoMuyuActive ? spMeta.autoMuyuRunning : spMeta.autoMuyuIdle)}</span>
-      </button>
+      <div class="m3-seg-bar" role="tablist" aria-label="Chọn khu vực tương tác Tĩnh Tâm">
+        <button type="button" class="m3-seg-btn ${activeZenSubTab === "ritual" ? "active" : ""}" id="zen-sub-ritual">Hành lễ &amp; Hoa đăng</button>
+        <button type="button" class="m3-seg-btn ${activeZenSubTab === "wishes" ? "active" : ""}" id="zen-sub-wishes">Thẻ Đỏ &amp; 20 Chiếu</button>
+      </div>
 
+      ${
+        activeZenSubTab === "ritual"
+          ? `
       <div class="temple-ritual-grid" role="group" aria-label="Nghi thức tĩnh tâm và sân Hồ Sen">
         <button type="button" class="btn-primary" id="btn-temple-incense">
           <span>${escHtml(spMeta.incenseBtn)}</span>
@@ -9193,17 +9261,25 @@
         </button>
         <button type="button" class="btn-secondary" id="btn-temple-pond-lantern">
           ${ico("lotus")}
-          <span class="num">Thả Hoa Đăng (${activeLanterns.length > 0 ? `${activeLanterns.length} đang trôi` : state.zen.lanternsReleased || 18})</span>
+          <span class="num">Hoa Đăng (${activeLanterns.length > 0 ? `${activeLanterns.length} trôi` : state.zen.lanternsReleased || 18})</span>
         </button>
         <button type="button" class="btn-secondary ${initWishCd > 0 ? "is-cooldown" : ""}" id="btn-temple-hang-wish">
           ${ico("award")}
-          <span class="num">${initWishCd > 0 ? `Hồi thẻ (${initWishCd}s)` : `Rút & Treo Thẻ Đỏ (${state.zen.wishPlaquesCount || 16})`}</span>
+          <span class="num">${initWishCd > 0 ? `Hồi thẻ (${initWishCd}s)` : `Thẻ Đỏ (${state.zen.wishPlaquesCount || 16})`}</span>
         </button>
       </div>
 
-      <details class="surface-panel">
-        <summary style="cursor:pointer; font-weight:700; display:flex; justify-content:space-between; align-items:center; gap:8px;">
-          <span id="zen-cushion-summary-text">Đổi chỗ trong 20 Chiếu ngồi (Đang ngồi chiếu ${myCushion + 1})</span>
+      <button type="button" class="btn-${isAutoMuyuActive ? "primary" : "jade"}" id="btn-temple-auto-muyu">
+        ${ico("bell")}
+        <span id="auto-muyu-label">${escHtml(isAutoMuyuActive ? spMeta.autoMuyuRunning : spMeta.autoMuyuIdle)}</span>
+      </button>
+
+      <div id="peace-card-host">${buildTemplePeaceCardHtml(curCard)}</div>
+      `
+          : `
+      <details class="tb-details">
+        <summary>
+          <span id="zen-cushion-summary-text">Đổi chỗ 20 Chiếu ngồi (Đang ngồi chiếu ${myCushion + 1})</span>
           <span class="badge-tag jade num">${attendees.length}/20 bác</span>
         </summary>
         <div class="cushion-pick-grid" id="zen-cushion-grid" role="group" aria-label="Chọn vị trí chiếu ngồi từ 1 đến 20" style="margin-top:10px;">
@@ -9220,8 +9296,6 @@
           }).join("")}
         </div>
       </details>
-
-      <div id="peace-card-host">${buildTemplePeaceCardHtml(curCard)}</div>
 
       <div class="surface-panel">
         <h3>${escHtml(spMeta.prayerHeading)}</h3>
@@ -9242,7 +9316,14 @@
           ${buildTemplePrayersListHtml(prayers)}
         </div>
       </div>
+      `
+      }
     `;
+
+    const zenSubRitual = document.getElementById("zen-sub-ritual");
+    const zenSubWishes = document.getElementById("zen-sub-wishes");
+    if (zenSubRitual) zenSubRitual.addEventListener("click", () => { if (activeZenSubTab !== "ritual") { activeZenSubTab = "ritual"; renderZen(); } });
+    if (zenSubWishes) zenSubWishes.addEventListener("click", () => { if (activeZenSubTab !== "wishes") { activeZenSubTab = "wishes"; renderZen(); } });
 
     const syncZenCooldownAndLanternUi = () => {
       if (state.route !== "zen") {
@@ -9666,36 +9747,49 @@
       });
     }
 
-    document.getElementById("btn-temple-hang-wish").addEventListener("click", () => {
-      const chosen = spMeta.presets[(state.zen.wishPlaquesCount || 0) % Math.max(1, spMeta.presets.length)] || sp.quote;
-      publishWishOrIncense(chosen, "wish_plaque");
-    });
+    const hangWishBtn = document.getElementById("btn-temple-hang-wish");
+    if (hangWishBtn) {
+      hangWishBtn.addEventListener("click", () => {
+        const chosen = spMeta.presets[(state.zen.wishPlaquesCount || 0) % Math.max(1, spMeta.presets.length)] || sp.quote;
+        publishWishOrIncense(chosen, "wish_plaque");
+      });
+    }
 
-    document.getElementById("btn-temple-pond-lantern").addEventListener("click", doPondLanternStep);
+    const pondLanternBtn = document.getElementById("btn-temple-pond-lantern");
+    if (pondLanternBtn) pondLanternBtn.addEventListener("click", doPondLanternStep);
 
-    document.getElementById("btn-temple-incense").addEventListener("click", () => {
-      const chosen = spMeta.presets[(state.zen.incenseCount || 0) % Math.max(1, spMeta.presets.length)] || sp.quote;
-      publishWishOrIncense(chosen, "incense");
-    });
+    const incenseBtn = document.getElementById("btn-temple-incense");
+    if (incenseBtn) {
+      incenseBtn.addEventListener("click", () => {
+        const chosen = spMeta.presets[(state.zen.incenseCount || 0) % Math.max(1, spMeta.presets.length)] || sp.quote;
+        publishWishOrIncense(chosen, "incense");
+      });
+    }
 
-    document.getElementById("btn-temple-muyu").addEventListener("click", () => doMuyuStep(false));
-    document.getElementById("btn-ring-bell").addEventListener("click", doBellStep);
-    document.getElementById("btn-draw-peace-card").addEventListener("click", doDrawPeaceCardStep);
+    const muyuBtn = document.getElementById("btn-temple-muyu");
+    if (muyuBtn) muyuBtn.addEventListener("click", () => doMuyuStep(false));
+    const ringBellBtn = document.getElementById("btn-ring-bell");
+    if (ringBellBtn) ringBellBtn.addEventListener("click", doBellStep);
+    const drawPeaceBtn = document.getElementById("btn-draw-peace-card");
+    if (drawPeaceBtn) drawPeaceBtn.addEventListener("click", doDrawPeaceCardStep);
 
     els.main.querySelectorAll("[data-prayer-preset]").forEach((b) => {
       b.addEventListener("click", () => publishWishOrIncense(b.dataset.prayerPreset, "wish_plaque"));
     });
 
-    document.getElementById("btn-send-prayer").addEventListener("click", () => {
-      const inp = document.getElementById("temple-prayer-in");
-      if (!inp.value.trim()) {
-        showToast("Mời bác nhập lời ước nguyện hoặc chạm 1 trong 4 câu mẫu bên trên.");
-        return;
-      }
-      if (publishWishOrIncense(inp.value, "wish_plaque")) {
-        inp.value = "";
-      }
-    });
+    const sendPrayerBtn = document.getElementById("btn-send-prayer");
+    if (sendPrayerBtn) {
+      sendPrayerBtn.addEventListener("click", () => {
+        const inp = document.getElementById("temple-prayer-in");
+        if (!inp || !inp.value.trim()) {
+          showToast("Mời bác nhập lời ước nguyện hoặc chạm 1 trong 4 câu mẫu bên trên.");
+          return;
+        }
+        if (publishWishOrIncense(inp.value, "wish_plaque")) {
+          inp.value = "";
+        }
+      });
+    }
 
     bindTemplePeaceCardEvents(curCard);
     bindTemplePrayersListEvents(prayers);
@@ -9746,41 +9840,38 @@
         : "";
 
     els.main.innerHTML = `
-      <h1>Danh Hiệu &amp; Bảng Vinh Danh</h1>
-      <p class="lead-copy">Ghi nhận thâm niên sinh hoạt, công đức Chánh Điện và thành tích thắng ván cờ của từng hội viên.</p>
+      ${renderM3HeroBanner(
+        "Danh Hiệu &amp; Bảng Vàng",
+        `${escHtml(prog.current.name)} · ${prog.points} XP · ${unlockedSkillBadgesCount}/64 kỹ năng`,
+        "trophy",
+        `<span class="m3-hero-pill num">Thắng ${totalGameWins}</span>`
+      )}
 
-      <!-- Thẻ tóm tắt thâm niên hiện tại của Hội viên -->
-      <div class="surface-panel warm">
+      <!-- Thẻ tóm tắt thâm niên gọn của Hội viên -->
+      <div class="surface-panel">
         <div class="passcard-head">
-          <strong>${escHtml(prog.current.name)}</strong>
+          <strong style="font-size:0.9rem;">${escHtml(prog.current.name)}</strong>
           <span class="cohort-pill ${escHtml(prog.cohort.cls)}">${escHtml(prog.cohort.tag)}</span>
         </div>
         <div class="seniority-progress-wrap">
           <div class="seniority-progress-track">
             <div class="seniority-progress-fill" style="width:${prog.percent}%"></div>
           </div>
-          <small style="font-size:0.86rem; color:var(--ink-secondary);" class="num">
-            Tích lũy: <strong>${prog.points} XP</strong> · Đã mở <strong>${unlockedSkillBadgesCount}/64</strong> bậc kỹ năng${
-              prog.next ? ` · Cần thêm <strong>${prog.xpNeededForNext} XP</strong> lên ${escHtml(prog.next.name)}` : ""
-            }
+          <small style="font-size:0.8rem; color:var(--ink-secondary);" class="num">
+            ${prog.next ? `Còn <strong>${prog.xpNeededForNext} XP</strong> lên ${escHtml(prog.next.name)}` : "Đã đạt đỉnh cao sinh hoạt"} · Đi chùa: <strong>${templeActions}</strong> điểm
           </small>
-        </div>
-        <div class="game-stats-strip num" style="margin-top:6px;">
-          <span>Thắng cờ: <strong>${totalGameWins}</strong></span>
-          <span>Thua: <strong>${totalGameLosses}</strong></span>
-          <span>Đi chùa: <strong>${templeActions}</strong> điểm</span>
         </div>
         ${
           prog.isGuest
-            ? `<button type="button" class="btn-primary" id="btn-lb-open-card">${ico("card")}<span>Mở Thẻ 10 Giây — Lưu Danh Hiệu Ngay</span></button>`
+            ? `<button type="button" class="btn-primary" id="btn-lb-open-card">${ico("card")}<span>Mở Thẻ 10 Giây — Lưu Danh Hiệu</span></button>`
             : ""
         }
       </div>
 
-      <div class="temple-cam-bar" role="tablist" aria-label="Chọn nhánh danh hiệu">
-        <button type="button" class="temple-cam-btn ${activeLeaderTab === "Cay32" ? "active" : ""}" id="lb-tab-32">32 Tầng Sinh Hoạt</button>
-        <button type="button" class="temple-cam-btn ${activeLeaderTab === "ChuyenMon" ? "active" : ""}" id="lb-tab-skills">8 Nhánh Kỹ Năng</button>
-        <button type="button" class="temple-cam-btn ${activeLeaderTab === "Tinh" ? "active" : ""}" id="lb-tab-board">Bảng Xếp Hạng</button>
+      <div class="m3-seg-bar cols-3" role="tablist" aria-label="Chọn nhánh danh hiệu">
+        <button type="button" class="m3-seg-btn ${activeLeaderTab === "Cay32" ? "active" : ""}" id="lb-tab-32">32 Tầng</button>
+        <button type="button" class="m3-seg-btn ${activeLeaderTab === "ChuyenMon" ? "active" : ""}" id="lb-tab-skills">8 Kỹ Năng</button>
+        <button type="button" class="m3-seg-btn ${activeLeaderTab === "Tinh" ? "active" : ""}" id="lb-tab-board">Xếp Hạng</button>
       </div>
 
       ${
@@ -9790,12 +9881,12 @@
           .slice(1)
           .map((era) => {
             const tiersInEra = mainTiers.filter((t) => t.era && t.era.id === era.id);
-            const isOpenByDefault = era.id === currentEraId;
+            const isCurrentEra = era.id === currentEraId;
             return `
-            <details class="tb-details" ${isOpenByDefault ? "open" : ""}>
+            <details class="tb-details">
               <summary>
                 <span style="color:${escHtml(era.color)};">${escHtml(era.eraName)} (${escHtml(era.rangeLabel)})</span>
-                <span class="tb-details-hint">${isOpenByDefault ? "Cấp hiện tại" : `${tiersInEra.length} tầng`}</span>
+                <span class="tb-details-hint">${isCurrentEra ? "Đang ở cấp này" : `${tiersInEra.length} tầng`}</span>
               </summary>
               <div class="era-tier-grid" style="margin-top:8px;">
                 ${tiersInEra
@@ -10171,26 +10262,29 @@
 
     const renderWardrobeCatalogList = (heading, items, cfg) => `
       <div class="surface-panel">
-        <h3>${heading}</h3>
-        <div class="catalog-stack">
+        <div class="m3-section-head">
+          <h3 style="margin:0; font-size:0.9rem;">${heading}</h3>
+          <span class="m3-section-meta num">${items.length} mẫu</span>
+        </div>
+        <div class="catalog-grid-2">
           ${items
             .map((item) => {
               const owned = cfg.ownedList.includes(item.id);
               const equipped = cfg.equippedId === item.id;
               const previewing = cfg.activeId === item.id && !equipped;
               return `
-                <div class="catalog-sample-card ${equipped ? "is-equipped" : previewing ? "is-previewing" : ""}">
-                  <div class="catalog-sample-top">
+                <div class="catalog-mini-card ${equipped ? "is-equipped" : previewing ? "is-previewing" : ""}">
+                  <div class="catalog-mini-head">
                     ${cfg.thumbFn(item)}
-                    <div class="catalog-sample-info">
-                      <strong>${escHtml(item.name)}</strong>${item.regionTag ? ` <span class="region-origin-pill">${escHtml(item.regionTag)}</span>` : ""}
-                      <small>${escHtml(item.desc || "")}</small>
+                    <div class="catalog-mini-title">
+                      <strong>${escHtml(item.name)}</strong>
+                      ${item.regionTag ? `<span class="region-origin-pill">${escHtml(item.regionTag)}</span>` : ""}
                     </div>
                   </div>
-                  <div class="catalog-sample-actions">
-                    ${!owned ? `<button type="button" class="btn-mini ${cfg.previewCls}" data-id="${item.id}">${previewing ? "Đang thử" : "Xem thử"}</button>` : ""}
+                  <div class="catalog-mini-actions">
+                    ${!owned ? `<button type="button" class="btn-mini ${cfg.previewCls}" data-id="${item.id}">${previewing ? "Đang thử" : "Thử"}</button>` : ""}
                     <button type="button" class="btn-mini ${cfg.equipCls} ${equipped ? "active-equip" : ""}" data-id="${item.id}">
-                      ${equipped ? cfg.activeLabel : owned ? cfg.ownedLabel : `Đổi (${item.cost} Xu)`}
+                      ${equipped ? cfg.activeLabel : owned ? cfg.ownedLabel : `${item.cost} Xu`}
                     </button>
                   </div>
                 </div>
@@ -10266,10 +10360,14 @@
     };
 
     els.main.innerHTML = `
-      <h1>Cá Nhân &amp; Tủ Trang Phục</h1>
+      ${renderM3HeroBanner(
+        "Cá Nhân &amp; Tủ Trang Phục",
+        `${escHtml(state.user.name)} · ${age}t · ${state.user.xu} Xu`,
+        "user"
+      )}
       <div class="tab-bar" role="tablist" aria-label="Chọn mục Cá nhân">
-        <button type="button" class="tab-btn ${activeProfileMainTab === "wardrobe" ? "active" : ""}" id="prof-tab-wardrobe">Tủ Trang Phục &amp; Đồ Bày</button>
-        <button type="button" class="tab-btn ${activeProfileMainTab === "identity" ? "active" : ""}" id="prof-tab-identity">Đổi Tên · Tuổi &amp; Thẻ QR</button>
+        <button type="button" class="tab-btn ${activeProfileMainTab === "wardrobe" ? "active" : ""}" id="prof-tab-wardrobe">Tủ Trang Phục</button>
+        <button type="button" class="tab-btn ${activeProfileMainTab === "identity" ? "active" : ""}" id="prof-tab-identity">Hồ Sơ &amp; Thẻ QR</button>
       </div>
 
       ${
@@ -10312,10 +10410,10 @@
         </div>
 
         <div class="wardrobe-cat-bar" role="tablist" aria-label="Danh mục trang bị">
-          <button type="button" class="wardrobe-cat-btn ${activeWardrobeCat === "outfits" ? "active" : ""}" data-wcat="outfits">Trang phục (${D.OUTFITS.length})</button>
+          <button type="button" class="wardrobe-cat-btn ${activeWardrobeCat === "outfits" ? "active" : ""}" data-wcat="outfits">Áo (${D.OUTFITS.length})</button>
           <button type="button" class="wardrobe-cat-btn ${activeWardrobeCat === "accessories" ? "active" : ""}" data-wcat="accessories">Phụ kiện (${D.ACCESSORIES.length})</button>
-          <button type="button" class="wardrobe-cat-btn ${activeWardrobeCat === "items" ? "active" : ""}" data-wcat="items">Đồ bàn trà (${D.TABLE_ITEMS.length})</button>
-          <button type="button" class="wardrobe-cat-btn ${activeWardrobeCat === "frames" ? "active" : ""}" data-wcat="frames">Khung tên (${D.TITLE_FRAMES.length})</button>
+          <button type="button" class="wardrobe-cat-btn ${activeWardrobeCat === "items" ? "active" : ""}" data-wcat="items">Đồ bàn (${D.TABLE_ITEMS.length})</button>
+          <button type="button" class="wardrobe-cat-btn ${activeWardrobeCat === "frames" ? "active" : ""}" data-wcat="frames">Khung (${D.TITLE_FRAMES.length})</button>
         </div>
 
         ${renderSelectedWardrobeCatalog()}
@@ -10663,10 +10761,11 @@
     const waterCups = Math.max(0, Math.min(8, Number(h.waterCups) || 0));
 
     els.main.innerHTML = `
-      <h1>Trợ lý sức khỏe</h1>
-      <div class="surface-panel warm">
-        <p style="font-size:0.86rem; font-weight:700;">${disclaimer}</p>
-      </div>
+      ${renderM3HeroBanner(
+        "Trợ lý sức khỏe",
+        `Nước ấm ${waterCups}/8 cốc · Tham khảo, không thay thế bác sĩ`,
+        "heart"
+      )}
 
       ${
         h.emergencyMode
@@ -10680,21 +10779,34 @@
         </div>
       `
           : `
+        <div class="m3-seg-bar" role="tablist" aria-label="Chọn mục Sức khỏe">
+          <button type="button" class="m3-seg-btn ${activeHealthTab === "daily" ? "active" : ""}" id="hlth-tab-daily">Thuốc · Nước · Huyết áp</button>
+          <button type="button" class="m3-seg-btn ${activeHealthTab === "qa" ? "active" : ""}" id="hlth-tab-qa">Hỏi đáp &amp; 115</button>
+        </div>
+
+        ${
+          activeHealthTab === "daily"
+            ? `
         <div class="surface-panel">
-          <h3>Nhắc uống thuốc theo đơn hôm nay</h3>
-          <button type="button" class="btn-${h.medMorning ? "jade" : "primary"}" id="btn-toggle-med">
-            ${ico("check")}
-            <span>${h.medMorning ? "Đã uống cử thuốc Sáng" : "Đánh dấu: Đã uống thuốc Sáng"}</span>
-          </button>
-          <button type="button" class="btn-${h.medEvening ? "jade" : "secondary"}" id="btn-toggle-med-eve">
-            ${ico("check")}
-            <span>${h.medEvening ? "Đã uống cử thuốc Tối" : "Đánh dấu: Đã uống thuốc Tối"}</span>
-          </button>
+          <div class="m3-section-head" style="margin:0;">
+            <h3 style="margin:0; font-size:0.9rem;">Nhắc uống thuốc hôm nay</h3>
+            <span class="badge-tag ${h.medMorning && h.medEvening ? "jade" : "amber"} num">${(h.medMorning ? 1 : 0) + (h.medEvening ? 1 : 0)}/2 cử</span>
+          </div>
+          <div class="med-toggle-row">
+            <button type="button" class="btn-${h.medMorning ? "jade" : "primary"}" id="btn-toggle-med">
+              ${ico("check", "ico-sm")}
+              <span>${h.medMorning ? "Sáng: Đã uống" : "Thuốc Sáng"}</span>
+            </button>
+            <button type="button" class="btn-${h.medEvening ? "jade" : "secondary"}" id="btn-toggle-med-eve">
+              ${ico("check", "ico-sm")}
+              <span>${h.medEvening ? "Tối: Đã uống" : "Thuốc Tối"}</span>
+            </button>
+          </div>
         </div>
 
         <div class="surface-panel">
-          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
-            <h3>Sổ uống nước ấm trong ngày</h3>
+          <div class="m3-section-head" style="margin:0;">
+            <h3 style="margin:0; font-size:0.9rem;">8 cốc nước ấm trong ngày</h3>
             <span class="badge-tag jade num">${waterCups}/8 cốc</span>
           </div>
           <div class="water-cups-grid" role="group" aria-label="Tiến độ 8 cốc nước ấm">
@@ -10707,50 +10819,62 @@
           </div>
           <div class="btn-row">
             <button type="button" class="btn-jade" id="btn-add-water-cup" ${waterCups >= 8 ? "disabled" : ""}>${
-              waterCups >= 8 ? "Đã uống đủ 8 cốc hôm nay" : "+1 cốc nước ấm"
+              waterCups >= 8 ? "Đủ 8 cốc hôm nay" : "+1 cốc nước ấm"
             }</button>
             <button type="button" class="btn-secondary" id="btn-reset-water">Đặt lại</button>
           </div>
         </div>
 
         <div class="surface-panel">
-          <h3>Sổ đo huyết áp tại nhà (mmHg)</h3>
+          <h3 style="margin:0; font-size:0.9rem;">Sổ đo huyết áp tại nhà (mmHg)</h3>
           <div class="setup-inline-fields">
             <label class="field-label" style="flex:1;">
-              Tâm thu (số trên)
+              Tâm thu
               <input type="number" inputmode="numeric" min="70" max="250" class="input-lg num" id="bp-sys-in" placeholder="125" />
             </label>
             <label class="field-label" style="flex:1;">
-              Tâm trương (số dưới)
+              Tâm trương
               <input type="number" inputmode="numeric" min="40" max="160" class="input-lg num" id="bp-dia-in" placeholder="80" />
             </label>
           </div>
           <button type="button" class="btn-primary" id="btn-save-bp">${ico("heart")}<span>Ghi vào sổ huyết áp</span></button>
-          <div style="font-size:0.88rem; display:flex; flex-direction:column; gap:4px;" class="num">
-            ${(h.bpReadings || []).map((r) => `<div>• ${escHtml(r)}</div>`).join("")}
+          ${
+            (h.bpReadings || []).length > 0
+              ? `<div style="font-size:0.84rem; display:flex; flex-direction:column; gap:4px;" class="num">${(h.bpReadings || []).slice(0, 4).map((r) => `<div>• ${escHtml(r)}</div>`).join("")}</div>`
+              : ""
+          }
+        </div>
+        `
+            : `
+        <div class="surface-panel">
+          <h3 style="margin:0;">Hỏi Trợ lý (Nội dung bác sĩ đã duyệt)</h3>
+          <div class="m3-list-stack">
+            ${D.HEALTH_QA.map((qa, i) => `<button type="button" class="btn-secondary health-qa-btn" data-idx="${i}">${escHtml(qa.topic)}</button>`).join("")}
+          </div>
+          <div class="surface-panel jade" style="box-shadow:none;">
+            <p style="margin:0;">${escHtml(h.lastAnswer)}</p>
+            <small style="font-weight:600; color:var(--ink-secondary);">${disclaimer}</small>
           </div>
         </div>
 
         <div class="surface-panel">
-          <h3>Hỏi Trợ lý sức khỏe (Nội dung bác sĩ đã duyệt)</h3>
-          ${D.HEALTH_QA.map((qa, i) => `<button type="button" class="btn-secondary health-qa-btn" data-idx="${i}">${escHtml(qa.topic)}</button>`).join("")}
-          <div class="surface-panel jade">
-            <p>${escHtml(h.lastAnswer)}</p>
-            <small style="font-weight:600;">${disclaimer}</small>
-          </div>
-        </div>
-
-        <div class="surface-panel">
-          <h3>Kiểm thử cảnh báo dấu hiệu nguy hiểm</h3>
-          <input type="text" class="input-lg" id="health-symptom-in" placeholder="Nhập thử: 'tôi bị đau ngực khó thở'..." />
+          <h3 style="margin:0;">Kiểm tra dấu hiệu nguy hiểm</h3>
+          <input type="text" class="input-lg" id="health-symptom-in" placeholder="Nhập thử: 'đau ngực khó thở'..." />
           <div class="btn-row">
-            <button type="button" class="btn-primary" id="btn-check-symptom">Kiểm tra triệu chứng</button>
-            <button type="button" class="btn-danger" id="btn-test-redflag">Thử tình huống khẩn cấp 115</button>
+            <button type="button" class="btn-primary" id="btn-check-symptom">Kiểm tra</button>
+            <button type="button" class="btn-danger" id="btn-test-redflag">Thử khẩn cấp 115</button>
           </div>
         </div>
+        `
+        }
       `
       }
     `;
+
+    const hlthTabDaily = document.getElementById("hlth-tab-daily");
+    const hlthTabQa = document.getElementById("hlth-tab-qa");
+    if (hlthTabDaily) hlthTabDaily.addEventListener("click", () => { if (activeHealthTab !== "daily") { activeHealthTab = "daily"; renderHealth(); } });
+    if (hlthTabQa) hlthTabQa.addEventListener("click", () => { if (activeHealthTab !== "qa") { activeHealthTab = "qa"; renderHealth(); } });
 
     const medBtn = document.getElementById("btn-toggle-med");
     if (medBtn) {
@@ -10893,49 +11017,59 @@
     const famPhone = (state.health && state.health.emergencyContactPhone) || "0900000000";
 
     els.main.innerHTML = `
-      <h1>Góc Con Cái (30–50 tuổi)</h1>
-      <p class="lead-copy">Màn hình dành cho con cháu cài sẵn trên máy bố mẹ: theo dõi nhịp sinh hoạt nhẹ nhàng, cài số gọi khẩn cấp và gửi mã QR vào thẳng quán trà.</p>
+      ${renderM3HeroBanner(
+        "Góc Con Cái",
+        `${escHtml(state.user.name)} · ${getUserAge()}t (${escHtml(prov.short)}) · ${state.user.checkedInToday ? `Đã điểm danh (${escHtml(state.user.mood)})` : "Chưa điểm danh sáng nay"}`,
+        "family"
+      )}
 
+      <div class="m3-seg-bar" role="tablist" aria-label="Chọn mục Góc Con Cái">
+        <button type="button" class="m3-seg-btn ${activeFamilyTab === "status" ? "active" : ""}" id="fam-tab-status">Nhịp sinh hoạt &amp; Khẩn cấp</button>
+        <button type="button" class="m3-seg-btn ${activeFamilyTab === "qr" ? "active" : ""}" id="fam-tab-qr">Mã QR &amp; Gửi Zalo</button>
+      </div>
+
+      ${
+        activeFamilyTab === "status"
+          ? `
       <div class="surface-panel jade">
-        <h3>Trạng thái của ${escHtml(state.user.name)} · ${getUserAge()} tuổi (${escHtml(prov.short)})</h3>
-        <p style="font-weight:700;">${state.user.checkedInToday ? `Sáng nay đã điểm danh: ${escHtml(state.user.mood)}` : "Sáng nay chưa điểm danh — nhắc nhẹ (không báo động)"}</p>
-        <div style="display:grid; grid-template-columns:repeat(7, 1fr); gap:6px; text-align:center;">
+        <div class="m3-section-head" style="margin:0;">
+          <h3 style="margin:0; font-size:0.9rem;">Lịch 7 ngày qua</h3>
+          <span class="badge-tag jade num">Nước ${(state.health && state.health.waterCups) || 0}/8</span>
+        </div>
+        <div style="display:grid; grid-template-columns:repeat(7, 1fr); gap:5px; text-align:center;">
           ${days
             .map(
               (d, i) => `
-            <div style="padding:8px 4px; border-radius:10px; background:${state.user.daysHistory[i] ? "var(--accent-jade)" : "#FFFDF7"}; color:${state.user.daysHistory[i] ? "#FFF" : "var(--ink-primary)"}; border:1px solid var(--border-subtle); font-size:0.88rem; font-weight:700;">
+            <div style="padding:7px 2px; border-radius:10px; background:${state.user.daysHistory[i] ? "var(--accent-jade)" : "#FFFFFF"}; color:${state.user.daysHistory[i] ? "#FFF" : "var(--ink-primary)"}; border:1px solid var(--border-subtle); font-size:0.8rem; font-weight:700;">
               <div>${d}</div>
-              <div>${state.user.daysHistory[i] ? "Có" : "—"}</div>
+              <div>${state.user.daysHistory[i] ? "✓" : "—"}</div>
             </div>
           `
             )
             .join("")}
         </div>
-        <p class="num" style="font-size:0.88rem; color:var(--ink-secondary);">
-          Nước ấm hôm nay: <strong>${(state.health && state.health.waterCups) || 0}/8 cốc</strong> · Thuốc sáng: <strong>${
-            state.health && state.health.medMorning ? "Đã uống" : "Chưa đánh dấu"
-          }</strong>
-        </p>
-      </div>
-
-      <div class="surface-panel warm">
-        <h3>Số điện thoại Người Thân Khẩn Cấp (Lưu riêng trên máy này)</h3>
-        <p style="font-size:0.86rem; color:var(--ink-secondary);">Chỉ lưu cục bộ trong bộ nhớ chiếc điện thoại này để nút <strong>Gọi Người Thân</strong> ở mục Sức Khỏe quay đúng số con cháu, không gửi lên mạng công cộng.</p>
-        <label class="field-label">
-          Tên người thân hiển thị trên nút gọi
-          <input type="text" class="input-lg" id="fam-contact-name" value="${escHtml(famName)}" placeholder="Ví dụ: Con trai Minh Hùng" />
-        </label>
-        <label class="field-label">
-          Số điện thoại nhận cuộc gọi khẩn
-          <input type="tel" inputmode="tel" class="input-lg num" id="fam-contact-phone" value="${escHtml(famPhone)}" placeholder="Ví dụ: 0912345678" />
-        </label>
-        <button type="button" class="btn-primary" id="btn-save-fam-contact">${ico("phone")}<span>Lưu số khẩn cấp trên máy bố mẹ</span></button>
       </div>
 
       <div class="surface-panel">
-        <h3>Mã QR &amp; Tin nhắn gửi sẵn cho bố mẹ</h3>
-        <p style="font-size:0.88rem; color:var(--ink-secondary);">Đưa mã QR này cho bố mẹ quét bằng Zalo hoặc sao chép tin nhắn mẫu bên dưới gửi qua Zalo / Messenger:</p>
-        <img src="${qrImg}" alt="Mã QR vào quán trà cho bố mẹ" style="width:100%; max-width:280px; margin:0 auto; display:block; border-radius:12px; border:1px solid #D5C4AA;" />
+        <h3 style="margin:0; font-size:0.92rem;">Số Người Thân Khẩn Cấp (Lưu riêng trên máy)</h3>
+        <div class="setup-inline-fields">
+          <label class="field-label" style="flex:1.1;">
+            Tên người thân
+            <input type="text" class="input-lg" id="fam-contact-name" value="${escHtml(famName)}" placeholder="Con trai Minh Hùng" />
+          </label>
+          <label class="field-label" style="flex:1;">
+            Số điện thoại
+            <input type="tel" inputmode="tel" class="input-lg num" id="fam-contact-phone" value="${escHtml(famPhone)}" placeholder="0912345678" />
+          </label>
+        </div>
+        <button type="button" class="btn-primary" id="btn-save-fam-contact">${ico("phone")}<span>Lưu số khẩn cấp trên máy</span></button>
+      </div>
+      `
+          : `
+      <div class="surface-panel">
+        <h3 style="margin:0;">Mã QR &amp; Tin nhắn gửi bố mẹ</h3>
+        <p style="font-size:0.84rem; color:var(--ink-secondary); margin:0;">Bố mẹ quét mã QR bằng Zalo là mở thẳng quán trà, không cần mật khẩu:</p>
+        <img src="${qrImg}" alt="Mã QR vào quán trà cho bố mẹ" style="width:100%; max-width:240px; margin:0 auto; display:block; border-radius:12px; border:1px solid var(--border-subtle);" />
         ${renderSocialShareKitHtml({
           prefix: "family-share",
           copyLinkBtnId: "btn-copy-family-link",
@@ -10943,7 +11077,14 @@
           postText: familyPost
         })}
       </div>
+      `
+      }
     `;
+
+    const famTabSt = document.getElementById("fam-tab-status");
+    const famTabQr = document.getElementById("fam-tab-qr");
+    if (famTabSt) famTabSt.addEventListener("click", () => { if (activeFamilyTab !== "status") { activeFamilyTab = "status"; renderFamilyView(); } });
+    if (famTabQr) famTabQr.addEventListener("click", () => { if (activeFamilyTab !== "qr") { activeFamilyTab = "qr"; renderFamilyView(); } });
 
     const saveFamBtn = document.getElementById("btn-save-fam-contact");
     if (saveFamBtn) {
@@ -11219,41 +11360,64 @@
 
   function renderPersonalPrivacySectionHtml() {
     return `
-      <div class="surface-panel warm">
-        <h3>Giọng Đọc Tiếng Việt Ngoại Tuyến (15 Clip Thu Sẵn)</h3>
-        <p style="font-size:0.88rem; color:var(--ink-secondary);">Dành cho điện thoại Android cũ thiếu bộ giọng tiếng Việt: phát trực tiếp tệp âm thanh thu sẵn cho lời chào sáng, dẫn Chánh Điện/Nhà Thờ Họ/Vườn Thiền, cờ dân gian và 6 quẻ lộc đầu ngày.</p>
-        <div class="btn-row">
-          <button type="button" class="btn-${state.settings.voiceMode === "recorded" ? "jade" : "secondary"}" id="btn-priv-toggle-voicemode">
-            ${ico("speaker")}
-            <span>${state.settings.voiceMode === "recorded" ? "Đang bật: Giọng thu sẵn (.mp3)" : "Chế độ: Tự động (TTS + Dự phòng)"}</span>
-          </button>
-          <button type="button" class="btn-secondary" id="btn-priv-sample-voice">Nghe thử giọng thu sẵn</button>
-        </div>
+      <div class="m3-section-head">
+        <h2>Giọng đọc &amp; Trợ năng</h2>
+        <span class="m3-section-meta">15 clip .mp3</span>
+      </div>
+      <div class="m3-list-stack">
+        <button type="button" class="m3-list-row" id="btn-priv-toggle-voicemode">
+          <span class="m3-row-ico ${state.settings.voiceMode === "recorded" ? "is-jade" : ""}">${ico("speaker", "ico-sm")}</span>
+          <span class="m3-row-text">
+            <strong>Giọng đọc Tiếng Việt ngoại tuyến</strong>
+            <small>${state.settings.voiceMode === "recorded" ? "Đang bật: Giọng thu sẵn (.mp3)" : "Tự động (TTS + Dự phòng .mp3)"}</small>
+          </span>
+          <span class="m3-row-pill ${state.settings.voiceMode === "recorded" ? "is-on" : ""}">${state.settings.voiceMode === "recorded" ? "Thu sẵn" : "Tự động"}</span>
+        </button>
+        <button type="button" class="m3-list-row" id="btn-priv-sample-voice">
+          <span class="m3-row-ico">${ico("speaker", "ico-sm")}</span>
+          <span class="m3-row-text">
+            <strong>Nghe thử giọng thu sẵn</strong>
+            <small>Kiểm tra âm lượng trên máy Android cũ</small>
+          </span>
+          <span class="m3-row-chevron">${ico("chevron", "ico-sm")}</span>
+        </button>
       </div>
 
-      <div class="surface-panel">
-        <h3>Quyền Riêng Tư Cá Nhân (Nghị định 13/2023/NĐ-CP)</h3>
-        <div class="consent-toggle-card">
-          <strong>1. Báo tin Điểm danh sáng cho con cái</strong>
-          <button type="button" class="btn-${state.privacy.consentFamilyCheckin ? "jade" : "secondary"}" id="btn-toggle-consent-family">
-            ${state.privacy.consentFamilyCheckin ? "Đang bật: Báo tin bình an" : "Đang tắt: Lưu trên máy"}
-          </button>
-        </div>
-        <div class="consent-toggle-card">
-          <strong>2. Hiện tên &amp; nhân vật cùng bàn trà</strong>
-          <button type="button" class="btn-${state.privacy.consentRealtimePresence ? "jade" : "secondary"}" id="btn-toggle-consent-rt">
-            ${state.privacy.consentRealtimePresence ? "Đang bật: Tham gia trực tuyến" : "Đang tắt: Ẩn hiện diện"}
-          </button>
-        </div>
-        <div class="consent-toggle-card">
-          <strong>3. Tự học từ điển phát âm trên máy</strong>
-          <button type="button" class="btn-${state.privacy.consentVoiceDict ? "jade" : "secondary"}" id="btn-toggle-consent-dict">
-            ${state.privacy.consentVoiceDict ? "Đang bật: Tự học từ điển" : "Đang tắt: Không lưu từ mới"}
-          </button>
-        </div>
-        <div class="btn-row">
-          <button type="button" class="btn-secondary" id="btn-export-personal-json">${ico("download")}<span>Tải dữ liệu cá nhân (.json)</span></button>
-          <button type="button" class="btn-danger" id="btn-wipe-personal-data">Xóa dữ liệu trên máy này</button>
+      <div class="m3-section-head">
+        <h2>Quyền riêng tư (NĐ 13/2023)</h2>
+        <span class="m3-section-meta">Lưu tại máy</span>
+      </div>
+      <div class="m3-list-stack">
+        <button type="button" class="m3-list-row" id="btn-toggle-consent-family">
+          <span class="m3-row-ico ${state.privacy.consentFamilyCheckin ? "is-jade" : ""}">${ico("family", "ico-sm")}</span>
+          <span class="m3-row-text">
+            <strong>Báo tin Điểm danh sáng cho con</strong>
+            <small>${state.privacy.consentFamilyCheckin ? "Đang bật báo bình an" : "Chỉ lưu riêng trên máy"}</small>
+          </span>
+          <span class="m3-row-pill ${state.privacy.consentFamilyCheckin ? "is-on" : ""}">${state.privacy.consentFamilyCheckin ? "Bật" : "Tắt"}</span>
+        </button>
+
+        <button type="button" class="m3-list-row" id="btn-toggle-consent-rt">
+          <span class="m3-row-ico ${state.privacy.consentRealtimePresence ? "is-jade" : ""}">${ico("tea", "ico-sm")}</span>
+          <span class="m3-row-text">
+            <strong>Hiện tên &amp; nhân vật cùng bàn trà</strong>
+            <small>${state.privacy.consentRealtimePresence ? "Tham gia trực tuyến" : "Đang ẩn hiện diện"}</small>
+          </span>
+          <span class="m3-row-pill ${state.privacy.consentRealtimePresence ? "is-on" : ""}">${state.privacy.consentRealtimePresence ? "Bật" : "Tắt"}</span>
+        </button>
+
+        <button type="button" class="m3-list-row" id="btn-toggle-consent-dict">
+          <span class="m3-row-ico ${state.privacy.consentVoiceDict ? "is-jade" : ""}">${ico("mic", "ico-sm")}</span>
+          <span class="m3-row-text">
+            <strong>Tự học từ điển phương ngữ</strong>
+            <small>${state.privacy.consentVoiceDict ? "Học cụm từ bác hay đọc" : "Không lưu từ mới"}</small>
+          </span>
+          <span class="m3-row-pill ${state.privacy.consentVoiceDict ? "is-on" : ""}">${state.privacy.consentVoiceDict ? "Bật" : "Tắt"}</span>
+        </button>
+
+        <div class="btn-row" style="margin-top:2px;">
+          <button type="button" class="btn-secondary" id="btn-export-personal-json">${ico("download")}<span>Tải dữ liệu (.json)</span></button>
+          <button type="button" class="btn-danger" id="btn-wipe-personal-data">Xóa dữ liệu máy</button>
         </div>
       </div>
     `;
@@ -11263,31 +11427,45 @@
     const adminUnlocked = isAdminUnlocked();
     if (!adminUnlocked) {
       els.main.innerHTML = `
-        <h1>Quyền Riêng Tư &amp; Cài Đặt Cá Nhân</h1>
-        <p class="lead-copy">Quản lý dữ liệu riêng tư trên máy của ${getUserPronoun()}, chọn chế độ giọng đọc ngoại tuyến hoặc gửi góp ý cho Ban Chủ Nhiệm.</p>
+        ${renderM3HeroBanner(
+          "Cài Đặt &amp; Riêng Tư",
+          `Quản lý giọng đọc, dữ liệu máy &amp; góp ý cho Ban Chủ Nhiệm`,
+          "shield"
+        )}
 
-        <div class="surface-panel jade">
-          <div class="passcard-head">
-            <strong>Hòm thư Góp ý &amp; Hỗ trợ Hội viên</strong>
-            ${state.settings.uatTag ? `<span class="badge-tag amber">UAT: ${escHtml(state.settings.uatTag)}</span>` : ""}
-          </div>
-          <p style="font-size:0.88rem;">Nếu chữ nhỏ, âm thanh khó nghe hoặc muốn đề xuất tính năng mới, mời ${getUserPronoun()} bấm gửi góp ý 1 chạm:</p>
-          <div class="btn-row">
-            <button type="button" class="btn-primary" id="btn-member-open-feedback">${ico("feedback", "ico-sm")}<span>Gửi Góp ý nhanh</span></button>
-            <button type="button" class="btn-secondary" id="btn-member-pwa-guide">${ico("download", "ico-sm")}<span>Cài ra màn hình</span></button>
-          </div>
+        <div class="m3-list-stack">
+          <button type="button" class="m3-list-row" id="btn-member-open-feedback">
+            <span class="m3-row-ico">${ico("feedback", "ico-sm")}</span>
+            <span class="m3-row-text">
+              <strong>Gửi Góp ý nhanh cho Quán Trà</strong>
+              <small>Chữ nhỏ, âm thanh hoặc đề xuất tính năng mới</small>
+            </span>
+            <span class="m3-row-chevron">${ico("chevron", "ico-sm")}</span>
+          </button>
+          <button type="button" class="m3-list-row" id="btn-member-pwa-guide">
+            <span class="m3-row-ico is-jade">${ico("download", "ico-sm")}</span>
+            <span class="m3-row-text">
+              <strong>Đặt ứng dụng ra màn hình chính</strong>
+              <small>Mở 1 chạm không cần vào trình duyệt</small>
+            </span>
+            <span class="m3-row-chevron">${ico("chevron", "ico-sm")}</span>
+          </button>
         </div>
 
         ${renderPersonalPrivacySectionHtml()}
 
-        <div class="surface-panel">
-          <div class="passcard-head">
-            <strong>Khu vực Quản trị viên &amp; Vận hành (Đã khóa bảo vệ)</strong>
-            <span class="badge-tag">Admin</span>
-          </div>
-          <p style="font-size:0.86rem; color:var(--ink-secondary);">Dash quản lý hoạt động toàn quán, duyệt RSS Báo Sáng, kiểm thử UAT 5–10 bác và cấu hình máy chủ Supabase được đặt mật khẩu riêng để hội viên không bấm nhầm.</p>
-          <button type="button" class="btn-secondary" id="btn-unlock-admin-console">${ico("shield")}<span>Mở khóa Dash Quản Trị (Admin)</span></button>
+        <div class="m3-section-head">
+          <h2>Khu vực Quản trị viên</h2>
+          <span class="m3-section-meta">Khóa PIN</span>
         </div>
+        <button type="button" class="m3-list-row" id="btn-unlock-admin-console">
+          <span class="m3-row-ico">${ico("shield", "ico-sm")}</span>
+          <span class="m3-row-text">
+            <strong>Mở khóa Dash Quản Trị (Admin)</strong>
+            <small>Duyệt RSS 05:30, thống kê UAT &amp; Supabase</small>
+          </span>
+          <span class="m3-row-chevron">${ico("chevron", "ico-sm")}</span>
+        </button>
       `;
 
       document.getElementById("btn-member-open-feedback").addEventListener("click", () => openFeedbackModal("privacy"));
@@ -11371,7 +11549,11 @@
     const baseShare = getPublicBaseUrl();
 
     els.main.innerHTML = `
-      <h1>Dash Quản Trị Hoạt Động &amp; Vận Hành</h1>
+      ${renderM3HeroBanner(
+        "Dash Quản Trị &amp; Vận Hành",
+        `${dash.kpis.totalMembers} hội viên · ${totalIdbEvents} sự kiện IndexedDB`,
+        "shield"
+      )}
 
       <div class="admin-session-bar">
         <span>${ico("shield", "ico-sm")} Đang mở phiên Quản trị viên (Admin)</span>
@@ -13184,17 +13366,10 @@
             : allGroups.filter((g) => g.category === activeGroupCatFilter);
 
         bodyHtml = `
-          <div class="surface-panel jade">
-            <div class="passcard-head">
-              <strong>Tìm lại Đồng đội, Trường cũ &amp; Bạn đồng hương</strong>
-              <span class="badge-tag jade">${allGroups.length} hội đang mở</span>
-            </div>
-            <p style="font-size:0.9rem;">Lập riêng phiên hiệu đơn vị (như <strong>Đại đội 1K2 · D3 · Sư đoàn 25 · Chiến trường Miền Nam 75</strong>) có sẵn Bàn trà 3D riêng, bảng quân số Online và mã QR gửi nhóm Zalo.</p>
-            <button type="button" class="btn-primary" id="btn-open-create-group">
-              ${ico("users")}
-              <span>+ Lập Đơn Vị / Hội Nhóm Mới</span>
-            </button>
-          </div>
+          <button type="button" class="btn-primary" id="btn-open-create-group">
+            ${ico("users")}
+            <span>+ Lập Đơn Vị / Hội Nhóm Mới (${allGroups.length} hội đang mở)</span>
+          </button>
 
           <div class="habit-grid" role="group" aria-label="Lọc loại hội nhóm">
             <button type="button" class="habit-chip ${activeGroupCatFilter === "all" ? "selected" : ""}" data-gcat="all">Tất cả (${allGroups.length})</button>
@@ -13206,28 +13381,27 @@
               .join("")}
           </div>
 
-          <div style="display:flex; flex-direction:column; gap:12px;">
+          <div class="m3-list-stack">
             ${filteredGroups
               .map((g) => {
                 const isJoined = state.social.joinedGroupIds.includes(g.id);
                 const totalMem = (g.memberIds || []).length + (g.realMembers || []).length;
                 return `
-                  <div class="group-unit-card ${g.category === "veteran" ? "veteran" : ""}">
+                  <div class="group-unit-card ${g.category === "veteran" ? "veteran" : ""}" style="padding:11px 12px; gap:6px;">
                     <div class="passcard-head">
                       <span class="badge-tag ${g.category === "veteran" ? "jade" : "amber"}">${escHtml(
                         ((D.GROUP_CATEGORIES || []).find((c) => c.id === g.category) || { badge: "Hội nhóm" }).badge
                       )}</span>
                       <span class="online-status-pill"><span class="online-dot-live"></span>${totalMem} thành viên</span>
                     </div>
-                    <h3>${escHtml(g.name)}</h3>
-                    <p style="font-size:0.9rem; font-weight:600; color:var(--accent-terracotta);">${escHtml(g.subtitle || "")}</p>
-                    <p style="font-size:0.88rem; color:var(--ink-secondary);">${escHtml(g.motto || "")}</p>
-                    <div class="btn-row">
+                    <h3 style="margin:0; font-size:0.95rem;">${escHtml(g.name)}</h3>
+                    <small style="color:var(--ink-secondary); font-size:0.78rem;">${escHtml(g.subtitle || g.motto || "")}</small>
+                    <div class="btn-row" style="margin-top:2px;">
                       <button type="button" class="btn-primary" data-open-group="${escHtml(g.id)}">
                         ${isJoined ? "Mở Phòng Đơn Vị" : "Xem & Gia nhập"}
                       </button>
                       <button type="button" class="btn-jade" data-direct-tearoom="${escHtml(g.id)}">
-                        Vào Bàn Trà 3D
+                        Vào Bàn Trà
                       </button>
                     </div>
                   </div>
@@ -13390,13 +13564,16 @@
     }
 
     els.main.innerHTML = `
-      <h1>Hội Đồng Ngũ · CLB &amp; Kết Bạn</h1>
-      <p class="lead-copy">Tập hợp đồng đội đơn vị cũ, bạn học đồng niên, thấy nhau sáng đèn Online mỗi sáng và vào thẳng Bàn trà 3D riêng.</p>
+      ${renderM3HeroBanner(
+        "Hội Đồng Ngũ &amp; Bạn Bè",
+        `${allGroups.length} đơn vị đang mở · ${onlineCount} bạn trực tuyến`,
+        "users"
+      )}
 
-      <div class="social-top-tabs" role="tablist" aria-label="Chọn mục Hội nhóm, Bạn bè hoặc Thẻ Hội Viên">
-        <button type="button" class="social-tab-btn ${tab === "units" ? "active" : ""}" data-soc-tab="units">Đơn vị &amp; Hội</button>
-        <button type="button" class="social-tab-btn ${tab === "friends" ? "active" : ""}" data-soc-tab="friends">Bạn Online (${onlineCount})</button>
-        <button type="button" class="social-tab-btn ${tab === "auth-guide" ? "active" : ""}" data-soc-tab="auth-guide">Thẻ Hội Viên</button>
+      <div class="m3-seg-bar cols-3" role="tablist" aria-label="Chọn mục Hội nhóm, Bạn bè hoặc Thẻ Hội Viên">
+        <button type="button" class="m3-seg-btn ${tab === "units" ? "active" : ""}" data-soc-tab="units">Đơn vị</button>
+        <button type="button" class="m3-seg-btn ${tab === "friends" ? "active" : ""}" data-soc-tab="friends">Bạn (${onlineCount})</button>
+        <button type="button" class="m3-seg-btn ${tab === "auth-guide" ? "active" : ""}" data-soc-tab="auth-guide">Thẻ QR</button>
       </div>
 
       ${bodyHtml}

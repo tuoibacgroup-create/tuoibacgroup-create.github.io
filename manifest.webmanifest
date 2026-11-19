@@ -8,8 +8,8 @@
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#F6EFE2",
-  "theme_color": "#F6EFE2",
+  "background_color": "#F7F5F0",
+  "theme_color": "#F7F5F0",
   "categories": ["social", "lifestyle", "games", "news"],
   "icons": [
     {

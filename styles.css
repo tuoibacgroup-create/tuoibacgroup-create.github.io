@@ -1,23 +1,26 @@
 :root {
-  --bg-paper: #F6EFE2;
-  --bg-desk: #E7DCC7;
-  --bg-card: #FFFDF7;
-  --bg-newsprint: #EFE4CE;
+  --bg-paper: #F7F5F0;
+  --bg-desk: #E8E8E6;
+  --bg-card: #FFFFFF;
+  --bg-newsprint: #FBF9F5;
   --bg-night: #0D1520;
-  --ink-primary: #231A14;
-  --ink-secondary: #5A4638;
+  --bg-tray: #EFEBE3;
+  --ink-primary: #1C1917;
+  --ink-secondary: #625A52;
   --ink-on-dark: #F7F1E3;
-  --accent-terracotta: #B83B2A;
-  --accent-terracotta-hover: #9C2E1F;
-  --accent-jade: #2E5E4E;
-  --accent-jade-soft: #E5F0EC;
-  --accent-amber: #D98A2B;
-  --accent-amber-soft: #FCF2DE;
+  --accent-terracotta: #B63A24;
+  --accent-terracotta-hover: #992D1A;
+  --accent-cinnabar-soft: #FBEAE6;
+  --accent-cinnabar-border: #EFC9BF;
+  --accent-jade: #285C4B;
+  --accent-jade-soft: #EAF4F0;
+  --accent-amber: #C97D1E;
+  --accent-amber-soft: #FDF5E6;
   --danger: #A81D1D;
   --danger-soft: #FBE9E9;
-  --border-subtle: #D5C4AA;
-  --border-strong: #9C856B;
-  --shadow-soft: 0 6px 18px rgba(35, 26, 20, 0.08);
+  --border-subtle: #E5DFD5;
+  --border-strong: #C9BEB0;
+  --shadow-soft: 0 2px 10px rgba(28, 25, 23, 0.045);
   --font-sans: "Be Vietnam Pro", "Segoe UI", system-ui, -apple-system, sans-serif;
   --font-serif: "Merriweather", "Cambria", "Noto Serif", "Times New Roman", serif;
   --base-size: 20px;
@@ -4720,6 +4723,994 @@ body.xl-font .room-strip {
   .room-strip {
     grid-template-columns: 1fr;
   }
+}
+
+/* ==================== INK & CINNABAR LIGHT — MATERIAL 3 OPERATE EDITION (v20261119c) ==================== */
+.phone-shell {
+  background-color: var(--bg-paper);
+  border-color: var(--border-subtle);
+  box-shadow: 0 12px 36px rgba(28, 25, 23, 0.09);
+}
+
+.app-topbar {
+  background-color: #FFFFFF;
+  border-bottom: 1px solid #EAE4DB;
+  padding: 8px 12px;
+  box-shadow: 0 1px 4px rgba(28, 25, 23, 0.03);
+}
+
+.brand-mark {
+  background: linear-gradient(135deg, #BD412A 0%, #9E2E1B 100%);
+  color: #FFFFFF;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(182, 58, 36, 0.22);
+}
+
+.brand-text strong {
+  color: var(--ink-primary);
+  letter-spacing: -0.02em;
+}
+
+.brand-text small {
+  color: var(--ink-secondary);
+}
+
+.btn-back,
+.btn-tool {
+  background-color: #FFFFFF;
+  border: 1px solid #E5DFD5;
+  color: var(--ink-primary);
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(28, 25, 23, 0.03);
+}
+
+.btn-back .ico,
+.btn-tool .ico {
+  color: var(--accent-terracotta);
+}
+
+.btn-tool.active-tool {
+  background-color: var(--accent-cinnabar-soft);
+  border-color: var(--accent-cinnabar-border);
+  color: var(--accent-terracotta);
+}
+
+.user-strip {
+  background-color: #FAF8F4;
+  border-bottom: 1px solid #ECE6DD;
+  padding: 6px 12px;
+}
+
+.user-pill {
+  background-color: transparent;
+  border: none;
+  padding: 2px 4px 2px 0;
+}
+
+.avatar-dot {
+  background-color: var(--accent-cinnabar-soft);
+  color: var(--accent-terracotta);
+  border: 1px solid var(--accent-cinnabar-border);
+  font-weight: 800;
+}
+
+.rt-pill,
+.coin-pill {
+  background-color: #FFFFFF;
+  border: 1px solid #E5DFD5;
+  color: var(--ink-primary);
+}
+
+.coin-pill .ico {
+  color: var(--accent-terracotta);
+}
+
+.app-main {
+  padding: 12px 12px 24px;
+  gap: 12px;
+}
+
+/* Material 3 Active Pill Bottom Navigation */
+.bottom-nav {
+  background-color: #FFFFFF;
+  border-top: 1px solid #E8E2D8;
+  padding: 6px 8px calc(8px + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -2px 10px rgba(28, 25, 23, 0.04);
+}
+
+.bottom-nav-btn {
+  background-color: transparent;
+  border: none;
+  color: #5C534B;
+  gap: 3px;
+  padding: 4px 2px;
+  min-height: 54px;
+  border-radius: 12px;
+}
+
+.bnav-pill {
+  width: 54px;
+  height: 30px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #4A433D;
+  transition: background-color 180ms ease, color 180ms ease;
+}
+
+.bottom-nav-btn.active {
+  background-color: transparent;
+  color: var(--accent-terracotta);
+  font-weight: 700;
+}
+
+.bottom-nav-btn.active .bnav-pill {
+  background-color: var(--accent-cinnabar-soft);
+  color: var(--accent-terracotta);
+}
+
+.bottom-nav-btn span:last-child {
+  font-size: clamp(13px, 0.72rem, 16px);
+  line-height: 1.15;
+}
+
+/* Single Sleek Cinnabar Hero Banner (Top of every screen) */
+.m3-hero-banner,
+.home-pavilion-hero {
+  background: linear-gradient(135deg, #BD412A 0%, #9E2E1B 100%);
+  color: #FFFFFF;
+  border: none;
+  border-radius: 16px;
+  padding: 13px 15px;
+  box-shadow: 0 4px 14px rgba(182, 58, 36, 0.17);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.m3-hero-row,
+.home-pavilion-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.m3-hero-copy,
+.home-hero-heading {
+  min-width: 0;
+  flex: 1;
+}
+
+.m3-hero-banner h1,
+.home-pavilion-hero h1 {
+  margin: 0;
+  color: #FFFFFF;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.24;
+  letter-spacing: -0.015em;
+}
+
+.m3-hero-sub,
+.home-hero-sub {
+  margin: 3px 0 0;
+  color: rgba(255, 245, 238, 0.9);
+  font-size: 0.76rem;
+  line-height: 1.32;
+}
+
+.m3-hero-ico {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  background-color: rgba(255, 255, 255, 0.14);
+  color: #FFFFFF;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.m3-hero-right {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.m3-hero-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background-color: rgba(255, 255, 255, 0.18);
+  color: #FFFFFF;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.m3-hero-pill .rt-dot {
+  background-color: #7CF5B1;
+  box-shadow: 0 0 0 2px rgba(124, 245, 177, 0.25);
+}
+
+.home-pavilion-hero .btn-compact-edit,
+.m3-hero-banner .m3-hero-btn {
+  background-color: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  color: #FFFFFF;
+  min-height: 38px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.home-pavilion-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.home-pavilion-hero .home-streak-pill,
+.home-pavilion-hero .home-rank-chip {
+  background-color: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  color: #FFFDFB;
+  font-size: 0.68rem;
+  padding: 3px 8px;
+  gap: 4px;
+}
+
+/* Clean Section Headers */
+.m3-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 2px 2px 6px;
+}
+
+.m3-section-head h2,
+.section-block > h2 {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--ink-primary);
+  letter-spacing: -0.01em;
+}
+
+.m3-section-meta {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--accent-terracotta);
+}
+
+/* Clean Pure-White Outlined Cards & Inputs */
+.surface-panel,
+.table-card,
+.group-unit-card,
+.friend-row-card,
+.stage-showcase-card,
+.daily-quest-card,
+.passcard-banner,
+.pwa-install-card,
+.tb-details {
+  background-color: #FFFFFF;
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  box-shadow: var(--shadow-soft);
+}
+
+.surface-panel {
+  padding: 13px;
+  gap: 10px;
+}
+
+.surface-panel.warm {
+  background-color: #FFFBF6;
+  border-color: #EFE2D2;
+}
+
+.surface-panel.jade {
+  background-color: #F4FAF7;
+  border-color: #CBE3D8;
+}
+
+.surface-panel.danger {
+  background-color: #FFF5F5;
+  border-color: #F2C4C4;
+}
+
+.input-lg,
+.select-lg,
+.textarea-lg {
+  background-color: #FFFFFF;
+  border: 1px solid #DDD5C9;
+  border-radius: 13px;
+  color: var(--ink-primary);
+}
+
+.input-lg:focus,
+.select-lg:focus,
+.textarea-lg:focus {
+  border-color: var(--accent-terracotta);
+  box-shadow: 0 0 0 3px rgba(182, 58, 36, 0.12);
+}
+
+/* Primary & Secondary Buttons (M3 Soft Stadium · Always >= 56px) */
+.btn-primary {
+  background: linear-gradient(135deg, #BC4029 0%, #A1301C 100%);
+  border: none;
+  color: #FFFFFF;
+  border-radius: 14px;
+  min-height: 56px;
+  box-shadow: 0 3px 10px rgba(182, 58, 36, 0.18);
+}
+
+.btn-jade {
+  background: linear-gradient(135deg, #2D6754 0%, #235243 100%);
+  border: none;
+  color: #FFFFFF;
+  border-radius: 14px;
+  min-height: 56px;
+  box-shadow: 0 3px 10px rgba(40, 92, 75, 0.16);
+}
+
+.btn-secondary {
+  background: #FFFFFF;
+  border: 1px solid #DFD7CC;
+  color: var(--ink-primary);
+  border-radius: 14px;
+  min-height: 56px;
+  box-shadow: 0 1px 3px rgba(28, 25, 23, 0.03);
+}
+
+.btn-secondary .ico {
+  color: var(--accent-terracotta);
+}
+
+.btn-danger {
+  border-radius: 14px;
+  min-height: 56px;
+}
+
+/* Material 3 Segmented Control (Clean Tray + Floating White Active Pill) */
+.m3-seg-bar,
+.tab-bar,
+.zen-space-tabs,
+.wardrobe-cat-bar {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  background-color: var(--bg-tray);
+  border: 1px solid #E5DFD5;
+  border-radius: 14px;
+}
+
+.m3-seg-bar.cols-3,
+.tab-bar.tabs-3,
+.zen-space-tabs {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.wardrobe-cat-bar {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.m3-seg-btn,
+.tab-btn,
+.zen-space-btn,
+.wardrobe-cat-btn {
+  min-height: 46px;
+  min-width: 0;
+  padding: 7px 6px;
+  border: none;
+  border-radius: 10px;
+  background-color: transparent;
+  color: #5C534B;
+  font-size: clamp(13px, 0.78rem, 17px);
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  overflow-wrap: anywhere;
+  box-shadow: none;
+  transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+
+.m3-seg-btn.active,
+.tab-btn.active,
+.zen-space-btn.active,
+.wardrobe-cat-btn.active {
+  background-color: #FFFFFF;
+  color: var(--accent-terracotta);
+  font-weight: 700;
+  border: none;
+  box-shadow: 0 1px 5px rgba(28, 25, 23, 0.09);
+}
+
+/* Clean Outlined List-Row (Exact NasHubs Settings / Apps pattern) */
+.m3-list-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.m3-list-row {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  min-height: 60px;
+  padding: 10px 13px;
+  background-color: #FFFFFF;
+  border: 1px solid var(--border-subtle);
+  border-radius: 15px;
+  text-align: left;
+  color: var(--ink-primary);
+  box-shadow: 0 1px 3px rgba(28, 25, 23, 0.03);
+}
+
+.m3-row-ico {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  background-color: var(--accent-cinnabar-soft);
+  color: var(--accent-terracotta);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.m3-row-ico.is-jade {
+  background-color: var(--accent-jade-soft);
+  color: var(--accent-jade);
+}
+
+.m3-row-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.m3-row-text strong {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--ink-primary);
+  line-height: 1.25;
+}
+
+.m3-row-text small {
+  font-size: 0.74rem;
+  color: var(--ink-secondary);
+  line-height: 1.28;
+}
+
+.m3-row-pill {
+  padding: 6px 12px;
+  border-radius: 10px;
+  background-color: #EFECE6;
+  color: var(--ink-primary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.m3-row-pill.is-on {
+  background-color: var(--accent-jade-soft);
+  color: var(--accent-jade);
+}
+
+.m3-row-chevron {
+  color: #8A7F75;
+  flex-shrink: 0;
+}
+
+/* Home Compact Daily 3-Quest Horizontal Strip */
+.daily-quest-card {
+  padding: 11px 12px;
+  gap: 8px;
+}
+
+.m3-quest-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.m3-quest-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 56px;
+  padding: 7px 5px;
+  border-radius: 12px;
+  background-color: #FAF8F4;
+  border: 1px solid #E6E0D6;
+  color: var(--ink-primary);
+  text-align: center;
+}
+
+.m3-quest-pill strong {
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.m3-quest-pill small {
+  font-size: 0.67rem;
+  font-weight: 700;
+  color: var(--accent-terracotta);
+}
+
+.m3-quest-pill.is-done {
+  background-color: var(--accent-jade-soft);
+  border-color: #BBDAC9;
+}
+
+.m3-quest-pill.is-done small {
+  color: var(--accent-jade);
+}
+
+/* Home Clean Bright 2x2 Primary Cards */
+.home-hero-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.home-core-card {
+  background-color: #FFFFFF;
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  padding: 11px 11px;
+  min-height: 92px;
+  gap: 5px;
+  align-items: flex-start;
+  text-align: left;
+  box-shadow: var(--shadow-soft);
+  color: var(--ink-primary);
+}
+
+.home-core-card.is-primary,
+.home-core-card.is-jade,
+.home-core-card.is-wood {
+  background: #FFFFFF;
+  color: var(--ink-primary);
+  border: 1px solid var(--border-subtle);
+}
+
+.home-core-card.is-primary {
+  border-color: var(--accent-cinnabar-border);
+  background: linear-gradient(180deg, #FFFFFF 0%, #FFF8F6 100%);
+}
+
+.home-core-card .home-main-icon,
+.home-core-card.is-primary .home-main-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background-color: var(--accent-cinnabar-soft);
+  color: var(--accent-terracotta);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.home-core-card.is-jade .home-main-icon {
+  background-color: var(--accent-jade-soft);
+  color: var(--accent-jade);
+}
+
+.home-core-card.is-wood .home-main-icon {
+  background-color: var(--accent-amber-soft);
+  color: var(--accent-amber);
+}
+
+.home-core-card strong,
+.home-core-card.is-primary strong,
+.home-core-card.is-jade strong,
+.home-core-card.is-wood strong {
+  font-size: 0.85rem;
+  line-height: 1.22;
+  color: var(--ink-primary);
+}
+
+.home-core-card small,
+.home-core-card.is-primary small,
+.home-core-card.is-jade small,
+.home-core-card.is-wood small {
+  font-size: 0.72rem;
+  line-height: 1.25;
+  color: var(--ink-secondary);
+}
+
+.viahe-home-cta {
+  margin-top: 8px;
+  background: #FFFFFF;
+  border: 1px solid var(--accent-cinnabar-border);
+  color: var(--ink-primary);
+  font-size: 0.86rem;
+}
+
+/* Home 3-Column Tool Grid (Exact NasHubs Overview "Manage NAS" 3x3 pattern) */
+.m3-tool-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.m3-tool-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 76px;
+  padding: 10px 6px;
+  background-color: #FFFFFF;
+  border: 1px solid var(--border-subtle);
+  border-radius: 15px;
+  text-align: center;
+  color: var(--ink-primary);
+  box-shadow: 0 1px 3px rgba(28, 25, 23, 0.03);
+}
+
+.m3-tool-tile .ico {
+  width: 24px;
+  height: 24px;
+  color: var(--accent-terracotta);
+}
+
+.m3-tool-tile strong {
+  font-size: 0.74rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--ink-primary);
+}
+
+/* Compact 2-Column Wardrobe Grid (Profile: cuts height by 65%) */
+.catalog-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.catalog-mini-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 7px;
+  padding: 9px;
+  background-color: #FFFFFF;
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  min-width: 0;
+}
+
+.catalog-mini-card.is-equipped {
+  border-color: var(--accent-jade);
+  background-color: #F4FAF7;
+}
+
+.catalog-mini-card.is-previewing {
+  border-color: var(--accent-terracotta);
+  background-color: #FFF7F5;
+}
+
+.catalog-mini-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.catalog-mini-head svg {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+.catalog-mini-title {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.catalog-mini-title strong {
+  font-size: 0.76rem;
+  line-height: 1.22;
+  color: var(--ink-primary);
+  overflow-wrap: anywhere;
+}
+
+.catalog-mini-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.catalog-mini-actions .btn-mini {
+  flex: 1;
+  min-height: 36px;
+  padding: 4px 6px;
+  font-size: 0.72rem;
+  border-radius: 9px;
+  justify-content: center;
+}
+
+/* Compact Newspaper List-Rows (cuts 8,548px -> ~1,000px) */
+.news-list-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.news-row-card {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 12px 13px;
+  background-color: #FFFFFF;
+  border: 1px solid var(--border-subtle);
+  border-radius: 15px;
+  box-shadow: var(--shadow-soft);
+}
+
+.news-row-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.news-row-top .badge-tag {
+  font-size: 0.72rem;
+  padding: 3px 9px;
+}
+
+.news-row-top .news-reader-count {
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-size: 0.72rem;
+}
+
+.news-row-title-btn {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  text-align: left;
+  width: 100%;
+  color: var(--ink-primary);
+}
+
+.news-row-title-btn h3 {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 0.94rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--ink-primary);
+}
+
+.news-row-meta {
+  font-size: 0.73rem;
+  color: var(--ink-secondary);
+}
+
+.news-row-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.news-row-actions .btn-mini {
+  flex: 1;
+  min-height: 40px;
+  border-radius: 10px;
+  font-size: 0.76rem;
+  justify-content: center;
+}
+
+/* Compact Lobby Quick-Join Strip (Tab 1 keeps 1-tap table switching on 1 screen) */
+.lobby-quick-tables {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.lobby-qtable-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 56px;
+  padding: 6px 4px;
+  border-radius: 12px;
+  background-color: #FFFFFF;
+  border: 1px solid var(--border-subtle);
+  color: var(--ink-primary);
+  text-align: center;
+}
+
+.lobby-qtable-btn.is-best {
+  border-color: var(--accent-cinnabar-border);
+  background-color: #FFF8F6;
+}
+
+.lobby-qtable-btn strong {
+  font-size: 0.76rem;
+  line-height: 1.2;
+}
+
+.lobby-qtable-btn small {
+  font-size: 0.68rem;
+  color: var(--ink-secondary);
+}
+
+/* Compact Poem Pager Bar & Health Med Grid */
+.poem-pager-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.poem-pager-bar .btn-mini {
+  min-height: 42px;
+  padding: 6px 12px;
+  border-radius: 10px;
+}
+
+.med-toggle-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.med-toggle-row button {
+  padding: 10px 8px;
+  font-size: 0.82rem;
+}
+
+/* Clean Room Switcher Chips + Horizontal Single-Row Newspaper Categories */
+.room-tab-btn,
+.room-chip {
+  background: #FFFFFF;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  color: var(--ink-primary);
+  min-height: 44px;
+  padding: 6px 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  box-shadow: 0 1px 2px rgba(28, 25, 23, 0.03);
+}
+
+.room-tab-btn.active,
+.room-chip.active {
+  background: var(--accent-cinnabar-soft);
+  border-color: var(--accent-terracotta);
+  color: var(--accent-terracotta);
+}
+
+.room-tab-btn.clone-btn {
+  background: #FFFFFF;
+  border: 1px dashed #CFC5B7;
+  color: var(--ink-secondary);
+  min-height: 38px;
+  padding: 5px 10px;
+  font-size: 0.75rem;
+}
+
+.news-toolbar-card {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.news-cat-strip {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  gap: 6px;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+
+.news-cat-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.news-cat-chip {
+  flex-shrink: 0;
+  min-height: 38px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle);
+  background: #FFFFFF;
+  color: var(--ink-primary);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.news-cat-chip.active {
+  background: var(--accent-cinnabar-soft);
+  border-color: var(--accent-terracotta);
+  color: var(--accent-terracotta);
+}
+
+.catalog-mini-card {
+  padding: 7px 8px;
+  gap: 5px;
+}
+
+.catalog-mini-head svg {
+  width: 34px;
+  height: 34px;
+}
+
+/* Clean Zen Stage Frame & View Bar */
+.zen-stage-frame {
+  border: 1px solid var(--border-subtle);
+  background-color: #FFFFFF;
+}
+
+.zen-view-btn {
+  background-color: #FAF8F4;
+  border: 1px solid var(--border-subtle);
+  color: var(--ink-secondary);
+}
+
+.zen-view-btn.active {
+  background-color: var(--accent-cinnabar-soft);
+  border-color: var(--accent-cinnabar-border);
+  color: var(--accent-terracotta);
+}
+
+/* XL Font (24px) Safe Responsive Fallbacks — Zero Horizontal Overflow at 390px */
+html.xl-font .m3-tool-grid,
+body.xl-font .m3-tool-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+html.xl-font .wardrobe-cat-bar,
+body.xl-font .wardrobe-cat-bar {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+html.xl-font .m3-quest-strip,
+body.xl-font .m3-quest-strip,
+html.xl-font .lobby-quick-tables,
+body.xl-font .lobby-quick-tables {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+html.xl-font .catalog-grid-2,
+body.xl-font .catalog-grid-2 {
+  grid-template-columns: 1fr;
 }
 
 @media (prefers-reduced-motion: reduce) {

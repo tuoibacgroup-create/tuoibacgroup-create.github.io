@@ -8,7 +8,7 @@
 
 | STT | Phân hệ chức năng | Trạng thái | Tệp phụ trách chính | Ghi chú kỹ thuật |
 | :---: | :--- | :---: | :--- | :--- |
-| 1 | Trang chủ Mobile-First, Sổ Tay 3 Niềm Vui & Tự Chuyển Ngày Mới | Hoàn thành | `app.js`, `styles.css` | Đưa 4 Việc Chính lên ngay khung nhìn đầu tiên, thanh `.user-strip` gọn 1 hàng, `ensureDailyRollover`, chữ 20px/24px |
+| 1 | Trang chủ Mobile-First "Mực & Chu Sa · Sáng", 3 Niềm Vui & Lưới Tiện Ích 3 Cột | Hoàn thành | `app.js`, `styles.css`, `index.html` | Giao diện Ink & Cinnabar Light (M3 Active Pill, Banner Chu Sa, lưới 3 cột 11 tiện ích, thanh 3 niềm vui ngang), `ensureDailyRollover`, chữ 20px/24px |
 | 2 | Điểm danh bình an & Bản đồ Việt Nam chuẩn GIS Natural Earth 10m | Hoàn thành | `app.js`, `data.js`, `styles.css` | Bản đồ GIS 290 đỉnh đất liền + 21 đảo ven bờ (`cos 16°`), sao vàng Thủ đô Hà Nội, Hoàng Sa (TP. Đà Nẵng) & Trường Sa (Khánh Hòa), Vịnh Bắc Bộ, Biển Đông, thước tỷ lệ `0–200 km` & `0` tỉnh trôi ngoài bờ |
 | 3 | 6 Không Gian Trà (Có Trà Đá Vỉa Hè), 14 Áo Ba Miền · 11 Phụ Kiện Khớp Tọa Độ · 13 Đồ Bày | Hoàn thành | `tearoom3d.js`, `assets/room-*`, `assets/tearoom-*`, `data.js` | Cắt sát `ACC_BBOX` + mặt nạ `evenodd` đảo ngược & vòng cung trán cong cho 11 phụ kiện liền mạch tuyệt đối Nam/Nữ/Lưng (không cắt ngang khăn rằn, không cắt dây qua mặt nón quai thao), lưới 2×2 Tủ đồ |
 | 4 | Chủ bàn đặt tên bàn đàm đạo & Gửi 8 Sticker 1 chạm | Hoàn thành | `app.js`, `tearoom3d.js` | Bong bóng Sticker nổi trên đầu nhân vật 3D, đồng bộ qua `custom_tea_tables` |
@@ -28,6 +28,19 @@
 ---
 
 ## 2. Nhật Ký Phiên Bản Kỹ Thuật (Append-Only Engineering Log)
+
+### [2026-11-19] — Áp Dụng Toàn Diện Ngôn Ngữ Thiết Kế "Mực & Chu Sa · Sáng" (Ink & Cinnabar Light · Material 3) & Kiến Trúc Chia Thẻ Ngắn Gọn Trên Cả 16 Màn Hình (`?v=20261119c`)
+- **Tệp cập nhật:** `index.html` (`?v=20261119c`), `styles.css`, `app.js`, `tearoom3d.js`, `sw.js` (`tuoibac-pwa-v31`), `manifest.webmanifest`, `DESIGN.md`, `ARCHITECTURE.md`, `docs/03_TIEN_DO_VA_NHAT_KY.md`, `docs/05_QUYET_DINH_KIEN_TRUC_ADR.md`.
+- **Chi tiết 2 cụm nâng cấp giao diện & bố cục toàn ứng dụng:**
+  1. **Hệ thống màu & thành phần "Mực & Chu Sa · Sáng" (Material Design 3 Light) trên cả 16 màn hình (`index.html`, `styles.css`, `DESIGN.md`):**
+     - Nâng cấp toàn bộ bảng màu bề mặt sang nền giấy ngà sáng dịu `--bg-paper: #F7F5F0`, thẻ nội dung trắng sạch `--bg-card: #FFFFFF`, viền sáng mảnh `1px solid #E5DFD5`, mực chữ sắc nét `--ink-primary: #1C1917` (> 14:1 tương phản) và sắc Đỏ Chu Sa `--accent-terracotta: #B63A24` / nền dịu `#FBEAE6`, giữ nguyên gốc chữ `20px / 24px` và chiều cao nút chính `>= 56px`.
+     - Áp dụng đồng nhất 5 thành phần cốt lõi: **Dải Banner Đỏ Chu Sa (`.m3-hero-banner`)** đầu mỗi màn hình, **Thanh điều hướng đáy M3 Active Pill (`.bnav-pill`)** kèm icon `#ico-chevron`, **Khay chuyển mục Segmented Control (`.m3-seg-bar`, `.tab-bar`, `.zen-space-tabs`, `.wardrobe-cat-bar`)**, **Hàng danh sách chuẩn (`.m3-list-row`)** và **Lưới công cụ 3 cột (`.m3-tool-grid`)** tự thu về 2 cột ở chế độ Chữ to `24px`.
+  2. **Chia nhỏ tính năng thành từng thẻ & sub-tab gọn gàng, giảm 40–80% chiều dài cuộn (`app.js`, `styles.css`):**
+     - **Báo Sáng (`newspaper`):** Cắt từ `8.548px` (10,1 màn hình) xuống `~1.716px` (-80%) nhờ thanh chuyên mục 1 hàng cuộn ngang, danh sách thẻ gọn 4 tin trang nhất chạm mở Modal đọc đủ bài và nút *Xem thêm tin khác*.
+     - **Sảnh Quán Trà (`tearoom`):** Cắt từ `5.008px` (5,9 màn hình) xuống `~1.369px` (-73%) nhờ tách 2 tab *Sảnh 2.5D & Ghép bàn* (gồm lưới chọn nhanh 6 bàn `3×2` ngay dưới sân khấu 2.5D) và *Chi tiết 6 bàn*.
+     - **Trang chủ (`home`):** Cắt từ `2.811px` xuống `~1.593px` (-43%) với 4 thẻ trắng sáng việc chính, thanh 3 niềm vui nằm ngang, lưới 3 cột 11 tiện ích sinh hoạt và hàng List-Row Thẻ Hội Viên + cài PWA.
+     - **Tủ Trang Phục (`profile`):** Chuyển danh mục vật phẩm sang lưới 2 cột gọn `.catalog-grid-2`, giảm từ `4.756px` xuống `~2.544px` (-47%).
+     - **Điểm danh (`checkin`), Tĩnh tâm (`zen`), Chiếu thơ (`poetry`), Sức khỏe (`health`), Góc Con Cái (`family`), Xem chung (`watch`), Bảng vàng (`leaderboard`), Hội nhóm (`groups`) & Cài đặt (`privacy`):** Đồng loạt tách thành từng sub-tab Segmented Control 2–3 ngăn, Chiếu Thơ lật từng bài kiểu trang sách (`Bài 1/N`) và Cài đặt dùng hoàn toàn List-Row chuẩn sạch sẽ (đưa hầu hết màn hình về mức `912px–1.731px`, `0px` tràn ngang ở cả `20px` và `24px`).
 
 ### [2026-11-19] — Chuẩn Hóa Bản Đồ Việt Nam Bằng Dữ Liệu GIS Thực Natural Earth 10m & Khử Tuyệt Đối Mối Cắt Phụ Kiện 2.5D Bằng Mặt Nạ `evenodd` (`?v=20261119b`)
 - **Tệp cập nhật:** `data.js`, `app.js`, `tearoom3d.js`, `index.html` (`?v=20261119b`), `sw.js` (`tuoibac-pwa-v30`), `ARCHITECTURE.md`, `DESIGN.md`, `docs/03_TIEN_DO_VA_NHAT_KY.md`, `docs/04_CAM_NANG_FIX_BUG_VA_KIEM_THU.md`, `docs/05_QUYET_DINH_KIEN_TRUC_ADR.md`.
