@@ -4,13 +4,13 @@
 
 ---
 
-## 1. Bảng Trạng Thái 16 Phân Hệ Của Game (Cập nhật: 18/11/2026)
+## 1. Bảng Trạng Thái 16 Phân Hệ Của Game (Cập nhật: 19/11/2026)
 
 | STT | Phân hệ chức năng | Trạng thái | Tệp phụ trách chính | Ghi chú kỹ thuật |
 | :---: | :--- | :---: | :--- | :--- |
-| 1 | Trang chủ Mobile-First, Sổ Tay 3 Niềm Vui & Tự Chuyển Ngày Mới | Hoàn thành | `app.js`, `styles.css` | Tự chuyển ngày lịch mới (`ensureDailyRollover`), Hộp Lộc Tâm Giao mỗi ngày, PWA & chữ 20px/24px |
-| 2 | Điểm danh bình an & Bản đồ 34 đơn vị hành chính mới | Hoàn thành | `app.js`, `data.js` | Có chú thích tỉnh cũ gộp vào, xuất thiệp chúc sáng kèm QR + lời chúc thu sẵn |
-| 3 | 6 Không Gian Trà (Có Trà Đá Vỉa Hè), 14 Áo Ba Miền · 11 Phụ Kiện · 13 Đồ Bày | Hoàn thành | `tearoom3d.js`, `assets/room-*`, `assets/tearoom-*`, `data.js` | 6 cảnh Sảnh & Bàn riêng biệt (gồm Quán Trà Đá Vỉa Hè), trang phục Bắc Ninh – Miền Trung – Miền Nam |
+| 1 | Trang chủ Mobile-First, Sổ Tay 3 Niềm Vui & Tự Chuyển Ngày Mới | Hoàn thành | `app.js`, `styles.css` | Đưa 4 Việc Chính lên ngay khung nhìn đầu tiên, thanh `.user-strip` gọn 1 hàng, `ensureDailyRollover`, chữ 20px/24px |
+| 2 | Điểm danh bình an & Bản đồ Địa lý chữ S 34 tỉnh thành mới | Hoàn thành | `app.js`, `data.js`, `styles.css` | Bản đồ SVG chiếu kinh vĩ độ thực có Phú Quốc/Côn Đảo/Hoàng Sa/Trường Sa/Xa quê, la bàn, đèn lồng tỏa sáng & thanh xem nhanh tỉnh chạm |
+| 3 | 6 Không Gian Trà (Có Trà Đá Vỉa Hè), 14 Áo Ba Miền · 11 Phụ Kiện Khớp Tọa Độ · 13 Đồ Bày | Hoàn thành | `tearoom3d.js`, `assets/room-*`, `assets/tearoom-*`, `data.js` | Cắt sát khung bao `ACC_BBOX` + tách lớp trước/sau cho 11 phụ kiện khớp tuyệt đối Nam/Nữ/Lưng, bảng thông số 2×2 Tủ đồ & sân khấu Sảnh đặt đầu trang |
 | 4 | Chủ bàn đặt tên bàn đàm đạo & Gửi 8 Sticker 1 chạm | Hoàn thành | `app.js`, `tearoom3d.js` | Bong bóng Sticker nổi trên đầu nhân vật 3D, đồng bộ qua `custom_tea_tables` |
 | 5 | Trợ lý Quán Trà tự gợi chuyện sau 60s & Nhịp nhấp trà 10s | Hoàn thành | `app.js` | Rót trà 3D tự động khi bàn yên ắng quá 60 giây |
 | 6 | Nhập liệu giọng nói, Sổ phương ngữ & 15 Clip Giọng Thu Sẵn | Hoàn thành | `app.js`, `data.js`, `assets/audio/*.mp3` | 15 tệp `.mp3` tiếng Việt ngoại tuyến cho máy Android cũ + đồng bộ `phonetic_dictionary` |
@@ -28,6 +28,20 @@
 ---
 
 ## 2. Nhật Ký Phiên Bản Kỹ Thuật (Append-Only Engineering Log)
+
+### [2026-11-19] — Vẽ Lại Bản Đồ Địa Lý Việt Nam Chuẩn Chữ S, Hiệu Chuẩn Tuyệt Đối 11 Phụ Kiện & Đồ Bày 2.5D, Và Sắp Xếp Lại Bố Cục Khoa Học Toàn Ứng Dụng (`?v=20261119a`)
+- **Tệp cập nhật:** `data.js`, `tearoom3d.js`, `temple3d.js`, `app.js`, `styles.css`, `index.html` (`?v=20261119a`), `sw.js` (`tuoibac-pwa-v29`), `scripts/e2e-regression.mjs`, `ARCHITECTURE.md`, `DESIGN.md`, `docs/03_TIEN_DO_VA_NHAT_KY.md`.
+- **Chi tiết 3 cụm nâng cấp thẩm mỹ & bố cục (theo chuẩn Impeccable Operate Mode & Craft Floor):**
+  1. **Vẽ lại hoàn toàn Bản đồ Điểm danh Việt Nam (`data.js`, `app.js`, `styles.css`):**
+     - Thay đa giác gãy khúc cũ bằng bản đồ địa lý chữ S mượt theo phép chiếu kinh vĩ độ thực (`viewBox 380×560`, 85 điểm đường cong Bezier), bổ sung đầy đủ Phú Quốc, Cát Bà, Bạch Long Vĩ, Lý Sơn, Côn Đảo, lưới kinh vĩ tuyến (`10°B–20°B`), la bàn Bắc, chữ nổi `BIỂN ĐÔNG`, hai khung chủ quyền `Hoàng Sa` và `Trường Sa` có cụm đảo con cùng huy hiệu địa cầu `Người Việt xa quê`.
+     - Hiệu chuẩn lại toàn bộ 34 tọa độ tỉnh thành mới nằm chuẩn trong đất liền (`0` điểm trôi ra ngoài), thêm ánh đèn lồng tỏa sáng nhiều lớp (`radialGradient`), vòng đèn nhịp đập cho tỉnh nhà kèm thẻ tên nền tối viền vàng tự kẹp biên chống cắt chữ, khóa chống bôi đen nhầm (`user-select: none`), bổ sung thanh đọc chi tiết tỉnh đang chạm (`#vn-map-selected-bar`) có nút chọn tỉnh trực tiếp và thanh tỷ lệ đèn trong bảng xếp hạng tỉnh.
+  2. **Hiệu chuẩn tọa độ 11 Phụ kiện 2.5D & Cân đối Bàn trà Tủ đồ (`tearoom3d.js`):**
+     - Cắt sát khung bao điểm ảnh thật (`ACC_BBOX`) và tách 2 lớp trước/sau đầu cổ (`drawSpritePreHeadAccessory` + `drawSpriteAccessories`) giúp cả 11 phụ kiện khớp chính xác trên nhân vật Nam, Nữ và góc Lưng: xử lý dứt điểm lỗi `Khăn rằn Nam Bộ` đè cằm (quàng sau cổ và rủ 2 tà xuống ngực cân đối), `Khăn xếp the đen` & `Khăn đóng gấm đỏ` hở lỗ giữa đầu và nghiêng sai góc (xoay chuẩn góc 3/4, che đỉnh lụa mịn, ôm sát chân tóc), `Nón quai thao` bay cao và quai cắt ngang mặt (hạ ôm đỉnh đầu, tua lụa ôm gọn hai má và dưới cằm), cùng `Mũ cối`, `Mũ tai bèo`, `Khăn len đỏ` và `Nón lá`.
+     - Mở rộng nhẹ mặt đôn trà gỗ gụ (`rx=64`) và cân tỷ lệ vật phẩm + căn giữa nhãn tên vật phẩm phía trên bàn tại sân khấu `Tủ Trang Phục`.
+  3. **Sắp xếp lại bố cục khoa học & sửa lỗi dấu tiếng Việt font Serif trên toàn bộ màn hình (`app.js`, `styles.css`):**
+     - **Thanh trạng thái `.user-strip`:** Gom gọn còn đúng 1 hàng ngang sạch sẽ trên màn hình `390px` (tiết kiệm ~65px chiều cao trên mọi màn hình, tự xuống dòng an toàn ở chế độ Chữ to `24px`).
+     - **Trang chủ (`home`):** Đưa khối **`4 Việc Chính Hôm Nay`** (và nút Quán Trà Đá Vỉa Hè) lên hiển thị ngay khung nhìn đầu tiên không cần cuộn, tinh gọn thẻ chào đầu trang bỏ các nhãn thừa phía trên tiêu đề `h1`, đưa Sổ Tay 3 Niềm Vui, Góc Sinh Hoạt Cộng Đồng, Thẻ Hội Viên & gợi ý cài PWA theo đúng thứ tự ưu tiên thao tác.
+     - **Sảnh Quán Trà (`tearoom`), Tủ Đồ (`profile`), Báo Sáng (`newspaper`), Trò Chơi (`games`) & Tĩnh Tâm (`zen`):** Đưa sân khấu 2.5D Sảnh Trà lên đầu trang ngay dưới lưới chọn 6 phòng (`3×2`) kèm thanh công cụ 1 dòng và thu gọn 9 sở thích vào ngăn mở rộng; thay dòng chữ rời ở Tủ Đồ bằng lưới thông số `2×2` (`.equipped-spec-grid`) và thanh tiêu đề 1 hàng; đổi `--font-serif` sang `"Merriweather", "Cambria", "Noto Serif", "Times New Roman", serif` sửa triệt để lỗi rời dấu tiếng Việt trên Báo Sáng & thơ Quẻ Xăm; cân lưới 3 cột đều cho 3 tab trò chơi, sửa lưới 2 cột đều cho mức độ Máy Ô Ăn Quan và tách rõ thanh chọn 3 Không gian Tĩnh Tâm với thanh 3 Góc nhìn gắn sát khung cảnh.
 
 ### [2026-11-18] — Mở Rộng Quán Trà Đá Vỉa Hè, Thiết Kế Riêng 6 Bộ Cảnh Sảnh & Bàn Tương Ứng, Và Bổ Sung Trang Phục · Phụ Kiện Đặc Trưng Bắc Ninh – Miền Trung – Miền Nam (`?v=20261118d`)
 - **Tệp tạo mới / cập nhật:** `assets/room-viahe-lobby.jpg`, `assets/room-viahe-table.jpg`, `assets/room-tho-lobby.jpg`, `assets/room-tho-table.jpg`, `assets/room-co-lobby.jpg`, `assets/room-co-table.jpg`, `assets/room-ccb-lobby.jpg`, `assets/room-ccb-table.jpg`, `assets/room-caycanh-lobby.jpg`, `assets/room-caycanh-table.jpg`, `assets/tearoom-regional-acc.webp`, `assets/tearoom-viahe-item.webp`, `data.js`, `tearoom3d.js`, `app.js`, `styles.css`, `index.html` (`?v=20261118d`), `sw.js` (`tuoibac-pwa-v28`), `scripts/e2e-regression.mjs`, `ARCHITECTURE.md`, `DESIGN.md`, `PRODUCT.md`, `docs/02_SO_DO_DU_LIEU_VA_API_NOI_BO.md`, `docs/03_TIEN_DO_VA_NHAT_KY.md`, `docs/05_QUYET_DINH_KIEN_TRUC_ADR.md`.

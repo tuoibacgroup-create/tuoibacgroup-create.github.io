@@ -19,7 +19,7 @@
   --border-strong: #9C856B;
   --shadow-soft: 0 6px 18px rgba(35, 26, 20, 0.08);
   --font-sans: "Be Vietnam Pro", "Segoe UI", system-ui, -apple-system, sans-serif;
-  --font-serif: "Merriweather", Georgia, "Times New Roman", serif;
+  --font-serif: "Merriweather", "Cambria", "Noto Serif", "Times New Roman", serif;
   --base-size: 20px;
   --radius-md: 14px;
   --radius-lg: 18px;
@@ -330,30 +330,35 @@ button {
   border-color: var(--accent-jade);
 }
 
-/* User Status Strip */
+/* User Status Strip — Single Clean Row on Mobile */
 .user-strip {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 6px;
-  padding: 8px 10px;
+  padding: 6px 10px;
   background-color: var(--bg-newsprint);
   border-bottom: 1px solid var(--border-subtle);
 }
 
+html.xl-font .user-strip,
+body.xl-font .user-strip {
+  flex-wrap: wrap;
+}
+
 .user-pill {
-  flex: 1 1 165px;
+  flex: 1 1 0;
   display: inline-flex;
   align-items: center;
   gap: 7px;
   border: 1px solid var(--border-subtle);
   background-color: var(--bg-card);
   border-radius: 999px;
-  padding: 4px 10px 4px 6px;
-  min-height: 56px;
+  padding: 4px 10px 4px 5px;
+  min-height: 48px;
   text-align: left;
-  min-width: 145px;
+  min-width: 0;
 }
 
 .avatar-dot {
@@ -363,7 +368,7 @@ button {
   background-color: var(--accent-jade);
   color: #FFFFFF;
   font-weight: 700;
-  font-size: clamp(16px, 0.88rem, 18px);
+  font-size: clamp(15px, 0.84rem, 18px);
   display: grid;
   place-items: center;
   flex-shrink: 0;
@@ -376,7 +381,7 @@ button {
 }
 
 .user-pill-info strong {
-  font-size: clamp(16px, 0.88rem, 18px);
+  font-size: clamp(14.5px, 0.8rem, 18px);
   line-height: 1.15;
   white-space: nowrap;
   overflow: hidden;
@@ -384,7 +389,7 @@ button {
 }
 
 .user-pill-info small {
-  font-size: clamp(14px, 0.78rem, 17px);
+  font-size: clamp(12.5px, 0.72rem, 16px);
   color: var(--ink-secondary);
   white-space: nowrap;
   overflow: hidden;
@@ -403,12 +408,14 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 6px 8px;
+  min-height: 42px;
+  padding: 5px 9px;
   border-radius: 999px;
   background-color: var(--bg-card);
   border: 1px solid var(--border-subtle);
-  font-size: clamp(15px, 0.85rem, 18px);
+  font-size: clamp(13.5px, 0.76rem, 17px);
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .coin-pill {
@@ -2141,17 +2148,18 @@ p {
 
 /* ==================== NHÓM A & NHÓM B: PWA, REALTIME, 9x10 XIANGQI, BADGE FRAMES, ANALYTICS & PRIVACY ==================== */
 .rt-pill {
-  min-height: 56px;
-  padding: 6px 8px;
-  border-radius: 12px;
+  min-height: 42px;
+  padding: 5px 9px;
+  border-radius: 999px;
   border: 1px solid var(--border-subtle);
   background-color: var(--bg-card);
   color: var(--ink-primary);
-  font-size: clamp(15px, 0.85rem, 18px);
+  font-size: clamp(13px, 0.74rem, 16px);
   font-weight: 700;
   display: inline-flex;
   align-items: center;
   gap: 5px;
+  white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 
@@ -4043,10 +4051,675 @@ p {
 
 .viahe-home-cta {
   width: 100%;
-  margin-top: 4px;
+  margin-top: 2px;
   background: linear-gradient(155deg, #FFFDF5 0%, #F7E8C4 100%);
   border-color: #C89B54;
   color: #4A2D12;
+}
+
+/* ==================== LAYOUT REORGANIZATION, CARTOGRAPHIC MAP & OPERATE CRAFT (v20261119a) ==================== */
+.app-main {
+  gap: 20px;
+  padding: 14px 14px 32px;
+}
+
+.section-block {
+  gap: 10px;
+  margin-top: 0;
+}
+
+.section-block > h2 {
+  margin-top: 2px;
+  font-size: 1.08rem;
+  letter-spacing: -0.01em;
+  color: var(--ink-primary);
+}
+
+.home-top-zone {
+  margin-top: 0;
+}
+
+.home-pavilion-hero {
+  gap: 10px;
+  padding: 14px 15px;
+}
+
+.home-pavilion-title-row {
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+}
+
+.home-hero-heading {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.home-hero-heading h1 {
+  font-size: 1.28rem;
+  line-height: 1.22;
+}
+
+.home-hero-sub {
+  font-size: 0.84rem;
+  color: #5A4330;
+  line-height: 1.35;
+}
+
+.btn-compact-edit {
+  min-height: 46px;
+  padding: 6px 11px;
+  border-radius: 12px;
+  flex-shrink: 0;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.home-pavilion-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.home-streak-pill {
+  gap: 5px;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+}
+
+.home-rank-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background-color: #FFF6E0;
+  border: 1px solid #D9B06B;
+  color: #6B3E10;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.quest-hint-copy {
+  font-size: 0.84rem;
+  color: var(--ink-secondary);
+  line-height: 1.4;
+}
+
+.quest-done-note {
+  font-size: 0.86rem;
+  color: var(--accent-jade);
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.home-hero-grid-4 {
+  gap: 10px;
+}
+
+.home-core-card {
+  min-height: 112px;
+  padding: 13px 12px;
+  gap: 8px;
+}
+
+.home-core-card .home-main-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 11px;
+  background-color: var(--bg-newsprint);
+  color: var(--accent-terracotta);
+}
+
+.home-core-card.is-primary .home-main-icon,
+.home-core-card.is-jade .home-main-icon {
+  background-color: rgba(255, 255, 255, 0.18);
+  color: #FFFFFF;
+}
+
+.home-core-card.is-wood .home-main-icon {
+  background-color: #F2DEC0;
+  color: #7A441D;
+}
+
+.module-tile {
+  min-height: 102px;
+  padding: 13px 12px;
+  gap: 7px;
+  transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.12s ease;
+}
+
+.module-tile:active {
+  transform: translateY(1px);
+}
+
+.module-tile-ico {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background-color: var(--bg-newsprint);
+  color: var(--accent-jade);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.module-tile span.sub {
+  font-size: 0.8rem;
+  line-height: 1.3;
+}
+
+/* Cartographic Heritage Vietnam Night-Lantern Map */
+.checkin-field-sub {
+  font-weight: 700;
+  font-size: 0.92rem;
+  margin-bottom: 8px;
+}
+
+.map-card {
+  background: linear-gradient(180deg, #0D1C2E 0%, #091422 100%);
+  border: 1px solid #2A435E;
+  box-shadow: 0 12px 28px rgba(7, 17, 29, 0.28);
+  padding: 14px;
+  gap: 12px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.map-kpi-strip {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background-color: rgba(255, 248, 232, 0.06);
+  border: 1px solid rgba(216, 179, 106, 0.26);
+}
+
+.map-kpi-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.map-kpi-cell.is-right {
+  text-align: right;
+  align-items: flex-end;
+}
+
+.map-kpi-lbl {
+  font-size: 0.78rem;
+  color: #C4D4E4;
+  font-weight: 600;
+}
+
+.map-kpi-val {
+  font-size: 1.18rem;
+  line-height: 1.2;
+  color: #FCE29C;
+  font-weight: 700;
+}
+
+.map-kpi-val.is-accent {
+  color: #FFD166;
+}
+
+.map-canvas-wrap {
+  background-color: #07111D;
+  border-radius: 14px;
+  border: 1px solid rgba(216, 179, 106, 0.34);
+  overflow: hidden;
+  box-shadow: inset 0 0 24px rgba(2, 8, 16, 0.55);
+}
+
+#vn-map-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.map-dot {
+  cursor: pointer;
+}
+
+.map-dot:focus-visible {
+  outline: none;
+}
+
+@keyframes mapBeaconPulse {
+  0% {
+    opacity: 0.82;
+    transform: scale(0.92);
+  }
+  70% {
+    opacity: 0.22;
+    transform: scale(1.26);
+  }
+  100% {
+    opacity: 0.82;
+    transform: scale(0.92);
+  }
+}
+
+.map-beacon-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: mapBeaconPulse 2.4s ease-in-out infinite;
+}
+
+.map-selected-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background-color: rgba(19, 43, 68, 0.82);
+  border: 1px solid rgba(216, 179, 106, 0.35);
+}
+
+.map-selected-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.map-selected-info strong {
+  font-size: 0.9rem;
+  color: #FFF8E7;
+  line-height: 1.25;
+}
+
+.map-selected-info span {
+  font-size: 0.8rem;
+  color: #D2DFEB;
+}
+
+.map-select-prov-btn {
+  min-height: 44px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  border: 1px solid #F2C96B;
+  background-color: #D98A2B;
+  color: #1A1006;
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.map-here-chip {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background-color: rgba(242, 201, 107, 0.16);
+  border: 1px solid rgba(242, 201, 107, 0.52);
+  color: #FFE49E;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.map-legend-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  font-size: 0.76rem;
+  color: #C2D2E1;
+}
+
+.map-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.map-dot-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.map-dot-swatch.is-me {
+  background-color: #FF765E;
+  box-shadow: 0 0 0 2px rgba(255, 118, 94, 0.35);
+}
+
+.map-dot-swatch.is-amber {
+  background-color: #F7BE56;
+}
+
+.map-dot-swatch.is-live {
+  background-color: #7DF2AE;
+}
+
+.province-rank-item {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 7px;
+  padding: 11px 12px;
+}
+
+.province-rank-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.province-rank-name {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--ink-primary);
+  min-width: 0;
+}
+
+.province-rank-track {
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background-color: #EFE4CE;
+  overflow: hidden;
+}
+
+.province-rank-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #D98A2B 0%, #B83B2A 100%);
+}
+
+/* Tea Room Lobby & Stage Showcase Card */
+.room-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+html.xl-font .room-strip,
+body.xl-font .room-strip {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.room-tab-btn {
+  flex: initial;
+  min-width: 0;
+  min-height: 54px;
+  padding: 7px 6px;
+  font-size: 0.82rem;
+  line-height: 1.2;
+}
+
+.room-tab-btn.clone-btn {
+  grid-column: 1 / -1;
+  min-height: 48px;
+}
+
+.room-heading-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stage-showcase-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border-radius: var(--radius-lg);
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-soft);
+}
+
+.tearoom-controls-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.stage-badge.is-compact {
+  padding: 5px 11px;
+  font-size: 0.8rem;
+  background-color: var(--bg-paper);
+  border-color: var(--border-subtle);
+  color: var(--ink-secondary);
+  white-space: nowrap;
+}
+
+.stage-badge.is-live {
+  background-color: var(--accent-jade-soft);
+  border-color: var(--accent-jade);
+  color: var(--accent-jade);
+  font-size: 0.82rem;
+}
+
+.stage-badge.is-preview {
+  background-color: #FFF0CC;
+  border-color: #C88A28;
+  color: #6B3E08;
+  font-size: 0.82rem;
+}
+
+.stage-badge-btn {
+  min-height: 46px;
+  padding: 6px 12px;
+  font-size: 0.82rem;
+}
+
+.table-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.table-card-title {
+  min-width: 0;
+  flex: 1 1 180px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.table-card-title small {
+  font-size: 0.84rem;
+  color: var(--ink-secondary);
+}
+
+.table-card-badges {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* Profile Showcase Header & Structured 2x2 Equipped Grid */
+.showcase-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.equipped-spec-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.equipped-spec-cell {
+  padding: 8px 10px;
+  border-radius: 10px;
+  background-color: rgba(255, 253, 247, 0.85);
+  border: 1px solid #DEC9A4;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.equipped-spec-lbl {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--ink-secondary);
+}
+
+.equipped-spec-cell strong {
+  font-size: 0.84rem;
+  line-height: 1.25;
+  color: var(--ink-primary);
+  overflow-wrap: anywhere;
+}
+
+/* Balanced Segmented Controls for Games & Zen */
+.tab-bar.tabs-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.tab-bar.tabs-3 .tab-btn {
+  flex: initial;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  padding: 8px 6px;
+  font-size: clamp(14px, 0.84rem, 18px);
+}
+
+.segmented-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.zen-space-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.zen-space-btn {
+  min-height: 56px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  padding: 8px 6px;
+  border-radius: 12px;
+  border: 1px solid var(--border-strong);
+  background-color: var(--bg-card);
+  color: var(--ink-primary);
+  font-size: clamp(14px, 0.82rem, 18px);
+  font-weight: 700;
+  line-height: 1.22;
+  text-align: center;
+}
+
+.zen-space-btn.active {
+  background-color: var(--accent-terracotta);
+  border-color: var(--accent-terracotta);
+  color: #FFFFFF;
+}
+
+.zen-stage-frame {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  border-radius: var(--radius-lg);
+  background-color: var(--bg-card);
+  border: 1px solid #C8A46B;
+  box-shadow: var(--shadow-soft);
+}
+
+.zen-view-bar {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.zen-view-btn {
+  min-height: 52px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  padding: 6px 5px;
+  border-radius: 10px;
+  border: 1px solid var(--border-subtle);
+  background-color: var(--bg-paper);
+  color: var(--ink-secondary);
+  font-size: clamp(13.5px, 0.78rem, 17px);
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.zen-view-btn.active {
+  background-color: #5C2B18;
+  border-color: #421C0D;
+  color: #FFE8A6;
+}
+
+/* Streamlined Newspaper Toolbar */
+.news-toolbar-card {
+  gap: 10px;
+  padding: 12px;
+}
+
+.news-cat-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.news-cat-chip {
+  min-height: 46px;
+  padding: 6px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background-color: var(--bg-paper);
+  color: var(--ink-primary);
+  font-size: 0.82rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.news-cat-chip.active {
+  background-color: var(--accent-jade);
+  border-color: var(--accent-jade);
+  color: #FFFFFF;
+}
+
+.news-kw-details {
+  background-color: var(--bg-paper);
+  padding: 2px 10px 8px;
+}
+
+.news-kw-details > summary {
+  min-height: 46px;
+  font-size: 0.86rem;
+}
+
+@media (max-width: 340px) {
+  .equipped-spec-grid,
+  .room-strip {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

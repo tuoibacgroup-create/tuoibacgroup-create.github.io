@@ -1,4 +1,4 @@
-const CACHE_VERSION = "tuoibac-pwa-v28";
+const CACHE_VERSION = "tuoibac-pwa-v29";
 const CORE_ASSETS = [
   "./",
   "./index.html",
@@ -66,7 +66,7 @@ self.addEventListener("install", (event) => {
     caches
       .open(CACHE_VERSION)
       .then((cache) => cache.addAll(CORE_ASSETS))
-      .catch(() => {})
+      .catch(() => { })
       .then(() => self.skipWaiting())
   );
 });
@@ -112,7 +112,7 @@ self.addEventListener("fetch", (event) => {
         .then((res) => {
           if (res && res.ok) {
             const clone = res.clone();
-            caches.open(CACHE_VERSION).then((cache) => cache.put(req, clone)).catch(() => {});
+            caches.open(CACHE_VERSION).then((cache) => cache.put(req, clone)).catch(() => { });
           }
           return res;
         })
@@ -128,7 +128,7 @@ self.addEventListener("fetch", (event) => {
         .then((res) => {
           if (res && res.ok) {
             const clone = res.clone();
-            caches.open(CACHE_VERSION).then((cache) => cache.put(req, clone)).catch(() => {});
+            caches.open(CACHE_VERSION).then((cache) => cache.put(req, clone)).catch(() => { });
           }
           return res;
         })

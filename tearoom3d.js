@@ -67,12 +67,12 @@ window.TeaRoomScene = (function () {
   };
   const roomBackdropsCache = Object.create(null);
   const ROOM_BACKDROP_URLS = {
-    "phong-tra": { lobby: "./assets/tearoom-lobby-25d.jpg?v=20261118d", table: "./assets/tearoom-table-25d.jpg?v=20261118d" },
-    "via-he": { lobby: "./assets/room-viahe-lobby.jpg?v=20261118d", table: "./assets/room-viahe-table.jpg?v=20261118d" },
-    "phong-tho": { lobby: "./assets/room-tho-lobby.jpg?v=20261118d", table: "./assets/room-tho-table.jpg?v=20261118d" },
-    "phong-co": { lobby: "./assets/room-co-lobby.jpg?v=20261118d", table: "./assets/room-co-table.jpg?v=20261118d" },
-    "phong-ccb": { lobby: "./assets/room-ccb-lobby.jpg?v=20261118d", table: "./assets/room-ccb-table.jpg?v=20261118d" },
-    "phong-cay-canh": { lobby: "./assets/room-caycanh-lobby.jpg?v=20261118d", table: "./assets/room-caycanh-table.jpg?v=20261118d" }
+    "phong-tra": { lobby: "./assets/tearoom-lobby-25d.jpg?v=20261119a", table: "./assets/tearoom-table-25d.jpg?v=20261119a" },
+    "via-he": { lobby: "./assets/room-viahe-lobby.jpg?v=20261119a", table: "./assets/room-viahe-table.jpg?v=20261119a" },
+    "phong-tho": { lobby: "./assets/room-tho-lobby.jpg?v=20261119a", table: "./assets/room-tho-table.jpg?v=20261119a" },
+    "phong-co": { lobby: "./assets/room-co-lobby.jpg?v=20261119a", table: "./assets/room-co-table.jpg?v=20261119a" },
+    "phong-ccb": { lobby: "./assets/room-ccb-lobby.jpg?v=20261119a", table: "./assets/room-ccb-table.jpg?v=20261119a" },
+    "phong-cay-canh": { lobby: "./assets/room-caycanh-lobby.jpg?v=20261119a", table: "./assets/room-caycanh-table.jpg?v=20261119a" }
   };
 
   function getRoomBackdropImg(roomId, kind) {
@@ -157,7 +157,7 @@ window.TeaRoomScene = (function () {
     tblImg.onerror = () => {
       assets25D.tableReady = false;
     };
-    tblImg.src = "./assets/tearoom-table-25d.jpg?v=20261118d";
+    tblImg.src = "./assets/tearoom-table-25d.jpg?v=20261119a";
 
     const lobImg = new Image();
     lobImg.onload = () => {
@@ -168,7 +168,7 @@ window.TeaRoomScene = (function () {
     lobImg.onerror = () => {
       assets25D.lobbyReady = false;
     };
-    lobImg.src = "./assets/tearoom-lobby-25d.jpg?v=20261118d";
+    lobImg.src = "./assets/tearoom-lobby-25d.jpg?v=20261119a";
 
     const sprImg = new Image();
     sprImg.onload = () => {
@@ -181,7 +181,7 @@ window.TeaRoomScene = (function () {
     sprImg.onerror = () => {
       assets25D.spritesReady = false;
     };
-    sprImg.src = "./assets/tearoom-sprites.webp?v=20261118d";
+    sprImg.src = "./assets/tearoom-sprites.webp?v=20261119a";
 
     const itmImg = new Image();
     itmImg.onload = () => {
@@ -192,7 +192,7 @@ window.TeaRoomScene = (function () {
     itmImg.onerror = () => {
       assets25D.itemsReady = false;
     };
-    itmImg.src = "./assets/tearoom-items.webp?v=20261118d";
+    itmImg.src = "./assets/tearoom-items.webp?v=20261119a";
 
     const acImg = new Image();
     acImg.onload = () => {
@@ -205,7 +205,7 @@ window.TeaRoomScene = (function () {
     acImg.onerror = () => {
       assets25D.accReady = false;
     };
-    acImg.src = "./assets/tearoom-accessories.webp?v=20261118d";
+    acImg.src = "./assets/tearoom-accessories.webp?v=20261119a";
 
     const itmExImg = new Image();
     itmExImg.onload = () => {
@@ -216,7 +216,7 @@ window.TeaRoomScene = (function () {
     itmExImg.onerror = () => {
       assets25D.itemsExtraReady = false;
     };
-    itmExImg.src = "./assets/tearoom-items-extra.webp?v=20261118d";
+    itmExImg.src = "./assets/tearoom-items-extra.webp?v=20261119a";
 
     const vhItmImg = new Image();
     vhItmImg.onload = () => {
@@ -227,7 +227,7 @@ window.TeaRoomScene = (function () {
     vhItmImg.onerror = () => {
       assets25D.viaheItemReady = false;
     };
-    vhItmImg.src = "./assets/tearoom-viahe-item.webp?v=20261118d";
+    vhItmImg.src = "./assets/tearoom-viahe-item.webp?v=20261119a";
 
     const acExImg = new Image();
     acExImg.onload = () => {
@@ -240,7 +240,7 @@ window.TeaRoomScene = (function () {
     acExImg.onerror = () => {
       assets25D.accExtraReady = false;
     };
-    acExImg.src = "./assets/tearoom-accessories-extra.webp?v=20261118d";
+    acExImg.src = "./assets/tearoom-accessories-extra.webp?v=20261119a";
 
     const regImg = new Image();
     regImg.onload = () => {
@@ -253,7 +253,7 @@ window.TeaRoomScene = (function () {
     regImg.onerror = () => {
       assets25D.regAccReady = false;
     };
-    regImg.src = "./assets/tearoom-regional-acc.webp?v=20261118d";
+    regImg.src = "./assets/tearoom-regional-acc.webp?v=20261119a";
   }
 
   function createCanvas2D(w, h) {
@@ -268,12 +268,85 @@ window.TeaRoomScene = (function () {
   const ITEM_CELL_W = 240;
   const ITEM_CELL_H = 220;
 
-  function drawSpritePreHeadAccessory(ctx, col, acc) {
-    if (acc === "non-la" && col < 2 && assets25D.accReady && assets25D.accImg) {
-      // Rear woven underside of Nón Lá drawn behind head/bun so head sits naturally inside the cone
-      const hx = col === 0 ? 52 : 51;
-      const hy = col === 0 ? -6 : -4;
-      ctx.drawImage(assets25D.accImg, ACC_CELL_W * 3, 0, ACC_CELL_W, ACC_CELL_H, hx, hy, 88, 70);
+  // Measured opaque sprite bounding boxes inside each 180x150 cell (prevents off-center asset drift)
+  const ACC_BBOX = {
+    scarf_f: { sx: 42, sy: 14, sw: 95, sh: 124 },
+    scarf_b: { sx: 12, sy: 180, sw: 156, sh: 90 },
+    cap_f: { sx: 192, sy: 17, sw: 156, sh: 116 },
+    cap_b: { sx: 192, sy: 166, sw: 156, sh: 118 },
+    khandong_f: { sx: 8, sy: 18, sw: 164, sh: 113 },
+    khandong_b: { sx: 13, sy: 158, sw: 154, sh: 134 },
+    mutaibeo_f: { sx: 188, sy: 18, sw: 164, sh: 114 },
+    mutaibeo_b: { sx: 188, sy: 161, sw: 164, sh: 128 },
+    nonquaithao_f: { sx: 11, sy: 12, sw: 158, sh: 125 },
+    nonquaithao_b: { sx: 18, sy: 159, sw: 144, sh: 132 },
+    khanxep_f: { sx: 216, sy: 23, sw: 133, sh: 103 },
+    khanxep_b: { sx: 191, sy: 159, sw: 158, sh: 132 },
+    khanran_f: { sx: 402, sy: 9, sw: 96, sh: 132 },
+    khanran_b: { sx: 385, sy: 159, sw: 129, sh: 131 }
+  };
+
+  function drawCroppedRotated(ctx, img, box, cx, cy, dw, dh, rotRad) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    if (rotRad) ctx.rotate(rotRad);
+    ctx.drawImage(img, box.sx, box.sy, box.sw, box.sh, -dw * 0.5, -dh * 0.5, dw, dh);
+    ctx.restore();
+  }
+
+  function drawSpritePreHeadAccessory(ctx, col, acc, outfitId) {
+    if (col >= 2) return;
+    const isFemale = col === 1;
+
+    // Rear woven underside of Nón Lá behind head/bun
+    if (acc === "non-la" && assets25D.accReady && assets25D.accImg) {
+      const hx = isFemale ? 47 : 48;
+      const hy = isFemale ? -1 : -3;
+      ctx.drawImage(assets25D.accImg, ACC_CELL_W * 3, 0, ACC_CELL_W, ACC_CELL_H, hx, hy, 94, 75);
+    }
+
+    // Rear neck wrap of Khăn rằn Nam Bộ passes cleanly behind head/chin
+    const showKhanRan = acc === "khan-ran-nam-bo" || (outfitId === "ao-ba-ba-nam-bo" && acc !== "scarf");
+    if (showKhanRan && assets25D.regAccReady && assets25D.regAccImg) {
+      const b = ACC_BBOX.khanran_f;
+      const cx = isFemale ? 93.5 : 94;
+      const topY = isFemale ? 60 : 57;
+      const dw = isFemale ? 52 : 54;
+      const dh = isFemale ? 71 : 73;
+      const cutRatio = 0.34;
+      ctx.drawImage(
+        assets25D.regAccImg,
+        b.sx,
+        b.sy,
+        b.sw,
+        b.sh * cutRatio,
+        cx - dw * 0.5,
+        topY,
+        dw,
+        dh * cutRatio
+      );
+    }
+
+    // Rear/underside ring of open turbans sits behind the crown so hair never pokes through a front hole
+    if (acc === "khan-xep-kinh-bac" && assets25D.regAccReady && assets25D.regAccImg) {
+      const cx = isFemale ? 94.5 : 95;
+      const cy = isFemale ? 26 : 24;
+      const dw = isFemale ? 44 : 42;
+      const dh = isFemale ? 34 : 32;
+      drawCroppedRotated(ctx, assets25D.regAccImg, ACC_BBOX.khanxep_f, cx, cy, dw, dh, 0.36);
+    } else if (acc === "khan-dong" && assets25D.accExtraReady && assets25D.accExtraImg) {
+      const cx = isFemale ? 94.5 : 95;
+      const cy = isFemale ? 26.5 : 24.5;
+      const dw = isFemale ? 46 : 44;
+      const dh = isFemale ? 32 : 30.5;
+      drawCroppedRotated(ctx, assets25D.accExtraImg, ACC_BBOX.khandong_f, cx, cy, dw, dh, 0.28);
+    } else if (acc === "non-quai-thao" && assets25D.regAccReady && assets25D.regAccImg) {
+      // Rear shadow/rim behind head bun before front palm disc & chin cords
+      const cx = isFemale ? 92.5 : 93.5;
+      const cy = isFemale ? 35.5 : 33.5;
+      const dw = isFemale ? 84 : 82;
+      const dh = isFemale ? 66 : 65;
+      drawCroppedRotated(ctx, assets25D.regAccImg, ACC_BBOX.nonquaithao_f, cx, cy, dw, dh, 0.14);
     }
   }
 
@@ -408,17 +481,36 @@ window.TeaRoomScene = (function () {
     }
 
     // 1b. Khăn rằn Nam Bộ quàng vai (từ phụ kiện hoặc đi kèm bộ Áo bà ba đen Khăn rằn)
+    // Neck-back band already drawn behind head in drawSpritePreHeadAccessory; here we drape the front checkered tails cleanly below chin!
     const showKhanRan = acc === "khan-ran-nam-bo" || (outfitId === "ao-ba-ba-nam-bo" && acc !== "scarf");
     if (showKhanRan) {
       if (assets25D.regAccReady && assets25D.regAccImg) {
         if (col === 2) {
-          ctx.drawImage(assets25D.regAccImg, ACC_CELL_W * 2, ACC_CELL_H, ACC_CELL_W, ACC_CELL_H, 86, 65, 74, 56);
+          drawCroppedRotated(ctx, assets25D.regAccImg, ACC_BBOX.khanran_b, 120, 100, 68, 69, 0);
         } else {
-          const kx = col === 0 ? 64 : 65;
-          const ky = col === 0 ? 50 : 54;
-          const kw = col === 0 ? 68 : 66;
-          const kh = col === 0 ? 62 : 60;
-          ctx.drawImage(assets25D.regAccImg, ACC_CELL_W * 2, 0, ACC_CELL_W, ACC_CELL_H, kx, ky, kw, kh);
+          const isFemale = col === 1;
+          const b = ACC_BBOX.khanran_f;
+          const cx = isFemale ? 93.5 : 94;
+          const topY = isFemale ? 60 : 57;
+          const dw = isFemale ? 52 : 54;
+          const dh = isFemale ? 71 : 73;
+          const startRatio = 0.28;
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(0, isFemale ? 62 : 59, SPRITE_CELL_W, SPRITE_CELL_H);
+          ctx.clip();
+          ctx.drawImage(
+            assets25D.regAccImg,
+            b.sx,
+            b.sy + b.sh * startRatio,
+            b.sw,
+            b.sh * (1 - startRatio),
+            cx - dw * 0.5,
+            topY + dh * startRatio,
+            dw,
+            dh * (1 - startRatio)
+          );
+          ctx.restore();
         }
       }
     }
@@ -427,13 +519,14 @@ window.TeaRoomScene = (function () {
     if (acc === "scarf") {
       if (assets25D.accReady && assets25D.accImg) {
         if (col === 2) {
-          ctx.drawImage(assets25D.accImg, 0, ACC_CELL_H, ACC_CELL_W, ACC_CELL_H, 88, 66, 72, 50);
+          drawCroppedRotated(ctx, assets25D.accImg, ACC_BBOX.scarf_b, 119, 86, 62, 36, 0);
         } else {
-          const sx = col === 0 ? 63 : 64;
-          const sy = col === 0 ? 47 : 51;
-          const sw = col === 0 ? 68 : 66;
-          const sh = col === 0 ? 56 : 54;
-          ctx.drawImage(assets25D.accImg, 0, 0, ACC_CELL_W, ACC_CELL_H, sx, sy, sw, sh);
+          const isFemale = col === 1;
+          const cx = isFemale ? 94.5 : 95.5;
+          const cy = isFemale ? 85 : 82;
+          const dw = isFemale ? 42 : 43;
+          const dh = isFemale ? 55 : 56;
+          drawCroppedRotated(ctx, assets25D.accImg, ACC_BBOX.scarf_f, cx, cy, dw, dh, 0);
         }
       } else {
         ctx.save();
@@ -444,7 +537,7 @@ window.TeaRoomScene = (function () {
         if (col === 2) {
           ctx.arc(118, 78, 17, 0.15 * Math.PI, 0.88 * Math.PI);
         } else {
-          ctx.arc(98, 62, 15, 0.12 * Math.PI, 0.92 * Math.PI);
+          ctx.arc(96, 65, 15, 0.12 * Math.PI, 0.92 * Math.PI);
         }
         ctx.stroke();
         ctx.restore();
@@ -520,21 +613,20 @@ window.TeaRoomScene = (function () {
     if (acc === "cap") {
       if (assets25D.accReady && assets25D.accImg) {
         if (col === 2) {
-          ctx.drawImage(assets25D.accImg, ACC_CELL_W, ACC_CELL_H, ACC_CELL_W, ACC_CELL_H, 75, 4, 88, 68);
+          drawCroppedRotated(ctx, assets25D.accImg, ACC_BBOX.cap_b, 118, 34, 76, 58, 0);
         } else {
-          const cx = col === 0 ? 67 : 66;
-          const cy = col === 0 ? 0 : 2;
-          ctx.save();
-          ctx.translate(cx + 31, cy + 23);
-          ctx.rotate(-0.068);
-          ctx.drawImage(assets25D.accImg, ACC_CELL_W, 0, ACC_CELL_W, ACC_CELL_H, -31, -23, 62, 46);
-          ctx.restore();
+          const isFemale = col === 1;
+          const cx = isFemale ? 94.5 : 95.5;
+          const cy = isFemale ? 25.5 : 23.5;
+          const dw = isFemale ? 54 : 52;
+          const dh = isFemale ? 40 : 39;
+          drawCroppedRotated(ctx, assets25D.accImg, ACC_BBOX.cap_f, cx, cy, dw, dh, -0.04);
         }
       } else {
         ctx.save();
         ctx.fillStyle = "#556B45";
         ctx.beginPath();
-        ctx.ellipse(98, 22, 24, 12, -0.06, Math.PI, Math.PI * 2);
+        ctx.ellipse(96, 24, 24, 12, -0.06, Math.PI, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       }
@@ -544,24 +636,25 @@ window.TeaRoomScene = (function () {
     if (acc === "non-la") {
       if (assets25D.accReady && assets25D.accImg) {
         if (col === 2) {
-          ctx.drawImage(assets25D.accImg, ACC_CELL_W * 2, ACC_CELL_H, ACC_CELL_W, ACC_CELL_H, 64, -6, 112, 86);
+          ctx.drawImage(assets25D.accImg, ACC_CELL_W * 2, ACC_CELL_H, ACC_CELL_W, ACC_CELL_H, 62, -4, 114, 88);
         } else {
-          const hx = col === 0 ? 52 : 51;
-          const hy = col === 0 ? -6 : -4;
-          const browCutY = col === 0 ? 33.5 : 35.5;
+          const isFemale = col === 1;
+          const hx = isFemale ? 47 : 48;
+          const hy = isFemale ? -1 : -3;
+          const browCutY = isFemale ? 35.5 : 33.5;
           ctx.save();
           ctx.beginPath();
           ctx.rect(0, 0, SPRITE_CELL_W, browCutY);
           ctx.clip();
-          ctx.drawImage(assets25D.accImg, ACC_CELL_W * 3, 0, ACC_CELL_W, ACC_CELL_H, hx, hy, 88, 70);
+          ctx.drawImage(assets25D.accImg, ACC_CELL_W * 3, 0, ACC_CELL_W, ACC_CELL_H, hx, hy, 94, 75);
           ctx.restore();
-          ctx.drawImage(assets25D.accImg, ACC_CELL_W * 2, 0, ACC_CELL_W, ACC_CELL_H, hx, hy, 88, 70);
+          ctx.drawImage(assets25D.accImg, ACC_CELL_W * 2, 0, ACC_CELL_W, ACC_CELL_H, hx, hy, 94, 75);
           ctx.save();
           ctx.strokeStyle = "rgba(156, 44, 34, 0.78)";
           ctx.lineWidth = 1.25;
           ctx.lineCap = "round";
           ctx.beginPath();
-          if (col === 0) {
+          if (!isFemale) {
             ctx.moveTo(85, 46);
             ctx.quadraticCurveTo(93, 59, 102, 60);
             ctx.quadraticCurveTo(106, 59, 108.5, 55.5);
@@ -578,24 +671,39 @@ window.TeaRoomScene = (function () {
 
     // 4b. Khăn đóng gấm đỏ lễ thọ & Mũ tai bèo kaki dã ngoại (2.5D Painterly heritage headwear)
     if (acc === "khan-dong" || acc === "mu-tai-beo") {
-      const exCol = acc === "khan-dong" ? 0 : 1;
       if (assets25D.accExtraReady && assets25D.accExtraImg) {
-        if (col === 2) {
-          const bx = acc === "khan-dong" ? 80 : 73;
-          const by = acc === "khan-dong" ? 7 : 3;
-          const bw = acc === "khan-dong" ? 76 : 92;
-          const bh = acc === "khan-dong" ? 62 : 70;
-          ctx.drawImage(assets25D.accExtraImg, exCol * ACC_CELL_W, ACC_CELL_H, ACC_CELL_W, ACC_CELL_H, bx, by, bw, bh);
+        const isFemale = col === 1;
+        if (acc === "khan-dong") {
+          if (col === 2) {
+            drawCroppedRotated(ctx, assets25D.accExtraImg, ACC_BBOX.khandong_b, 118, 33, 64, 54, 0);
+          } else {
+            // Front pleated turban band sits cleanly over forehead & crown (underside already drawn behind head)
+            const cx = isFemale ? 94.5 : 95;
+            const cy = isFemale ? 26.5 : 24.5;
+            const dw = isFemale ? 46 : 44;
+            const dh = isFemale ? 32 : 30.5;
+            const browClipY = isFemale ? 34 : 32;
+            ctx.save();
+            ctx.fillStyle = "#521012";
+            ctx.beginPath();
+            ctx.ellipse(cx, cy - 1.5, dw * 0.34, dh * 0.24, 0.04, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.rect(0, 0, SPRITE_CELL_W, browClipY);
+            ctx.clip();
+            drawCroppedRotated(ctx, assets25D.accExtraImg, ACC_BBOX.khandong_f, cx, cy, dw, dh, 0.28);
+            ctx.restore();
+          }
         } else {
-          const fx = acc === "khan-dong" ? (col === 0 ? 68 : 67) : col === 0 ? 64 : 63;
-          const fy = acc === "khan-dong" ? (col === 0 ? 4 : 6) : col === 0 ? -1 : 1;
-          const fw = acc === "khan-dong" ? 56 : 66;
-          const fh = acc === "khan-dong" ? 42 : 50;
-          ctx.save();
-          ctx.translate(fx + fw * 0.5, fy + fh * 0.5);
-          ctx.rotate(acc === "khan-dong" ? 0.045 : -0.05);
-          ctx.drawImage(assets25D.accExtraImg, exCol * ACC_CELL_W, 0, ACC_CELL_W, ACC_CELL_H, -fw * 0.5, -fh * 0.5, fw, fh);
-          ctx.restore();
+          if (col === 2) {
+            drawCroppedRotated(ctx, assets25D.accExtraImg, ACC_BBOX.mutaibeo_b, 118, 34, 82, 64, 0);
+          } else {
+            const cx = isFemale ? 94.5 : 95.5;
+            const cy = isFemale ? 25.5 : 23.5;
+            const dw = isFemale ? 60 : 57;
+            const dh = isFemale ? 42 : 40;
+            drawCroppedRotated(ctx, assets25D.accExtraImg, ACC_BBOX.mutaibeo_f, cx, cy, dw, dh, 0.03);
+          }
         }
       } else {
         ctx.save();
@@ -609,24 +717,55 @@ window.TeaRoomScene = (function () {
 
     // 4c. Nón quai thao Quan họ & Khăn xếp the đen chữ Nhân (2.5D Painterly Kinh Bắc headwear)
     if (acc === "non-quai-thao" || acc === "khan-xep-kinh-bac") {
-      const regCol = acc === "non-quai-thao" ? 0 : 1;
       if (assets25D.regAccReady && assets25D.regAccImg) {
-        if (col === 2) {
-          const bx = acc === "non-quai-thao" ? 60 : 80;
-          const by = acc === "non-quai-thao" ? -4 : 8;
-          const bw = acc === "non-quai-thao" ? 116 : 76;
-          const bh = acc === "non-quai-thao" ? 86 : 62;
-          ctx.drawImage(assets25D.regAccImg, regCol * ACC_CELL_W, ACC_CELL_H, ACC_CELL_W, ACC_CELL_H, bx, by, bw, bh);
+        const isFemale = col === 1;
+        if (acc === "non-quai-thao") {
+          if (col === 2) {
+            drawCroppedRotated(ctx, assets25D.regAccImg, ACC_BBOX.nonquaithao_b, 117, 42, 92, 84, 0);
+          } else {
+            const cx = isFemale ? 92.5 : 93.5;
+            const cy = isFemale ? 35.5 : 33.5;
+            const dw = isFemale ? 84 : 82;
+            const dh = isFemale ? 66 : 65;
+            // Draw top palm hat disc above browline cleanly on the crown
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(0, 0, SPRITE_CELL_W, isFemale ? 34 : 32);
+            ctx.clip();
+            drawCroppedRotated(ctx, assets25D.regAccImg, ACC_BBOX.nonquaithao_f, cx, cy, dw, dh, 0.14);
+            ctx.restore();
+            // Draw hanging ivory silk quai thao tassels outside cheeks & graceful chin loop below jaw
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(0, isFemale ? 56.5 : 54.5, SPRITE_CELL_W, 42);
+            ctx.rect(0, isFemale ? 31 : 29, isFemale ? 79 : 80, 46);
+            ctx.rect(isFemale ? 114 : 113, isFemale ? 31 : 29, 60, 46);
+            ctx.clip();
+            drawCroppedRotated(ctx, assets25D.regAccImg, ACC_BBOX.nonquaithao_f, cx, cy, dw, dh, 0.14);
+            ctx.restore();
+          }
         } else {
-          const fx = acc === "non-quai-thao" ? (col === 0 ? 48 : 47) : col === 0 ? 68 : 67;
-          const fy = acc === "non-quai-thao" ? (col === 0 ? -4 : -2) : col === 0 ? 5 : 7;
-          const fw = acc === "non-quai-thao" ? 96 : 56;
-          const fh = acc === "non-quai-thao" ? 72 : 42;
-          ctx.save();
-          ctx.translate(fx + fw * 0.5, fy + fh * 0.5);
-          ctx.rotate(acc === "non-quai-thao" ? -0.02 : 0.035);
-          ctx.drawImage(assets25D.regAccImg, regCol * ACC_CELL_W, 0, ACC_CELL_W, ACC_CELL_H, -fw * 0.5, -fh * 0.5, fw, fh);
-          ctx.restore();
+          if (col === 2) {
+            drawCroppedRotated(ctx, assets25D.regAccImg, ACC_BBOX.khanxep_b, 118, 32, 64, 52, 0);
+          } else {
+            // Front black silk chữ-Nhân pleats clipped cleanly at browline (no awkward white donut hole!)
+            const cx = isFemale ? 94.5 : 95;
+            const cy = isFemale ? 26 : 24;
+            const dw = isFemale ? 44 : 42;
+            const dh = isFemale ? 34 : 32;
+            const browClipY = isFemale ? 33 : 31;
+            ctx.save();
+            // Subtle dark silk cap fill inside the upper turban arch so white scalp doesn't peek out awkwardly
+            ctx.fillStyle = "#1E2024";
+            ctx.beginPath();
+            ctx.ellipse(cx, cy - 1.5, dw * 0.36, dh * 0.28, 0.04, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.rect(0, 0, SPRITE_CELL_W, browClipY);
+            ctx.clip();
+            drawCroppedRotated(ctx, assets25D.regAccImg, ACC_BBOX.khanxep_f, cx, cy, dw, dh, 0.36);
+            ctx.restore();
+          }
         }
       } else {
         ctx.save();
@@ -685,7 +824,7 @@ window.TeaRoomScene = (function () {
     const ctx = out.getContext("2d");
 
     if (assets25D.spritesReady && assets25D.spritesImg) {
-      drawSpritePreHeadAccessory(ctx, col, acc);
+      drawSpritePreHeadAccessory(ctx, col, acc, outfitId);
 
       const chCanvas = createCanvas2D(SPRITE_CELL_W, SPRITE_CELL_H);
       const cctx = chCanvas.getContext("2d");
@@ -3168,41 +3307,41 @@ window.TeaRoomScene = (function () {
     // Carved apron rim beneath tabletop
     ctx.fillStyle = "#4B2613";
     ctx.beginPath();
-    ctx.ellipse(tx, ty + 6, 54, 21, 0, 0, Math.PI);
+    ctx.ellipse(tx, ty + 6, 62, 23, 0, 0, Math.PI);
     ctx.fill();
 
     // Polished rosewood tabletop with subtle woodgrain & brocade mat
-    const tblGrad = ctx.createRadialGradient(tx - 12, ty - 6, 4, tx, ty, 58);
+    const tblGrad = ctx.createRadialGradient(tx - 14, ty - 6, 4, tx, ty, 66);
     tblGrad.addColorStop(0, "#9A5B36");
     tblGrad.addColorStop(0.72, "#6E3B1E");
     tblGrad.addColorStop(1, "#492411");
     ctx.fillStyle = tblGrad;
     ctx.beginPath();
-    ctx.ellipse(tx, ty, 56, 21, 0, 0, Math.PI * 2);
+    ctx.ellipse(tx, ty, 64, 23, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = "#361A0B";
     ctx.lineWidth = 2;
     ctx.stroke();
 
     // Inner recessed bevel & warm burl-wood gold-filigree medallion
-    ctx.strokeStyle = "rgba(245, 214, 162, 0.32)";
+    ctx.strokeStyle = "rgba(245, 214, 162, 0.34)";
     ctx.lineWidth = 1.2;
     ctx.beginPath();
-    ctx.ellipse(tx, ty - 0.5, 48, 17, 0, 0, Math.PI * 2);
+    ctx.ellipse(tx, ty - 0.5, 55, 19, 0, 0, Math.PI * 2);
     ctx.stroke();
 
     ctx.fillStyle = "rgba(128, 72, 38, 0.82)";
     ctx.strokeStyle = "rgba(232, 184, 96, 0.68)";
     ctx.lineWidth = 1.2;
     ctx.beginPath();
-    ctx.ellipse(tx, ty - 1, 32, 11, 0, 0, Math.PI * 2);
+    ctx.ellipse(tx, ty - 1, 36, 12.5, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
     ctx.restore();
 
-    const itemScale = Math.max(1.38, h / 172);
+    const itemScale = Math.min(1.32, Math.max(1.18, h / 192));
     const activeItemId = currentConfig.userItem || "am-tu-sa";
-    drawPainterlyTableItem25D(ctx, activeItemId, tx, ty - 4, itemScale, now);
+    drawPainterlyTableItem25D(ctx, activeItemId, tx, ty - 2, itemScale, now);
 
     // Gentle rising tea steam when showcasing Tử Sa teapot
     if (activeItemId === "am-tu-sa") {
@@ -3235,7 +3374,8 @@ window.TeaRoomScene = (function () {
       };
       const rawItemLbl = SHORT_ITEM_TAG_MAP[activeItemId] || currentConfig.itemLabel || "Đồ bày bàn trà";
       const conciseItemLbl = rawItemLbl.length > 20 ? rawItemLbl.slice(0, 19).trim() + "…" : rawItemLbl;
-      const itemTagY = Math.max(44, ty - 72 * (itemScale / 1.4));
+      const itemTagX = Math.max(88, Math.min(w - 88, tx));
+      const itemTagY = Math.max(46, ty - 68 * (itemScale / 1.25));
       const userBadgeHtml = formatSeatTagHtml({
         sx: 10,
         sy: 10,
@@ -3246,7 +3386,7 @@ window.TeaRoomScene = (function () {
       }).replace('style="left:10px;top:10px"', 'style="left:8px;top:8px;transform:none;max-width:calc(100% - 16px);"');
       tagsLayerEl.innerHTML =
         userBadgeHtml +
-        `<span class="seat-status-tag" style="left:auto;right:8px;top:${itemTagY.toFixed(0)}px;transform:translate(0,-100%);max-width:54%;">${escHtml(conciseItemLbl)}</span>`;
+        `<span class="seat-status-tag" style="left:${itemTagX.toFixed(0)}px;top:${itemTagY.toFixed(0)}px;transform:translate(-50%,-100%);max-width:52%;">${escHtml(conciseItemLbl)}</span>`;
     }
   }
 

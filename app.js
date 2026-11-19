@@ -2226,51 +2226,60 @@
         : "Buổi tối tĩnh tâm · An nhiên bên tách trà";
 
     els.main.innerHTML = `
-      <section class="section-block">
+      <section class="section-block home-top-zone">
         <div class="home-pavilion-hero">
-          <div class="home-pavilion-meta">
-            <span class="home-time-pill">${ico("tea", "ico-sm")}<span>${timeGreeting}</span></span>
-            <span class="home-streak-pill num">${escHtml(prov.short)} · Chuỗi ${state.user.streakDays || 1} ngày</span>
-          </div>
           <div class="home-pavilion-title-row">
-            <h1>Chào ${escHtml(state.user.name)} · <span class="num">${age}t</span></h1>
-            <button type="button" class="btn-mini" id="btn-home-edit-identity">${ico("user", "ico-sm")}<span>Đổi Tên · Tuổi</span></button>
-          </div>
-          <p class="lead-copy">Mời ${pron} chọn góc sinh hoạt hôm nay. Chữ nét đậm, nút rộng rãi, thảnh thơi trò chuyện cùng bạn đồng niên.</p>
-        </div>
-
-        <div class="passcard-banner ${state.auth.isRegistered ? "verified" : ""}" id="home-passcard-banner">
-          <div class="passcard-head">
-            <strong>${escHtml(prog.current.name)}</strong>
-            <span class="cohort-pill ${escHtml(prog.cohort.cls)}">${escHtml(prog.cohort.tag)} · ${prog.points} XP</span>
-          </div>
-          <div class="seniority-progress-wrap">
-            <div class="seniority-progress-track">
-              <div class="seniority-progress-fill" style="width:${prog.percent}%"></div>
+            <div class="home-hero-heading">
+              <h1>Chào ${escHtml(state.user.name)} · <span class="num">${age}t</span></h1>
+              <p class="home-hero-sub">${timeGreeting}</p>
             </div>
-            <small style="font-size:0.86rem; color:var(--ink-secondary);">
-              ${
-                prog.isGuest
-                  ? `Mở Thẻ 10 giây để lưu tên, nhận <strong>+35 XP &amp; +15 Xu</strong>${totalWins > 0 ? ` · Đã thắng <strong class="num">${totalWins}</strong> ván` : ""}.`
-                  : `${prog.next ? `Còn <strong class="num">${prog.xpNeededForNext}</strong> XP lên ${escHtml(prog.next.name)}` : "Đã đạt đỉnh cao sinh hoạt"} · Thắng cờ/trò chơi: <strong class="num">${totalWins}</strong> ván`
-              }
-            </small>
+            <button type="button" class="btn-mini btn-compact-edit" id="btn-home-edit-identity">${ico("user", "ico-sm")}<span>Đổi tên</span></button>
           </div>
-          <div class="btn-row">
-            <button type="button" class="btn-${state.auth.isRegistered ? "jade" : "primary"}" id="btn-home-open-auth">
-              ${ico("card")}
-              <span>${state.auth.isRegistered ? "Thẻ QR Hội Viên" : "Mở Thẻ Lên Tầng 1"}</span>
-            </button>
-            <button type="button" class="btn-secondary" id="btn-home-open-96titles" data-go="leaderboard">
-              ${ico("trophy")}
-              <span>Bảng Danh Hiệu</span>
-            </button>
+          <div class="home-pavilion-meta">
+            <span class="home-streak-pill num">${ico("sun", "ico-sm")}<span>${escHtml(prov.short)} · Chuỗi ${state.user.streakDays || 1} ngày</span></span>
+            <span class="home-rank-chip num">${escHtml(prog.cohort.tag)} · ${prog.points} XP</span>
           </div>
         </div>
+      </section>
 
+      <section class="section-block">
+        <h2>4 Việc Chính Hôm Nay</h2>
+        <div class="home-hero-grid-4">
+          <button type="button" class="home-core-card is-primary" data-go="checkin">
+            <span class="home-main-icon">${ico("sun", "ico-lg")}</span>
+            <strong>${state.user.checkedInToday ? "Bản đồ Điểm danh" : "Điểm danh sáng nay"}</strong>
+            <small>${state.user.checkedInToday ? `${prov.short} đã sáng đèn` : "Báo bình an cho con cháu"}</small>
+          </button>
+
+          <button type="button" class="home-core-card is-jade" data-go="tearoom">
+            <span class="home-main-icon">${ico("tea", "ico-lg")}</span>
+            <strong>Vào Quán Trà 2.5D</strong>
+            <small>${escHtml(getCurrentRoom().shortName)} · ${getCurrentRoom().tables.length} bàn mở</small>
+          </button>
+
+          <button type="button" class="home-core-card" data-go="newspaper">
+            <span class="home-main-icon">${ico("paper", "ico-lg")}</span>
+            <strong>Đọc Tờ Báo Sáng</strong>
+            <small>${state.newspaper.articles.length} tin chữ to dễ đọc</small>
+          </button>
+
+          <button type="button" class="home-core-card is-wood" data-go="games">
+            <span class="home-main-icon">${ico("xiangqi", "ico-lg")}</span>
+            <strong>Đánh Cờ &amp; Ô Ăn Quan</strong>
+            <small>Cờ tướng 9×10 &amp; Ca dao</small>
+          </button>
+        </div>
+
+        <button type="button" class="btn-secondary viahe-home-cta" id="btn-home-open-viahe">
+          ${ico("tea")}
+          <span>Ghé Quán Trà Đá Vỉa Hè · Gốc Sấu &amp; Kẹo Lạc</span>
+        </button>
+      </section>
+
+      <section class="section-block">
         <div class="daily-quest-card" id="home-daily-quest-card">
           <div class="passcard-head">
-            <strong>Sổ Tay 3 Niềm Vui Hôm Nay</strong>
+            <h2>Sổ Tay 3 Niềm Vui Hôm Nay</h2>
             <span class="badge-tag ${doneQuestCount === 3 ? "jade" : "amber"} num">${doneQuestCount}/3 việc</span>
           </div>
           <div class="daily-quest-list">
@@ -2291,9 +2300,89 @@
             canClaimDailyChest
               ? `<button type="button" class="btn-primary" id="btn-claim-daily-chest">${ico("award")}<span>Nhận Lộc Ngày Mới (+12 Xu · +15 XP)</span></button>`
               : dq.chestClaimed
-              ? `<div style="font-size:0.86rem; color:var(--accent-jade); font-weight:700;">Đã nhận trọn vẹn Rương Lộc Ngày Mới hôm nay. Hẹn gặp lại ${pron} sáng mai!</div>`
-              : `<small style="font-size:0.84rem; color:var(--ink-secondary);">Hoàn thành đủ 3 niềm vui để mở Rương Lộc <strong>+12 Xu &amp; +15 XP</strong> mỗi ngày.</small>`
+              ? `<div class="quest-done-note">Đã nhận trọn vẹn Rương Lộc Ngày Mới hôm nay. Hẹn gặp lại ${pron} sáng mai!</div>`
+              : `<small class="quest-hint-copy">Hoàn thành đủ 3 niềm vui để mở Rương Lộc <strong>+12 Xu &amp; +15 XP</strong> mỗi ngày.</small>`
           }
+        </div>
+      </section>
+
+      <section class="section-block">
+        <h2>Góc Sinh Hoạt Cộng Đồng</h2>
+        <div class="module-grid">
+          <button type="button" class="module-tile" data-go="groups">
+            <span class="module-tile-ico">${ico("users")}</span>
+            <strong>Hội Đồng Ngũ &amp; Bạn</strong>
+            <span class="sub">${countOnlineFriendsNow()} bạn đang trực tuyến</span>
+          </button>
+
+          <button type="button" class="module-tile" data-go="zen">
+            <span class="module-tile-ico">${ico("lotus")}</span>
+            <strong>Chùa Quê &amp; Từ Đường</strong>
+            <span class="sub">Chánh điện, Nhà thờ họ, Hồ sen</span>
+          </button>
+
+          <button type="button" class="module-tile" data-go="poetry">
+            <span class="module-tile-ico">${ico("poem")}</span>
+            <strong>Ngâm thơ &amp; Tặng hoa</strong>
+            <span class="sub">Thơ lục bát &amp; đàn tranh</span>
+          </button>
+
+          <button type="button" class="module-tile" data-go="quiz">
+            <span class="module-tile-ico">${ico("quiz")}</span>
+            <strong>Đố vui hôm nay</strong>
+            <span class="sub">5 câu rèn trí nhớ vui</span>
+          </button>
+
+          <button type="button" class="module-tile" data-go="watch">
+            <span class="module-tile-ico">${ico("tv")}</span>
+            <strong>Phòng xem chung</strong>
+            <span class="sub">Dưỡng sinh 8h &amp; Hài 20h</span>
+          </button>
+
+          <button type="button" class="module-tile" data-go="health">
+            <span class="module-tile-ico">${ico("heart")}</span>
+            <strong>Trợ lý sức khỏe</strong>
+            <span class="sub">Nhắc thuốc, huyết áp, 115</span>
+          </button>
+        </div>
+      </section>
+
+      <section class="section-block">
+        <h2>Thẻ Hội Viên &amp; Tiện Ích Gia Đình</h2>
+        <div class="passcard-banner ${state.auth.isRegistered ? "verified" : ""}" id="home-passcard-banner">
+          <div class="passcard-head">
+            <strong>${escHtml(prog.current.name)}</strong>
+            <span class="cohort-pill ${escHtml(prog.cohort.cls)}">${escHtml(prog.cohort.tag)} · ${prog.points} XP</span>
+          </div>
+          <div class="seniority-progress-wrap">
+            <div class="seniority-progress-track">
+              <div class="seniority-progress-fill" style="width:${prog.percent}%"></div>
+            </div>
+            <small class="quest-hint-copy">
+              ${
+                prog.isGuest
+                  ? `Mở Thẻ 10 giây để lưu tên, nhận <strong>+35 XP &amp; +15 Xu</strong>${totalWins > 0 ? ` · Đã thắng <strong class="num">${totalWins}</strong> ván` : ""}.`
+                  : `${prog.next ? `Còn <strong class="num">${prog.xpNeededForNext}</strong> XP lên ${escHtml(prog.next.name)}` : "Đã đạt đỉnh cao sinh hoạt"} · Thắng cờ/trò chơi: <strong class="num">${totalWins}</strong> ván`
+              }
+            </small>
+          </div>
+          <div class="btn-row">
+            <button type="button" class="btn-${state.auth.isRegistered ? "jade" : "primary"}" id="btn-home-open-auth">
+              ${ico("card")}
+              <span>${state.auth.isRegistered ? "Thẻ QR Hội Viên" : "Mở Thẻ Lên Tầng 1"}</span>
+            </button>
+            <button type="button" class="btn-secondary" id="btn-home-open-96titles" data-go="leaderboard">
+              ${ico("trophy")}
+              <span>Bảng Danh Hiệu</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button type="button" class="btn-secondary" data-go="family">${ico("family", "ico-sm")}<span>Góc Con Cái</span></button>
+          <button type="button" class="btn-secondary" data-go="xiangqi">${ico("xiangqi", "ico-sm")}<span>Bàn Cờ 9×10</span></button>
+          <button type="button" class="btn-secondary" id="btn-home-feedback">${ico("feedback", "ico-sm")}<span>Góp ý nhanh</span></button>
+          <button type="button" class="btn-secondary" data-go="privacy">${ico("shield", "ico-sm")}<span>Riêng tư &amp; Admin</span></button>
         </div>
 
         ${
@@ -2304,7 +2393,7 @@
               <img src="icons/icon-192.png" alt="Biểu tượng ứng dụng Tuổi Bạc" class="pwa-app-icon" />
               <div>
                 <strong>Đặt Quán Trà ra màn hình chính</strong>
-                <div style="font-size:0.86rem; color:var(--ink-secondary);">Mở 1 chạm như ứng dụng riêng trên điện thoại.</div>
+                <div class="quest-hint-copy">Mở 1 chạm như ứng dụng riêng trên điện thoại.</div>
               </div>
             </div>
             <div class="btn-row">
@@ -2315,88 +2404,6 @@
         `
             : ""
         }
-      </section>
-
-      <section class="section-block">
-        <h2>4 Việc Chính Mỗi Ngày</h2>
-        <div class="home-hero-grid-4">
-          <button type="button" class="home-core-card is-primary" data-go="checkin">
-            <span class="home-main-icon">${ico("sun", "ico-lg")}</span>
-            <strong>${state.user.checkedInToday ? "Bản đồ Điểm danh" : "Điểm danh sáng nay"}</strong>
-            <small>${state.user.checkedInToday ? `${prov.short} đã sáng đèn` : "Báo bình an cho con cháu"}</small>
-          </button>
-
-          <button type="button" class="home-core-card is-jade" data-go="tearoom">
-            <span class="home-main-icon">${ico("tea", "ico-lg")}</span>
-            <strong>Vào Quán Trà 3D</strong>
-            <small>${escHtml(getCurrentRoom().shortName)} · ${getCurrentRoom().tables.length} bàn mở</small>
-          </button>
-
-          <button type="button" class="home-core-card" data-go="newspaper">
-            <span class="home-main-icon">${ico("paper", "ico-lg")}</span>
-            <strong>Đọc Tờ Báo Sáng</strong>
-            <small>${state.newspaper.articles.length} tin chữ to dễ đọc</small>
-          </button>
-
-          <button type="button" class="home-core-card is-wood" data-go="games">
-            <span class="home-main-icon">${ico("xiangqi", "ico-lg")}</span>
-            <strong>Đánh Cờ &amp; Ô Ăn Quan</strong>
-            <small>Cờ tướng 9×10 &amp; Ô ăn quan</small>
-          </button>
-        </div>
-
-        <button type="button" class="btn-secondary viahe-home-cta" id="btn-home-open-viahe">
-          ${ico("tea")}
-          <span>Ghé Quán Trà Đá Vỉa Hè · Gốc Sấu &amp; Kẹo Lạc</span>
-        </button>
-      </section>
-
-      <section class="section-block">
-        <h2>Góc Sinh Hoạt Cộng Đồng</h2>
-        <div class="module-grid">
-          <button type="button" class="module-tile" data-go="groups">
-            ${ico("users")}
-            <strong>Hội Đồng Ngũ &amp; Bạn</strong>
-            <span class="sub">${countOnlineFriendsNow()} bạn đang trực tuyến</span>
-          </button>
-
-          <button type="button" class="module-tile" data-go="zen">
-            ${ico("lotus")}
-            <strong>Chùa Quê &amp; Từ Đường</strong>
-            <span class="sub">Chánh điện, Nhà thờ họ, Hồ sen</span>
-          </button>
-
-          <button type="button" class="module-tile" data-go="poetry">
-            ${ico("poem")}
-            <strong>Ngâm thơ &amp; Tặng hoa</strong>
-            <span class="sub">Thơ lục bát &amp; đàn tranh</span>
-          </button>
-
-          <button type="button" class="module-tile" data-go="quiz">
-            ${ico("quiz")}
-            <strong>Đố vui hôm nay</strong>
-            <span class="sub">5 câu rèn trí nhớ vui</span>
-          </button>
-
-          <button type="button" class="module-tile" data-go="watch">
-            ${ico("tv")}
-            <strong>Phòng xem chung</strong>
-            <span class="sub">Dưỡng sinh 8h &amp; Hài 20h</span>
-          </button>
-
-          <button type="button" class="module-tile" data-go="health">
-            ${ico("heart")}
-            <strong>Trợ lý sức khỏe</strong>
-            <span class="sub">Nhắc thuốc, huyết áp, 115</span>
-          </button>
-        </div>
-
-        <div class="btn-row" style="margin-top:4px;">
-          <button type="button" class="btn-secondary" id="btn-home-feedback">${ico("feedback", "ico-sm")}<span>Góp ý nhanh</span></button>
-          <button type="button" class="btn-secondary" data-go="privacy">${ico("shield", "ico-sm")}<span>Riêng tư &amp; Admin</span></button>
-          <button type="button" class="btn-secondary" data-go="family">${ico("family", "ico-sm")}<span>Góc Con Cái</span></button>
-          <button type="button" class="btn-secondary" data-go="xiangqi">${ico("xiangqi", "ico-sm")}<span>Bàn Cờ 9×10</span></button>
-        </div>
       </section>
     `;
 
@@ -2730,8 +2737,11 @@
     return c.toDataURL("image/png");
   }
 
+  let mapFocusedProvinceId = null;
+
   function renderCheckin() {
     const myProv = getProvince(state.user.provinceId);
+    const focusedProv = mapFocusedProvinceId ? getProvince(mapFocusedProvinceId) : myProv;
     const rtSummary = RT ? RT.getCheckinsSummary() : { totalRealCheckins: 0, countsByProvince: {}, recentList: [] };
     const lampsOf = (p) => {
       const realCount = rtSummary.countsByProvince[p.id] || 0;
@@ -2740,23 +2750,88 @@
     };
     const totalLamps = D.PROVINCES.reduce((sum, p) => sum + lampsOf(p), 0);
 
-    const mapDots = D.PROVINCES.map((p) => {
-      const isMe = p.id === myProv.id;
-      const hasReal = Boolean(rtSummary.countsByProvince[p.id]);
-      const r = isMe ? 8 : Math.min(6.8, 3 + lampsOf(p) / 320);
-      const fill = isMe ? (state.user.checkedInToday ? "#FFD166" : "#FF6B57") : hasReal ? "#7BF1A8" : "#F5B841";
+    // Real lat/lon projected smooth cubic Bezier Vietnam mainland coastline + islands (380x560)
+    const VN_MAINLAND_PATH =
+      "M218.2,92.5 C217.2,94 209.1,96.9 205.4,99.7 C201.7,102.5 200.7,106.1 197.7,108.1 C194.7,110.1 191.4,109.7 188.5,111 C185.6,112.3 183.6,113.5 181.5,115.2 C179.4,116.9 178,117.3 176.6,120.4 C175.2,123.5 176.6,129 173.5,132.7 C170.4,136.4 163.1,138.1 159.5,141.1 C155.9,144.1 155.3,145.5 153.6,149.6 C151.9,153.7 151.3,158.7 150.3,163.8 C149.3,168.9 147.7,173.9 147.8,178.1 C147.9,182.3 149.1,183.7 150.9,187.1 C152.7,190.5 154.6,193.5 157.9,196.9 C161.2,200.3 166.3,201.5 169.3,205.9 C172.3,210.3 170.9,215.4 174.8,221.2 C178.7,227 185.8,233.1 190.7,238.3 C195.6,243.5 196.6,245.6 202.3,250.3 C208,255 218,260.9 222.2,264.3 C226.4,267.7 224.6,267.3 225.9,269.4 C227.2,271.5 226.5,272.5 229.2,275.9 C231.9,279.3 237.9,284 240.9,288.2 C243.9,292.4 244.1,294.4 245.8,299.2 C247.5,304 249,309.1 250.6,315.1 C252.2,321.1 253.8,327.1 254.9,332.3 C256,337.5 256.1,339.7 256.5,344 C256.9,348.3 256.4,351.3 257.4,356.3 C258.4,361.3 261.1,367.5 262,371.8 C262.9,376.1 263.6,376.3 262.3,380.2 C261,384.1 256.2,388.8 254.9,393.2 C253.6,397.6 255.4,400.9 254.9,404.9 C254.4,408.9 254.7,411.5 251.9,415.6 C249.1,419.7 244.2,423.8 239.6,427.5 C235,431.2 231.1,433.1 226.2,436 C221.3,438.9 218.5,440.4 212.1,443.7 C205.7,447 196.5,451.9 190.7,454.4 C184.9,456.9 182.2,455.4 179.7,457.7 C177.2,460 178.3,463.7 176.6,467.4 C174.9,471.1 173,474.8 170.2,478.1 C167.4,481.4 165,483.3 161,485.9 C157,488.5 152.4,489.3 147.8,492.3 C143.2,495.3 140.5,499.3 135.6,502.7 C130.7,506.1 123.4,510.3 120.3,511.1 C117.2,511.9 118.5,510.6 118.5,507.3 C118.5,504 118.7,498.8 120.3,493 C121.9,487.2 127.5,480.7 127.3,474.9 C127.1,469.1 122.2,464.5 119.1,460.6 C116,456.7 109.1,456.2 109.9,453.5 C110.7,450.8 119,449 123.4,445.7 C127.8,442.4 129.3,436.8 134.4,435.3 C139.5,433.8 146.6,438.1 151.5,437.3 C156.4,436.5 161.5,435.1 161.9,430.8 C162.3,426.5 151.9,418.6 154,413.3 C156.1,408 164.7,405.7 173.5,401.6 C182.3,397.5 197.4,396.8 202.9,390.6 C208.4,384.4 204.3,375.5 204.1,367 C203.9,358.5 201.7,352.8 201.7,343.3 C201.7,333.8 204.7,324 204.1,314.1 C203.5,304.2 200.7,296.2 198.6,288.2 C196.5,280.2 197.1,276.4 192.5,269.8 C187.9,263.2 178.1,257.5 173.2,251.3 C168.3,245.1 169.6,241.9 165,235.1 C160.4,228.3 153.3,220.9 147.8,213.7 C142.3,206.5 139.7,201.8 134.4,195.2 C129.1,188.6 125,182.6 118.2,176.8 C111.4,171 97.7,168.3 96.7,162.8 C95.7,157.3 110.1,151.7 112.9,146.3 C115.7,140.9 113.3,138.1 112,132.7 C110.7,127.3 111.4,121 105.9,116.5 C100.4,112 89.1,110 81.4,107.8 C73.7,105.6 68.8,109 63.1,104.5 C57.4,100 54.3,90.1 49.9,82.8 C45.5,75.5 37.8,69.5 38.6,64 C39.4,58.5 46.7,54.4 54.2,52.4 C61.7,50.4 72.7,52 80.5,53 C88.3,54 91.6,59.2 97.6,58.2 C103.6,57.2 106.7,51.9 113.6,47.2 C120.5,42.5 130.3,33.2 135.9,32.3 C141.5,31.4 140.8,39.6 144.8,42 C148.8,44.4 152.7,45.1 157.9,45.9 C163.1,46.7 170,43.1 173.5,46.5 C177,49.9 176.1,59 177.2,64.7 C178.3,70.4 176.5,73.9 179.7,78.3 C182.8,82.7 189.1,87 194.7,89.3 C200.3,91.6 206.7,90.6 210.9,91.2 C215.1,91.8 219.2,91 218.2,92.5 Z";
+    const PHU_QUOC_PATH =
+      "M90.6,451.5 C91.3,449.8 95.1,450.8 96.4,452.2 C97.7,453.6 97.2,456.1 97,458.7 C96.8,461.3 96.3,464.7 95.5,465.1 C94.7,465.5 93.8,463.3 92.8,460.6 C91.8,457.9 89.9,453.2 90.6,451.5 Z";
+    const CAT_BA_PATH =
+      "M185.5,114.6 C186.4,114.1 189.1,114.4 189.8,115.2 C190.5,116 189.7,118 188.8,118.5 C187.9,119 185.9,118.3 185.2,117.5 C184.5,116.7 184.6,115.1 185.5,114.6 Z";
+
+    const renderMapPillLabel = (cx, cy, labelText, accentStroke) => {
+      const estW = Math.max(58, Math.min(116, labelText.length * 6.8 + 18));
+      const px = Math.max(estW * 0.5 + 8, Math.min(372 - estW * 0.5, cx));
+      const placeBelow = cy < 58;
+      const py = placeBelow ? Math.min(542, cy + 20) : Math.max(22, cy - 19);
       return `
-        <g class="map-dot" data-prov="${p.id}" style="cursor:pointer">
-          ${isMe ? `<circle cx="${p.x}" cy="${p.y}" r="14" fill="rgba(255, 209, 102, 0.25)" />` : ""}
-          <circle cx="${p.x}" cy="${p.y}" r="${r.toFixed(1)}" fill="${fill}" stroke="#0D1520" stroke-width="1" />
-          ${(p.island || p.diaspora || isMe) ? `<text x="${p.x}" y="${p.y - 11}" text-anchor="middle" fill="#F7F1E3" font-size="11" font-weight="700">${escHtml(p.short)}</text>` : ""}
+        <g class="map-pill-lbl" pointer-events="none">
+          <rect x="${(px - estW * 0.5).toFixed(1)}" y="${(py - 10).toFixed(1)}" width="${estW.toFixed(1)}" height="20" rx="10"
+            fill="#0A1624" fill-opacity="0.94" stroke="${accentStroke}" stroke-width="1.2" />
+          <text x="${px.toFixed(1)}" y="${(py + 3.8).toFixed(1)}" text-anchor="middle" fill="#FFF8E7" font-size="10.5" font-weight="700" font-family="Be Vietnam Pro, Segoe UI, sans-serif">${escHtml(labelText)}</text>
         </g>
       `;
-    }).join("");
+    };
+
+    // Draw standard provinces first, then focused & user province on top so beacons/labels never sit behind other dots
+    const orderedProvinces = D.PROVINCES.slice().sort((a, b) => {
+      const rank = (p) => (p.id === myProv.id ? 3 : p.id === focusedProv.id ? 2 : p.id === "ha-noi" || p.id === "tp-hcm" ? 1 : 0);
+      return rank(a) - rank(b);
+    });
+
+    const mapDots = orderedProvinces
+      .map((p) => {
+        const isMe = p.id === myProv.id;
+        const isFocused = p.id === focusedProv.id && !isMe;
+        const hasReal = Boolean(rtSummary.countsByProvince[p.id]);
+        const lamps = lampsOf(p);
+        const r = isMe ? 6.4 : isFocused ? 5.6 : Math.min(5.2, 2.7 + lamps / 380);
+        const haloR = isMe ? 18 : isFocused ? 14 : Math.min(11.5, 6.2 + lamps / 240);
+        const coreFill = isMe
+          ? state.user.checkedInToday
+            ? "#FFE07D"
+            : "#FF765E"
+          : hasReal
+          ? "#7DF2AE"
+          : "#F7BE56";
+        const haloGrad = isMe
+          ? state.user.checkedInToday
+            ? "url(#vn-glow-gold)"
+            : "url(#vn-glow-coral)"
+          : hasReal
+          ? "url(#vn-glow-jade)"
+          : "url(#vn-glow-amber)";
+
+        return `
+          <g class="map-dot ${isMe ? "is-me" : ""} ${isFocused ? "is-focused" : ""}" data-prov="${p.id}" role="button" tabindex="0" aria-label="${escHtml(p.name)} — ${lamps.toLocaleString("vi-VN")} đèn">
+            <circle cx="${p.x}" cy="${p.y}" r="${Math.max(12, haloR).toFixed(1)}" fill="transparent" />
+            <circle cx="${p.x}" cy="${p.y}" r="${haloR.toFixed(1)}" fill="${haloGrad}" pointer-events="none" />
+            ${
+              isMe
+                ? `<circle cx="${p.x}" cy="${p.y}" r="11.5" fill="none" stroke="${state.user.checkedInToday ? "#FFE07D" : "#FF8770"}" stroke-width="1.3" stroke-opacity="0.72" class="map-beacon-ring" pointer-events="none" />`
+                : isFocused
+                ? `<circle cx="${p.x}" cy="${p.y}" r="9.5" fill="none" stroke="#F6D17B" stroke-width="1.2" stroke-opacity="0.8" pointer-events="none" />`
+                : ""
+            }
+            <circle cx="${p.x}" cy="${p.y}" r="${r.toFixed(1)}" fill="${coreFill}" stroke="#0A1624" stroke-width="1.15" />
+            <circle cx="${(p.x - r * 0.25).toFixed(1)}" cy="${(p.y - r * 0.25).toFixed(1)}" r="${Math.max(1.0, r * 0.32).toFixed(1)}" fill="#FFFDF4" fill-opacity="0.88" pointer-events="none" />
+          </g>
+        `;
+      })
+      .join("");
+
+    // Render top-layer floating callout labels cleanly so no dots ever overlap text
+    let mapLabelsHtml = "";
+    if (!myProv.island && !myProv.diaspora) {
+      mapLabelsHtml += renderMapPillLabel(myProv.x, myProv.y, myProv.short, state.user.checkedInToday ? "#F7C96B" : "#FF8770");
+    }
+    if (focusedProv.id !== myProv.id && !focusedProv.island && !focusedProv.diaspora) {
+      mapLabelsHtml += renderMapPillLabel(focusedProv.x, focusedProv.y, focusedProv.short, "#8ED9B4");
+    }
 
     const sortedProvinces = D.PROVINCES.slice()
       .sort((a, b) => lampsOf(b) - lampsOf(a))
       .slice(0, 6);
+    const maxRankLamps = Math.max(1, lampsOf(sortedProvinces[0] || myProv));
 
     els.main.innerHTML = `
       <h1>Điểm danh bình an</h1>
@@ -2771,7 +2846,7 @@
         </label>
 
         <div>
-          <p style="font-weight:600; margin-bottom:8px;">Hôm nay bác thấy thế nào?</p>
+          <p class="checkin-field-sub">Hôm nay bác thấy thế nào?</p>
           <div class="mood-row">
             ${["Khỏe khoắn", "Bình thường", "Hơi mỏi"].map((m) => `
               <button type="button" class="mood-btn ${state.user.mood === m ? "selected" : ""}" data-mood="${m}">${m}</button>
@@ -2787,7 +2862,7 @@
         ${state.user.checkedInToday ? `
           <div class="surface-panel jade">
             <strong>${state.privacy.consentFamilyCheckin ? "Đã gửi thông báo bình an miễn phí tới Anh Hùng (Con trai)" : "Đã ghi nhận điểm danh riêng tư trên máy"}</strong>
-            <p style="font-size:0.86rem;">"Hôm nay ${escHtml(state.user.name)} đã ghé quán trà và chọn trạng thái: ${escHtml(state.user.mood)}."</p>
+            <p class="quest-hint-copy">"Hôm nay ${escHtml(state.user.name)} đã ghé quán trà và chọn trạng thái: ${escHtml(state.user.mood)}."</p>
             <button type="button" class="btn-secondary" id="btn-share-zalo-card">
               ${ico("share")}
               <span>Chia sẻ thiệp chúc qua Zalo (1 chạm)</span>
@@ -2800,16 +2875,16 @@
         rtSummary.recentList.length > 0
           ? `
         <div class="surface-panel warm" id="real-checkins-live-box">
-          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+          <div class="passcard-head">
             <strong>Đèn thật vừa thắp sáng trực tuyến</strong>
             <span class="real-peer-pill num">+${rtSummary.totalRealCheckins} thiết bị thật</span>
           </div>
-          <div style="display:flex; flex-direction:column; gap:6px; font-size:0.9rem;">
+          <div class="metrics-stat-list">
             ${rtSummary.recentList
               .slice(0, 5)
               .map(
                 (item) =>
-                  `<div>• <strong>${escHtml(item.name)} · ${item.age}t</strong> (${escHtml(item.provinceShort)}) — <span>${escHtml(item.mood)}</span></div>`
+                  `<div style="font-size:0.9rem;">• <strong>${escHtml(item.name)} · ${item.age}t</strong> (${escHtml(item.provinceShort)}) — <span>${escHtml(item.mood)}</span></div>`
               )
               .join("")}
           </div>
@@ -2819,48 +2894,197 @@
       }
 
       <div class="map-card">
-        <div class="map-stats-row">
-          <div>
-            <small style="color:#D8CCB8;">Đèn sáng hôm nay</small>
-            <div><strong class="num">${totalLamps.toLocaleString("vi-VN")} bác</strong></div>
+        <div class="map-kpi-strip">
+          <div class="map-kpi-cell">
+            <span class="map-kpi-lbl">Đèn sáng toàn quốc</span>
+            <strong class="map-kpi-val num">${totalLamps.toLocaleString("vi-VN")} bác</strong>
           </div>
-          <div style="text-align:right;">
-            <small style="color:#D8CCB8;">${escHtml(myProv.short)}</small>
-            <div><strong class="num">${lampsOf(myProv).toLocaleString("vi-VN")} lượt</strong></div>
+          <div class="map-kpi-cell is-right">
+            <span class="map-kpi-lbl">${escHtml(myProv.short)}</span>
+            <strong class="map-kpi-val is-accent num">${lampsOf(myProv).toLocaleString("vi-VN")} lượt</strong>
           </div>
         </div>
 
         <div class="map-canvas-wrap">
-          <svg id="vn-map-svg" viewBox="0 0 360 520" role="img" aria-label="Bản đồ thắp đèn 34 tỉnh thành Việt Nam, Hoàng Sa, Trường Sa và Người Việt xa quê">
-            <!-- Stylized Vietnam Outline -->
-            <path d="M90,54 L148,46 L202,52 L228,92 L208,124 L172,144 L164,194 L196,248 L228,282 L242,366 L220,418 L178,448 L156,496 L124,500 L114,464 L138,426 L168,400 L196,350 L182,278 L140,214 L128,150 L96,118 L72,88 Z"
-              fill="#152336" stroke="#3B5978" stroke-width="2" />
-            <!-- Hoàng Sa & Trường Sa boxes -->
-            <rect x="262" y="252" width="66" height="44" rx="8" fill="#111C2D" stroke="#2D4663" stroke-dasharray="4 3" />
-            <rect x="272" y="408" width="68" height="46" rx="8" fill="#111C2D" stroke="#2D4663" stroke-dasharray="4 3" />
-            <!-- Xa quê box -->
-            <rect x="16" y="244" width="76" height="46" rx="8" fill="#111C2D" stroke="#2D4663" stroke-dasharray="4 3" />
+          <svg id="vn-map-svg" viewBox="0 0 380 560" role="img" aria-label="Bản đồ địa lý thắp đèn 34 tỉnh thành Việt Nam, quần đảo Hoàng Sa, Trường Sa và Người Việt xa quê">
+            <defs>
+              <radialGradient id="vn-sea-bg" cx="48%" cy="46%" r="65%">
+                <stop offset="0%" stop-color="#132B44" />
+                <stop offset="60%" stop-color="#0C1C2E" />
+                <stop offset="100%" stop-color="#07111D" />
+              </radialGradient>
+              <linearGradient id="vn-land-fill" x1="15%" y1="0%" x2="85%" y2="100%">
+                <stop offset="0%" stop-color="#23486B" />
+                <stop offset="52%" stop-color="#1A3856" />
+                <stop offset="100%" stop-color="#132B44" />
+              </linearGradient>
+              <radialGradient id="vn-glow-amber" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#FFD479" stop-opacity="0.62" />
+                <stop offset="55%" stop-color="#E89D32" stop-opacity="0.22" />
+                <stop offset="100%" stop-color="#E89D32" stop-opacity="0" />
+              </radialGradient>
+              <radialGradient id="vn-glow-gold" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#FFF0A8" stop-opacity="0.88" />
+                <stop offset="50%" stop-color="#F6C35A" stop-opacity="0.34" />
+                <stop offset="100%" stop-color="#F6C35A" stop-opacity="0" />
+              </radialGradient>
+              <radialGradient id="vn-glow-coral" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#FF9B85" stop-opacity="0.82" />
+                <stop offset="55%" stop-color="#E85A42" stop-opacity="0.3" />
+                <stop offset="100%" stop-color="#E85A42" stop-opacity="0" />
+              </radialGradient>
+              <radialGradient id="vn-glow-jade" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#9BF6C4" stop-opacity="0.78" />
+                <stop offset="55%" stop-color="#3EC882" stop-opacity="0.28" />
+                <stop offset="100%" stop-color="#3EC882" stop-opacity="0" />
+              </radialGradient>
+              <filter id="vn-land-shadow" x="-12%" y="-6%" width="124%" height="114%">
+                <feDropShadow dx="0" dy="3" stdDeviation="4.5" flood-color="#040A12" flood-opacity="0.62" />
+              </filter>
+            </defs>
+
+            <!-- Deep maritime background & subtle latitude/longitude graticule -->
+            <rect width="380" height="560" fill="url(#vn-sea-bg)" />
+            <g stroke="#294D6E" stroke-opacity="0.24" stroke-width="0.75" stroke-dasharray="3 5">
+              <line x1="12" y1="142" x2="368" y2="142" />
+              <line x1="12" y1="304" x2="368" y2="304" />
+              <line x1="12" y1="466" x2="368" y2="466" />
+              <line x1="126" y1="14" x2="126" y2="546" />
+              <line x1="278" y1="14" x2="278" y2="546" />
+            </g>
+            <g fill="#7094B5" fill-opacity="0.52" font-size="8.5" font-family="Be Vietnam Pro, sans-serif">
+              <text x="16" y="138">20°B</text>
+              <text x="16" y="300">15°B</text>
+              <text x="16" y="462">10°B</text>
+            </g>
+
+            <!-- Subtle Compass Rose (top-right) -->
+            <g transform="translate(340, 48)" opacity="0.76">
+              <circle cx="0" cy="0" r="18" fill="#0B1929" fill-opacity="0.65" stroke="#B79252" stroke-opacity="0.45" stroke-width="1" />
+              <path d="M0,-14 L3.2,-3.2 L14,0 L3.2,3.2 L0,14 L-3.2,3.2 L-14,0 L-3.2,-3.2 Z" fill="#D4AE6A" fill-opacity="0.3" stroke="#D4AE6A" stroke-opacity="0.65" stroke-width="0.7" />
+              <polygon points="0,-14 3,-3 0,-5 -3,-3" fill="#F2C96B" />
+              <text x="0" y="-21" text-anchor="middle" fill="#E3C382" font-size="9" font-weight="700">B</text>
+            </g>
+
+            <!-- Sea Watermark -->
+            <text x="292" y="182" text-anchor="middle" fill="#7CA3C6" fill-opacity="0.28" font-size="11.5" font-style="italic" letter-spacing="2.8" font-family="Merriweather, Cambria, serif">BIỂN ĐÔNG</text>
+
+            <!-- Subtle bathymetric coast aura -->
+            <path d="${VN_MAINLAND_PATH}" fill="none" stroke="#3B79A8" stroke-opacity="0.26" stroke-width="7.5" stroke-linejoin="round" />
+
+            <!-- Accurate Vietnam Mainland S-Curve -->
+            <path d="${VN_MAINLAND_PATH}" fill="url(#vn-land-fill)" stroke="#D8B36A" stroke-opacity="0.72" stroke-width="1.5" stroke-linejoin="round" filter="url(#vn-land-shadow)" />
+
+            <!-- Coastal Vietnamese Islands: Phú Quốc, Cát Bà, Bạch Long Vĩ, Lý Sơn, Côn Đảo -->
+            <g fill="#23486B" stroke="#D8B36A" stroke-opacity="0.78" stroke-width="1.1">
+              <path d="${PHU_QUOC_PATH}" />
+              <path d="${CAT_BA_PATH}" />
+              <circle cx="209.3" cy="137.6" r="1.8" />
+              <circle cx="251.9" cy="291.5" r="1.8" />
+              <ellipse cx="174.8" cy="508.2" rx="3.4" ry="2.2" transform="rotate(-24 174.8 508.2)" />
+            </g>
+            <g fill="#9BBAD6" fill-opacity="0.72" font-size="8.5" font-family="Be Vietnam Pro, sans-serif">
+              <text x="80" y="476" text-anchor="middle">Phú Quốc</text>
+              <text x="195" y="516" text-anchor="start">Côn Đảo</text>
+            </g>
+
+            <!-- Quần đảo Hoàng Sa Cartographic Sovereignty Medallion -->
+            <g>
+              <rect x="282" y="218" width="86" height="68" rx="12" fill="#0B1928" fill-opacity="0.82" stroke="#C9A35E" stroke-opacity="0.52" stroke-width="1.1" />
+              <circle cx="325" cy="256" r="20" fill="none" stroke="#3B6488" stroke-opacity="0.35" stroke-dasharray="2 3" />
+              <!-- Paracel archipelago islet silhouettes -->
+              <g fill="#4F7DA3" fill-opacity="0.75">
+                <circle cx="315" cy="252" r="1.8" />
+                <circle cx="321" cy="249" r="1.5" />
+                <circle cx="333" cy="251" r="2.0" />
+                <circle cx="329" cy="260" r="1.6" />
+                <circle cx="318" cy="262" r="1.4" />
+                <circle cx="338" cy="257" r="1.3" />
+              </g>
+              <text x="325" y="234" text-anchor="middle" fill="#EFE0BE" font-size="9.8" font-weight="700" font-family="Be Vietnam Pro, sans-serif">Hoàng Sa</text>
+              <text x="325" y="279" text-anchor="middle" fill="#8FB1CE" font-size="8" font-family="Be Vietnam Pro, sans-serif">Việt Nam</text>
+            </g>
+
+            <!-- Quần đảo Trường Sa Cartographic Sovereignty Medallion -->
+            <g>
+              <rect x="276" y="408" width="92" height="72" rx="12" fill="#0B1928" fill-opacity="0.82" stroke="#C9A35E" stroke-opacity="0.52" stroke-width="1.1" />
+              <circle cx="320" cy="446" r="22" fill="none" stroke="#3B6488" stroke-opacity="0.35" stroke-dasharray="2 3" />
+              <!-- Spratly archipelago islet silhouettes -->
+              <g fill="#4F7DA3" fill-opacity="0.75">
+                <circle cx="308" cy="442" r="1.8" />
+                <circle cx="316" cy="437" r="1.6" />
+                <circle cx="328" cy="440" r="2.0" />
+                <circle cx="336" cy="447" r="1.5" />
+                <circle cx="324" cy="454" r="1.7" />
+                <circle cx="312" cy="452" r="1.4" />
+                <circle cx="333" cy="456" r="1.3" />
+              </g>
+              <text x="322" y="424" text-anchor="middle" fill="#EFE0BE" font-size="9.8" font-weight="700" font-family="Be Vietnam Pro, sans-serif">Trường Sa</text>
+              <text x="322" y="473" text-anchor="middle" fill="#8FB1CE" font-size="8" font-family="Be Vietnam Pro, sans-serif">Việt Nam</text>
+            </g>
+
+            <!-- Người Việt Xa Quê Medallion (cleanly placed in lower-left open zone) -->
+            <g>
+              <rect x="14" y="304" width="88" height="72" rx="12" fill="#0B1928" fill-opacity="0.82" stroke="#5386A8" stroke-opacity="0.52" stroke-width="1.1" />
+              <circle cx="58" cy="342" r="15" fill="none" stroke="#649AC0" stroke-opacity="0.4" stroke-width="0.9" />
+              <ellipse cx="58" cy="342" rx="7.5" ry="15" fill="none" stroke="#649AC0" stroke-opacity="0.35" stroke-width="0.8" />
+              <line x1="43" y1="342" x2="73" y2="342" stroke="#649AC0" stroke-opacity="0.35" stroke-width="0.8" />
+              <text x="58" y="320" text-anchor="middle" fill="#EFE0BE" font-size="9.8" font-weight="700" font-family="Be Vietnam Pro, sans-serif">Xa quê</text>
+              <text x="58" y="369" text-anchor="middle" fill="#8FB1CE" font-size="8" font-family="Be Vietnam Pro, sans-serif">Năm châu</text>
+            </g>
+
+            <!-- 34 Province + Island + Diaspora Lantern Dots -->
             ${mapDots}
+
+            <!-- Floating high-contrast callout labels on top -->
+            ${mapLabelsHtml}
           </svg>
         </div>
-        <small style="color:#D8CCB8;">Chạm vào chấm sáng trên bản đồ để xem số lượt điểm danh từng tỉnh.</small>
+
+        <div class="map-selected-bar" id="vn-map-selected-bar">
+          <div class="map-selected-info">
+            <strong>${escHtml(focusedProv.name)}</strong>
+            <span class="num">${lampsOf(focusedProv).toLocaleString("vi-VN")} lượt sáng đèn hôm nay</span>
+          </div>
+          ${
+            focusedProv.id !== myProv.id
+              ? `<button type="button" class="map-select-prov-btn" id="btn-map-pick-focused" data-pick-prov="${escHtml(focusedProv.id)}">Chọn tỉnh này</button>`
+              : `<span class="map-here-chip">${state.user.checkedInToday ? "Đã sáng đèn" : "Tỉnh của bác"}</span>`
+          }
+        </div>
+
+        <div class="map-legend-row">
+          <span class="map-legend-item"><i class="map-dot-swatch is-me"></i>Tỉnh của bác</span>
+          <span class="map-legend-item"><i class="map-dot-swatch is-amber"></i>Đèn sáng hôm nay</span>
+          <span class="map-legend-item"><i class="map-dot-swatch is-live"></i>Đang trực tuyến</span>
+        </div>
       </div>
 
       <div class="surface-panel">
         <h3>Xếp hạng tỉnh sáng đèn hôm nay</h3>
         <div class="province-rank-list">
-          ${sortedProvinces.map((p, idx) => `
-            <div class="province-rank-item">
-              <span><strong>${idx + 1}. ${escHtml(p.name)}</strong></span>
-              <span class="badge-tag amber num">${lampsOf(p).toLocaleString("vi-VN")} đèn</span>
-            </div>
-          `).join("")}
+          ${sortedProvinces
+            .map((p, idx) => {
+              const cnt = lampsOf(p);
+              const pct = Math.max(12, Math.round((cnt / maxRankLamps) * 100));
+              return `
+              <div class="province-rank-item">
+                <div class="province-rank-top">
+                  <span class="province-rank-name"><strong class="num">${idx + 1}.</strong> ${escHtml(p.name)}</span>
+                  <span class="badge-tag amber num">${cnt.toLocaleString("vi-VN")} đèn</span>
+                </div>
+                <div class="province-rank-track"><div class="province-rank-fill" style="width:${pct}%"></div></div>
+              </div>
+            `;
+            })
+            .join("")}
         </div>
       </div>
     `;
 
     document.getElementById("checkin-province").addEventListener("change", (e) => {
       state.user.provinceId = e.target.value;
+      mapFocusedProvinceId = e.target.value;
       saveState();
       updateGlobalChrome();
       renderCheckin();
@@ -2952,11 +3176,35 @@
     }
 
     els.main.querySelectorAll(".map-dot").forEach((dot) => {
-      dot.addEventListener("click", () => {
-        const p = getProvince(dot.dataset.prov);
-        showToast(`${p.name}: ${p.lamps.toLocaleString("vi-VN")} lượt điểm danh.`);
+      const handlePick = () => {
+        const pid = dot.dataset.prov;
+        const p = getProvince(pid);
+        mapFocusedProvinceId = pid;
+        showToast(`${p.name}: ${lampsOf(p).toLocaleString("vi-VN")} lượt điểm danh.`);
+        renderCheckin();
+      };
+      dot.addEventListener("click", handlePick);
+      dot.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          handlePick();
+        }
       });
     });
+
+    const pickFocusedBtn = document.getElementById("btn-map-pick-focused");
+    if (pickFocusedBtn) {
+      pickFocusedBtn.addEventListener("click", () => {
+        const pid = pickFocusedBtn.dataset.pickProv;
+        if (!pid) return;
+        state.user.provinceId = pid;
+        mapFocusedProvinceId = pid;
+        saveState();
+        updateGlobalChrome();
+        showToast(`Đã chọn quê quán: ${getProvince(pid).short}`);
+        renderCheckin();
+      });
+    }
   }
 
   // ==================== MODULE 2: TEA ROOM + 0-TOKEN SELF-LEARNING ====================
@@ -3894,10 +4142,10 @@
 
   function renderGraphicsModeSwitchHtml(opts) {
     const o = opts || {};
-    const badgeHtml = `<span class="stage-badge" id="render-mode-badge">Đồ họa: Full 2.5D (TLBB)</span>`;
+    const badgeHtml = `<span class="stage-badge is-compact" id="render-mode-badge">Full 2.5D</span>`;
     if (o.innerOnly) return badgeHtml;
     return `
-      <div class="tearoom-controls-row" style="flex-wrap:wrap;">
+      <div class="tearoom-controls-row">
         ${badgeHtml}
         ${o.extraHtml || ""}
       </div>
@@ -3985,12 +4233,14 @@
     const best = scoredTables.slice().sort((a, b) => b.match.score - a.match.score)[0];
     const totalSeated = scoredTables.reduce((sum, item) => sum + item.table.members.length, 0);
 
+    const selectedHabitsCount = (state.user.habits || []).length;
+
     els.main.innerHTML = `
       ${renderRoomSwitcherStrip()}
 
-      <div>
+      <div class="room-heading-block">
         <h1>${escHtml(room.name)}</h1>
-        <p class="lead-copy">${escHtml(room.description)} · Hiện có <strong class="num">${totalSeated}</strong> anh chị đang ngồi tại <strong class="num">${room.tables.length}</strong> bàn.</p>
+        <p class="lead-copy">${escHtml(room.description)} · <strong class="num">${totalSeated}</strong> anh chị tại <strong class="num">${room.tables.length}</strong> bàn.</p>
       </div>
 
       ${
@@ -3998,9 +4248,9 @@
           ? `
         <div class="surface-panel warm" id="phong-co-quick-banner">
           <h3>Bàn Cờ Tướng 9×10 &amp; Kho 6 Thế Cờ Giang Hồ</h3>
-          <p style="font-size:0.9rem; color:var(--ink-secondary);">Ngồi vào bất kỳ bàn nào bên dưới đều có sẵn bàn cờ 9×10 ngay tại bàn, hoặc bấm mở toàn màn hình để đánh ngay:</p>
+          <p class="quest-hint-copy">Mỗi bàn bên dưới đều mở sẵn cờ tướng 9×10, hoặc bấm đánh toàn màn hình ngay:</p>
           <div class="btn-row">
-            <button type="button" class="btn-primary" id="btn-lobby-play-full9x10">${ico("xiangqi")}<span>Đánh ván 9×10 thật</span></button>
+            <button type="button" class="btn-primary" id="btn-lobby-play-full9x10">${ico("xiangqi")}<span>Đánh ván 9×10</span></button>
             <button type="button" class="btn-jade" id="btn-lobby-play-cothe">${ico("award")}<span>Giải 6 Cờ thế</span></button>
           </div>
         </div>
@@ -4008,39 +4258,44 @@
           : ""
       }
 
-      <!-- Thói quen & Sở thích để ghép bàn -->
-      <div class="surface-panel">
-        <h3>Sở thích & Thói quen của ${getUserPronoun()} (chạm để ghép bàn hợp ý)</h3>
-        <div class="habit-grid">
-          ${D.HABIT_TAGS.map((h) => {
-            const active = (state.user.habits || []).includes(h.id);
-            return `<button type="button" class="habit-chip ${active ? "selected" : ""}" data-habit="${h.id}">${escHtml(h.label)}</button>`;
-          }).join("")}
+      <!-- Toàn cảnh 2.5D góc rộng 5 gian đặt ngay đầu màn hình để nhìn thấy quán trà lập tức -->
+      <div class="stage-showcase-card">
+        ${renderGraphicsModeSwitchHtml({
+          extraHtml: `<button type="button" class="stage-badge-btn" id="btn-toggle-overview-wide">Góc siêu rộng</button>`
+        })}
+        <div class="tearoom-stage is-overview" id="tearoom-stage" title="Kéo ngang trên hình để lia góc nhìn khắp sảnh trà 5 gian">
+          <canvas class="tearoom-canvas" id="tearoom-canvas"></canvas>
+          <div class="avatar-tags-layer" id="avatar-tags-layer"></div>
         </div>
       </div>
 
-      <!-- Thẻ gợi ý ghép bàn phù hợp nhất -->
+      <!-- Thẻ gợi ý ghép bàn phù hợp nhất ngay dưới sân khấu -->
       <div class="surface-panel warm" id="smart-match-card">
-        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
-          <h3>Gợi ý ghép bàn hợp nhất</h3>
+        <div class="passcard-head">
+          <h3>Gợi ý bàn hợp nhất</h3>
           <span class="badge-tag amber num">${best.match.percent}% hợp</span>
         </div>
-        <p><strong>${escHtml(best.table.name)}</strong> (${best.table.members.length}/5 người)</p>
-        <p style="font-size:0.88rem; color:var(--ink-secondary);">${escHtml(best.match.reasons.join(" · "))}</p>
+        <p><strong>${escHtml(best.table.name)}</strong> <span class="num">(${best.table.members.length}/5 người)</span></p>
+        <p class="quest-hint-copy">${escHtml(best.match.reasons.join(" · "))}</p>
         <button type="button" class="btn-primary" id="btn-join-recommended" data-join-idx="${best.idx}">
           ${ico("tea")}
           <span>Ngồi vào ${escHtml(best.table.name)} ngay</span>
         </button>
       </div>
 
-      <!-- Toàn cảnh 3D / 2.5D góc rộng 5 gian (3 cột x 2 hàng, kéo ngang xoay sảnh) -->
-      ${renderGraphicsModeSwitchHtml({
-        extraHtml: `<button type="button" class="stage-badge-btn" id="btn-toggle-overview-wide">Góc siêu rộng</button>`
-      })}
-      <div class="tearoom-stage is-overview" id="tearoom-stage" title="Kéo ngang trên hình để lia góc nhìn khắp sảnh trà 5 gian">
-        <canvas class="tearoom-canvas" id="tearoom-canvas"></canvas>
-        <div class="avatar-tags-layer" id="avatar-tags-layer"></div>
-      </div>
+      <!-- Thói quen & Sở thích gọn gàng trong ngăn mở rộng -->
+      <details class="tb-details">
+        <summary>
+          <span>Chọn sở thích ghép bàn hợp ý</span>
+          <span class="tb-details-hint num">${selectedHabitsCount} mục đã chọn</span>
+        </summary>
+        <div class="habit-grid" style="margin-top:8px;">
+          ${D.HABIT_TAGS.map((h) => {
+            const active = (state.user.habits || []).includes(h.id);
+            return `<button type="button" class="habit-chip ${active ? "selected" : ""}" data-habit="${h.id}">${escHtml(h.label)}</button>`;
+          }).join("")}
+        </div>
+      </details>
 
       <button type="button" class="btn-secondary" id="btn-lobby-host-rename">
         ${ico("tea")}
@@ -4049,23 +4304,23 @@
 
       <!-- Danh sách 6 bàn & người đang ngồi -->
       <div class="section-block">
-        <h2>Trong phòng đang có ai? (${room.tables.length} bàn)</h2>
+        <h2>Trong phòng đang có ai? (<span class="num">${room.tables.length}</span> bàn)</h2>
         ${scoredTables
           .map(
             (item) => `
           <article class="table-card ${item.idx === best.idx ? "recommended" : ""}">
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; flex-wrap:wrap;">
-              <div>
+            <div class="table-card-head">
+              <div class="table-card-title">
                 <h3>${escHtml(item.table.name)}</h3>
-                <small style="color:var(--ink-secondary);">${escHtml(item.table.topic)}</small>
+                <small>${escHtml(item.table.topic)}</small>
                 ${
                   item.table.hostOwnerName
                     ? `<div style="margin-top:4px;"><span class="host-owner-pill">Chủ bàn: ${escHtml(item.table.hostOwnerName)}</span></div>`
                     : ""
                 }
               </div>
-              <div style="display:flex; gap:6px; align-items:center;">
-                ${item.table.realPeerCount ? `<span class="real-peer-pill num">${item.table.realPeerCount} người thật</span>` : ""}
+              <div class="table-card-badges">
+                ${item.table.realPeerCount ? `<span class="real-peer-pill num">${item.table.realPeerCount} thật</span>` : ""}
                 <span class="badge-tag ${item.idx === best.idx ? "amber" : "jade"} num">${item.match.percent}% hợp</span>
               </div>
             </div>
@@ -4960,51 +5215,51 @@
       </div>
       <p class="lead-copy">Chọn chuyên mục hoặc tìm chủ đề (${pron} gõ hoặc chạm gợi ý như <strong>Giá dầu, Thế giới...</strong>), rồi ấn vào tin để ngồi đàm đạo cùng những người đang đọc tin đó.</p>
 
-      <!-- Khung tìm kiếm & Gợi ý từ khóa nóng + Chuyên mục -->
-      <div class="surface-panel" style="gap:10px;">
+      <!-- Khung tìm kiếm & Chuyên mục gọn gàng -->
+      <div class="surface-panel news-toolbar-card">
         <div class="news-search-row">
           <input
             type="search"
             class="input-lg"
             id="news-search-input"
             value="${escHtml(searchQ)}"
-            placeholder="Gõ chủ đề: giá dầu, thế giới, giá vàng..."
+            placeholder="Tìm chủ đề: giá dầu, thế giới, giá vàng..."
           />
-          <button type="button" class="btn-primary btn-inline" id="btn-news-search">Tìm tin</button>
+          <button type="button" class="btn-primary btn-inline" id="btn-news-search">Tìm</button>
         </div>
 
-        <div>
-          <div class="news-sub-label">Từ khóa gợi ý đang bàn sôi nổi:</div>
-          <div class="news-keyword-strip">
+        <div class="news-cat-strip" role="tablist" aria-label="Chuyên mục báo sáng">
+          ${(D.NEWS_CATEGORIES || []).map((c) => {
+            const cnt =
+              c.id === "all"
+                ? state.newspaper.articles.length
+                : state.newspaper.articles.filter((a) => a.category === c.id).length;
+            return `
+              <button type="button" class="news-cat-chip ${selectedCat === c.id ? "active" : ""}" data-news-cat="${c.id}">
+                <span>${escHtml(c.label)}</span><span class="num">(${cnt})</span>
+              </button>
+            `;
+          }).join("")}
+        </div>
+
+        <details class="tb-details news-kw-details" ${searchQ ? "open" : ""}>
+          <summary>
+            <span>Từ khóa gợi ý đang bàn sôi nổi</span>
+            <span class="tb-details-hint">${searchQ ? `"${escHtml(searchQ)}"` : `${(D.NEWS_HOT_KEYWORDS || []).length} chủ đề`}</span>
+          </summary>
+          <div class="news-keyword-strip" style="margin-top:8px;">
             ${(D.NEWS_HOT_KEYWORDS || []).map((kw) => {
               const isAct = stripVnAccents(searchQ) === stripVnAccents(kw);
               return `<button type="button" class="news-kw-chip ${isAct ? "selected" : ""}" data-news-kw="${escHtml(kw)}">${escHtml(kw)}</button>`;
             }).join("")}
           </div>
-        </div>
-
-        <div>
-          <div class="news-sub-label">Chuyên mục báo:</div>
-          <div class="room-tabs-scroll">
-            ${(D.NEWS_CATEGORIES || []).map((c) => {
-              const cnt =
-                c.id === "all"
-                  ? state.newspaper.articles.length
-                  : state.newspaper.articles.filter((a) => a.category === c.id).length;
-              return `
-                <button type="button" class="room-tab-btn ${selectedCat === c.id ? "active" : ""}" data-news-cat="${c.id}">
-                  <span>${escHtml(c.label)} (${cnt})</span>
-                </button>
-              `;
-            }).join("")}
-          </div>
-        </div>
+        </details>
 
         ${
           hasFilter
             ? `
           <div class="news-filter-bar">
-            <span>Đang hiển thị <strong>${visibleArticles.length}</strong> bản tin phù hợp${searchQ ? ` với "${escHtml(searchQ)}"` : ""}</span>
+            <span>Đang hiện <strong>${visibleArticles.length}</strong> tin phù hợp${searchQ ? ` với "${escHtml(searchQ)}"` : ""}</span>
             <button type="button" class="btn-mini" id="btn-clear-news-filter">Xem tất cả (${state.newspaper.articles.length})</button>
           </div>
         `
@@ -5789,10 +6044,10 @@
   function renderGames() {
     els.main.innerHTML = `
       <h1>Trò chơi dân gian &amp; Rèn trí nhớ</h1>
-      <div class="tab-bar" role="tablist" aria-label="Chọn trò chơi dân gian">
+      <div class="tab-bar tabs-3" role="tablist" aria-label="Chọn trò chơi dân gian">
         <button type="button" class="tab-btn ${activeGameTab === "oaq" ? "active" : ""}" id="tab-oaq">Ô ăn quan</button>
-        <button type="button" class="tab-btn ${activeGameTab === "cadao" ? "active" : ""}" id="tab-cadao">Ca dao Trí nhớ</button>
-        <button type="button" class="tab-btn ${activeGameTab === "cotuong" ? "active" : ""}" id="tab-cotuong">Cờ tướng 9×10</button>
+        <button type="button" class="tab-btn ${activeGameTab === "cadao" ? "active" : ""}" id="tab-cadao">Ca dao</button>
+        <button type="button" class="tab-btn ${activeGameTab === "cotuong" ? "active" : ""}" id="tab-cotuong">Cờ tướng</button>
       </div>
       <div id="game-tab-body"></div>
     `;
@@ -6464,7 +6719,7 @@
         ${
           o.mode === "ai"
             ? `
-          <div class="temple-cam-bar" role="group" aria-label="Chọn mức độ Máy Ô ăn quan">
+          <div class="segmented-2" role="group" aria-label="Chọn mức độ Máy Ô ăn quan">
             <button type="button" class="temple-cam-btn ${o.aiLevel === "easy" ? "active" : ""}" data-oaq-lvl="easy" ${isAnimating ? "disabled" : ""}>Máy Thư Giãn</button>
             <button type="button" class="temple-cam-btn ${o.aiLevel !== "easy" ? "active" : ""}" data-oaq-lvl="club" ${isAnimating ? "disabled" : ""}>Máy Cao Thủ Làng</button>
           </div>
@@ -8853,19 +9108,20 @@
     els.main.innerHTML = `
       <h1>${escHtml(spMeta.heading)}</h1>
 
-      <div class="temple-cam-bar" role="tablist" aria-label="Chọn không gian tĩnh tâm">
+      <div class="zen-space-tabs" role="tablist" aria-label="Chọn không gian tĩnh tâm">
         ${D.ZEN_SPACES.map(
-          (s, i) => `<button type="button" class="temple-cam-btn ${spIdx === i ? "active" : ""}" data-zen="${i}">${escHtml(s.name)}</button>`
+          (s, i) => `<button type="button" class="zen-space-btn ${spIdx === i ? "active" : ""}" data-zen="${i}">${escHtml(s.name)}</button>`
         ).join("")}
       </div>
 
-      <div class="temple-cam-bar" role="group" aria-label="Chọn góc nhìn không gian">
-        <button type="button" class="temple-cam-btn ${camMode === "wide" ? "active" : ""}" data-tcam="wide">${escHtml(spMeta.camWide)}</button>
-        <button type="button" class="temple-cam-btn ${camMode === "cushions" ? "active" : ""}" data-tcam="cushions">${escHtml(spMeta.camAltar)}</button>
-        <button type="button" class="temple-cam-btn ${camMode === "courtyard" ? "active" : ""}" data-tcam="courtyard">${escHtml(spMeta.camYard)}</button>
+      <div class="zen-stage-frame">
+        <div class="temple-sanctuary-wrap" id="temple-3d-stage" aria-label="${escHtml(spMeta.heading)}"></div>
+        <div class="zen-view-bar" role="group" aria-label="Chọn góc nhìn không gian">
+          <button type="button" class="zen-view-btn ${camMode === "wide" ? "active" : ""}" data-tcam="wide">${escHtml(spMeta.camWide)}</button>
+          <button type="button" class="zen-view-btn ${camMode === "cushions" ? "active" : ""}" data-tcam="cushions">${escHtml(spMeta.camAltar)}</button>
+          <button type="button" class="zen-view-btn ${camMode === "courtyard" ? "active" : ""}" data-tcam="courtyard">${escHtml(spMeta.camYard)}</button>
+        </div>
       </div>
-
-      <div class="temple-sanctuary-wrap" id="temple-3d-stage" aria-label="${escHtml(spMeta.heading)}"></div>
 
       <button type="button" class="btn-${isAutoMuyuActive ? "primary" : "jade"}" id="btn-temple-auto-muyu">
         ${ico("bell")}
@@ -9971,8 +10227,8 @@
         activeProfileMainTab === "wardrobe"
           ? `
         <div class="surface-panel warm" id="profile-live-card">
-          <div class="tearoom-controls-row" style="flex-wrap:wrap;">
-            <span class="stage-badge" id="profile-render-badge">${isPreviewingDraft ? "Đang xem thử mẫu" : "Mẫu đang dùng"}</span>
+          <div class="showcase-header-bar">
+            <span class="stage-badge ${isPreviewingDraft ? "is-preview" : "is-live"}" id="profile-render-badge">${isPreviewingDraft ? "Đang xem thử mẫu" : "Bộ đang mặc thật"}</span>
             ${renderGraphicsModeSwitchHtml({ innerOnly: true })}
           </div>
 
@@ -9981,15 +10237,29 @@
             <div class="avatar-tags-layer" id="profile-preview-tags"></div>
           </div>
 
-          <div class="profile-equipped-strip">
-            <span>Áo: <strong>${escHtml(activeOutfit.name)}</strong></span>
-            <span>Phụ kiện: <strong>${escHtml(activeAcc.name)}</strong></span>
-            <span>Khung: <strong>${escHtml(activeFrame.name)}</strong></span>
-            <span>Bàn: <strong>${escHtml(activeItem.name)}</strong></span>
+          <div class="equipped-spec-grid">
+            <div class="equipped-spec-cell">
+              <span class="equipped-spec-lbl">Trang phục</span>
+              <strong>${escHtml(activeOutfit.name)}</strong>
+            </div>
+            <div class="equipped-spec-cell">
+              <span class="equipped-spec-lbl">Phụ kiện</span>
+              <strong>${escHtml(activeAcc.name)}</strong>
+            </div>
+            <div class="equipped-spec-cell">
+              <span class="equipped-spec-lbl">Khung tên</span>
+              <strong>${escHtml(activeFrame.name)}</strong>
+            </div>
+            <div class="equipped-spec-cell">
+              <span class="equipped-spec-lbl">Đồ bàn trà</span>
+              <strong>${escHtml(activeItem.name)}</strong>
+            </div>
           </div>
 
-          ${isPreviewingDraft ? `<button type="button" class="btn-secondary" id="btn-reset-preview">Quay về bộ đang dùng thật</button>` : ""}
-          <button type="button" class="btn-jade" id="btn-goto-tearoom-from-wardrobe">${ico("tea")}<span>Ra Bàn Trà xem trang phục ngay</span></button>
+          <div class="${isPreviewingDraft ? "btn-row" : ""}">
+            ${isPreviewingDraft ? `<button type="button" class="btn-secondary" id="btn-reset-preview">Về bộ đang dùng</button>` : ""}
+            <button type="button" class="btn-jade" id="btn-goto-tearoom-from-wardrobe">${ico("tea")}<span>${isPreviewingDraft ? "Ra Bàn Trà" : "Ra Bàn Trà xem trang phục ngay"}</span></button>
+          </div>
         </div>
 
         <div class="wardrobe-cat-bar" role="tablist" aria-label="Danh mục trang bị">

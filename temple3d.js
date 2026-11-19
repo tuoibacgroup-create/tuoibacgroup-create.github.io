@@ -567,8 +567,8 @@ window.TempleScene3D = (function () {
     c.fillStyle = isUser
       ? "rgba(176, 52, 34, 0.95)"
       : isRealPeer
-      ? "rgba(32, 102, 76, 0.92)"
-      : "rgba(24, 14, 9, 0.80)";
+        ? "rgba(32, 102, 76, 0.92)"
+        : "rgba(24, 14, 9, 0.80)";
     c.fill();
     c.strokeStyle = isUser ? "#FFE082" : "rgba(242, 204, 126, 0.45)";
     c.lineWidth = isUser ? 1.2 : 0.8;
@@ -648,8 +648,8 @@ window.TempleScene3D = (function () {
       const shortName = sa.isUser
         ? `BĐ${sa.idx + 1}·Bạn`
         : String(occ.shortLabel || occ.name || "Bác")
-            .replace(/^(Anh|Chị|Bác|Cụ|Chú|Cô)\s+/i, "$1 ")
-            .slice(0, 9);
+          .replace(/^(Anh|Chị|Bác|Cụ|Chú|Cô)\s+/i, "$1 ")
+          .slice(0, 9);
 
       if (item.kind === "seated") {
         const cx = mapX(sa.nx);
@@ -1584,8 +1584,7 @@ window.TempleScene3D = (function () {
       const rx = cameraView === "courtyard" ? baseNx : 0.502;
       const ry = cameraView === "courtyard" ? baseNy : 0.50;
       pushSoundRipple(rx, ry, "rgba(180, 245, 232, 0.88)", 72);
-      floatingPopups = [];
-      pushFloatingToast(0.24, 0.56, "+1 Hoa Đăng (sáng 3 phút)");
+      pushFloatingToast(rx, ry - 0.10, "+1 Hoa Đăng Bình An (3 phút)");
     };
     if (cameraView === "wide") {
       startActorRitualWalk(actorIdx, "incense", fireFx, false);
@@ -1636,7 +1635,7 @@ window.TempleScene3D = (function () {
     if (renderer) {
       try {
         renderer.dispose();
-      } catch (e) {}
+      } catch (e) { }
       renderer = null;
     }
     ctx = null;

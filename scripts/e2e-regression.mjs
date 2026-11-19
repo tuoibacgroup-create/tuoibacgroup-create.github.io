@@ -180,8 +180,8 @@ async function main() {
   const shotsDir = cliShotsDir
     ? path.resolve(cliShotsDir)
     : process.env.SAVE_SHOTS_DIR
-    ? path.resolve(process.env.SAVE_SHOTS_DIR)
-    : "";
+      ? path.resolve(process.env.SAVE_SHOTS_DIR)
+      : "";
   if (shotsDir) fs.mkdirSync(shotsDir, { recursive: true });
 
   const { server, baseUrl } = await startStaticServer();
@@ -513,9 +513,9 @@ async function main() {
     });
     assert(
       wardrobeCounts.rooms === 6 &&
-        wardrobeCounts.outfits === 14 &&
-        wardrobeCounts.accessories === 11 &&
-        wardrobeCounts.items === 13,
+      wardrobeCounts.outfits === 14 &&
+      wardrobeCounts.accessories === 11 &&
+      wardrobeCounts.items === 13,
       `Expected 6 rooms / 14 outfits / 11 accessories / 13 items, got ${JSON.stringify(wardrobeCounts)}`
     );
     assert(
