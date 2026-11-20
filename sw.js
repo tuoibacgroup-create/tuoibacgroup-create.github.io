@@ -1,4 +1,4 @@
-const CACHE_VERSION = "tuoibac-pwa-v33";
+const CACHE_VERSION = "tuoibac-pwa-v34";
 const CORE_ASSETS = [
   "./",
   "./index.html",
@@ -44,6 +44,7 @@ const CORE_ASSETS = [
   "./assets/tearoom-accessories.webp",
   "./assets/tearoom-accessories-extra.webp",
   "./assets/tearoom-regional-acc.webp",
+  "./assets/audio/tts-manifest.json",
   "./assets/audio/chao-buoi-sang.mp3",
   "./assets/audio/diem-danh-xong.mp3",
   "./assets/audio/chao-ban-tra.mp3",
@@ -102,6 +103,23 @@ self.addEventListener("fetch", (event) => {
     url.hostname.includes("emqx.io") ||
     url.hostname.includes("hivemq.com")
   ) {
+    return;
+  }
+
+  // Cache-first for static pre-generated voice library clips so repeated playback is instant & offline-ready
+  if (url.origin === self.location.origin && url.pathname.includes("/assets/audio/library/")) {
+    event.respondWith(
+      caches.match(req).then((cached) => {
+        if (cached) return cached;
+        return fetch(req).then((res) => {
+          if (res && res.ok) {
+            const clone = res.clone();
+            caches.open(CACHE_VERSION).then((cache) => cache.put(req, clone)).catch(() => { });
+          }
+          return res;
+        });
+      })
+    );
     return;
   }
 

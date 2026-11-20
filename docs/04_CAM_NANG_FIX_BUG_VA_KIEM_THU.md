@@ -23,7 +23,7 @@ Tài liệu này giúp bất kỳ AI Agent nào khi nhận báo lỗi từ Chủ
 
 ---
 
-## 2. Mười Lăm "Bẫy Kỹ Thuật" Thực Tế Cần Nhớ (Known Gotchas)
+## 2. Mười Sáu "Bẫy Kỹ Thuật" Thực Tế Cần Nhớ (Known Gotchas)
 
 1. **Nút `Quay về` (`#btn-back`) luôn đưa thẳng về Trang chủ (`"home"`):**
    - Thiết kế cố ý theo nguyên tắc *"1 chạm thoát ra sảnh chính"* cho người cao tuổi (không bắt bấm lùi nhiều tầng). Khi viết kịch bản kiểm thử tự động Playwright, từ bên trong bàn trà bấm `#btn-back` 1 lần là đã ở `"home"` (nút `#btn-back` sẽ ẩn đi ngay sau đó).
@@ -63,6 +63,9 @@ Tài liệu này giúp bất kỳ AI Agent nào khi nhận báo lỗi từ Chủ
 15. **Múi giờ thiên văn `UTC+7` cho Lịch Âm Việt Nam & Chuẩn tệp chuông `.ics` (RFC 5545):**
     - Trong `TuoiBacData.Almanac` (`data.js`), điểm Sóc (`getNewMoonDay`) và kinh độ Mặt Trời (`getSunLongitude`) bắt buộc tính theo `TZ_VN = 7.0` (`UTC+7`), không dùng `UTC+8` (tránh sai lệch tháng Nhuận và ngày Tết như Mùng 1 Tết 2030 Việt Nam `02/02/2030` khác Trung Quốc `03/02/2030`).
     - Khi xuất tệp lịch nhắc `.ics` (`buildReminderIcsString` trong `app.js`), không chèn ký tự BOM `\ufeff` ở đầu tệp và dùng dấu xuống dòng `\r\n` để dòng đầu tiên luôn khớp `BEGIN:VCALENDAR` trên Samsung Calendar và Apple Calendar; gói âm thanh lời chào giọng thật `12s` giữ trong RAM (`runtimeVoiceClips`) và dưới ngưỡng `21.000` ký tự Base64 để không làm đầy `localStorage` hay vượt trần `24 KB` của MQTT.
+16. **Đồng bộ khóa băm thư viện giọng đọc `maichi` (`tts-manifest.json`) & Bảo mật biến môi trường `.env.local`:**
+    - Hàm chuẩn hóa chuỗi `normalizeTtsLookupKey` và hàm băm 64-bit FNV-1a `computeTtsHash` trong `app.js` phải trùng khớp từng ký tự với `scripts/generate-tts-library.mjs`. Nếu thêm bài báo mẫu, bài thơ mẫu, câu đố hoặc ca dao mới vào `data.js`, chạy lại `node scripts/generate-tts-library.mjs` để bổ sung tệp `.mp3` còn thiếu vào `assets/audio/library/` và cập nhật `assets/audio/tts-manifest.json` (các tệp đã sinh trước đó được giữ nguyên không gọi lại API).
+    - Đường dẫn cầu nối `TTS_BASE_URL` và khóa `TTS_API_TOKEN` chỉ đặt trong `.env.local` (đã chặn bởi `.gitignore`), tuyệt đối không ghi cứng vào bất kỳ tệp `.js`, `.mjs` hay `.md` nào đẩy lên Git.
 
 ---
 

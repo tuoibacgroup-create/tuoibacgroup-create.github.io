@@ -425,6 +425,14 @@
   let activeProfileMainTab = "wardrobe";
   let activeWardrobeCat = "outfits";
   let activeTeaInputTab = "quick";
+  let activeCheckinTab = "map";
+  let activeLobbyTab = "overview";
+  let newsVisibleLimit = 4;
+  let activeZenSubTab = "ritual";
+  let activePoetryIdx = 0;
+  let activeHealthTab = "daily";
+  let activeFamilyTab = "status";
+  let activeWatchTab = "channels";
   let lastTableActivityAt = Date.now();
   let idlePromptRotIdx = 0;
   let deferredPwaPrompt = null;
@@ -1112,7 +1120,56 @@
 
   let activeTtsAudio = null;
   let ttsSessionId = 0;
-  window.__ttsState = { speaking: false, mode: "idle", playedCount: 0, lastDuration: 0, lastText: "" };
+  let ttsLibraryManifest = null;
+  let ttsManifestPromise = null;
+  window.__ttsState = { speaking: false, mode: "idle", playedCount: 0, lastDuration: 0, lastText: "", lastClipUrl: "" };
+
+  function normalizeTtsLookupKey(raw) {
+    return String(raw || "")
+      .normalize("NFC")
+      .toLowerCase()
+      .replace(/[\u201C\u201D\u201E\u201F\u2018\u2019"'`´]/g, "")
+      .replace(/[·—–\-:;,.!?()\[\]\/\\]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function computeTtsHash(raw) {
+    const str = normalizeTtsLookupKey(raw);
+    let h1 = 0x811c9dc5;
+    let h2 = 0x01000193;
+    for (let i = 0; i < str.length; i++) {
+      const code = str.charCodeAt(i);
+      h1 ^= code;
+      h1 = Math.imul(h1, 0x01000193) >>> 0;
+      h2 ^= code + (i & 0xff);
+      h2 = Math.imul(h2, 0x85ebca6b) >>> 0;
+    }
+    return h1.toString(16).padStart(8, "0") + h2.toString(16).padStart(8, "0");
+  }
+
+  function ensureTtsManifestLoaded() {
+    if (ttsLibraryManifest) return Promise.resolve(ttsLibraryManifest);
+    if (ttsManifestPromise) return ttsManifestPromise;
+    if (typeof fetch !== "function") {
+      ttsLibraryManifest = { byId: {}, byHash: {} };
+      return Promise.resolve(ttsLibraryManifest);
+    }
+    ttsManifestPromise = fetch("./assets/audio/tts-manifest.json?v=20261120b")
+      .then((res) => (res && res.ok ? res.json() : { byId: {}, byHash: {} }))
+      .then((data) => {
+        ttsLibraryManifest = data && typeof data === "object" ? data : { byId: {}, byHash: {} };
+        window.__ttsManifest = ttsLibraryManifest;
+        return ttsLibraryManifest;
+      })
+      .catch(() => {
+        ttsLibraryManifest = { byId: {}, byHash: {} };
+        window.__ttsManifest = ttsLibraryManifest;
+        return ttsLibraryManifest;
+      });
+    return ttsManifestPromise;
+  }
+  ensureTtsManifestLoaded();
 
   function setReadBtnActive(isActive) {
     els.btnRead.classList.toggle("speaking", isActive);
@@ -1233,140 +1290,290 @@
     playNext();
   }
 
-  function resolveMatchingVoiceClipId(text, opts) {
+  function getPreGeneratedUrlById(clipId) {
+    if (!clipId) return null;
+    if (ttsLibraryManifest && ttsLibraryManifest.byId && ttsLibraryManifest.byId[clipId]) {
+      return ttsLibraryManifest.byId[clipId];
+    }
     const clips = (D && D.VOICE_CLIPS) || {};
-    if (opts && opts.clipId && clips[opts.clipId]) {
-      return opts.clipId;
-    }
-    const raw = String(text || "");
-    if (!raw) return null;
-    const cards = (D && D.TEMPLE_PEACE_CARDS) || [];
-    for (let i = 0; i < cards.length; i++) {
-      const c = cards[i];
-      if (!c || !c.clipId || !clips[c.clipId]) continue;
-      if (
-        raw.includes(c.code) ||
-        raw.includes(c.verse.slice(0, 18)) ||
-        (Array.isArray(c.spaceCodes) && c.spaceCodes.some((sc) => sc && raw.includes(sc)))
-      ) {
-        return c.clipId;
-      }
-    }
-    if (/nghỉ mắt một chút|nhìn ra xa 20 giây/i.test(raw) && clips["nhac-nghi-mat"]) return "nhac-nghi-mat";
-    if (opts && opts.screenRead) {
-      if (state.route === "home" && clips["chao-buoi-sang"]) return "chao-buoi-sang";
-      if (state.route === "checkin") {
-        return state.user.checkedInToday && clips["diem-danh-xong"] ? "diem-danh-xong" : "chao-buoi-sang";
-      }
-      if (state.route === "tearoom" && clips["chao-ban-tra"]) return "chao-ban-tra";
-      if (state.route === "zen") {
-        const spIdx = Number(state.zen && state.zen.spaceIdx) || 0;
-        const mapZenClip = ["dan-chanh-dien", "dan-nha-tho-ho", "dan-vuon-thien"];
-        const cid = mapZenClip[spIdx] || "dan-chanh-dien";
-        if (clips[cid]) return cid;
-      }
-      if (state.route === "xiangqi" && clips["dan-co-tuong"]) return "dan-co-tuong";
-      if (state.route === "games") {
-        const cid = activeGameTab === "oaq" ? "dan-o-an-quan" : "dan-co-tuong";
-        if (clips[cid]) return cid;
-      }
-    }
-    return null;
+    return clips[clipId] && clips[clipId].src ? clips[clipId].src : null;
   }
 
-  function playPreRecordedVoiceClip(clipId, session, onFallback) {
-    const clips = (D && D.VOICE_CLIPS) || {};
-    const entry = clips[clipId];
-    if (!entry || !entry.src) {
+  function getPreGeneratedUrlByText(rawText) {
+    const clean = String(rawText || "").trim();
+    if (!clean || !ttsLibraryManifest || !ttsLibraryManifest.byHash) return null;
+    const hash = computeTtsHash(clean);
+    return ttsLibraryManifest.byHash[hash] || null;
+  }
+
+  function resolvePreGeneratedClipQueue(text, opts) {
+    const o = opts || {};
+    if (Array.isArray(o.clipUrls) && o.clipUrls.length > 0) {
+      return o.clipUrls.filter(Boolean);
+    }
+    if (o.clipId) {
+      const byExplicitId = getPreGeneratedUrlById(o.clipId);
+      if (byExplicitId) return [byExplicitId];
+    }
+
+    const raw = String(text || "").trim();
+    if (raw) {
+      const directUrl = getPreGeneratedUrlByText(raw);
+      if (directUrl) return [directUrl];
+      if (o.rawSubText) {
+        const subUrl = getPreGeneratedUrlByText(o.rawSubText);
+        if (subUrl) return [subUrl];
+      }
+      if (/nghỉ mắt một chút|nhìn ra xa 20 giây|nhìn ra xa hai mươi giây/i.test(raw)) {
+        const eyeUrl = getPreGeneratedUrlById("nhac-nghi-mat");
+        if (eyeUrl) return [eyeUrl];
+      }
+    }
+
+    if (o.screenRead) {
+      if (state.route === "home") {
+        const u = getPreGeneratedUrlById("chao-buoi-sang");
+        return u ? [u] : [];
+      }
+      if (state.route === "almanac" && D && D.Almanac) {
+        const tab = (state.almanac && state.almanac.activeTab) || "today";
+        if (tab === "depart") {
+          const u = getPreGeneratedUrlById("scr-almanac-depart");
+          return u ? [u] : [];
+        }
+        if (tab === "reminders") {
+          const u = getPreGeneratedUrlById("scr-almanac-reminders");
+          return u ? [u] : [];
+        }
+        const selDate = (state.almanac && state.almanac.selectedDate) || getLocalDateKey(new Date());
+        const alm = D.Almanac.getDayAlmanacDetail(selDate, state.almanac && state.almanac.birthYear);
+        const termUrl =
+          alm && alm.solarTerm ? getPreGeneratedUrlByText(`Tiết ${alm.solarTerm.name}. ${alm.solarTerm.tip}`) : null;
+        const provUrl = alm && alm.dailyProverb ? getPreGeneratedUrlByText(alm.dailyProverb) : null;
+        return [getPreGeneratedUrlById("scr-almanac-intro"), termUrl, provUrl].filter(Boolean);
+      }
+      if (state.route === "checkin") {
+        if (activeCheckinTab === "rank") {
+          const rk = getPreGeneratedUrlById("scr-checkin-rank");
+          if (rk) return [rk];
+        }
+        const cid = state.user.checkedInToday ? "diem-danh-xong" : "scr-checkin-uncheck";
+        const u = getPreGeneratedUrlById(cid) || getPreGeneratedUrlById("chao-buoi-sang");
+        return u ? [u] : [];
+      }
+      if (state.route === "tearoom") {
+        const room = getCurrentRoom();
+        const lobbyUrl =
+          (room && getPreGeneratedUrlById(`room-lobby-${room.id}`)) || getPreGeneratedUrlById("chao-ban-tra");
+        if (state.teaRoom.subView !== "table") {
+          return lobbyUrl ? [lobbyUrl] : [];
+        }
+        const curr = state.teaRoom.log && state.teaRoom.log[state.teaRoom.log.length - 1];
+        if (!curr) return lobbyUrl ? [lobbyUrl] : [];
+        const currUrl =
+          getPreGeneratedUrlByText(`${curr.speaker} nói: ${curr.text}`) || getPreGeneratedUrlByText(curr.text);
+        if (currUrl) {
+          return [lobbyUrl, currUrl].filter(Boolean);
+        }
+        // Custom live user message at the table -> fall back to dynamic TTS so the user's new text is read!
+        return [];
+      }
+      if (state.route === "newspaper") {
+        const arts = state.newspaper && state.newspaper.articles;
+        const firstArt = Array.isArray(arts) && arts[0];
+        if (!firstArt) {
+          const intro = getPreGeneratedUrlById("scr-newspaper-intro");
+          return intro ? [intro] : [];
+        }
+        const artUrl =
+          getPreGeneratedUrlById(`news-short-${firstArt.id}`) ||
+          getPreGeneratedUrlByText(`${firstArt.title}. ${firstArt.body}`);
+        if (artUrl) {
+          return [getPreGeneratedUrlById("scr-newspaper-intro"), artUrl].filter(Boolean);
+        }
+        return [];
+      }
+      if (state.route === "quiz") {
+        const packQs = getActiveQuizPackQuestions();
+        const q = packQs && packQs[state.quiz.idx];
+        if (q && !state.quiz.finished) {
+          const qUrl =
+            getPreGeneratedUrlById(`quiz-q-${q.id}`) ||
+            getPreGeneratedUrlByText(`${q.question}. A: ${q.options[0]}. B: ${q.options[1]}. C: ${q.options[2]}. D: ${q.options[3]}`);
+          if (qUrl) return [qUrl];
+        }
+        return [];
+      }
+      if (state.route === "games") {
+        const cid =
+          activeGameTab === "cadao"
+            ? "scr-games-cadao"
+            : activeGameTab === "oaq"
+            ? "dan-o-an-quan"
+            : "dan-co-tuong";
+        const u = getPreGeneratedUrlById(cid);
+        return u ? [u] : [];
+      }
+      if (state.route === "xiangqi") {
+        if (state.xiangqi && state.xiangqi.mode === "puzzle") {
+          const pzUrl = getPreGeneratedUrlById(`xq-puzzle-${(Number(state.xiangqi.puzzleIdx) || 0) + 1}`);
+          if (pzUrl) return [pzUrl];
+        }
+        const u = getPreGeneratedUrlById("dan-co-tuong");
+        return u ? [u] : [];
+      }
+      if (state.route === "poetry") {
+        const allPoems = typeof getMergedPoemsList === "function" ? getMergedPoemsList() : state.poems || [];
+        const safeIdx =
+          allPoems.length > 0 ? ((activePoetryIdx % allPoems.length) + allPoems.length) % allPoems.length : 0;
+        const p = allPoems[safeIdx];
+        if (!p) {
+          const intro = getPreGeneratedUrlById("scr-poetry-intro");
+          return intro ? [intro] : [];
+        }
+        const pUrl =
+          getPreGeneratedUrlById(`poem-${p.id}`) ||
+          getPreGeneratedUrlByText(`${p.title}. Tác giả ${p.reciter}. ${(p.lines || []).join(". ")}`);
+        if (pUrl) {
+          return [getPreGeneratedUrlById("scr-poetry-intro"), pUrl].filter(Boolean);
+        }
+        // User-authored custom poem -> fall back to dynamic TTS!
+        return [];
+      }
+      if (state.route === "watch") {
+        const chIdx = (Number(state.watch && state.watch.channelIdx) || 0) + 1;
+        const u = getPreGeneratedUrlById(`watch-ch-${chIdx}`);
+        return u ? [u] : [];
+      }
+      if (state.route === "zen") {
+        const spIdx = Math.max(0, Math.min(2, Number(state.zen && state.zen.spaceIdx) || 0));
+        const mapZenClip = ["dan-chanh-dien", "dan-nha-tho-ho", "dan-vuon-thien"];
+        const guideUrl = getPreGeneratedUrlById(mapZenClip[spIdx] || "dan-chanh-dien");
+        const cards = (D && D.TEMPLE_PEACE_CARDS) || [];
+        const cIdx = cards.length > 0 ? (Number(state.zen && state.zen.peaceCardIdx) || 0) % cards.length : 0;
+        const curCard = cards[cIdx];
+        const peaceId =
+          spIdx === 0
+            ? (curCard && curCard.clipId) || `que-0${cIdx + 1}`
+            : `peace-${cIdx + 1}-sp-${spIdx}`;
+        const peaceUrl = getPreGeneratedUrlById(peaceId);
+        return [guideUrl, peaceUrl].filter(Boolean);
+      }
+      if (state.route === "groups") {
+        const u = getPreGeneratedUrlById("scr-groups");
+        return u ? [u] : [];
+      }
+      if (state.route === "leaderboard") {
+        const u = getPreGeneratedUrlById("scr-leaderboard");
+        return u ? [u] : [];
+      }
+      if (state.route === "profile") {
+        const u = getPreGeneratedUrlById("scr-profile");
+        return u ? [u] : [];
+      }
+      if (state.route === "health") {
+        const guideUrl = getPreGeneratedUrlById("scr-health");
+        if (activeHealthTab === "qa" && state.health && state.health.lastAnswer) {
+          const ansUrl = getPreGeneratedUrlByText(state.health.lastAnswer);
+          if (ansUrl) return [guideUrl, ansUrl].filter(Boolean);
+        }
+        return guideUrl ? [guideUrl] : [];
+      }
+      if (state.route === "family") {
+        const u = getPreGeneratedUrlById("scr-family");
+        return u ? [u] : [];
+      }
+      if (state.route === "privacy") {
+        const u = getPreGeneratedUrlById("scr-privacy");
+        return u ? [u] : [];
+      }
+    }
+
+    return [];
+  }
+
+  function playPreRecordedClipQueue(urls, session, onFallback) {
+    const queue = Array.isArray(urls) ? urls.filter(Boolean) : [];
+    if (!queue.length) {
       if (typeof onFallback === "function") onFallback();
       return false;
     }
     window.__ttsState.mode = "recorded-vi-mp3";
     window.__ttsState.error = null;
-    const audio = new Audio();
-    audio.preload = "auto";
-    audio.src = entry.src;
-    activeTtsAudio = audio;
+    window.__ttsState.lastClipUrl = queue[0];
 
-    audio.addEventListener("loadedmetadata", () => {
+    let qIdx = 0;
+    const makeClipAudio = (src) => {
+      const a = new Audio();
+      a.preload = "auto";
+      a.src = src;
+      return a;
+    };
+    let nextPreload = queue.length > 1 ? makeClipAudio(queue[1]) : null;
+
+    const stepClip = () => {
       if (session !== ttsSessionId) return;
-      window.__ttsState.lastDuration = audio.duration || 0;
-    });
-    audio.addEventListener("playing", () => {
-      if (session !== ttsSessionId) return;
-      window.__ttsState.playedCount += 1;
-    });
-    audio.addEventListener("ended", () => {
-      if (session !== ttsSessionId) return;
-      activeTtsAudio = null;
-      setReadBtnActive(false);
-    });
-    audio.addEventListener("error", () => {
-      if (session !== ttsSessionId) return;
-      activeTtsAudio = null;
-      if (typeof onFallback === "function") {
-        onFallback();
-      } else {
+      if (qIdx >= queue.length) {
+        activeTtsAudio = null;
         setReadBtnActive(false);
+        return;
       }
-    });
-    audio.play().catch((err) => {
-      if (session !== ttsSessionId) return;
-      window.__ttsState.error = String(err);
-      activeTtsAudio = null;
-      if (typeof onFallback === "function") {
-        onFallback();
-      } else {
-        setReadBtnActive(false);
-      }
-    });
-    return true;
-  }
+      const curSrc = queue[qIdx++];
+      window.__ttsState.lastClipUrl = curSrc;
+      const audio = nextPreload || makeClipAudio(curSrc);
+      nextPreload = qIdx < queue.length ? makeClipAudio(queue[qIdx]) : null;
+      activeTtsAudio = audio;
 
-  function speak(text, opts) {
-    const chunks = splitVietnameseTtsChunks(text);
-    const matchedClipId = resolveMatchingVoiceClipId(text, opts);
-    if (!chunks.length && !matchedClipId) return;
-
-    stopSpeaking();
-    const session = ++ttsSessionId;
-    const fullText = chunks.join(" ");
-    window.__ttsState.lastText = fullText;
-    setReadBtnActive(true);
-
-    const preferRecorded = (state.settings && state.settings.voiceMode === "recorded") || Boolean(opts && opts.clipId);
-    const viVoice = findNativeVietnameseVoice();
-
-    if (opts && opts.announceToast) {
-      showToast(
-        matchedClipId && (preferRecorded || !viVoice)
-          ? "Đang phát giọng đọc Tiếng Việt thu sẵn..."
-          : "Đang đọc to bằng giọng Tiếng Việt..."
-      );
-    }
-
-    if (matchedClipId && (preferRecorded || !viVoice)) {
-      playPreRecordedVoiceClip(matchedClipId, session, () => {
-        if (viVoice && fullText) {
-          const fbUtter = new SpeechSynthesisUtterance(fullText);
-          fbUtter.voice = viVoice;
-          fbUtter.lang = viVoice.lang || "vi-VN";
-          fbUtter.rate = 0.92;
-          fbUtter.onend = () => {
-            if (session === ttsSessionId) setReadBtnActive(false);
-          };
-          window.speechSynthesis.speak(fbUtter);
-        } else if (chunks.length) {
-          playCloudVietnameseTts(chunks, session);
+      audio.addEventListener("loadedmetadata", () => {
+        if (session !== ttsSessionId) return;
+        window.__ttsState.lastDuration = audio.duration || 0;
+      });
+      audio.addEventListener("playing", () => {
+        if (session !== ttsSessionId) return;
+        window.__ttsState.playedCount += 1;
+      });
+      audio.addEventListener("ended", () => {
+        if (session !== ttsSessionId) return;
+        stepClip();
+      });
+      audio.addEventListener("error", () => {
+        if (session !== ttsSessionId) return;
+        activeTtsAudio = null;
+        if (typeof onFallback === "function") {
+          onFallback();
         } else {
           setReadBtnActive(false);
         }
       });
-      return;
-    }
+      audio
+        .play()
+        .then(() => {
+          if (session !== ttsSessionId) return;
+          if (audio.duration > 0) window.__ttsState.lastDuration = audio.duration;
+          if (window.__ttsState.playedCount === 0) window.__ttsState.playedCount = 1;
+        })
+        .catch((err) => {
+          if (session !== ttsSessionId) return;
+          window.__ttsState.error = String(err);
+          activeTtsAudio = null;
+          if (typeof onFallback === "function") {
+            onFallback();
+          } else {
+            setReadBtnActive(false);
+          }
+        });
+    };
 
-    if (viVoice) {
+    stepClip();
+    return true;
+  }
+
+  function runDynamicFallbackTts(fullText, chunks, session) {
+    if (session !== ttsSessionId) return;
+    const viVoice = findNativeVietnameseVoice();
+    if (viVoice && fullText) {
       window.__ttsState.mode = "native-vi";
+      window.__ttsState.lastClipUrl = "";
       const utter = new SpeechSynthesisUtterance(fullText);
       utter.voice = viVoice;
       utter.lang = viVoice.lang || "vi-VN";
@@ -1379,24 +1586,56 @@
       };
       utter.onerror = () => {
         if (session !== ttsSessionId) return;
-        if (matchedClipId) {
-          playPreRecordedVoiceClip(matchedClipId, session, () => playCloudVietnameseTts(chunks, session));
-        } else {
-          playCloudVietnameseTts(chunks, session);
-        }
+        if (chunks.length) playCloudVietnameseTts(chunks, session);
+        else setReadBtnActive(false);
       };
       setTimeout(() => {
         if (session === ttsSessionId) window.speechSynthesis.speak(utter);
       }, 40);
       return;
     }
-
-    // Fallback to offline pre-recorded voice clip first if matched, else natural Vietnamese MP3 stream
-    if (matchedClipId) {
-      playPreRecordedVoiceClip(matchedClipId, session, () => playCloudVietnameseTts(chunks, session));
-      return;
+    if (chunks.length) {
+      window.__ttsState.lastClipUrl = "";
+      playCloudVietnameseTts(chunks, session);
+    } else {
+      setReadBtnActive(false);
     }
-    playCloudVietnameseTts(chunks, session);
+  }
+
+  function speak(text, opts) {
+    const chunks = splitVietnameseTtsChunks(text);
+    stopSpeaking();
+    const session = ++ttsSessionId;
+    const fullText = chunks.join(" ");
+    window.__ttsState.lastText = fullText;
+
+    const dispatchSpeak = () => {
+      if (session !== ttsSessionId) return;
+      const matchedUrls = resolvePreGeneratedClipQueue(text, opts);
+      if (!chunks.length && !matchedUrls.length) {
+        setReadBtnActive(false);
+        return;
+      }
+      setReadBtnActive(true);
+      if (opts && opts.announceToast) {
+        showToast(
+          matchedUrls.length > 0
+            ? "Đang phát giọng đọc Mai Chi..."
+            : "Đang đọc to bằng giọng Tiếng Việt..."
+        );
+      }
+      if (matchedUrls.length > 0) {
+        playPreRecordedClipQueue(matchedUrls, session, () => runDynamicFallbackTts(fullText, chunks, session));
+        return;
+      }
+      runDynamicFallbackTts(fullText, chunks, session);
+    };
+
+    if (ttsLibraryManifest) {
+      dispatchSpeak();
+    } else {
+      ensureTtsManifestLoaded().then(dispatchSpeak);
+    }
   }
 
   function stopSpeaking() {
@@ -1539,7 +1778,10 @@
       }`;
     }
     if (state.route === "poetry") {
-      const p = state.poems && state.poems[0];
+      const allPoems = typeof getMergedPoemsList === "function" ? getMergedPoemsList() : state.poems || [];
+      const safeIdx =
+        allPoems.length > 0 ? ((activePoetryIdx % allPoems.length) + allPoems.length) % allPoems.length : 0;
+      const p = allPoems[safeIdx];
       if (p) {
         return `Chiếu Thơ Tuổi Bạc. Bài thơ ${p.title} của ${p.author}. ${p.lines.join(". ")}.`;
       }
@@ -2296,14 +2538,6 @@
   }
 
   // ==================== HOME VIEW ====================
-  let activeCheckinTab = "map";
-  let activeLobbyTab = "overview";
-  let newsVisibleLimit = 4;
-  let activeZenSubTab = "ritual";
-  let activePoetryIdx = 0;
-  let activeHealthTab = "daily";
-  let activeFamilyTab = "status";
-  let activeWatchTab = "channels";
 
   function renderM3HeroBanner(titleHtml, subtitleHtml, iconName, rightHtml) {
     return `
@@ -3339,9 +3573,15 @@
               .join("")}
           </div>
 
-          <p style="margin:2px 0 0;font-size:0.82rem;color:var(--ink-secondary);">
-            <strong>Dưỡng sinh Tiết ${escHtml(selAlm.solarTerm.name)}:</strong> ${escHtml(selAlm.solarTerm.tip)}
-          </p>
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap;margin-top:2px;">
+            <p style="margin:0;flex:1 1 210px;font-size:0.82rem;color:var(--ink-secondary);">
+              <strong>Dưỡng sinh Tiết ${escHtml(selAlm.solarTerm.name)}:</strong> ${escHtml(selAlm.solarTerm.tip)}
+            </p>
+            <button type="button" class="btn-mini" id="btn-alm-listen-tip">
+              ${ico("speaker", "ico-sm")}
+              <span>Nghe đọc</span>
+            </button>
+          </div>
 
           <button type="button" class="btn-secondary" id="btn-alm-goto-depart">
             ${ico("compass")}
@@ -3660,6 +3900,17 @@
         state.almanac.activeTab = "depart";
         saveState();
         renderAlmanac();
+      });
+    }
+    const listenAlmTipBtn = document.getElementById("btn-alm-listen-tip");
+    if (listenAlmTipBtn) {
+      listenAlmTipBtn.addEventListener("click", () => {
+        const termUrl = getPreGeneratedUrlByText(`Tiết ${selAlm.solarTerm.name}. ${selAlm.solarTerm.tip}`);
+        const provUrl = getPreGeneratedUrlByText(selAlm.dailyProverb);
+        speak(`Tiết ${selAlm.solarTerm.name}. ${selAlm.solarTerm.tip}. ${selAlm.dailyProverb}`, {
+          clipUrls: [termUrl, provUrl].filter(Boolean),
+          announceToast: true
+        });
       });
     }
 
@@ -6121,7 +6372,7 @@
 
     document.getElementById("btn-listen-board").addEventListener("click", () => {
       const c = state.teaRoom.log[state.teaRoom.log.length - 1];
-      if (c) speak(`${c.speaker} nói: ${c.text}`);
+      if (c) speak(`${c.speaker} nói: ${c.text}`, { rawSubText: c.text, announceToast: true });
     });
 
     document.getElementById("btn-report-table").addEventListener("click", () => {
@@ -7211,7 +7462,10 @@
           hasAnswered
             ? `
           <div class="surface-panel warm">
-            <strong>${qState.selectedOpt === q.correctIndex ? "Chính xác!" : "Gần đúng rồi bác ạ:"}</strong>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+              <strong>${qState.selectedOpt === q.correctIndex ? "Chính xác!" : "Gần đúng rồi bác ạ:"}</strong>
+              <button type="button" class="btn-mini" id="btn-read-quiz-exp">${ico("speaker", "ico-sm")}<span>Nghe giải thích</span></button>
+            </div>
             <p style="font-size:0.88rem;">${escHtml(q.explain)}</p>
             <button type="button" class="btn-primary" id="btn-next-quiz">
               ${safeIdx + 1 < total ? "Sang câu tiếp theo →" : "Xem tổng điểm &amp; Nhận thưởng"}
@@ -7254,8 +7508,21 @@
     }
 
     document.getElementById("btn-read-quiz").addEventListener("click", () => {
-      speak(`${q.question}. A: ${q.options[0]}. B: ${q.options[1]}. C: ${q.options[2]}. D: ${q.options[3]}`);
+      speak(`${q.question}. A: ${q.options[0]}. B: ${q.options[1]}. C: ${q.options[2]}. D: ${q.options[3]}`, {
+        clipId: q.id ? `quiz-q-${q.id}` : undefined,
+        announceToast: true
+      });
     });
+
+    const readExpBtn = document.getElementById("btn-read-quiz-exp");
+    if (readExpBtn) {
+      readExpBtn.addEventListener("click", () => {
+        speak(q.explain, {
+          clipId: q.id ? `quiz-exp-${q.id}` : undefined,
+          announceToast: true
+        });
+      });
+    }
 
     const btn5050 = document.getElementById("btn-quiz-5050");
     if (btn5050) {
@@ -9774,6 +10041,7 @@
       const unlockedNow = unlockTitleFrame("thi-huu", "Thi Hữu Tao Đàn");
       state.user.titleFrameId = "thi-huu";
       addXu(4, unlockedNow ? "Đăng thơ & nhận khung 3D Thi Hữu Tao Đàn!" : "Đăng bài thơ mới lên chiếu thơ");
+      activePoetryIdx = 0;
       saveState();
       renderPoetry();
     });
@@ -10469,11 +10737,17 @@
     if (speakBtn) {
       speakBtn.addEventListener("click", () => {
         awardSkillPoints("voice_wisdom", 1);
+        const cardsList = (D && D.TEMPLE_PEACE_CARDS) || [];
+        const cIdx = Math.max(0, cardsList.findIndex((c) => c && c.code === card.code));
+        const spaceClipId = spMeta.idx > 0 ? `peace-${cIdx + 1}-sp-${spMeta.idx}` : card.clipId;
+        const peaceUrl = getPreGeneratedUrlById(spaceClipId);
+        const wishUrl = wishLine ? getPreGeneratedUrlByText(wishLine) : null;
         const spoken = wishLine
           ? `${spaceTitle}. ${card.verse}. Lời nguyện của bác: ${wishLine}. Lời nhắn gửi: ${card.advice}`
           : `${spaceTitle}. ${card.verse}. Lời nhắn gửi: ${card.advice}`;
         speak(spoken, {
-          clipId: wishLine ? undefined : card.clipId,
+          clipId: !wishLine ? spaceClipId : undefined,
+          clipUrls: wishLine && wishUrl && peaceUrl ? [peaceUrl, wishUrl] : undefined,
           announceToast: true
         });
       });
@@ -10543,8 +10817,11 @@
     if (listenBtn && curCard) {
       listenBtn.addEventListener("click", () => {
         awardSkillPoints("voice_wisdom", 1);
+        const cardsList = (D && D.TEMPLE_PEACE_CARDS) || [];
+        const cIdx = Math.max(0, cardsList.findIndex((c) => c && c.code === curCard.code));
+        const spaceClipId = spMeta.idx > 0 ? `peace-${cIdx + 1}-sp-${spMeta.idx}` : curCard.clipId;
         speak(`${spaceTitle}. ${curCard.verse}. Lời nhắn gửi: ${curCard.advice}`, {
-          clipId: curCard.clipId,
+          clipId: spaceClipId,
           announceToast: true
         });
       });
@@ -10594,6 +10871,7 @@
         if (!item) return;
         playTempleBell();
         speak(`${spMeta.prayerVoicePrefix} ${item.userName}, quê ${item.province || "Việt Nam"}: ${item.prayerText}`, {
+          rawSubText: item.prayerText,
           announceToast: true
         });
       });
@@ -12351,7 +12629,10 @@
             ${D.HEALTH_QA.map((qa, i) => `<button type="button" class="btn-secondary health-qa-btn" data-idx="${i}">${escHtml(qa.topic)}</button>`).join("")}
           </div>
           <div class="surface-panel jade" style="box-shadow:none;">
-            <p style="margin:0;">${escHtml(h.lastAnswer)}</p>
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap;">
+              <p style="margin:0;flex:1 1 210px;">${escHtml(h.lastAnswer)}</p>
+              <button type="button" class="btn-mini" id="btn-read-health-qa">${ico("speaker", "ico-sm")}<span>Nghe tư vấn</span></button>
+            </div>
             <small style="font-weight:600; color:var(--ink-secondary);">${disclaimer}</small>
           </div>
         </div>
@@ -12466,6 +12747,17 @@
         renderHealth();
       });
     });
+
+    const readHealthQaBtn = document.getElementById("btn-read-health-qa");
+    if (readHealthQaBtn) {
+      readHealthQaBtn.addEventListener("click", () => {
+        const ans = String((state.health && state.health.lastAnswer) || "");
+        speak(ans, {
+          clipId: ans.includes("115") ? "health-qa-default" : undefined,
+          announceToast: true
+        });
+      });
+    }
 
     const checkBtn = document.getElementById("btn-check-symptom");
     if (checkBtn) {

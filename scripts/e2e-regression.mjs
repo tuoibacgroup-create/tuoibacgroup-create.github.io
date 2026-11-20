@@ -861,12 +861,88 @@ async function main() {
     assert(anyXssTriggered === undefined, "XSS payload executed during Pentest!");
     console.log("[PASS] 10. Pentest — CSP, XSS da ngu canh, Chong lua dao 2 luot, Chong __proto__ & Khoa Brute-force Admin");
 
+    // ------------------------------------------------------------------
+    // PART 10: Pre-Generated "maichi" Voice Library + Dynamic Fallback
+    // ------------------------------------------------------------------
+    await page.click('[data-bnav="home"]');
+    await page.waitForSelector('[data-go="newspaper"]');
+
+    const manifestCheck = await page.evaluate(() => {
+      const m = window.__ttsManifest || {};
+      return {
+        voice: m.voice || "",
+        totalClips: Number(m.totalClips) || 0,
+        hashKeys: Object.keys(m.byHash || {}).length
+      };
+    });
+    assert(
+      manifestCheck.voice === "maichi" && manifestCheck.totalClips >= 300 && manifestCheck.hashKeys >= 300,
+      `Expected maichi voice manifest >= 300 clips, got ${JSON.stringify(manifestCheck)}`
+    );
+
+    // 10A. Home screen read-aloud -> pre-recorded maichi MP3
+    await page.click("#btn-read-screen");
+    await page.waitForTimeout(120);
+    const homeTts = await page.evaluate(() => Object.assign({}, window.__ttsState));
+    assert(
+      homeTts.mode === "recorded-vi-mp3" && homeTts.lastClipUrl.includes("chao-buoi-sang.mp3"),
+      `Home screen read should use chao-buoi-sang.mp3, got ${JSON.stringify(homeTts)}`
+    );
+    await page.click("#btn-read-screen"); // Stop speaking
+
+    // 10B. Sample Morning Newspaper article -> pre-recorded maichi library MP3
+    await page.click('[data-go="newspaper"]');
+    await page.waitForSelector(".read-news-btn");
+    await page.click(".read-news-btn");
+    await page.waitForTimeout(120);
+    const newsTts = await page.evaluate(() => Object.assign({}, window.__ttsState));
+    assert(
+      newsTts.mode === "recorded-vi-mp3" && newsTts.lastClipUrl.includes("/assets/audio/library/news-short-"),
+      `Sample news article should use pre-generated maichi MP3, got ${JSON.stringify(newsTts)}`
+    );
+    await page.click("#btn-read-screen"); // Stop speaking
+
+    // 10C. Almanac Solar Term + Proverb -> pre-recorded maichi library MP3 queue
+    await page.click('[data-bnav="home"]');
+    await page.click('[data-go="almanac"]');
+    await page.waitForSelector("#alm-tab-today");
+    await page.click("#alm-tab-today");
+    await page.waitForSelector("#btn-alm-listen-tip");
+    await page.click("#btn-alm-listen-tip");
+    await page.waitForTimeout(120);
+    const almTts = await page.evaluate(() => Object.assign({}, window.__ttsState));
+    assert(
+      almTts.mode === "recorded-vi-mp3" && almTts.lastClipUrl.includes("/assets/audio/library/alm-term-"),
+      `Almanac tip should use pre-generated maichi MP3, got ${JSON.stringify(almTts)}`
+    );
+    await page.click("#btn-read-screen"); // Stop speaking
+
+    // 10D. Newly user-composed custom poem -> MUST fall back to standard TTS (not recorded-vi-mp3)
+    await page.click('[data-bnav="home"]');
+    await page.click('[data-go="poetry"]');
+    await page.waitForSelector("#poem-title-in");
+    await page.fill("#poem-title-in", "Khúc ngẫu hứng mới chiều nay");
+    await page.fill("#poem-body-in", "Trà thơm mới pha riêng tặng bạn,\nCâu thơ vừa viết chẳng trùng mẫu xưa.");
+    await page.click("#btn-post-poem");
+    await page.waitForSelector(".listen-poem-btn");
+    await page.click(".listen-poem-btn");
+    await page.waitForTimeout(580);
+    const customPoemTts = await page.evaluate(() => Object.assign({}, window.__ttsState));
+    assert(
+      customPoemTts.mode !== "recorded-vi-mp3" && customPoemTts.lastClipUrl === "",
+      `Dynamic user-authored poem must fall back to standard TTS, got ${JSON.stringify(customPoemTts)}`
+    );
+    if (await page.locator("#btn-read-screen.speaking").count()) {
+      await page.click("#btn-read-screen");
+    }
+    console.log("[PASS] 11. Thu vien Giong Doc Mai Chi (307 clip .mp3) & Fallback TTS cho noi dung dong");
+
     assert(pageErrors.length === 0, `Uncaught page errors: ${pageErrors.join(" | ")}`);
     assert(localConsoleErrors.length === 0, `Console errors: ${localConsoleErrors.join(" | ")}`);
     assert(failedLocalResponses.length === 0, `Failed local HTTP assets: ${failedLocalResponses.join(" | ")}`);
 
     console.log("======================================================================");
-    console.log(" KET QUA E2E + PENTEST: PASS TUYET DOI (34 luot quet + 11 cong nghiep vu & bao mat, 0 loi)");
+    console.log(" KET QUA E2E + PENTEST: PASS TUYET DOI (34 luot quet + 12 cong nghiep vu & bao mat, 0 loi)");
     console.log("======================================================================");
   } finally {
     if (browser) await browser.close();

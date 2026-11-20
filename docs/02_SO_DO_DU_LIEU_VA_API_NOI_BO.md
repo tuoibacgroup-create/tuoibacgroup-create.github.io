@@ -10,7 +10,7 @@ Khởi tạo gốc nằm tại `createDefaultState()` trong `app.js`:
 
 ```javascript
 state = {
-  route: "home", // 1 trong 16 giá trị định tuyến (xem ARCHITECTURE.md Mục 3)
+  route: "home", // 1 trong 17 giá trị định tuyến (xem ARCHITECTURE.md Mục 3)
 
   auth: {
     isRegistered: false,          // Đã mở Thẻ Hội Viên 10 giây hay chưa
@@ -142,7 +142,7 @@ state = {
 ## 2. API Công Khai Của 7 Namespace Toàn Cục
 
 ### 2.0. `window.TuoiBacData` (`data.js`)
-- Kho hằng số dữ liệu nền: `PROVINCES` (34 đơn vị hành chính sau sáp nhập + Hoàng Sa, Trường Sa, Người Việt xa quê theo tọa độ chiếu kinh vĩ độ thực `380×560`), `Almanac` (`solarToLunarVi`, `lunarToSolarVi`, `resolveNextSolarForLunar`, `getDayAlmanacDetail`, `evaluateDeparturePlan`, `getActiveCommunitySession`, `DEPARTURE_PURPOSES`), `COMMUNITY_SESSIONS` (3 ca họp quán vàng trong ngày), `REMINDER_PRESETS` (4 mẫu công việc nhắc nhở 1 chạm), `ROOM_TEMPLATES` (6 phòng sinh hoạt gồm `Quán Trà Đá Vỉa Hè`), `MORNING_ARTICLES`, `RSS_DRAFTS`, `NEWS_CATEGORIES`, `NEWS_HOT_KEYWORDS`, `INITIAL_PHONETIC_DICT`, `VOICE_SAMPLES`, `VOICE_CLIPS` (15 clip `.mp3` giọng người thu sẵn ngoại tuyến), `REPLY_MATRIX`, `IDLE_ICEBREAKERS`, `TEA_STICKERS`, `TEMPLE_PEACE_CARDS` (kèm `clipId` và `spaceCodes` cho 3 không gian), `TEMPLE_PRAYER_PRESETS`, `INITIAL_GROUPS`, `SENIOR_DIRECTORY`, `POEMS`, `LUC_BAT_RHYME_PAIRS`, `QUIZ_PACKS` (5 bộ đề), `QUIZ_QUESTIONS` (25 câu đố vui), `PROVERB_PAIRS` (18 cặp ca dao tục ngữ), `TOURNAMENT_RIVAL_CLUBS` (5 CLB đối thủ Cúp 3 vòng), `OUTFITS` (14 trang phục ba miền), `ACCESSORIES` (11 phụ kiện đầu/mắt/cổ), `TABLE_ITEMS` (13 món đồ bày bàn & khay trà đá), `TITLE_FRAMES` (9 khung danh hiệu), `HEALTH_QA`.
+- Kho hằng số dữ liệu nền: `PROVINCES` (34 đơn vị hành chính sau sáp nhập + Hoàng Sa, Trường Sa, Người Việt xa quê theo tọa độ chiếu kinh vĩ độ thực `380×560`), `Almanac` (`solarToLunarVi`, `lunarToSolarVi`, `resolveNextSolarForLunar`, `getDayAlmanacDetail`, `evaluateDeparturePlan`, `getActiveCommunitySession`, `DEPARTURE_PURPOSES`), `COMMUNITY_SESSIONS` (3 ca họp quán vàng trong ngày), `REMINDER_PRESETS` (4 mẫu công việc nhắc nhở 1 chạm), `ROOM_TEMPLATES` (6 phòng sinh hoạt gồm `Quán Trà Đá Vỉa Hè`), `MORNING_ARTICLES`, `RSS_DRAFTS`, `NEWS_CATEGORIES`, `NEWS_HOT_KEYWORDS`, `INITIAL_PHONETIC_DICT`, `VOICE_SAMPLES`, `VOICE_CLIPS` (15 clip cốt lõi `assets/audio/*.mp3`, kết hợp chỉ mục `assets/audio/tts-manifest.json` trỏ tới 292 clip mở rộng `assets/audio/library/*.mp3` giọng Mai Chi), `REPLY_MATRIX`, `IDLE_ICEBREAKERS`, `TEA_STICKERS`, `TEMPLE_PEACE_CARDS` (kèm `clipId` và `spaceCodes` cho 3 không gian), `TEMPLE_PRAYER_PRESETS`, `INITIAL_GROUPS`, `SENIOR_DIRECTORY`, `POEMS`, `LUC_BAT_RHYME_PAIRS`, `QUIZ_PACKS` (5 bộ đề), `QUIZ_QUESTIONS` (25 câu đố vui), `PROVERB_PAIRS` (18 cặp ca dao tục ngữ), `TOURNAMENT_RIVAL_CLUBS` (5 CLB đối thủ Cúp 3 vòng), `OUTFITS` (14 trang phục ba miền), `ACCESSORIES` (11 phụ kiện đầu/mắt/cổ), `TABLE_ITEMS` (13 món đồ bày bàn & khay trà đá), `TITLE_FRAMES` (9 khung danh hiệu), `HEALTH_QA`.
 
 ### 2.1. `window.TuoiBacProgression` (`progression.js`)
 - `MAIN_TIERS`: Mảng `33` phần tử (`level 0` đến `level 32`).
