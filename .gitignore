@@ -4,6 +4,9 @@ PRODUCT.md
 DESIGN.md
 run.bat
 verify.bat
+remote-agy.bat
+scripts/agy-project-shell.ps1
+.vscode/
 .vercel/
 .env
 .env.*
