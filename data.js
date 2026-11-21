@@ -121,7 +121,7 @@ window.TuoiBacData = (function () {
       id: "ky-thu",
       name: "Kỳ Thủ Đầu Xuân",
       shortTag: "Kỳ Thủ",
-      desc: "Khung gỗ mun khảm đồng (tự mở khi giải thế Cờ tướng 9×10 hoặc đổi bằng 10 Xu)",
+      desc: "Khung gỗ mun khảm đồng (tự mở khi giải thế Cờ Tướng hoặc đổi bằng 10 Xu)",
       color: "#5C3621",
       rimHex: 0xd49a35,
       cost: 10
@@ -455,7 +455,7 @@ window.TuoiBacData = (function () {
           ]
         },
         {
-          name: "Bàn 2: Ô Ăn Quan Ván Treo",
+          name: "Bàn 2: Ô Ăn Quan Giao Lưu",
           topic: "Đi 1 nước gửi lời nhắc qua Zalo",
           tags: ["co-tuong", "uong-tra", "day-som"],
           memberIds: ["phat", "dung", "thanh"],
@@ -644,7 +644,7 @@ window.TuoiBacData = (function () {
       id: cleanId,
       name: newName,
       shortName: newName.replace(/^Phòng\s+/i, "").slice(0, 16) || newName.slice(0, 16),
-      description: newDesc || `Phòng sinh hoạt nhân bản từ ${base.name}`,
+      description: newDesc || `Phòng sinh hoạt mới mở từ ${base.name}`,
       hostName: base.hostName,
       focusHabits: habits.slice(),
       theme: Object.assign({}, base.theme),
@@ -1557,9 +1557,9 @@ window.TuoiBacData = (function () {
     { roomId: "phong-tra", tableIdx: 0, online: true, where: "Đang ở Bàn 1: Trà Sen Sáng" },
     { roomId: "phong-cay", tableIdx: 0, online: false, where: "Vừa điểm danh sáng nay" },
     { roomId: "phong-co", tableIdx: 0, online: true, where: "Đang giải Cờ Thế (Phòng Cờ)" },
-    { roomId: "phong-tra", tableIdx: 2, online: false, where: "Online 25 phút trước" },
+    { roomId: "phong-tra", tableIdx: 2, online: false, where: "Ghé quán 25 phút trước" },
     { roomId: "phong-tra", tableIdx: 3, online: true, where: "Đang ở Bàn 4: Dưỡng Sinh" },
-    { roomId: "phong-co", tableIdx: 1, online: true, where: "Đang đánh Cờ Tướng 9×10" },
+    { roomId: "phong-co", tableIdx: 1, online: true, where: "Đang đánh Cờ Tướng" },
     { roomId: "d25-d3-1k2-mn75", tableIdx: 0, online: true, where: "Đang trực Bàn trà Đại đội 1K2 · D3 · Sư đoàn 25" },
     { roomId: "phong-tho", tableIdx: 0, online: false, where: "Vừa ngâm thơ lục bát" },
     { roomId: "phong-tra", tableIdx: 5, online: true, where: "Đang ở Bàn 6: Ký Ức Bao Cấp" },
@@ -1647,7 +1647,7 @@ window.TuoiBacData = (function () {
       shortName: "CLB Cờ & Bonsai",
       category: "hobby",
       unitSpec: null,
-      subtitle: "Giải 6 thế cờ giang hồ, giao lưu ván treo 9×10 & chăm cây cảnh",
+      subtitle: "Giải 6 thế cờ hay, rủ nhau đánh Cờ Tướng & chăm cây cảnh",
       motto: "Sáng tỉa cành tùng, trưa bày thế cờ — vui khỏe minh mẫn mỗi ngày.",
       leaderName: "Anh Thành · 69 tuổi (Ninh Bình)",
       joinPin: "",
@@ -1731,7 +1731,7 @@ window.TuoiBacData = (function () {
       color: "#2E6B56",
       bgSoft: "#E6F4EE",
       frameUnlock: "thi-huu",
-      perk: "Khung Ngọc Bích Tri Kỷ · Mở khóa bộ Sticker đặc biệt & Bồ đoàn hàng đầu Chánh Điện"
+      perk: "Khung Ngọc Bích Tri Kỷ · Mở khóa bộ Hình chúc đặc biệt & chỗ ngồi hàng đầu Chánh Điện"
     },
     {
       level: 4,
@@ -1755,7 +1755,7 @@ window.TuoiBacData = (function () {
       color: "#9E6412",
       bgSoft: "#FFF6DE",
       frameUnlock: "cay-cao",
-      perk: "Khung Sơn Mài Thếếp Vàng 3D · Bậc danh hiệu cao quý nhất của Quán Trà Tuổi Bạc"
+      perk: "Khung Sơn Mài Thếp Vàng · Bậc danh hiệu cao quý nhất của Quán Trà Tuổi Bạc"
     }
   ];
 
@@ -1921,7 +1921,7 @@ window.TuoiBacData = (function () {
     "dan-chanh-dien": { src: "./assets/audio/dan-chanh-dien.mp3", label: "Lời dẫn Chánh Điện Chùa Quê" },
     "dan-nha-tho-ho": { src: "./assets/audio/dan-nha-tho-ho.mp3", label: "Lời dẫn Từ Đường Nhà Thờ Họ" },
     "dan-vuon-thien": { src: "./assets/audio/dan-vuon-thien.mp3", label: "Lời dẫn Vườn Thiền Tĩnh Lặng" },
-    "dan-co-tuong": { src: "./assets/audio/dan-co-tuong.mp3", label: "Lời dẫn Cờ Tướng 9×10" },
+    "dan-co-tuong": { src: "./assets/audio/dan-co-tuong.mp3", label: "Lời dẫn Cờ Tướng" },
     "dan-o-an-quan": { src: "./assets/audio/dan-o-an-quan.mp3", label: "Lời dẫn Ô Ăn Quan" },
     "nhac-nghi-mat": { src: "./assets/audio/nhac-nghi-mat.mp3", label: "Lời nhắc nghỉ mắt 20 phút" },
     "que-01": { src: "./assets/audio/que-01.mp3", label: "Đọc Quẻ Số 01" },
@@ -1947,17 +1947,17 @@ window.TuoiBacData = (function () {
   // Bảng phân định rõ tính năng nào Mở Cửa Tự Do vs tính năng nào Cần Thẻ Hội Viên
   const AUTH_TIER_GUIDE = {
     freeFeatures: [
-      "Điểm danh bình an buổi sáng & xem bản đồ đèn sáng 34 tỉnh thành",
-      "Xé Tờ Lịch Vạn Niên mỗi sáng, xem Giờ Hoàng Đạo, Hướng xuất hành & đặt chuông nhắc việc",
-      "Đọc Tờ Báo Sáng chữ to, nghe Đọc to tiếng Việt, giải Đố vui",
-      "Đánh Cờ Tướng 9×10 (32 quân) với Máy & Giải 6 thế Cờ Thế cổ phổ",
-      "Viếng Chùa Chánh Điện Online (gõ mõ, dâng hương, rút Thẻ An Lạc) & ghé thử Bàn trà"
+      "Điểm danh bình an buổi sáng & xem bản đồ ánh đèn quê hương cả nước",
+      "Xé Tờ Lịch Vạn Niên mỗi sáng, xem Giờ Hoàng Đạo, hướng xuất hành & hẹn giờ nhắc việc",
+      "Đọc Tờ Báo Sáng chữ to, nghe đọc giọng Mai Chi, giải Đố vui",
+      "Đánh Cờ Tướng với Máy & giải 6 thế Cờ Thế kinh điển",
+      "Viếng Chùa Chánh Điện (gõ mõ, dâng hương, rút Thẻ An Lạc) & ghé chuyện ở Bàn Trà"
     ],
     memberFeatures: [
-      "Thăng 5 Bậc Danh Hiệu Thâm Niên (từ Bạn Trà Mộc Mạc → Cây Cao Bóng Cả lâu năm) + nhận 15 Xu",
-      "Lập hoặc Gia nhập Đơn vị Đồng ngũ (như Đại đội 1K2 · D3 · Sư đoàn 25) & Đặt tên Bàn trà riêng",
-      "Kết bạn tâm giao & thấy đèn xanh Bạn bè Đang Online ở bàn trà nào để sang ngồi cùng",
-      "Lưu trữ đám mây đa lớp & Ảnh Thẻ QR — đổi điện thoại mới khôi phục 100% dữ liệu trong 1 chạm"
+      "Tích lũy 32 Tầng Danh Hiệu Gắn Bó (từ Tân Khách Mộc Mạc tới Đại Thụ Trăm Năm) và nhận ngay 15 Xu",
+      "Lập hoặc gia nhập Hội Đồng Ngũ (như Đại đội 1K2 · D3 · Sư đoàn 25) & đặt tên Bàn Trà riêng",
+      "Kết bạn tâm giao, biết ngay bạn bè đang ngồi ở bàn trà nào để sang trò chuyện cùng",
+      "Lưu giữ trọn vẹn hồ sơ, bạn bè & Ảnh Thẻ QR — đổi điện thoại mới quét mã là vào lại ngay"
     ]
   };
 

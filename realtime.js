@@ -541,7 +541,7 @@ window.TuoiBacRealtime = (function () {
     }
     try {
       sbClient = window.supabase.createClient(cfg.url, cfg.anonKey);
-      providerName = "Supabase PostgreSQL + Realtime";
+      providerName = "Đã kết nối Quán Trà trực tuyến";
       sbChannel = sbClient.channel("tuoibac-main", {
         config: { presence: { key: clientId } }
       });
@@ -583,7 +583,7 @@ window.TuoiBacRealtime = (function () {
 
   function connectWssRelay() {
     if (typeof window.mqtt === "undefined") {
-      providerName = "Cục bộ (Đang tải thư viện mạng)";
+      providerName = "Đang chuẩn bị kết nối mạng";
       emit("status", getStatus());
       return;
     }
@@ -606,14 +606,14 @@ window.TuoiBacRealtime = (function () {
         }
       });
     } catch (err) {
-      providerName = "Ngoại tuyến tạm thời";
+      providerName = "Tạm mất kết nối mạng";
       emit("status", getStatus());
       return;
     }
 
     mqttClient.on("connect", () => {
       connected = true;
-      providerName = brokerUrl.includes("emqx") ? "Phòng Chung Trực Tuyến (WSS)" : "Phòng Chung Dự Phòng (WSS)";
+      providerName = brokerUrl.includes("emqx") ? "Đã kết nối Quán Trà trực tuyến" : "Đã kết nối đường truyền dự phòng";
       emit("status", getStatus());
 
       const dayKey = getTodayKey();

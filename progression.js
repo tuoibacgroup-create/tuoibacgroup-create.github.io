@@ -95,13 +95,13 @@ window.TuoiBacProgression = (function () {
     // Tầng 1..5 (Mộc Mạc Khởi Đầu)
     { level: 1, title: "Tân Khách Mộc Mạc", shortTag: "Tân Khách", eraIdx: 1, perk: "Mở Thẻ Hội Viên thành công · Được đặt tên bàn trà riêng" },
     { level: 2, title: "Bạn Trà Đầu Ngõ", shortTag: "Đầu Ngõ", eraIdx: 1, perk: "Nhận nhãn Thành viên mới thân thiện để cả bàn chào hỏi" },
-    { level: 3, title: "Người Quen Sớm Mai", shortTag: "Sớm Mai", eraIdx: 1, perk: "Mở khóa đầy đủ 8 Sticker Quán Trà cỡ lớn" },
+    { level: 3, title: "Người Quen Sớm Mai", shortTag: "Sớm Mai", eraIdx: 1, perk: "Mở khóa đầy đủ 8 Hình chúc Quán Trà cỡ lớn" },
     { level: 4, title: "Khách Quý Hiên Nhà", shortTag: "Khách Quý", eraIdx: 1, perk: "Tặng thêm +5 Xu khi điểm danh chuỗi 3 ngày" },
     { level: 5, title: "Bạn Trà Chân Tình", shortTag: "Chân Tình", eraIdx: 1, perk: "Hoàn thành Giai đoạn Mộc Mạc · Mở khung Tri Âm Sáng Sớm" },
 
     // Tầng 6..10 (Gốm Lam Gắn Bó)
     { level: 6, title: "Bạn Hiền Cùng Xóm", shortTag: "Bạn Hiền", eraIdx: 2, perk: "Bước vào hàng Hội viên Quen thuộc men lam Bát Tràng" },
-    { level: 7, title: "Tri Âm Đầu Mùa", shortTag: "Tri Âm", eraIdx: 2, perk: "Được ghim lời chúc trên Cây Ước Nguyện Chánh Điện 3D" },
+    { level: 7, title: "Tri Âm Đầu Mùa", shortTag: "Tri Âm", eraIdx: 2, perk: "Được ghim lời chúc trên Cây Ước Nguyện Chánh Điện" },
     { level: 8, title: "Người Giữ Ấm Chén", shortTag: "Giữ Ấm", eraIdx: 2, perk: "Bàn trà do bác làm Chủ bàn được gắn huy hiệu Men Lam" },
     { level: 9, title: "Tâm Giao Sớm Hôm", shortTag: "Tâm Giao", eraIdx: 2, perk: "Tăng giới hạn bông hoa tặng thơ mỗi ngày lên 5 hoa" },
     { level: 10, title: "Tri Kỷ Quán Quen", shortTag: "Tri Kỷ", eraIdx: 2, perk: "Vinh danh cột mốc Tầng 10 · Nhận +20 Xu thưởng" },
@@ -110,12 +110,12 @@ window.TuoiBacProgression = (function () {
     { level: 11, title: "Bậc Hiền Hòa Nhã", shortTag: "Hòa Nhã", eraIdx: 3, perk: "Bước vào Giai đoạn Ngọc Bích · Mở huy hiệu Tri Kỷ Nòng Cốt" },
     { level: 12, title: "Người Truyền Hơi Ấm", shortTag: "Hơi Ấm", eraIdx: 3, perk: "Lời chào của bác giúp người mới nhận thêm điểm khích lệ" },
     { level: 13, title: "Chủ Bàn Uy Tín", shortTag: "Uy Tín", eraIdx: 3, perk: "Ưu tiên đề xuất bàn đàm đạo của bác lên đầu sảnh" },
-    { level: 14, title: "Cây Trúc Giữa Sân", shortTag: "Cây Trúc", eraIdx: 3, perk: "Mở chiếu Bồ Đoàn hàng trung tâm tại Chánh Điện 3D" },
-    { level: 15, title: "Đàn Anh Đáng Mến", shortTag: "Đáng Mến", eraIdx: 3, perk: "Mở khóa Khung 3D Thi Hữu Tao Đàn miễn phí" },
+    { level: 14, title: "Cây Trúc Giữa Sân", shortTag: "Cây Trúc", eraIdx: 3, perk: "Mở chiếu Bồ Đoàn hàng trung tâm tại Chánh Điện" },
+    { level: 15, title: "Đàn Anh Đáng Mến", shortTag: "Đáng Mến", eraIdx: 3, perk: "Mở khóa Khung danh hiệu Thi Hữu Tao Đàn miễn phí" },
     { level: 16, title: "Ngọc Sáng Tuổi Vàng", shortTag: "Ngọc Sáng", eraIdx: 3, perk: "Vinh danh cột mốc Tầng 16 trên Bảng Vàng Tỉnh Nhà" },
 
     // Tầng 17..22 (Gỗ Trắc Khảm Đồng)
-    { level: 17, title: "Người Giữ Lửa Trà", shortTag: "Giữ Lửa", eraIdx: 4, perk: "Bước vào hàng Trưởng Lão Khảm Đồng · Mở khung Giữ Lửa 3D" },
+    { level: 17, title: "Người Giữ Lửa Trà", shortTag: "Giữ Lửa", eraIdx: 4, perk: "Bước vào hàng Trưởng Lão Khảm Đồng · Mở khung danh hiệu Giữ Lửa" },
     { level: 18, title: "Trưởng Lão Hòa Hiếu", shortTag: "Trưởng Lão", eraIdx: 4, perk: "Huy hiệu Trưởng Lão hiện cạnh tên tại mọi phòng sinh hoạt" },
     { level: 19, title: "Cao Niên Mẫu Mực", shortTag: "Mẫu Mực", eraIdx: 4, perk: "Được vinh danh trong Ban Liên Lạc các Hội Đồng Ngũ & CLB" },
     { level: 20, title: "Cây Tùng Đón Gió", shortTag: "Cây Tùng", eraIdx: 4, perk: "Cột mốc Tầng 20 · Khung thẻ tên viền đồng ánh kim" },
@@ -123,8 +123,8 @@ window.TuoiBacProgression = (function () {
     { level: 22, title: "Trụ Cột Tình Thân", shortTag: "Trụ Cột", eraIdx: 4, perk: "Hoàn thành Giai đoạn Khảm Đồng · Tôn vinh người gắn kết" },
 
     // Tầng 23..28 (Sơn Mài Thếp Vàng)
-    { level: 23, title: "Bậc Kỳ Lão Đáng Kính", shortTag: "Kỳ Lão", eraIdx: 5, perk: "Bước vào hàng Lão Làng Sơn Mài Thếp Vàng · Mở khung Cây Cao 3D" },
-    { level: 24, title: "Cội Tùng Vững Chãi", shortTag: "Cội Tùng", eraIdx: 5, perk: "Bồ đoàn viền sen vàng hàng đầu tại Chánh Điện 3D" },
+    { level: 23, title: "Bậc Kỳ Lão Đáng Kính", shortTag: "Kỳ Lão", eraIdx: 5, perk: "Bước vào hàng Lão Làng Sơn Mài Thếp Vàng · Mở khung danh hiệu Cây Cao" },
+    { level: 24, title: "Cội Tùng Vững Chãi", shortTag: "Cội Tùng", eraIdx: 5, perk: "Bồ đoàn viền sen vàng hàng đầu tại Chánh Điện" },
     { level: 25, title: "Tinh Hoa Hội Quán", shortTag: "Tinh Hoa", eraIdx: 5, perk: "Cột mốc Tầng 25 · Khắc tên vào Sổ Vàng Lưu Niệm Quán Trà" },
     { level: 26, title: "Đại Thụ Tỏa Bóng", shortTag: "Đại Thụ", eraIdx: 5, perk: "Thẻ ước nguyện trên cây sân chùa rực sắc vàng hoàng kim" },
     { level: 27, title: "Ngọn Đèn Sáng Mãi", shortTag: "Đèn Sáng", eraIdx: 5, perk: "Ngọn đèn điểm danh của bác tỏa hào quang kép trên bản đồ" },
@@ -147,7 +147,7 @@ window.TuoiBacProgression = (function () {
       minXp: 0,
       requiresCard: false,
       era: ERAS[0],
-      perk: "Đang dùng thử tự do — Mở Thẻ Hội Viên 10 giây nhận ngay +35 XP & +15 Xu, thăng thẳng lên Tầng 1 Tân Khách Mộc Mạc!"
+      perk: "Bác có thể vào xem tự do ngay. Mở Thẻ Hội Viên trong 10 giây để nhận +35 điểm, +15 Xu và lên thẳng Tầng 1 Tân Khách Mộc Mạc."
     }
   ].concat(
     MAIN_32_NAMES.map((item) => {
@@ -177,7 +177,7 @@ window.TuoiBacProgression = (function () {
       baseA: 1.5,
       baseB: 4,
       formulaNote: "M(k) = ceil(1.5·k^2.15 + 4·(1.38^(k-1) - 1))",
-      howToEarn: "Ngồi bàn trà (+2), gửi câu nói/Sticker (+2), đặt tên làm Chủ bàn (+6)",
+      howToEarn: "Ngồi bàn trà (+2), gửi câu chào hoặc Hình chúc (+2), mở bàn riêng (+6)",
       tiers: [
         "Khách Nhấp Trà Thơm",
         "Người Pha Ấm Sớm",
@@ -198,7 +198,7 @@ window.TuoiBacProgression = (function () {
       baseA: 1.4,
       baseB: 3.5,
       formulaNote: "M(k) = ceil(1.4·k^2.15 + 3.5·(1.38^(k-1) - 1))",
-      howToEarn: "Đi nước ván thật (+1), thắng Máy / Ván treo (+8), giải 1 Cờ Thế cổ phổ (+10)",
+      howToEarn: "Đi nước cờ (+1), thắng Máy hoặc đánh cùng bạn (+8), giải 1 thế Cờ Thế (+10)",
       tiers: [
         "Tân Kỳ Nhập Môn",
         "Kỳ Thủ Đầu Phố",
@@ -324,7 +324,7 @@ window.TuoiBacProgression = (function () {
       baseA: 1.1,
       baseB: 2.5,
       formulaNote: "M(k) = ceil(1.1·k^2.15 + 2.5·(1.38^(k-1) - 1))",
-      howToEarn: "Nói bằng giọng micro (+4), nghe Đọc to (+1), dạy từ mới cho Sổ từ điển (+6)",
+      howToEarn: "Nói bằng micro (+4), nghe Đọc to (+1), dạy từ mới vào Sổ sửa lỗi giọng nói (+6)",
       tiers: [
         "Giọng Quê Ấm Áp",
         "Người Nói Truyền Cảm",

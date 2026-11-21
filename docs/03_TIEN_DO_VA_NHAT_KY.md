@@ -4,7 +4,7 @@
 
 ---
 
-## 1. Bảng Trạng Thái 17 Phân Hệ Của Game (Cập nhật: 20/11/2026)
+## 1. Bảng Trạng Thái 17 Phân Hệ Của Game (Cập nhật: 21/11/2026)
 
 | STT | Phân hệ chức năng | Trạng thái | Tệp phụ trách chính | Ghi chú kỹ thuật |
 | :---: | :--- | :---: | :--- | :--- |
@@ -29,6 +29,15 @@
 ---
 
 ## 2. Nhật Ký Phiên Bản Kỹ Thuật (Append-Only Engineering Log)
+
+### [2026-11-21] — Biên Tập Toàn Bộ Nội Dung Hiển Thị Theo Góc Nhìn Người Dùng 55+ (Humanizer UX Copy · `?v=20261121a`)
+- **Tệp cập nhật:** `index.html` (`?v=20261121a`), `app.js`, `progression.js`, `data.js`, `tearoom3d.js` (`?v=20261121a`), `realtime.js`, `sw.js` (`tuoibac-pwa-v35`), `ARCHITECTURE.md`, `docs/03_TIEN_DO_VA_NHAT_KY.md`.
+- **Chi tiết hạng mục hoàn thành:**
+  1. **Loại bỏ hoàn toàn ghi chú nội bộ cho lập trình viên & thuật ngữ kỹ thuật trên cả 17 màn hình người dùng (`index.html`, `app.js`, `progression.js`, `data.js`, `tearoom3d.js`, `realtime.js`):**
+     - Thống nhất từ vựng thân thiện, rõ nghĩa với cô bác 55+: đổi `XP` → `điểm`; bỏ nhãn `Full 2.5D` / `TLBB` / `2.5D` / `3D` trên sảnh, bàn trà, khung danh hiệu và Chánh Điện thành cách gọi gần gũi (`"Vào Quán Trà"`, `"Khung cảnh rõ nét"`, `"Khung danh hiệu"`, `"Bàn Trà Đơn Vị"`); bỏ thông số `9×10` khỏi tên nút Cờ Tướng; đổi `(.ics)` / `Chuông ĐT (.ics)` → `"Ghim lịch máy"`; đổi `Sticker` → `"Hình chúc"`; đổi `Check-in bàn trà (Ảnh QR + Link MXH)` → `"Ảnh Kỷ Niệm Bàn Trà (Gửi Zalo)"` và tiêu đề thiệp trong `tearoom3d.js` thành `"KỶ NIỆM BÀN TRÀ TUỔI BẠC"`; đổi `Nhân bản phòng` → `"+ Mở phòng mới"`; đổi `Ván treo qua link` → `"Đánh với bạn qua Zalo"`.
+     - Viết lại các hộp thoại và lời giải thích từng gây hiểu nhầm thành văn phong trò chuyện trực tiếp với cô bác: *Sổ Sửa Lỗi Giọng Nói* (bỏ câu *"Bảng này chạy ngầm để chuẩn hóa câu nói mà không hiện thuật ngữ kỹ thuật lên màn hình người cao tuổi"*), phần *Giọng đọc to tiếng Việt Mai Chi* tại Hồ Sơ & Cài đặt (bỏ chữ `15 clip .mp3`, `TTS + Dự phòng`, `máy Android cũ ngoại tuyến`), nút *Mở nút gọi khẩn cấp 115* & *"Tôi bấm nhầm — Quay lại màn hình bình thường"* tại Sức Khỏe (bỏ chữ `Thử khẩn cấp 115` / `Tôi chỉ đang thử nghiệm`), nút *Duyệt tin* thay cho *RSS* ngoài Báo Sáng, khung *Kết nối Mạng & Mời Bạn Cùng Bàn* và khung *Khu vực dành cho Ban Quản Trị* trước khi mở khóa PIN.
+     - Rà soát chuẩn `/humanizer` xóa bỏ mẫu câu *"Các chuyên gia khuyến nghị..."* trong mục tìm tin báo theo từ khóa, đồng thời giữ nguyên 100% văn bản mẫu đã băm âm thanh trong `assets/audio/tts-manifest.json` (`307` tệp giọng `maichi`) và giữ nhãn `"Máy"` / `"Trợ lý"` theo Bất biến #10.
+  2. **Đồng bộ cache-buster `?v=20261121a` và Service Worker `tuoibac-pwa-v35` (`sw.js`, `ARCHITECTURE.md`):** bảo đảm thiết bị di động tải ngay bản lời văn mới nhất và giữ nguyên `0` lỗi tràn ngang ở cả `20px` và `24px`.
 
 ### [2026-11-20] — Sinh Trọn Bộ 307 Tệp Âm Thanh Giọng Đọc Nữ Miền Bắc `maichi` Cho Toàn Bộ Nội Dung Mẫu & Cơ Chế Tra Băm `O(1)` Tự Lùi Về TTS Động Với Nội Dung Mới (`?v=20261120b`)
 - **Tệp tạo mới / cập nhật:** `scripts/generate-tts-library.mjs`, `assets/audio/*.mp3` (15 tệp cốt lõi), `assets/audio/library/*.mp3` (292 tệp thư viện mở rộng), `assets/audio/tts-manifest.json`, `app.js`, `index.html` (`?v=20261120b`), `tearoom3d.js` (`?v=20261120b`), `sw.js` (`tuoibac-pwa-v34`), `scripts/e2e-regression.mjs`, `ARCHITECTURE.md`, `PRODUCT.md`, `docs/02_SO_DO_DU_LIEU_VA_API_NOI_BO.md`, `docs/03_TIEN_DO_VA_NHAT_KY.md`, `docs/04_CAM_NANG_FIX_BUG_VA_KIEM_THU.md`, `docs/05_QUYET_DINH_KIEN_TRUC_ADR.md`.

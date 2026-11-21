@@ -20,19 +20,19 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Merriweather:ital,wght@0,400;0,700;1,400&display=swap"
     rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20261120b" />
+  <link rel="stylesheet" href="styles.css?v=20261121a" />
   <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.3/dist/mqtt.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
-  <script src="data.js?v=20261120b" defer></script>
-  <script src="progression.js?v=20261120b" defer></script>
-  <script src="telemetry.js?v=20261120b" defer></script>
-  <script src="tearoom3d.js?v=20261120b" defer></script>
-  <script src="temple3d.js?v=20261120b" defer></script>
-  <script src="xiangqi.js?v=20261120b" defer></script>
-  <script src="realtime.js?v=20261120b" defer></script>
-  <script src="app.js?v=20261120b" defer></script>
+  <script src="data.js?v=20261121a" defer></script>
+  <script src="progression.js?v=20261121a" defer></script>
+  <script src="telemetry.js?v=20261121a" defer></script>
+  <script src="tearoom3d.js?v=20261121a" defer></script>
+  <script src="temple3d.js?v=20261121a" defer></script>
+  <script src="xiangqi.js?v=20261121a" defer></script>
+  <script src="realtime.js?v=20261121a" defer></script>
+  <script src="app.js?v=20261121a" defer></script>
 </head>
 
 <body>
@@ -260,26 +260,26 @@
     </symbol>
   </svg>
 
-  <!-- Desktop / Testing Helper Bar (hidden on narrow mobile viewports) -->
-  <aside class="desktop-sim-bar" aria-label="Bảng điều khiển mô phỏng trên máy tính">
+  <!-- Desktop / Tablet Quick Shortcut Bar (hidden on narrow mobile viewports) -->
+  <aside class="desktop-sim-bar" aria-label="Lối tắt mở nhanh trên máy tính">
     <div class="sim-bar-brand">
-      <strong>Mô phỏng Tuổi Bạc</strong>
-      <span>Khung điện thoại 480px (Mobile-First PWA + Realtime)</span>
+      <strong>Quán Trà Tuổi Bạc</strong>
+      <span>Chọn nhanh mục sinh hoạt hoặc chỉnh cỡ chữ cho dễ đọc.</span>
     </div>
     <div class="sim-bar-controls">
       <button type="button" class="sim-chip" id="sim-open-almanac">Lịch Vạn Niên &amp; Nhắc Việc</button>
-      <button type="button" class="sim-chip" id="sim-open-temple">Viếng Chùa Chánh Điện</button>
-      <button type="button" class="sim-chip" id="sim-open-groups">Hội Đồng Ngũ &amp; Kết bạn</button>
-      <button type="button" class="sim-chip" id="sim-open-xiangqi">Cờ tướng 9×10 &amp; Cờ thế</button>
-      <button type="button" class="sim-chip" id="sim-toggle-render">Đồ họa: Full 2.5D (TLBB)</button>
-      <button type="button" class="sim-chip" id="sim-toggle-font">Cỡ chữ: 20px</button>
-      <button type="button" class="sim-chip" id="sim-open-dict">Sổ từ điển tự học (8)</button>
-      <button type="button" class="sim-chip" id="sim-voice-sample">Thử giọng nói mẫu</button>
-      <button type="button" class="sim-chip" id="sim-trigger-idle60">Thử Trợ lý gợi chuyện 60s</button>
-      <button type="button" class="sim-chip" id="sim-trigger-eyecare">Thử nhắc nghỉ mắt 20 phút</button>
-      <button type="button" class="sim-chip" id="sim-open-privacy">Dash Quản lý Hoạt động</button>
-      <button type="button" class="sim-chip" id="sim-open-family">Góc nhìn Con cái</button>
-      <button type="button" class="sim-chip" id="sim-reset-demo">Đặt lại dữ liệu mẫu</button>
+      <button type="button" class="sim-chip" id="sim-open-temple">Chánh Điện &amp; Sân Chùa</button>
+      <button type="button" class="sim-chip" id="sim-open-groups">Hội Đồng Ngũ &amp; Kết Bạn</button>
+      <button type="button" class="sim-chip" id="sim-open-xiangqi">Cờ Tướng &amp; Cờ Thế</button>
+      <button type="button" class="sim-chip" id="sim-toggle-render">Hình ảnh: Rõ nét, nhẹ máy</button>
+      <button type="button" class="sim-chip" id="sim-toggle-font">Cỡ chữ: Vừa (dễ đọc)</button>
+      <button type="button" class="sim-chip" id="sim-open-dict">Sổ sửa lỗi giọng nói (8)</button>
+      <button type="button" class="sim-chip" id="sim-voice-sample">Thử nói chuyện bằng giọng</button>
+      <button type="button" class="sim-chip" id="sim-trigger-idle60">Mời Trợ lý gợi chuyện</button>
+      <button type="button" class="sim-chip" id="sim-trigger-eyecare">Xem lời nhắc nghỉ mắt</button>
+      <button type="button" class="sim-chip" id="sim-open-privacy">Cài đặt &amp; Quyền riêng tư</button>
+      <button type="button" class="sim-chip" id="sim-open-family">Góc Con Cái &amp; Khẩn cấp</button>
+      <button type="button" class="sim-chip" id="sim-reset-demo">Đặt lại từ đầu</button>
     </div>
   </aside>
 
@@ -329,7 +329,7 @@
       </button>
       <div class="strip-counters">
         <button type="button" class="rt-pill" id="btn-realtime-status"
-          title="Trạng thái kết nối phòng chung thời gian thực">
+          title="Xem tình trạng kết nối mạng của Quán Trà">
           <span class="rt-dot" id="strip-rt-dot"></span>
           <span id="strip-rt-label">Trực tuyến</span>
         </button>

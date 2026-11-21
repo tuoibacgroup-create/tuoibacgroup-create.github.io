@@ -218,7 +218,7 @@
         hostName: "",
         guestName: "",
         inviteUrl: "",
-        status: "Bàn chuẩn 9×10 (32 quân) — Bác cầm quân Đỏ đi tiên: chạm quân Đỏ rồi chạm chấm xanh để đi.",
+        status: "Bàn Cờ Tướng (đủ 32 quân) — Bác cầm quân Đỏ đi trước: chạm vào quân Đỏ rồi chạm chấm xanh để đi.",
         inProgress: false,
         forfeitedPendingReload: false,
         cup: {
@@ -939,7 +939,7 @@
       "doc-bao": "Đọc Báo Thời Sự",
       "chua-online": "Viếng Chùa An Lạc",
       "tho-ca": "Ngâm Thơ Lục Bát",
-      "giao-luu": "Trà Đàm & Gửi Sticker",
+      "giao-luu": "Trà Đàm & Gửi Hình Chúc",
       "diem-danh": "Điểm Danh Sáng",
       "sinh-hoat": "Sinh Hoạt Chung"
     };
@@ -953,12 +953,12 @@
       const timePersona =
         avgHour <= 8 ? `Hay dậy sớm (${avgHour}h sáng)` : avgHour <= 14 ? `Sinh hoạt ban trưa (${avgHour}h)` : `Thư giãn chiều tối (${avgHour}h)`;
       const aiRecommendation = m.catCounts["co-tuong"]
-        ? "AI gợi ý: Mời giải Cờ Thế mới & ghép vào Phòng Cờ cùng kỳ hữu đồng niên."
+        ? "Gợi ý: Mời giải Cờ Thế mới & ghép vào Phòng Cờ cùng kỳ hữu đồng niên."
         : m.catCounts["chua-online"]
-        ? "AI gợi ý: Mở lời chúc Thẻ An Lạc buổi sáng & mời nghe thơ tĩnh tâm."
+        ? "Gợi ý: Mở lời chúc Thẻ An Lạc buổi sáng & mời nghe thơ tĩnh tâm."
         : m.catCounts["dong-ngu"]
-        ? "AI gợi ý: Ưu tiên thông báo khi đồng đội cùng đơn vị bật đèn Online."
-        : "AI gợi ý: Ghép vào bàn trà đồng hương ấm cúng và điểm báo sáng chữ to.";
+        ? "Gợi ý: Báo cho bác biết ngay khi đồng đội cùng đơn vị đang mở quán."
+        : "Gợi ý: Ghép vào bàn trà đồng hương ấm cúng và điểm báo sáng chữ to.";
       return {
         memberCode: m.memberCode,
         userName: m.userName,
@@ -1155,7 +1155,7 @@
       ttsLibraryManifest = { byId: {}, byHash: {} };
       return Promise.resolve(ttsLibraryManifest);
     }
-    ttsManifestPromise = fetch("./assets/audio/tts-manifest.json?v=20261120b")
+    ttsManifestPromise = fetch("./assets/audio/tts-manifest.json?v=20261121a")
       .then((res) => (res && res.ok ? res.json() : { byId: {}, byHash: {} }))
       .then((data) => {
         ttsLibraryManifest = data && typeof data === "object" ? data : { byId: {}, byHash: {} };
@@ -1749,7 +1749,7 @@
         const c = state.oaq.cells || [5, 5, 5, 5, 5, 10, 5, 5, 5, 5, 5, 10];
         return `Bàn Ô ăn quan dân gian. Hàng dưới của bác đang có ${state.oaq.scoreP} quân, Hàng trên đang có ${state.oaq.scoreAI} quân. Quan Trái còn ${c[11]} quân, Quan Phải còn ${c[5]} quân. Năm ô của bác lần lượt có ${c.slice(0, 5).join(", ")} viên sỏi.`;
       }
-      return `Bàn Cờ tướng 9×10. ${state.xiangqi.status || "Mời bác chọn quân để đi."}`;
+      return `Bàn Cờ Tướng. ${state.xiangqi.status || "Mời bác chọn quân để đi."}`;
     }
     if (state.route === "zen") {
       const spIdx = Number(state.zen.spaceIdx) || 0;
@@ -1838,7 +1838,7 @@
       .slice(0, 24);
     if (!cleanedBase || isUnsafeScamOrPiiText(cleanedBase)) {
       if (cleanedBase && isUnsafeScamOrPiiText(cleanedBase)) {
-        showToast("Tên hiển thị không được chứa số điện thoại, đường link hoặc mã lạ.");
+        showToast("Tên hiển thị không được chứa số điện thoại, đường dẫn lạ hoặc mã số.");
       }
       cleanedBase = state.user.baseName || "Tám Vườn";
     }
@@ -1912,15 +1912,15 @@
     });
 
     if (els.simRender) {
-      els.simRender.textContent = "Đồ họa: Full 2.5D (TLBB)";
+      els.simRender.textContent = "Hình ảnh: Rõ nét, nhẹ máy";
       els.simRender.classList.add("active");
     }
     if (els.simFont) {
-      els.simFont.textContent = `Cỡ chữ: ${state.settings.xlFont ? "24px (Cực lớn)" : "20px (Chuẩn)"}`;
+      els.simFont.textContent = `Cỡ chữ: ${state.settings.xlFont ? "Lớn (rất dễ đọc)" : "Vừa (tiêu chuẩn)"}`;
       els.simFont.classList.toggle("active", state.settings.xlFont);
     }
     if (els.simDict) {
-      els.simDict.textContent = `Sổ từ điển tự học (${state.phoneticDict.length})`;
+      els.simDict.textContent = `Sổ sửa lỗi giọng nói (${state.phoneticDict.length})`;
     }
   }
 
@@ -1930,7 +1930,7 @@
     if (o && o.inProgress && !isOaqEnded) {
       return {
         kind: "oaq",
-        label: o.mode === "async" ? "ván Ô ăn quan treo qua link" : "ván Ô ăn quan với Máy"
+        label: o.mode === "async" ? "ván Ô ăn quan đánh chung với bạn" : "ván Ô ăn quan với Máy"
       };
     }
     const x = state.xiangqi;
@@ -1939,12 +1939,12 @@
         kind: "xiangqi",
         label:
           x.mode === "async"
-            ? "ván Cờ tướng qua link"
+            ? "ván Cờ Tướng đánh chung với bạn"
             : x.mode === "local2p"
-            ? "ván Cờ tướng 2 người"
+            ? "ván Cờ Tướng 2 người"
             : x.mode === "cup"
             ? "trận Cúp Cờ Tướng Đồng Ngũ"
-            : "ván Cờ tướng với Máy"
+            : "ván Cờ Tướng với Máy"
       };
     }
     return null;
@@ -2039,7 +2039,7 @@
     } else if (nextMode === "ai") {
       x.board = XQ.createInitialBoard();
       x.turn = "red";
-      x.status = `Ván thật 9×10 (32 quân) đấu với Máy (${x.aiLevel === "club" ? "Mức CLB" : "Mức Thư giãn"}) — Bác cầm Đỏ đi tiên!`;
+      x.status = `Đánh Cờ Tướng với Máy (${x.aiLevel === "club" ? "Mức Câu lạc bộ" : "Mức Thư giãn"}) — Bác cầm Đỏ đi trước.`;
     } else if (nextMode === "local2p") {
       x.board = XQ.createInitialBoard();
       x.turn = "red";
@@ -2210,7 +2210,7 @@
           <img src="icons/icon-192.png" alt="Biểu tượng Tuổi Bạc" class="pwa-app-icon" />
           <div>
             <strong>Mở 1 chạm như ứng dụng riêng</strong>
-            <p style="font-size:0.88rem; color:var(--ink-secondary);">Chữ to tràn màn hình, tự đệm ngoại tuyến khi sóng 4G yếu.</p>
+            <p style="font-size:0.88rem; color:var(--ink-secondary);">Chữ to dễ đọc, vẫn mở được nhẹ nhàng khi mạng yếu.</p>
           </div>
         </div>
       </div>
@@ -2312,18 +2312,18 @@
 
   function openAdminUnlockModal(onSuccess) {
     openDialog(
-      "Xác thực Quản Trị Viên (Admin)",
+      "Khu vực dành cho Ban Quản Trị",
       `
       <div class="surface-panel warm">
-        <p style="font-size:0.9rem;">Khu vực duyệt RSS Báo Sáng, giám sát vận hành UAT, xuất dữ liệu AI (<code>.jsonl</code>) và cấu hình Supabase cố định được khóa riêng để hội viên không bấm nhầm.</p>
+        <p style="font-size:0.9rem;">Khu vực duyệt tin Báo Sáng và cài đặt hệ thống dành riêng cho Ban Quản Trị. Cô bác hội viên không cần mở mục này.</p>
         <label class="field-label">
-          Mã khóa Quản trị viên
-          <input type="password" inputmode="numeric" autocomplete="off" class="input-lg" id="admin-pin-input" placeholder="Nhập mã khóa Admin..." />
+          Mã khóa Ban Quản Trị
+          <input type="password" inputmode="numeric" autocomplete="off" class="input-lg" id="admin-pin-input" placeholder="Nhập mã khóa Ban Quản Trị..." />
         </label>
         <div id="admin-pin-err" style="font-size:0.86rem; color:#B42318; font-weight:700;" hidden>Mã khóa chưa đúng. Vui lòng kiểm tra lại.</div>
       </div>
       <div class="btn-row">
-        <button type="button" class="btn-primary" id="btn-submit-admin-pin">${ico("shield")}<span>Mở khóa Admin</span></button>
+        <button type="button" class="btn-primary" id="btn-submit-admin-pin">${ico("shield")}<span>Mở khóa</span></button>
         <button type="button" class="btn-secondary" id="btn-cancel-admin-pin">Đóng</button>
       </div>
       `
@@ -2345,7 +2345,7 @@
       const lockSt = readAdminLockoutState();
       if (lockSt.lockedUntil > now) {
         const waitSec = Math.ceil((lockSt.lockedUntil - now) / 1000);
-        showErrMsg(`Tạm khóa bảo vệ Admin (${waitSec} giây). Vui lòng thử lại sau.`);
+        showErrMsg(`Tạm khóa bảo vệ (${waitSec} giây). Vui lòng thử lại sau.`);
         return;
       }
       const val = (pinIn && pinIn.value ? pinIn.value : "").trim();
@@ -2439,18 +2439,18 @@
     const adminOpen = isAdminUnlocked();
 
     openDialog(
-      "Kết nối Thời Gian Thực (Nhiều Điện Thoại Thật)",
+      "Kết nối Mạng & Mời Bạn Cùng Bàn",
       `
       <div class="surface-panel ${st.connected ? "jade" : "warm"}">
         <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
-          <strong>${st.connected ? "Đang kết nối phòng chung trực tuyến" : "Đang thử kết nối lại..."}</strong>
+          <strong>${st.connected ? "Quán Trà đang kết nối trực tuyến" : "Đang thử kết nối lại..."}</strong>
           <span class="badge-tag num">${escHtml(st.providerName)}</span>
         </div>
-        <p style="font-size:0.88rem;">Thiết bị khác đang mở cùng lúc: <strong class="num">${st.totalOtherPeers}</strong> máy · Mã máy của ${getUserPronoun()}: <code>${escHtml(st.clientId.slice(0, 12))}</code></p>
-        <p style="font-size:0.88rem;">Mở đường dẫn dưới đây trên điện thoại thứ 2 để thấy hai người thật ngồi chung Bàn ${state.teaRoom.tableIdx + 1} (${escHtml(room.shortName)}):</p>
+        <p style="font-size:0.88rem;">Bạn bè đang mở quán cùng lúc: <strong class="num">${st.totalOtherPeers}</strong> người · Mã kết nối máy của ${getUserPronoun()}: <code>${escHtml(st.clientId.slice(0, 12))}</code></p>
+        <p style="font-size:0.88rem;">Gửi đường dẫn này qua Zalo cho bạn bè để cả hai vào đúng Bàn ${state.teaRoom.tableIdx + 1} (${escHtml(room.shortName)}) mà ${getUserPronoun()} đang ngồi:</p>
         <div class="share-url-row">
           <input type="text" class="input-lg share-url-input" id="rt-quick-url" readonly value="${escHtml(inviteSameTable)}" />
-          <button type="button" class="btn-secondary btn-inline" id="btn-copy-rt-url">Chép link</button>
+          <button type="button" class="btn-secondary btn-inline" id="btn-copy-rt-url">Sao chép</button>
         </div>
       </div>
 
@@ -2473,14 +2473,14 @@
           <button type="button" class="btn-jade" id="btn-test-sb-cfg">Kiểm tra bảng SQL</button>
           <button type="button" class="btn-primary" id="btn-save-sb-cfg">Lưu &amp; Bật Supabase</button>
         </div>
-        <button type="button" class="btn-secondary" id="btn-reset-sb-cfg">Chuyển về kênh WSS mặc định</button>
+        <button type="button" class="btn-secondary" id="btn-reset-sb-cfg">Chuyển về kênh mặc định</button>
       </div>
       `
           : `
       <div class="surface-panel">
-        <h3>Máy chủ lưu trữ dài hạn (Dành cho Quản trị viên)</h3>
-        <p style="font-size:0.88rem; color:var(--ink-secondary);">Hệ thống đang tự đồng bộ trực tuyến miễn phí 24/7. Khu vực gắn khóa Supabase cố định được khóa bảo vệ để các bác yên tâm sinh hoạt.</p>
-        <button type="button" class="btn-secondary" id="btn-unlock-rt-admin">${ico("shield")}<span>Mở khóa cấu hình máy chủ (Admin)</span></button>
+        <h3>Phần dành cho Ban Quản Trị</h3>
+        <p style="font-size:0.88rem; color:var(--ink-secondary);">Quán Trà đang chạy ổn định và hoàn toàn miễn phí. Phần cài đặt máy chủ chỉ dành riêng cho Ban Quản Trị.</p>
+        <button type="button" class="btn-secondary" id="btn-unlock-rt-admin">${ico("shield")}<span>Mở khóa khu vực Quản trị</span></button>
       </div>
       `
       }
@@ -2489,7 +2489,7 @@
 
     document.getElementById("btn-copy-rt-url").addEventListener("click", () => {
       trackEvent("share_link_created");
-      copyTextSafe(inviteSameTable, "Đã sao chép link bàn trà để mở trên điện thoại thứ 2!");
+      copyTextSafe(inviteSameTable, "Đã sao chép đường dẫn bàn trà để gửi bạn bè!");
     });
 
     const unlockRtBtn = document.getElementById("btn-unlock-rt-admin");
@@ -2533,7 +2533,7 @@
     document.getElementById("btn-reset-sb-cfg").addEventListener("click", () => {
       RT.saveSupabaseConfig("", "");
       closeDialog();
-      showToast("Đang dùng kênh Phòng Chung Trực Tuyến (WSS) miễn phí 24/7.");
+      showToast("Đã chuyển về đường truyền trực tuyến miễn phí của Quán Trà.");
     });
   }
 
@@ -2603,7 +2603,7 @@
         </div>
         <div class="home-pavilion-meta">
           <span class="home-streak-pill num">${ico("sun", "ico-sm")}<span>${escHtml(prov.short)} · Chuỗi ${state.user.streakDays || 1} ngày</span></span>
-          <span class="home-rank-chip num">${escHtml(prog.cohort.tag)} · ${prog.points} XP</span>
+          <span class="home-rank-chip num">${escHtml(prog.cohort.tag)} · ${prog.points} điểm</span>
         </div>
       </div>
 
@@ -2621,7 +2621,7 @@
 
           <button type="button" class="home-core-card is-jade" data-go="tearoom">
             <span class="home-main-icon">${ico("tea")}</span>
-            <strong>Vào Quán Trà 2.5D</strong>
+            <strong>Vào Quán Trà</strong>
             <small>${escHtml(getCurrentRoom().shortName)} · ${getCurrentRoom().tables.length} bàn</small>
           </button>
 
@@ -2644,7 +2644,7 @@
           <button type="button" class="home-core-card is-wood" data-go="games">
             <span class="home-main-icon">${ico("xiangqi")}</span>
             <strong>Đánh Cờ &amp; Ca Dao</strong>
-            <small>Cờ 9×10 · Ô ăn quan</small>
+            <small>Cờ Tướng · Ô ăn quan</small>
           </button>
 
           <button type="button" class="home-core-card is-viahe" id="btn-home-open-viahe">
@@ -2705,7 +2705,7 @@
         </div>
         ${
           canClaimDailyChest
-            ? `<button type="button" class="btn-primary" id="btn-claim-daily-chest">${ico("award")}<span>Nhận Lộc Ngày Mới (+12 Xu · +15 XP)</span></button>`
+            ? `<button type="button" class="btn-primary" id="btn-claim-daily-chest">${ico("award")}<span>Nhận Lộc Ngày Mới (+12 Xu · +15 điểm)</span></button>`
             : dq.chestClaimed
             ? `<small class="quest-done-note">Đã nhận trọn Rương Lộc hôm nay. Hẹn ${pron} sáng mai!</small>`
             : ""
@@ -2724,7 +2724,7 @@
           <button type="button" class="m3-tool-tile" data-go="quiz">${ico("quiz")}<strong>Đố Vui</strong></button>
           <button type="button" class="m3-tool-tile" data-go="watch">${ico("tv")}<strong>Xem Chung</strong></button>
           <button type="button" class="m3-tool-tile" data-go="health">${ico("heart")}<strong>Sức Khỏe</strong></button>
-          <button type="button" class="m3-tool-tile" data-go="xiangqi">${ico("xiangqi")}<strong>Cờ 9×10</strong></button>
+          <button type="button" class="m3-tool-tile" data-go="xiangqi">${ico("xiangqi")}<strong>Cờ Tướng</strong></button>
           <button type="button" class="m3-tool-tile" id="btn-home-open-96titles" data-go="leaderboard">${ico("trophy")}<strong>Bảng Vàng</strong></button>
           <button type="button" class="m3-tool-tile" data-go="family">${ico("family")}<strong>Con Cái</strong></button>
           <button type="button" class="m3-tool-tile" data-go="privacy">${ico("shield")}<strong>Cài Đặt</strong></button>
@@ -2739,8 +2739,8 @@
             <strong>${escHtml(prog.current.name)}</strong>
             <small class="num">${
               prog.isGuest
-                ? `Mở Thẻ Hội Viên 10 giây nhận +35 XP & +15 Xu`
-                : `${prog.points} XP · Thắng ${totalWins} ván cờ · Xem Thẻ QR`
+                ? `Mở Thẻ Hội Viên trong 10 giây nhận +35 điểm & +15 Xu`
+                : `${prog.points} điểm · Thắng ${totalWins} ván cờ · Xem Thẻ QR`
             }</small>
           </span>
           <span class="m3-row-chevron">${ico("chevron", "ico-sm")}</span>
@@ -2786,7 +2786,7 @@
         playTempleBell();
         const giftedPastry = (state.user.streakDays || 0) >= 7 ? unlockHeritageTableItem("banh-dau-xanh") : false;
         addXu(12, giftedPastry ? "Mở Rương Lộc + Tặng Đĩa bánh đậu xanh men lam!" : "Mở Rương Lộc 3 Niềm Vui Hôm Nay");
-        awardSeniorityPoints(15, "daily_chest_claimed", "diem-danh", "Hoàn thành trọn vẹn Sổ Tay 3 Niềm Vui Hôm Nay (+15 XP)");
+        awardSeniorityPoints(15, "daily_chest_claimed", "diem-danh", "Hoàn thành trọn vẹn Sổ Tay 3 Niềm Vui Hôm Nay (+15 điểm)");
         saveState();
         renderHome();
       });
@@ -2926,16 +2926,16 @@
           <span>Đường dẫn trực tiếp (gửi nhanh qua tin nhắn):</span>
           <div class="share-url-row">
             <input type="text" class="input-lg share-url-input" id="${prefix}-url-in" readonly value="${escHtml(opts.shareUrl)}" />
-            <button type="button" class="btn-secondary btn-inline" id="${copyLinkBtnId}">Chép link</button>
+            <button type="button" class="btn-secondary btn-inline" id="${copyLinkBtnId}">Sao chép</button>
           </div>
         </div>
 
         <div class="field-label">
-          <span>Nội dung bài đăng / lời mời soạn sẵn (Zalo, Facebook, Messenger):</span>
+          <span>Nội dung lời mời soạn sẵn để gửi Zalo, Facebook:</span>
           <textarea class="textarea-lg share-post-area" id="${prefix}-post-in" rows="3">${escHtml(opts.postText)}</textarea>
           <button type="button" class="btn-jade" id="${prefix}-btn-copy-post">
             ${ico("share")}
-            <span>Chép cả lời mời + link (Dán lên MXH)</span>
+            <span>Chép lời mời &amp; đường dẫn (Gửi Zalo)</span>
           </button>
         </div>
       </div>
@@ -2967,7 +2967,7 @@
       copyPostBtn.addEventListener("click", () => {
         trackEvent("share_link_created");
         const fullPost = postIn ? postIn.value : opts.postText;
-        copyTextSafe(fullPost, "Đã sao chép lời mời kèm link — dán ngay lên Zalo / Facebook!");
+        copyTextSafe(fullPost, "Đã sao chép lời mời kèm đường dẫn — bác dán vào Zalo hoặc Facebook để gửi nhé!");
       });
     }
   }
@@ -3008,14 +3008,14 @@
           state.xiangqi.mode = "async";
           state.xiangqi.matchId = cleanVan;
           state.xiangqi.inviteUrl = `${getPublicBaseUrl()}?van=${encodeURIComponent(cleanVan)}`;
-          state.xiangqi.status = "Đang tải trạng thái Ván treo Cờ tướng thời gian thực...";
+          state.xiangqi.status = "Đang tải ván Cờ Tướng đánh chung với bạn...";
         } else {
           state.route = "games";
           activeGameTab = "oaq";
           state.oaq.mode = "async";
           state.oaq.matchId = cleanVan;
           state.oaq.zaloInviteUrl = `${getPublicBaseUrl()}?van=${encodeURIComponent(cleanVan)}`;
-          state.oaq.statusText = "Đang tải trạng thái Ván treo Ô ăn quan thời gian thực...";
+          state.oaq.statusText = "Đang tải ván Ô ăn quan đánh chung với bạn...";
         }
         if (RT) RT.subscribeMatch(cleanVan);
         saveState();
@@ -3223,7 +3223,7 @@
         calendarType: item.calendarType,
         repeat: item.repeat
       });
-      showToast("Đã tạo tệp chuông Lịch (.ics) — bác bấm Mở để lưu vào Lịch điện thoại!");
+      showToast("Đã tạo tệp hẹn giờ — bác bấm Mở rồi chọn Lưu để điện thoại tự đổ chuông đúng giờ!");
     } catch (e) {
       showToast("Không tạo được tệp lịch trên thiết bị này.");
     }
@@ -3232,7 +3232,7 @@
 
   async function requestAndSyncBrowserNotificationPermission() {
     if (typeof Notification === "undefined") {
-      showToast("Trình duyệt này không có thông báo nổi — bác dùng nút Đặt chuông ĐT (.ics) nhé!");
+      showToast("Trình duyệt này chưa có thông báo nổi — bác dùng nút Ghim lịch máy nhé!");
       return "unsupported";
     }
     state.reminders.permissionAsked = true;
@@ -3267,7 +3267,7 @@
       }
       showToast("Đã bật thông báo nhắc việc thành công!");
     } else {
-      showToast("Trình duyệt đang chặn thông báo — bác dùng nút Chuông ĐT (.ics) để báo thức chính xác nhé!");
+      showToast("Trình duyệt đang chặn thông báo — bác dùng nút Ghim lịch máy để điện thoại tự đổ chuông đúng giờ nhé!");
     }
     return perm;
   }
@@ -3526,7 +3526,7 @@
             ? `
           <button type="button" class="btn-primary" id="btn-tear-calendar">
             ${ico("calendar")}
-            <span>Xé tờ lịch đón ngày mới (+3 Xu · +5 XP)</span>
+            <span>Xé tờ lịch đón ngày mới (+3 Xu · +5 điểm)</span>
           </button>
         `
             : `
@@ -3763,7 +3763,7 @@
         <div class="section-block">
           <div class="m3-section-head">
             <h2>Sổ Nhắc Việc Đã Lưu (${(state.reminders.items || []).length})</h2>
-            <span class="m3-section-meta">Bấm .ics để ghim chuông ĐT</span>
+            <span class="m3-section-meta">Ghim vào Lịch máy để tự đổ chuông</span>
           </div>
           <div class="rem-item-list" id="rem-item-list">
             ${(state.reminders.items || [])
@@ -3781,7 +3781,7 @@
                       ${ico("check", "ico-sm")}<span>${isDone ? "Mở lại" : "Đã xong"}</span>
                     </button>
                     <button type="button" class="btn-mini" data-rem-ics="${escHtml(it.id)}">
-                      ${ico("download", "ico-sm")}<span>Chuông ĐT (.ics)</span>
+                      ${ico("download", "ico-sm")}<span>Ghim lịch máy</span>
                     </button>
                     <button type="button" class="btn-mini report" data-rem-del="${escHtml(it.id)}">Xóa</button>
                   </div>
@@ -3863,7 +3863,7 @@
                 return;
               } catch (e) {}
             }
-            copyTextSafe(postText, "Đã sao chép lời chúc & link Tờ Lịch để dán lên Zalo!");
+            copyTextSafe(postText, "Đã sao chép lời chúc & đường dẫn Tờ Lịch để dán lên Zalo!");
           });
         }
       });
@@ -4076,7 +4076,7 @@
           return;
         }
         if (isUnsafeScamOrPiiText(rawTitle)) {
-          showToast("Vì an toàn, nội dung nhắc việc không chứa số tài khoản hoặc đường link lạ.");
+          showToast("Vì an toàn, nội dung nhắc việc không chứa số tài khoản hoặc đường dẫn lạ.");
           return;
         }
         const cType = (calTypeSel && calTypeSel.value) === "lunar" ? "lunar" : "solar";
@@ -4315,7 +4315,7 @@
           ? `
       <div class="surface-panel">
         <label class="field-label">
-          Tỉnh thành của bác (34 tỉnh thành sau sáp nhập)
+          Quê hương / Nơi bác đang sống
           <select class="select-lg" id="checkin-province">
             ${D.PROVINCES.map((p) => `<option value="${p.id}" ${p.id === state.user.provinceId ? "selected" : ""}>${escHtml(p.name)}</option>`).join("")}
           </select>
@@ -4548,8 +4548,8 @@
           ? `
         <div class="surface-panel warm" id="real-checkins-live-box">
           <div class="passcard-head">
-            <strong>Đèn thật vừa thắp sáng trực tuyến</strong>
-            <span class="real-peer-pill num">+${rtSummary.totalRealCheckins} thiết bị</span>
+            <strong>Các bác vừa điểm danh sáng nay</strong>
+            <span class="real-peer-pill num">+${rtSummary.totalRealCheckins} bác vừa vào</span>
           </div>
           <div class="metrics-stat-list">
             ${rtSummary.recentList
@@ -4721,7 +4721,7 @@
               // Fall back to clipboard
             }
           }
-          copyTextSafe(currentText, "Đã sao chép lời chúc kèm link để dán lên Zalo / Facebook!");
+          copyTextSafe(currentText, "Đã sao chép lời chúc kèm đường dẫn để dán lên Zalo / Facebook!");
         });
       });
     }
@@ -4769,7 +4769,7 @@
     if (isUnsafeScamOrPiiText(text)) {
       return {
         blocked: true,
-        reason: "Hệ thống tự động chặn số điện thoại, số tài khoản, đường link hoặc từ khóa lừa đảo để bảo vệ các bác."
+        reason: "Hệ thống tự động chặn số điện thoại, số tài khoản, đường dẫn lạ hoặc từ khóa lừa đảo để bảo vệ các bác."
       };
     }
 
@@ -4806,7 +4806,7 @@
     if (isUnsafeScamOrPiiText(text) || isUnsafeScamOrPiiText(aiPolished)) {
       return {
         blocked: true,
-        reason: "Hệ thống tự động chặn số điện thoại, số tài khoản, đường link hoặc từ khóa lừa đảo để bảo vệ các bác."
+        reason: "Hệ thống tự động chặn số điện thoại, số tài khoản, đường dẫn lạ hoặc từ khóa lừa đảo để bảo vệ các bác."
       };
     }
 
@@ -5158,7 +5158,7 @@
           category: "safety_alert",
           detail: "Chặn tự động SĐT, đường link hoặc từ khóa lừa đảo khi đặt tên bàn trà"
         });
-        showToast("Vì an toàn, tên bàn và lời chào không được chứa số điện thoại, số tài khoản hoặc đường link.");
+        showToast("Vì an toàn, tên bàn và lời chào không được chứa số điện thoại, số tài khoản hoặc đường dẫn lạ.");
         return;
       }
       const targetBase = room.tables[pickedIdx];
@@ -5271,7 +5271,7 @@
       2,
       "tea_sticker",
       "giao-luu",
-      `Gửi Sticker "${stk.shortLabel}" tại ${table.name}`,
+      `Gửi Hình chúc "${stk.shortLabel}" tại ${table.name}`,
       {
         eventType: "chat_message",
         module: "tearoom",
@@ -5570,7 +5570,7 @@
       currEl.innerHTML = formatTeaLineRichHtml(curr, true);
     }
     if (els.simDict) {
-      els.simDict.textContent = `Sổ từ điển tự học (${state.phoneticDict.length})`;
+      els.simDict.textContent = `Sổ sửa lỗi giọng nói (${state.phoneticDict.length})`;
     }
     if (replyStack && curr) {
       const suggestions = matchThreeReplies(curr.text);
@@ -5603,7 +5603,7 @@
           <span class="badge-tag ${sameProv ? "jade" : ""}">${escHtml(member.province)}</span>
         </div>
         <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
-          <span class="online-status-pill"><span class="online-dot-live"></span>Đang Online</span>
+          <span class="online-status-pill"><span class="online-dot-live"></span>Đang trực tuyến</span>
           ${mCode ? `<span class="member-code-chip">Mã: ${escHtml(mCode)}</span>` : ""}
         </div>
         <p>${escHtml(member.bio)}</p>
@@ -5641,15 +5641,15 @@
 
   function openCloneRoomDialog() {
     openDialog(
-      "Nhân bản phòng sinh hoạt mới",
+      "Mở Phòng Sinh Hoạt Mới",
       `
-      <p style="font-size:0.88rem;">Từ 1 khung phòng chuẩn, bác hoặc trưởng CLB có thể mở thêm phòng theo chủ đề riêng (Đọc thơ, Dưỡng sinh, Hội đồng niên...):</p>
+      <p style="font-size:0.88rem;">Bác có thể mở thêm phòng sinh hoạt mới theo chủ đề riêng (Đọc thơ, Dưỡng sinh, Hội đồng niên...):</p>
       <label class="field-label">
         Tên phòng mới
         <input type="text" class="input-lg" id="clone-room-name" value="Phòng Dưỡng Sinh Sáng" />
       </label>
       <label class="field-label">
-        Chọn mẫu khung phòng gốc
+        Chọn kiểu khung cảnh phòng
         <select class="select-lg" id="clone-base-id">
           ${D.ROOM_TEMPLATES.map((r) => `<option value="${r.id}">${escHtml(r.name)} (${r.tables.length} bàn)</option>`).join("")}
         </select>
@@ -5662,7 +5662,7 @@
       </label>
       <button type="button" class="btn-jade" id="btn-confirm-clone-room">
         ${ico("check")}
-        <span>Tạo & Vào phòng mới ngay</span>
+        <span>Mở &amp; Vào phòng mới ngay</span>
       </button>
       `
     );
@@ -5678,7 +5678,7 @@
       state.teaRoom.tableIdx = 0;
       saveState();
       closeDialog();
-      showToast(`Đã nhân bản thành công ${newRoom.name} với 6 bàn!`);
+      showToast(`Đã mở thêm ${newRoom.name} với 6 bàn mới!`);
       renderTeaRoom();
     });
   }
@@ -5693,7 +5693,7 @@
               `<button type="button" class="room-tab-btn ${r.id === state.teaRoom.roomId ? "active" : ""}" data-room-id="${r.id}">${escHtml(r.shortName)}</button>`
           )
           .join("")}
-        <button type="button" class="room-tab-btn clone-btn" id="btn-clone-room">+ Nhân bản phòng</button>
+        <button type="button" class="room-tab-btn clone-btn" id="btn-clone-room">+ Mở phòng mới</button>
       </div>
     `;
   }
@@ -5727,7 +5727,7 @@
 
   function renderGraphicsModeSwitchHtml(opts) {
     const o = opts || {};
-    const badgeHtml = `<span class="stage-badge is-compact" id="render-mode-badge">Full 2.5D</span>`;
+    const badgeHtml = `<span class="stage-badge is-compact" id="render-mode-badge">Cảnh rõ nét</span>`;
     if (o.innerOnly) return badgeHtml;
     return `
       <div class="tearoom-controls-row">
@@ -5779,7 +5779,7 @@
           b.classList.toggle("active", is25);
           b.setAttribute("aria-pressed", String(is25));
         });
-        showToast("Thiết bị chưa hỗ trợ WebGL mượt — đã tự động chuyển sang Full 2.5D nhẹ.");
+        showToast("Đã tự động chọn chế độ hình ảnh nhẹ, mượt cho máy của bác.");
       }
     );
 
@@ -5830,7 +5830,7 @@
       ${renderRoomSwitcherStrip()}
 
       <div class="m3-seg-bar" role="tablist" aria-label="Chọn góc xem sảnh trà">
-        <button type="button" class="m3-seg-btn ${activeLobbyTab === "overview" ? "active" : ""}" id="lobby-tab-overview">Sảnh 2.5D &amp; Ghép bàn</button>
+        <button type="button" class="m3-seg-btn ${activeLobbyTab === "overview" ? "active" : ""}" id="lobby-tab-overview">Sảnh &amp; Chọn Bàn</button>
         <button type="button" class="m3-seg-btn ${activeLobbyTab === "tables" ? "active" : ""}" id="lobby-tab-tables">Chi tiết ${room.tables.length} bàn</button>
       </div>
 
@@ -5839,7 +5839,7 @@
           ? `
         <div class="surface-panel warm" id="phong-co-quick-banner">
           <div class="btn-row">
-            <button type="button" class="btn-primary" id="btn-lobby-play-full9x10">${ico("xiangqi")}<span>Đánh Cờ 9×10</span></button>
+            <button type="button" class="btn-primary" id="btn-lobby-play-full9x10">${ico("xiangqi")}<span>Đánh Cờ Tướng</span></button>
             <button type="button" class="btn-jade" id="btn-lobby-play-cothe">${ico("award")}<span>Giải 6 Cờ thế</span></button>
           </div>
         </div>
@@ -6085,9 +6085,9 @@
           : ""
       }
 
-      <!-- Sân khấu bàn trà 2.5D hiển thị trọn ngay khung hình đầu tiên -->
+      <!-- Sân khấu bàn trà hiển thị trọn ngay khung hình đầu tiên -->
       <div class="tearoom-stage" id="tearoom-stage">
-        <span class="stage-floating-mode-pill" id="render-mode-badge">Full 2.5D</span>
+        <span class="stage-floating-mode-pill" id="render-mode-badge">Bàn trà ấm cúng</span>
         <canvas class="tearoom-canvas" id="tearoom-canvas"></canvas>
         <div class="avatar-tags-layer" id="avatar-tags-layer"></div>
       </div>
@@ -6103,7 +6103,7 @@
       <!-- Bảng lời bàn trà 2 dòng ngay dưới sân khấu -->
       <div class="tea-board" aria-live="polite">
         <div class="tea-board-head">
-          <strong>Bảng lời bàn trà (Nhịp 5s)</strong>
+          <strong>Lời trò chuyện tại bàn</strong>
           <span id="idle-assistant-status">${escHtml(room.hostName || "Chị Trà (Trợ lý)")} trực bàn</span>
         </div>
         <div class="tea-board-lines">
@@ -6120,7 +6120,7 @@
       <!-- Khung giao tiếp 2 tab + 3 nghi thức mời trà -->
       <div class="surface-panel">
         <div class="tab-bar" role="tablist" aria-label="Cách gửi lời chào trên bàn trà">
-          <button type="button" class="tab-btn ${activeTeaInputTab === "quick" ? "active" : ""}" id="tea-in-tab-quick">Nói nhanh &amp; Sticker</button>
+          <button type="button" class="tab-btn ${activeTeaInputTab === "quick" ? "active" : ""}" id="tea-in-tab-quick">Nói nhanh &amp; Hình chúc</button>
           <button type="button" class="tab-btn ${activeTeaInputTab === "compose" ? "active" : ""}" id="tea-in-tab-compose">Gõ chữ &amp; Nói giọng</button>
         </div>
         <div class="cooldown-note" id="tea-cooldown-note" ${coolLeft > 0 ? "" : "hidden"}>Bác nhấp ngụm trà nghe các bác khác nói nhé... (${coolLeft}s)</div>
@@ -6140,7 +6140,7 @@
               )
               .join("")}
           </div>
-          <div class="sticker-grid" role="group" aria-label="Bộ Sticker Quán Trà 1 chạm" id="tea-sticker-tray">
+          <div class="sticker-grid" role="group" aria-label="Bộ Hình chúc Quán Trà 1 chạm" id="tea-sticker-tray">
             ${(D.TEA_STICKERS || [])
               .map(
                 (stk) => `
@@ -6176,7 +6176,7 @@
           ? `
         <div class="section-block" id="phong-co-table-chess">
           <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
-            <h2>Bàn Cờ Tướng 9×10 Ngay Tại Bàn</h2>
+            <h2>Bàn Cờ Tướng Ngay Tại Bàn</h2>
             <button type="button" class="btn-mini" id="btn-open-fullscreen-xq">Mở rộng toàn màn hình</button>
           </div>
           <div id="xq-host-container"></div>
@@ -6194,7 +6194,7 @@
               .slice(0, 3)
               .join(", ")
           )}</span>
-          <span class="tb-details-hint">${table.realPeerCount ? `${table.realPeerCount} người thật` : "Chạm xem"}</span>
+          <span class="tb-details-hint">${table.realPeerCount ? `${table.realPeerCount} bạn thật` : "Chạm xem"}</span>
         </summary>
         <div class="member-pill-list" style="margin-top:8px;">
           ${table.members
@@ -6207,7 +6207,7 @@
               <span class="member-chip-meta">
                 <span class="member-chip-top">
                   <strong>${escHtml(m.name)} <span class="member-age-inline">· ${m.age} tuổi${escHtml(frameBadge)}</span></strong>
-                  ${m.isRealPeer ? `<span class="real-peer-pill">Người thật</span>` : `<span class="member-chip-prov">${escHtml(m.province)}</span>`}
+                  ${m.isRealPeer ? `<span class="real-peer-pill">Bạn cùng bàn</span>` : `<span class="member-chip-prov">${escHtml(m.province)}</span>`}
                 </span>
                 <small>${escHtml((m.habits || []).slice(0, 2).map(getHabitLabel).join(" · ") || m.province)}</small>
               </span>
@@ -6304,7 +6304,7 @@
           ? `${baseShare}?tin=${encodeURIComponent(table.article.id)}`
           : `${baseShare}?phong=${encodeURIComponent(room.id)}&ban=${state.teaRoom.tableIdx + 1}`;
       const peerNames = table.members.map((m) => m.name).join(", ");
-      const postText = `${state.user.name} (${getUserAge()} tuổi) đang ngồi uống trà tại ${table.name} (${room.name}) cùng ${peerNames}. Mời các anh chị bấm vào link dưới đây để vào ngồi chung bàn trò chuyện (không cần tài khoản):\n${shareUrl}`;
+      const postText = `${state.user.name} (${getUserAge()} tuổi) đang ngồi uống trà tại ${table.name} (${room.name}) cùng ${peerNames}. Mời các anh chị bấm vào đường dẫn dưới đây để vào ngồi chung bàn trò chuyện (không cần tài khoản):\n${shareUrl}`;
       const png = window.TeaRoomScene.exportPostcardPng({
         userName: state.user.name,
         userAge: getUserAge(),
@@ -6316,10 +6316,10 @@
         shareUrl
       });
       openDialog(
-        "Check-in bàn trà (Ảnh QR + Link MXH)",
-        `<img src="${png}" alt="Ảnh Check-in bàn trà Tuổi Bạc" style="width:100%; border-radius:12px; border:1px solid #D5C4AA;" />
+        "Ảnh Kỷ Niệm Bàn Trà (Gửi Zalo)",
+        `<img src="${png}" alt="Ảnh kỷ niệm bàn trà Tuổi Bạc" style="width:100%; border-radius:12px; border:1px solid #D5C4AA;" />
          <div class="btn-row">
-           <a class="btn-primary" href="${png}" download="checkin-ban-tra-tuoi-bac.png" style="text-decoration:none;">Lưu ảnh QR</a>
+           <a class="btn-primary" href="${png}" download="ky-niem-ban-tra-tuoi-bac.png" style="text-decoration:none;">Lưu ảnh QR</a>
            <button type="button" class="btn-jade" id="btn-share-table-zalo">${ico("share")}<span>Chia sẻ nhanh</span></button>
          </div>
          ${renderSocialShareKitHtml({
@@ -6341,7 +6341,7 @@
         if (navigator.share) {
           try {
             await navigator.share({
-              title: `Check-in ${table.name} — Tuổi Bạc`,
+              title: `Kỷ niệm ${table.name} — Tuổi Bạc`,
               text: currentText,
               url: shareUrl
             });
@@ -6350,7 +6350,7 @@
             // Fall back to clipboard
           }
         }
-        copyTextSafe(currentText, "Đã sao chép lời mời và link bàn trà để dán lên Zalo / Facebook!");
+        copyTextSafe(currentText, "Đã sao chép lời mời và đường dẫn bàn trà để dán lên Zalo / Facebook!");
       });
     });
 
@@ -6363,7 +6363,7 @@
             (item) => `
           <div class="dict-row">
             <strong>${escHtml(item.speaker)}</strong>
-            <p>${escHtml(item.text)}</p>
+            <p>${escHtml(String(item.text || "").replace(/^\[Sticker:\s*(.+)\]$/, "$1"))}</p>
           </div>`
           )
           .join("")
@@ -6378,7 +6378,7 @@
     document.getElementById("btn-report-table").addEventListener("click", () => {
       openDialog(
         "Báo cáo tin nhắn hoặc người dùng vi phạm",
-        `<p>Nếu có người lạ xin tiền, gửi đường link lạ hoặc nói năng thiếu tôn trọng, bác chọn lý do bên dưới để đội ngũ kiểm duyệt xử lý trong ngày:</p>
+        `<p>Nếu có người lạ xin tiền, gửi đường dẫn lạ hoặc nói năng thiếu tôn trọng, bác chọn lý do bên dưới để đội ngũ kiểm duyệt xử lý trong ngày:</p>
          <button type="button" class="btn-danger" id="confirm-report-1">Báo cáo gửi số tài khoản / xin tiền</button>
          <button type="button" class="btn-secondary" id="confirm-report-2">Báo cáo quảng cáo thuốc / thực phẩm chức năng</button>`
       );
@@ -6451,7 +6451,7 @@
             category: "safety_alert",
             detail: "Chặn tự động SĐT, số tài khoản hoặc đường dẫn lạ trong ô chat"
           });
-          showToast("Vì an toàn cho các bác, quán trà không gửi số điện thoại, số tài khoản hoặc đường link.");
+          showToast("Vì an toàn cho các bác, quán trà không gửi số điện thoại, số tài khoản hoặc đường dẫn lạ.");
           return;
         }
         textIn.value = "";
@@ -6517,7 +6517,7 @@
     const cleanCaption = String(captionText || "Chào cả bàn, mời các anh chị dùng chén trà ấm sáng nay nhé!").replace(/[<>]/g, "").trim();
     const checked = cleanAndApplyDictionary(cleanCaption);
     if (checked.blocked) {
-      showToast("Vì an toàn cho các bác, không gửi số điện thoại hoặc đường link.");
+      showToast("Vì an toàn cho các bác, không gửi số điện thoại hoặc đường dẫn lạ.");
       return;
     }
     const provShort = getProvince(state.user.provinceId).short;
@@ -6579,7 +6579,7 @@
       box.innerHTML = `
         <div class="surface-panel jade">
           <div class="passcard-head">
-            <strong>Lời chào giọng nói (${durSec}s · Nhẹ dưới 20KB)</strong>
+            <strong>Lời chào bằng giọng nói (${durSec} giây)</strong>
             <span class="badge-tag jade">Sẵn sàng gửi</span>
           </div>
           ${noteText ? `<small style="color:var(--ink-secondary);">${escHtml(noteText)}</small>` : ""}
@@ -6589,7 +6589,7 @@
             <input type="text" class="input-lg" id="voice-clip-caption-in" maxlength="90" value="Chào các anh chị cùng bàn, chúc cả nhà ngày mới nhiều sức khỏe!" />
           </label>
           <div class="btn-row">
-            <button type="button" class="btn-primary" id="btn-send-voice-clip">${ico("check")}<span>Gửi lời chào (${durSec}s)</span></button>
+            <button type="button" class="btn-primary" id="btn-send-voice-clip">${ico("check")}<span>Gửi lời chào (${durSec} giây)</span></button>
             <button type="button" class="btn-secondary" id="btn-cancel-voice-clip">Đóng</button>
           </div>
         </div>
@@ -6608,7 +6608,7 @@
 
     if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== "function" || typeof MediaRecorder === "undefined") {
       const sampleWav = synthesizeWarmGreetingWavDataUrl(3);
-      showReadyClipDraft(sampleWav, 3, "Thiết bị chưa bật micro thu âm — tạo sẵn bản âm chào mẫu 3s để bác gửi thử:");
+      showReadyClipDraft(sampleWav, 3, "Máy chưa bật micro nên quán tạo sẵn câu chào mẫu để bác dùng ngay:");
       return;
     }
 
@@ -6672,7 +6672,7 @@
               showReadyClipDraft(
                 synthesizeWarmGreetingWavDataUrl(Math.min(4, dur)),
                 Math.min(4, dur),
-                "Đã nén gọn âm thanh dưới 20KB để truyền nhanh qua bàn trà:"
+                "Đã thu gọn âm thanh để gửi nhanh và tiết kiệm mạng:"
               );
             }
           };
@@ -6699,7 +6699,7 @@
       })
       .catch(() => {
         const sampleWav = synthesizeWarmGreetingWavDataUrl(3);
-        showReadyClipDraft(sampleWav, 3, "Chưa cấp quyền micro — hiển thị bản âm chào mẫu 3s để bác nghe & gửi thử:");
+        showReadyClipDraft(sampleWav, 3, "Máy chưa cấp quyền micro — quán tạo sẵn câu chào mẫu để bác nghe và gửi ngay:");
       });
   }
 
@@ -6743,7 +6743,7 @@
       });
       box.innerHTML = `
         <div class="surface-panel danger">
-          <p style="font-weight:700;">Vì an toàn cho các bác, quán trà không gửi số điện thoại, số tài khoản hoặc đường link.</p>
+          <p style="font-weight:700;">Vì an toàn cho các bác, quán trà không gửi số điện thoại, số tài khoản hoặc đường dẫn lạ.</p>
           <button type="button" class="btn-secondary" id="btn-inline-voice-cancel">Đóng</button>
         </div>
       `;
@@ -6778,7 +6778,7 @@
       if (!editedText) return;
       const recheck = cleanAndApplyDictionary(editedText);
       if (recheck.blocked) {
-        showToast("Vì an toàn cho các bác, không gửi số điện thoại hoặc đường link.");
+        showToast("Vì an toàn cho các bác, không gửi số điện thoại hoặc đường dẫn lạ.");
         return;
       }
       if (state.privacy.consentVoiceDict) commitVoiceDictionaryLearning(pendingVoiceDraft);
@@ -6857,8 +6857,8 @@
 
   function openDictDialog() {
     openDialog(
-      `Sổ từ điển tự học ngầm (${state.phoneticDict.length} mục)`,
-      `<p style="font-size:0.88rem;">Bảng này chạy ngầm để chuẩn hóa câu nói mà không hiện thuật ngữ kỹ thuật lên màn hình người cao tuổi.</p>
+      `Sổ Sửa Lỗi Giọng Nói (${state.phoneticDict.length} từ)`,
+      `<p style="font-size:0.88rem;">Giúp máy hiểu đúng giọng vùng miền khi bác nói vào micro. Nếu máy hay nghe nhầm chữ nào, hệ thống sẽ tự ghi nhớ và sửa cho bác.</p>
        ${state.phoneticDict
          .slice()
          .reverse()
@@ -6885,7 +6885,7 @@
         tag: `Điểm tin theo từ khóa · ${q}`,
         title: `Tổng hợp tin mới sáng nay về chủ đề "${q}": góc nhìn thiết thực cho đời sống gia đình`,
         source: "Điểm báo tổng hợp từ nguồn chính thống · Vừa cập nhật",
-        body: `Chủ đề "${q}" đang được nhiều độc giả quan tâm theo dõi trong bản tin sáng nay. Các chuyên gia khuyến nghị theo dõi thông tin từ các cơ quan báo chí chính thống và cùng trao đổi kinh nghiệm thực tế phù hợp với sinh hoạt hằng ngày.`,
+        body: `Chủ đề "${q}" đang được nhiều cô bác quan tâm sáng nay. Mời bác đọc kỹ nguồn tin chính thống và bàn luận thêm cùng bạn trà cho vui khỏe.`,
         detailPoints: [
           `Cập nhật diễn biến chính xoay quanh "${q}" từ các đầu báo lớn trong nước.`,
           "Phân tích tác động thiết thực tới chi tiêu sinh hoạt, sức khỏe và đời sống hưu trí.",
@@ -7018,7 +7018,7 @@
           state.newspaper.drafts.push({
             id: it.id || `rss_${Date.now()}_${added}`,
             category: it.category || "doi-song",
-            tag: it.tag || "Điểm báo 05:30 (RSS nháp)",
+            tag: it.tag || "Điểm báo sáng",
             title: it.title,
             source: it.source || "Điểm báo tích cực 05:30",
             body: it.body,
@@ -7058,9 +7058,9 @@
         "paper",
         `<button type="button" class="m3-hero-btn" id="btn-toggle-rss-admin">${
           !adminUnlocked
-            ? `${ico("shield", "ico-sm")}<span>RSS</span>`
+            ? `${ico("shield", "ico-sm")}<span>Duyệt tin</span>`
             : showAdminRssBox
-            ? "Đóng RSS"
+            ? "Đóng góc duyệt"
             : `Duyệt (${state.newspaper.drafts.length})`
         }</button>`
       )}
@@ -7122,13 +7122,13 @@
           ? `
         <div class="surface-panel warm">
           <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
-            <h3>Góc Admin duyệt RSS 05:30 (1 chạm)</h3>
+            <h3>Góc Ban Quản Trị duyệt tin sáng</h3>
             <button type="button" class="btn-mini" id="btn-lock-rss-admin">Khóa lại</button>
           </div>
-          <p style="font-size:0.84rem;">GitHub Action 05:30 sáng tự kéo RSS báo chính thống, lọc tin tích cực lưu vào <code>assets/morning-rss.json</code>:</p>
+          <p style="font-size:0.84rem;">Danh sách tin mới cập nhật mỗi 5 giờ 30 sáng — bấm duyệt để đưa lên trang nhất Tờ Báo Sáng:</p>
           ${
             state.newspaper.drafts.length === 0
-              ? `<p style="font-size:0.88rem; font-weight:700;">Đã duyệt hết bản nháp RSS sáng nay.</p>`
+              ? `<p style="font-size:0.88rem; font-weight:700;">Đã duyệt hết tin chờ sáng nay.</p>`
               : state.newspaper.drafts
                   .map(
                     (dr, i) => `
@@ -7137,7 +7137,7 @@
                 <strong>${escHtml(dr.title)}</strong>
                 <small style="color:var(--ink-secondary);">${escHtml(dr.source)}</small>
                 <p>${escHtml(dr.body)}</p>
-                <button type="button" class="btn-jade approve-rss-btn" data-idx="${i}">Duyệt 1 chạm lên Báo Sáng</button>
+                <button type="button" class="btn-jade approve-rss-btn" data-idx="${i}">Duyệt lên Báo Sáng</button>
               </div>
             `
                   )
@@ -7284,7 +7284,7 @@
     if (lockRssAdminBtn) {
       lockRssAdminBtn.addEventListener("click", () => {
         lockAdminSession();
-        showToast("Đã khóa góc quản trị RSS.");
+        showToast("Đã khóa góc duyệt tin.");
         renderNewspaper();
       });
     }
@@ -7306,7 +7306,7 @@
             title: approved.title
           });
           saveState();
-          showToast("Đã duyệt tin RSS lên trang nhất Tờ Báo Sáng!");
+          showToast("Đã đưa bài lên trang nhất Tờ Báo Sáng!");
           renderNewspaper();
         }
       });
@@ -7908,7 +7908,7 @@
     els.main.innerHTML = `
       ${renderM3HeroBanner(
         "Trò Chơi Dân Gian",
-        "Ô ăn quan · Ca dao trí nhớ · Cờ tướng 9×10",
+        "Ô ăn quan · Ca dao trí nhớ · Cờ Tướng",
         "xiangqi"
       )}
       <div class="tab-bar tabs-3" role="tablist" aria-label="Chọn trò chơi dân gian">
@@ -7967,7 +7967,7 @@
       state.oaq.matchId = code;
       state.oaq.myRole = "host";
       state.oaq.hostName = `${state.user.name} · ${getUserAge()}t`;
-      state.oaq.guestName = "Đang chờ bạn cờ bấm link...";
+      state.oaq.guestName = "Đang chờ bạn vào bàn...";
       state.oaq.turn = "host";
       state.oaq.zaloInviteUrl = `${getPublicBaseUrl()}?van=${encodeURIComponent(code)}`;
       if (RT) {
@@ -8558,7 +8558,7 @@
     const guestLabel =
       o.mode === "ai"
         ? "Máy · Tự động"
-        : o.guestName || "Bạn cờ qua link";
+        : o.guestName || "Bạn đánh chung";
 
     const renderCellStateClasses = (idx) => {
       const cls = [];
@@ -8580,7 +8580,7 @@
 
         <div class="m3-seg-bar" role="tablist" aria-label="Chọn chế độ Ô ăn quan">
           <button type="button" class="m3-seg-btn ${o.mode === "ai" ? "active" : ""}" id="oaq-mode-ai" ${isAnimating ? "disabled" : ""}>Đấu với Máy</button>
-          <button type="button" class="m3-seg-btn ${o.mode === "async" ? "active" : ""}" id="oaq-mode-async" ${isAnimating ? "disabled" : ""}>Ván treo qua link</button>
+          <button type="button" class="m3-seg-btn ${o.mode === "async" ? "active" : ""}" id="oaq-mode-async" ${isAnimating ? "disabled" : ""}>Đánh với bạn qua Zalo</button>
         </div>
 
         ${
@@ -8722,10 +8722,10 @@
             ? `
           <div class="surface-panel warm">
             <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
-              <strong>Ván treo thời gian thực (${escHtml(o.matchId)})</strong>
+              <strong>Mời bạn đánh chung Ô ăn quan (${escHtml(o.matchId)})</strong>
               <span class="real-peer-pill">${isMyTurn ? "Đến lượt bác" : "Đang chờ bạn cờ"}</span>
             </div>
-            <p style="font-size:0.88rem;">Gửi link dưới đây cho người thứ 2 mở trên điện thoại thật để đánh chung ván này ngay lập tức:</p>
+            <p style="font-size:0.88rem;">Gửi đường dẫn bên dưới qua Zalo để mời bạn mở máy vào đánh chung ván này:</p>
             ${renderSocialShareKitHtml({
               prefix: "oaq-share",
               copyLinkBtnId: "oaq-copy-zalo",
@@ -8806,7 +8806,7 @@
           }
           finishOaqGameIfEnded();
           saveState();
-          addXu(3, "Đi nước cờ ván treo thật");
+          addXu(3, "Đi nước đánh chung với bạn");
           refreshOaqTabIfActive();
           return;
         }
@@ -8907,7 +8907,7 @@
       confirmMatchExitOrStay(() => {
         state.oaq.mode = "ai";
         state.oaq.turn = "host";
-        state.oaq.statusText = "Đang đấu với Máy (luôn ghi rõ là Máy).";
+        state.oaq.statusText = "Đang chơi cùng Máy. Mời bác chọn một ô để đi trước.";
         saveState();
         refreshOaqTabIfActive();
       }, "đổi sang chế độ Đấu với Máy");
@@ -8918,10 +8918,10 @@
       confirmMatchExitOrStay(() => {
         state.oaq.mode = "async";
         ensureOaqAsyncMatch();
-        state.oaq.statusText = "Chế độ Ván treo thật: gửi link bên dưới cho điện thoại thứ 2 để đánh trực tiếp.";
+        state.oaq.statusText = "Chế độ đánh với bạn: gửi đường dẫn bên dưới qua Zalo để bạn cùng vào bàn.";
         saveState();
         refreshOaqTabIfActive();
-      }, "đổi sang chế độ Ván treo qua link");
+      }, "đổi sang chế độ đánh với bạn");
     });
 
     if (o.mode === "async" && o.zaloInviteUrl) {
@@ -9001,7 +9001,7 @@
       x.matchId = code;
       x.mySide = "red";
       x.hostName = `${state.user.name} · ${getUserAge()}t`;
-      x.guestName = "Đang chờ kỳ hữu mở link...";
+      x.guestName = "Đang chờ bạn cờ vào bàn...";
       x.board = XQ.createInitialBoard();
       x.turn = "red";
       x.selected = null;
@@ -9010,7 +9010,7 @@
       x.solved = false;
       x.moveLog = [];
       x.inviteUrl = `${getPublicBaseUrl()}?van=${encodeURIComponent(code)}`;
-      x.status = "Bác cầm quân Đỏ (đi tiên). Gửi link bên dưới để kỳ hữu cầm quân Đen trên máy khác.";
+      x.status = "Bác cầm quân Đỏ đi trước. Gửi đường dẫn bên dưới qua Zalo để bạn cầm quân Đen trên máy của họ.";
       if (RT) {
         RT.publishMatchState({
           matchId: code,
@@ -9032,8 +9032,8 @@
   function renderXiangqiScreen() {
     els.main.innerHTML = `
       ${renderM3HeroBanner(
-        "Cờ Tướng 9×10 &amp; Cờ Thế",
-        "32 quân chuẩn luật · Cúp Đồng Ngũ 3 vòng · 6 thế cổ phổ",
+        "Cờ Tướng &amp; Cờ Thế",
+        "Đấu với Máy · Mời bạn qua Zalo · 6 thế cờ cổ điển",
         "xiangqi",
         `<button type="button" class="m3-hero-btn" id="btn-xq-goto-oaq">Ô ăn quan</button>`
       )}
@@ -9104,11 +9104,11 @@
         `
             : isPlayGameTab
             ? `
-          <div class="news-cat-strip" role="group" aria-label="Chọn đối thủ trên bàn 9×10">
+          <div class="news-cat-strip" role="group" aria-label="Chọn đối thủ Cờ Tướng">
             <button type="button" class="news-cat-chip ${x.mode === "ai" && x.aiLevel !== "easy" ? "active" : ""}" data-xq-play="ai-club">Máy CLB</button>
             <button type="button" class="news-cat-chip ${x.mode === "ai" && x.aiLevel === "easy" ? "active" : ""}" data-xq-play="ai-easy">Máy Thư giãn</button>
             <button type="button" class="news-cat-chip ${x.mode === "local2p" ? "active" : ""}" data-xq-play="local2p">2 Người</button>
-            <button type="button" class="news-cat-chip ${x.mode === "async" ? "active" : ""}" data-xq-play="async">Qua link</button>
+            <button type="button" class="news-cat-chip ${x.mode === "async" ? "active" : ""}" data-xq-play="async">Mời bạn</button>
           </div>
         `
             : `
@@ -9187,7 +9187,7 @@
               : ""
           }
           <button type="button" class="btn-primary" id="xq-btn-reset">${
-            x.mode === "puzzle" ? "Xếp lại thế cờ" : isCupTab ? "Đánh lại vòng này" : "Xếp ván 9×10 mới"
+            x.mode === "puzzle" ? "Xếp lại thế cờ" : isCupTab ? "Đánh lại vòng này" : "Xếp ván mới"
           }</button>
         </div>
 
@@ -9214,14 +9214,14 @@
             ? `
           <div class="surface-panel warm">
             <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
-              <strong>Ván treo Cờ tướng 9×10 (${escHtml(x.matchId)})</strong>
+              <strong>Mời bạn đánh Cờ Tướng (${escHtml(x.matchId)})</strong>
               <span class="real-peer-pill">${x.turn === myControllableSide ? "Đến lượt bác" : "Chờ nước đi bạn cờ"}</span>
             </div>
             ${renderSocialShareKitHtml({
               prefix: "xq-share",
               copyLinkBtnId: "xq-copy-link",
               shareUrl: x.inviteUrl,
-              postText: `${state.user.name} mời bạn đánh ván Cờ tướng 9×10 trực tuyến trên Tuổi Bạc (không cần cài tài khoản). Bấm vào link để cầm quân đi nước tiếp theo:\n${x.inviteUrl}`
+              postText: `${state.user.name} mời bạn đánh ván Cờ Tướng trên Quán Trà Tuổi Bạc (chạm là chơi ngay, không cần cài tài khoản). Bấm vào đường dẫn để đi nước tiếp theo:\n${x.inviteUrl}`
             })}
           </div>
         `
@@ -9426,7 +9426,7 @@
         prefix: "xq-share",
         copyLinkBtnId: "xq-copy-link",
         shareUrl: x.inviteUrl,
-        postText: `${state.user.name} mời bạn đánh ván Cờ tướng 9×10 trực tuyến trên Tuổi Bạc (không cần cài tài khoản). Bấm vào link để cầm quân đi nước tiếp theo:\n${x.inviteUrl}`
+        postText: `${state.user.name} mời bạn đánh ván Cờ Tướng trên Quán Trà Tuổi Bạc (chạm là chơi ngay, không cần cài tài khoản). Bấm vào đường dẫn để đi nước tiếp theo:\n${x.inviteUrl}`
       });
     }
   }
@@ -9463,7 +9463,7 @@
         gs.winStreak = (Number(gs.winStreak) || 0) + 1;
         gs.bestWinStreak = Math.max(Number(gs.bestWinStreak) || 0, gs.winStreak);
         checkGameWinMilestones();
-        x.status = `Chiếu bí! Bên ${movedSide === "red" ? "Đỏ" : "Đen"} đã thắng ván 9×10!`;
+        x.status = `Chiếu bí! Bên ${movedSide === "red" ? "Đỏ" : "Đen"} đã thắng ván Cờ Tướng!`;
       } else {
         x.inProgress = true;
         armBrowserBackMatchGuard("xiangqi");
@@ -9488,13 +9488,13 @@
         gs.bestWinStreak = Math.max(Number(gs.bestWinStreak) || 0, gs.winStreak);
         awardSkillPoints("xiangqi", 8);
         checkGameWinMilestones();
-        x.status = `Chiếu bí! ${state.user.name} đã giành chiến thắng ván Cờ tướng 9×10!`;
-        addXu(8, "Thắng ván treo Cờ tướng 9×10");
+        x.status = `Chiếu bí! ${state.user.name} đã giành chiến thắng ván Cờ Tướng!`;
+        addXu(8, "Thắng ván Cờ Tướng cùng bạn");
       } else {
         x.inProgress = true;
         armBrowserBackMatchGuard("xiangqi");
         x.status = `${moveDesc}${enemyChecked ? " (Chiếu Tướng!)" : ""} — đang chờ đối thủ đi tiếp.`;
-        addXu(2, "Đi nước Cờ tướng ván treo");
+        addXu(2, "Đi nước Cờ Tướng cùng bạn");
       }
       if (RT && x.matchId) {
         const existing = RT.getMatch(x.matchId) || {};
@@ -9531,7 +9531,7 @@
         gs.cupTitles = (Number(gs.cupTitles) || 0) + 1;
         unlockTitleFrame("kien-tuong", "Kiện Tướng Dân Gian");
         unlockHeritageTableItem("ban-co-ngoc");
-        x.status = `Vô địch Cúp Đồng Ngũ! ${state.user.name} đại diện ${unitLabel} đã thắng ${rival.clubName} ở Trận Chung Kết (+25 Xu · +25 XP · Mở khóa Bàn cờ ngọc)!`;
+        x.status = `Vô địch Cúp Đồng Ngũ! ${state.user.name} đại diện ${unitLabel} đã thắng ${rival.clubName} ở Trận Chung Kết (+25 Xu · +25 điểm · Mở khóa Bàn cờ ngọc)!`;
         addXu(25, `Vô địch Cúp Cờ Tướng Đồng Ngũ (${unitLabel})`);
         awardSkillPoints("xiangqi", 16);
         awardSkillPoints("comrade_social", 14);
@@ -9544,7 +9544,7 @@
         );
       } else {
         const nextRoundName = x.cup.round === 0 ? "Vòng Bán Kết" : "Trận Chung Kết";
-        x.status = `Chiến thắng ${rival.roundLabel} trước ${rival.clubName}! Mời bác bấm tiến vào ${nextRoundName} (+10 Xu · +12 XP).`;
+        x.status = `Chiến thắng ${rival.roundLabel} trước ${rival.clubName}! Mời bác bấm tiến vào ${nextRoundName} (+10 Xu · +12 điểm).`;
         addXu(10, `Vượt qua ${rival.roundLabel} Cúp Đồng Ngũ`);
         awardSkillPoints("xiangqi", 10);
         awardSkillPoints("comrade_social", 8);
@@ -9582,18 +9582,18 @@
       }
       const newlyUnlocked = unlockTitleFrame("ky-thu", "Kỳ Thủ Đầu Xuân");
       x.status = newlyUnlocked
-        ? "Chiếu bí xuất sắc! Bác đã mở khóa khung danh hiệu 3D 'Kỳ Thủ Đầu Xuân' gắn lên nhân vật!"
+        ? "Chiếu bí xuất sắc! Bác đã mở khóa khung danh hiệu 'Kỳ Thủ Đầu Xuân' gắn lên nhân vật!"
         : x.mode === "puzzle"
         ? "Chiếu bí chuẩn xác! Bác đã phá giải thành công thế cờ này!"
-        : "Chiếu bí tuyệt đẹp! Bác đã chiến thắng đối thủ Máy trên bàn 9×10!";
-      addXu(6, x.mode === "puzzle" ? "Phá giải thế cờ thành công" : "Thắng ván Cờ tướng 9×10");
+        : "Chiếu bí tuyệt đẹp! Bác đã thắng Máy!";
+      addXu(6, x.mode === "puzzle" ? "Phá giải thế cờ thành công" : "Thắng ván Cờ Tướng");
       awardSkillPoints("xiangqi", x.mode === "puzzle" ? 10 : 8);
       if (x.mode !== "puzzle") checkGameWinMilestones();
       awardSeniorityPoints(
         x.mode === "puzzle" ? 8 : 6,
         x.mode === "puzzle" ? "puzzle_solved" : "xiangqi_win",
         "co-tuong",
-        x.mode === "puzzle" ? "Phá giải thế cờ cổ phổ thành công" : "Thắng ván Cờ tướng 9×10",
+        x.mode === "puzzle" ? "Phá giải thế cờ cổ phổ thành công" : "Thắng ván Cờ Tướng",
         { eventType: "puzzle_solved", module: "xiangqi", mode: x.mode }
       );
       saveState();
@@ -9892,9 +9892,9 @@
     els.main.innerHTML = `
       ${renderM3HeroBanner(
         "Chiếu Thơ Lục Bát",
-        `Khung 3D: ${escHtml(activeFrame.name)} · Còn ${state.user.flowersLeft}/3 bông hoa`,
+        `Khung danh hiệu: ${escHtml(activeFrame.name)} · Còn ${state.user.flowersLeft}/3 bông hoa`,
         "poem",
-        `<button type="button" class="m3-hero-btn" id="btn-go-frame-preview">${ico("award", "ico-sm")}<span>Khung 3D</span></button>`
+        `<button type="button" class="m3-hero-btn" id="btn-go-frame-preview">${ico("award", "ico-sm")}<span>Khung tên</span></button>`
       )}
 
       ${
@@ -10024,7 +10024,7 @@
       const body = bodyEl.value.trim() || "Chiều nay gió mát bên thềm,\nNgâm câu lục bát êm đềm tuổi xuân.";
       const safety = cleanAndApplyDictionary(title + " " + body);
       if (safety.blocked) {
-        showToast("Vì an toàn, không đăng số điện thoại, số tài khoản hoặc đường link lên Chiếu thơ.");
+        showToast("Vì an toàn, không đăng số điện thoại, số tài khoản hoặc đường dẫn lạ lên Chiếu thơ.");
         return;
       }
       const newPoem = {
@@ -10040,7 +10040,7 @@
       trackEvent("poem_posted");
       const unlockedNow = unlockTitleFrame("thi-huu", "Thi Hữu Tao Đàn");
       state.user.titleFrameId = "thi-huu";
-      addXu(4, unlockedNow ? "Đăng thơ & nhận khung 3D Thi Hữu Tao Đàn!" : "Đăng bài thơ mới lên chiếu thơ");
+      addXu(4, unlockedNow ? "Đăng thơ & nhận khung danh hiệu Thi Hữu Tao Đàn!" : "Đăng bài thơ mới lên chiếu thơ");
       activePoetryIdx = 0;
       saveState();
       renderPoetry();
@@ -11034,7 +11034,7 @@
           <span>${escHtml(spMeta.bellBtn)}</span>
         </button>
         <button type="button" class="btn-secondary ${initFortuneCd > 0 ? "is-cooldown" : ""}" id="btn-draw-peace-card">
-          <span class="num">${initFortuneCd > 0 ? `Hồi xăm (${initFortuneCd}s)` : escHtml(spMeta.fortuneBtn)}</span>
+          <span class="num">${initFortuneCd > 0 ? `Đợi ${initFortuneCd} giây` : escHtml(spMeta.fortuneBtn)}</span>
         </button>
         <button type="button" class="btn-secondary" id="btn-temple-pond-lantern">
           ${ico("lotus")}
@@ -11042,7 +11042,7 @@
         </button>
         <button type="button" class="btn-secondary ${initWishCd > 0 ? "is-cooldown" : ""}" id="btn-temple-hang-wish">
           ${ico("award")}
-          <span class="num">${initWishCd > 0 ? `Hồi thẻ (${initWishCd}s)` : `Thẻ Đỏ (${state.zen.wishPlaquesCount || 16})`}</span>
+          <span class="num">${initWishCd > 0 ? `Đợi ${initWishCd} giây` : `Thẻ Đỏ (${state.zen.wishPlaquesCount || 16})`}</span>
         </button>
       </div>
 
@@ -11118,13 +11118,13 @@
       if (drawBtn) {
         drawBtn.classList.toggle("is-cooldown", fCd > 0);
         const spEl = drawBtn.querySelector("span");
-        if (spEl) spEl.textContent = fCd > 0 ? `Hồi xăm (${fCd}s)` : spMeta.fortuneBtn;
+        if (spEl) spEl.textContent = fCd > 0 ? `Đợi ${fCd} giây` : spMeta.fortuneBtn;
       }
       const wishBtn = document.getElementById("btn-temple-hang-wish");
       if (wishBtn) {
         wishBtn.classList.toggle("is-cooldown", wCd > 0);
         const spEl = wishBtn.querySelector("span");
-        if (spEl) spEl.textContent = wCd > 0 ? `Hồi thẻ (${wCd}s)` : `Rút & Treo Thẻ Đỏ (${state.zen.wishPlaquesCount || 16})`;
+        if (spEl) spEl.textContent = wCd > 0 ? `Đợi ${wCd} giây` : `Rút & Treo Thẻ Đỏ (${state.zen.wishPlaquesCount || 16})`;
       }
       const sendWishBtn = document.getElementById("btn-send-prayer");
       if (sendWishBtn) {
@@ -11327,7 +11327,7 @@
           category: "safety_alert",
           detail: "Chặn tự động SĐT, số tài khoản hoặc đường dẫn trên Sớ cầu an"
         });
-        showToast("Vì an toàn, không đăng số điện thoại, số tài khoản hoặc đường link lên thẻ cầu nguyện.");
+        showToast("Vì an toàn, không đăng số điện thoại, số tài khoản hoặc đường dẫn lạ lên thẻ cầu nguyện.");
         return false;
       }
       const clean = rawClean;
@@ -11503,7 +11503,7 @@
           if (window.TempleScene3D && typeof window.TempleScene3D.setAutoMuyuMode === "function") {
             window.TempleScene3D.setAutoMuyuMode(false);
           }
-          showToast("Đã dừng nhịp gõ — nhân vật đang bước về chiếu ngồi.");
+          showToast("Đã dừng nhịp gõ — đang trở về chiếu ngồi.");
         } else {
           autoMuyuBtn.className = "btn-primary";
           if (lbl) lbl.textContent = spMeta.autoMuyuRunning;
@@ -11519,7 +11519,7 @@
             }
             doMuyuStep(true);
           }, 2200);
-          showToast("Nhân vật đang bước lên giữ nhịp tĩnh tâm đều đặn!");
+          showToast("Đang giữ nhịp tĩnh tâm đều đặn!");
         }
       });
     }
@@ -11619,7 +11619,7 @@
     els.main.innerHTML = `
       ${renderM3HeroBanner(
         "Danh Hiệu &amp; Bảng Vàng",
-        `${escHtml(prog.current.name)} · ${prog.points} XP · ${unlockedSkillBadgesCount}/64 kỹ năng`,
+        `${escHtml(prog.current.name)} · ${prog.points} điểm · ${unlockedSkillBadgesCount}/64 kỹ năng`,
         "trophy",
         `<span class="m3-hero-pill num">Thắng ${totalGameWins}</span>`
       )}
@@ -11635,7 +11635,7 @@
             <div class="seniority-progress-fill" style="width:${prog.percent}%"></div>
           </div>
           <small style="font-size:0.8rem; color:var(--ink-secondary);" class="num">
-            ${prog.next ? `Còn <strong>${prog.xpNeededForNext} XP</strong> lên ${escHtml(prog.next.name)}` : "Đã đạt đỉnh cao sinh hoạt"} · Đi chùa: <strong>${templeActions}</strong> điểm
+            ${prog.next ? `Còn <strong>${prog.xpNeededForNext} điểm</strong> lên ${escHtml(prog.next.name)}` : "Đã đạt đỉnh cao sinh hoạt"} · Đi chùa: <strong>${templeActions}</strong> điểm
           </small>
         </div>
         ${
@@ -11675,7 +11675,7 @@
                       <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
                         <strong style="color:${escHtml(era.color)};">${escHtml(t.fullLabel)}</strong>
                         <span class="badge-tag ${isCurr ? "amber" : isReached ? "jade" : ""} num">${
-                          isCurr ? "Đang đạt" : isReached ? "Đã qua" : `${t.minXp.toLocaleString("vi-VN")} XP`
+                          isCurr ? "Đang đạt" : isReached ? "Đã qua" : `${t.minXp.toLocaleString("vi-VN")} điểm`
                         }</span>
                       </div>
                       <span style="color:var(--ink-secondary);">${escHtml(t.perk)}</span>
@@ -11740,12 +11740,12 @@
       `
           : `
         <div class="surface-panel">
-          <h3>Phân tầng vinh danh Người Mới &amp; Bậc Lão Làng</h3>
-          <p style="font-size:0.88rem; color:var(--ink-secondary);">Người mới (Tầng 1–5) có bảng chào đón riêng để tự tin hòa nhập; các bậc Tri Kỷ &amp; Cây Đại Thụ (Tầng 14–32) được gắn huy hiệu uy tín toàn quán.</p>
+          <h3>Bảng Vàng Gắn Bó Cộng Đồng</h3>
+          <p style="font-size:0.88rem; color:var(--ink-secondary);">Thành viên mới (Tầng 1–5) có bảng chào đón riêng để dễ làm quen; các bậc Tri Kỷ &amp; Cây Đại Thụ (Tầng 14–32) được vinh danh toàn quán.</p>
           <div class="temple-ritual-grid">
             <button type="button" class="btn-${activeRankProvinceFilter === "all" ? "jade" : "secondary"}" data-rkf="all">Tất cả hội viên</button>
             <button type="button" class="btn-${activeRankProvinceFilter === "newcomer" ? "jade" : "secondary"}" data-rkf="newcomer">Vinh danh Người mới</button>
-            <button type="button" class="btn-${activeRankProvinceFilter === "veteran" ? "jade" : "secondary"}" data-rkf="veteran">Bậc Trưởng Lão / Cũ</button>
+            <button type="button" class="btn-${activeRankProvinceFilter === "veteran" ? "jade" : "secondary"}" data-rkf="veteran">Bậc Trưởng Lão</button>
             <button type="button" class="btn-${activeRankProvinceFilter === "mine" ? "jade" : "secondary"}" data-rkf="mine">Đồng hương ${escHtml(myProv)}</button>
           </div>
           <div class="province-rank-list" style="margin-top:8px;">
@@ -12235,12 +12235,12 @@
         </div>
 
         <div class="surface-panel">
-          <h3>Giọng đọc Tiếng Việt (Hỗ trợ máy Android cũ ngoại tuyến)</h3>
-          <p style="font-size:0.88rem; color:var(--ink-secondary);">Máy thiếu bộ giọng tiếng Việt có thể bật sẵn kho 15 tệp giọng thu ấm áp (chào sáng, lời dẫn chùa/cờ, 6 quẻ bình an).</p>
+          <h3>Giọng đọc to tiếng Việt</h3>
+          <p style="font-size:0.88rem; color:var(--ink-secondary);">Tất cả tin báo sáng, thơ, lịch vạn niên và lời khuyên đều dùng sẵn giọng đọc Mai Chi êm ấm. Bác có thể bật tự động đọc khi điểm danh và nhắc nghỉ mắt.</p>
           <div class="btn-row">
             <button type="button" class="btn-${state.settings.voiceMode === "recorded" ? "jade" : "secondary"}" id="btn-prof-toggle-voicemode">
               ${ico("speaker")}
-              <span>${state.settings.voiceMode === "recorded" ? "Đang ưu tiên: Giọng thu sẵn (.mp3)" : "Chế độ: Tự động (TTS + Dự phòng)"}</span>
+              <span>${state.settings.voiceMode === "recorded" ? "Đang bật: Tự động đọc lời nhắc" : "Chỉ đọc khi bác bấm nút loa"}</span>
             </button>
             <button type="button" class="btn-secondary" id="btn-prof-test-voice">Nghe thử</button>
           </div>
@@ -12250,7 +12250,7 @@
           <h3>Riêng tư &amp; Góp ý Quán Trà</h3>
           <div class="btn-row">
             <button type="button" class="btn-secondary" id="btn-profile-feedback">${ico("feedback", "ico-sm")}<span>Gửi Góp ý</span></button>
-            <button type="button" class="btn-secondary" id="btn-profile-open-privacy">${ico("shield", "ico-sm")}<span>Riêng tư &amp; Admin</span></button>
+            <button type="button" class="btn-secondary" id="btn-profile-open-privacy">${ico("shield", "ico-sm")}<span>Cài đặt &amp; Riêng tư</span></button>
           </div>
         </div>
       `
@@ -12506,8 +12506,8 @@
           saveState();
           showToast(
             state.settings.voiceMode === "recorded"
-              ? "Đã bật ưu tiên Giọng thu sẵn ngoại tuyến (.mp3)!"
-              : "Đã chuyển về chế độ Giọng đọc Tự động."
+              ? "Đã bật tự động đọc lời chào và lời nhắc bằng giọng Mai Chi."
+              : "Đã chuyển sang chỉ đọc khi bác bấm nút loa."
           );
           renderProfile();
         });
@@ -12552,7 +12552,7 @@
           <p style="font-weight:700;">Trò chuyện đã tạm dừng. Nếu bác đang đau ngực, khó thở, méo miệng, tê yếu tay chân hoặc huyết áp tăng vọt (≥ 180/120 mmHg), hãy gọi cấp cứu ngay:</p>
           <a class="btn-danger" href="tel:115" style="text-decoration:none;">${ico("phone")}<span>GỌI CẤP CỨU 115 NGAY</span></a>
           <a class="btn-primary" href="tel:${escHtml(cleanFamPhone)}" style="text-decoration:none;">${ico("family")}<span>GỌI ${escHtml(contactName.toUpperCase())}</span></a>
-          <button type="button" class="btn-secondary" id="btn-clear-emergency">Tôi chỉ đang thử nghiệm — Quay lại bình thường</button>
+          <button type="button" class="btn-secondary" id="btn-clear-emergency">Tôi bấm nhầm — Quay lại màn hình bình thường</button>
         </div>
       `
           : `
@@ -12624,7 +12624,7 @@
         `
             : `
         <div class="surface-panel">
-          <h3 style="margin:0;">Hỏi Trợ lý (Nội dung bác sĩ đã duyệt)</h3>
+          <h3 style="margin:0;">Hỏi nhanh về chăm sóc sức khỏe</h3>
           <div class="m3-list-stack">
             ${D.HEALTH_QA.map((qa, i) => `<button type="button" class="btn-secondary health-qa-btn" data-idx="${i}">${escHtml(qa.topic)}</button>`).join("")}
           </div>
@@ -12639,10 +12639,10 @@
 
         <div class="surface-panel">
           <h3 style="margin:0;">Kiểm tra dấu hiệu nguy hiểm</h3>
-          <input type="text" class="input-lg" id="health-symptom-in" placeholder="Nhập thử: 'đau ngực khó thở'..." />
+          <input type="text" class="input-lg" id="health-symptom-in" placeholder="Ghi biểu hiện đang gặp (ví dụ: chóng mặt, tức ngực)..." />
           <div class="btn-row">
             <button type="button" class="btn-primary" id="btn-check-symptom">Kiểm tra</button>
-            <button type="button" class="btn-danger" id="btn-test-redflag">Thử khẩn cấp 115</button>
+            <button type="button" class="btn-danger" id="btn-test-redflag">Mở nút gọi khẩn cấp 115</button>
           </div>
         </div>
         `
@@ -12973,7 +12973,7 @@
             category: "safety_alert",
             detail: "Chặn tự động SĐT, số tài khoản hoặc đường dẫn trong ô Góp ý"
           });
-          showToast("Vì an toàn, vui lòng không điền số điện thoại hay đường link lạ vào mục góp ý.");
+          showToast("Vì an toàn, vui lòng không điền số điện thoại hay đường dẫn lạ vào mục góp ý.");
           return;
         }
         const chosenCat = selectedCat || "feature_wish";
@@ -13050,8 +13050,8 @@
         saveState();
         showToast(
           state.settings.voiceMode === "recorded"
-            ? "Đã bật ưu tiên Giọng người thu sẵn ngoại tuyến (.mp3)!"
-            : "Đã chuyển về chế độ Giọng đọc Tự động."
+            ? "Đã bật tự động đọc lời chào và lời nhắc bằng giọng Mai Chi."
+            : "Đã chuyển sang chỉ đọc khi bác bấm nút loa."
         );
         renderPrivacyAndMetrics();
       });
@@ -13114,7 +13114,7 @@
         aTag.click();
         document.body.removeChild(aTag);
         setTimeout(() => URL.revokeObjectURL(url), 1000);
-        showToast("Đã tải bản sao dữ liệu cá nhân (.json) về máy.");
+        showToast("Đã lưu bản sao hồ sơ cá nhân về máy.");
       });
     }
 
@@ -13152,30 +13152,30 @@
   function renderPersonalPrivacySectionHtml() {
     return `
       <div class="m3-section-head">
-        <h2>Giọng đọc &amp; Trợ năng</h2>
-        <span class="m3-section-meta">15 clip .mp3</span>
+        <h2>Giọng đọc to tiếng Việt</h2>
+        <span class="m3-section-meta">Giọng Mai Chi</span>
       </div>
       <div class="m3-list-stack">
         <button type="button" class="m3-list-row" id="btn-priv-toggle-voicemode">
           <span class="m3-row-ico ${state.settings.voiceMode === "recorded" ? "is-jade" : ""}">${ico("speaker", "ico-sm")}</span>
           <span class="m3-row-text">
-            <strong>Giọng đọc Tiếng Việt ngoại tuyến</strong>
-            <small>${state.settings.voiceMode === "recorded" ? "Đang bật: Giọng thu sẵn (.mp3)" : "Tự động (TTS + Dự phòng .mp3)"}</small>
+            <strong>Tự động đọc lời chào &amp; lời nhắc</strong>
+            <small>${state.settings.voiceMode === "recorded" ? "Đang bật tự động đọc giọng Mai Chi" : "Chỉ đọc khi bác bấm nút loa"}</small>
           </span>
-          <span class="m3-row-pill ${state.settings.voiceMode === "recorded" ? "is-on" : ""}">${state.settings.voiceMode === "recorded" ? "Thu sẵn" : "Tự động"}</span>
+          <span class="m3-row-pill ${state.settings.voiceMode === "recorded" ? "is-on" : ""}">${state.settings.voiceMode === "recorded" ? "Đang bật" : "Tắt"}</span>
         </button>
         <button type="button" class="m3-list-row" id="btn-priv-sample-voice">
           <span class="m3-row-ico">${ico("speaker", "ico-sm")}</span>
           <span class="m3-row-text">
-            <strong>Nghe thử giọng thu sẵn</strong>
-            <small>Kiểm tra âm lượng trên máy Android cũ</small>
+            <strong>Nghe thử giọng đọc Mai Chi</strong>
+            <small>Bấm để kiểm tra âm lượng loa điện thoại</small>
           </span>
           <span class="m3-row-chevron">${ico("chevron", "ico-sm")}</span>
         </button>
       </div>
 
       <div class="m3-section-head">
-        <h2>Quyền riêng tư (NĐ 13/2023)</h2>
+        <h2>Quyền riêng tư của bác</h2>
         <span class="m3-section-meta">Lưu tại máy</span>
       </div>
       <div class="m3-list-stack">
@@ -13192,7 +13192,7 @@
           <span class="m3-row-ico ${state.privacy.consentRealtimePresence ? "is-jade" : ""}">${ico("tea", "ico-sm")}</span>
           <span class="m3-row-text">
             <strong>Hiện tên &amp; nhân vật cùng bàn trà</strong>
-            <small>${state.privacy.consentRealtimePresence ? "Tham gia trực tuyến" : "Đang ẩn hiện diện"}</small>
+            <small>${state.privacy.consentRealtimePresence ? "Đang mở trực tuyến" : "Đang ẩn hiện diện"}</small>
           </span>
           <span class="m3-row-pill ${state.privacy.consentRealtimePresence ? "is-on" : ""}">${state.privacy.consentRealtimePresence ? "Bật" : "Tắt"}</span>
         </button>
@@ -13200,14 +13200,14 @@
         <button type="button" class="m3-list-row" id="btn-toggle-consent-dict">
           <span class="m3-row-ico ${state.privacy.consentVoiceDict ? "is-jade" : ""}">${ico("mic", "ico-sm")}</span>
           <span class="m3-row-text">
-            <strong>Tự học từ điển phương ngữ</strong>
-            <small>${state.privacy.consentVoiceDict ? "Học cụm từ bác hay đọc" : "Không lưu từ mới"}</small>
+            <strong>Sổ sửa lỗi giọng nói vùng miền</strong>
+            <small>${state.privacy.consentVoiceDict ? "Nhớ cụm từ bác hay đọc" : "Không lưu từ mới"}</small>
           </span>
           <span class="m3-row-pill ${state.privacy.consentVoiceDict ? "is-on" : ""}">${state.privacy.consentVoiceDict ? "Bật" : "Tắt"}</span>
         </button>
 
         <div class="btn-row" style="margin-top:2px;">
-          <button type="button" class="btn-secondary" id="btn-export-personal-json">${ico("download")}<span>Tải dữ liệu (.json)</span></button>
+          <button type="button" class="btn-secondary" id="btn-export-personal-json">${ico("download")}<span>Lưu bản sao hồ sơ về máy</span></button>
           <button type="button" class="btn-danger" id="btn-wipe-personal-data">Xóa dữ liệu máy</button>
         </div>
       </div>
@@ -13220,7 +13220,7 @@
       els.main.innerHTML = `
         ${renderM3HeroBanner(
           "Cài Đặt &amp; Riêng Tư",
-          `Quản lý giọng đọc, dữ liệu máy &amp; góp ý cho Ban Chủ Nhiệm`,
+          `Quản lý giọng đọc, dữ liệu máy &amp; góp ý cho Ban Quản Trị`,
           "shield"
         )}
 
@@ -13246,14 +13246,14 @@
         ${renderPersonalPrivacySectionHtml()}
 
         <div class="m3-section-head">
-          <h2>Khu vực Quản trị viên</h2>
-          <span class="m3-section-meta">Khóa PIN</span>
+          <h2>Khu vực Ban Quản Trị</h2>
+          <span class="m3-section-meta">Cần mã khóa</span>
         </div>
         <button type="button" class="m3-list-row" id="btn-unlock-admin-console">
           <span class="m3-row-ico">${ico("shield", "ico-sm")}</span>
           <span class="m3-row-text">
-            <strong>Mở khóa Dash Quản Trị (Admin)</strong>
-            <small>Duyệt RSS 05:30, thống kê UAT &amp; Supabase</small>
+            <strong>Khu vực Ban Quản Trị Quán Trà</strong>
+            <small>Duyệt bài Báo Sáng và cài đặt hệ thống</small>
           </span>
           <span class="m3-row-chevron">${ico("chevron", "ico-sm")}</span>
         </button>
@@ -14067,7 +14067,7 @@
       return `Đang ở sảnh ${room.name}`;
     }
     if (state.route === "xiangqi") {
-      return state.xiangqi.mode === "puzzle" ? "Đang giải Cờ Thế cổ phổ" : "Đang đánh Cờ Tướng 9×10";
+      return state.xiangqi.mode === "puzzle" ? "Đang giải Cờ Thế cổ phổ" : "Đang đánh Cờ Tướng";
     }
     if (state.route === "groups") {
       const g = getGroupById(state.social.selectedGroupId);
@@ -14322,7 +14322,7 @@
       <div class="surface-panel">
         <div class="passcard-head">
           <strong>6 Giai Đoạn · 32 Tầng Thâm Niên &amp; 64 Bậc Chuyên Môn</strong>
-          <span class="cohort-pill ${escHtml(prog.cohort.cls)}">${prog.points} XP</span>
+          <span class="cohort-pill ${escHtml(prog.cohort.cls)}">${prog.points} điểm</span>
         </div>
         <div class="seniority-ladder">
           ${eras
@@ -14335,7 +14335,7 @@
                 <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
                   <strong style="color:${escHtml(era.color)};">${escHtml(era.eraName)} (${escHtml(era.rangeLabel)})</strong>
                   <span class="badge-tag ${isMyEra ? "amber" : ""} num">${
-                    isMyEra ? `Đang ở Tầng ${prog.current.level}` : `${firstT ? firstT.minXp : 33}–${lastT ? lastT.minXp : 23006} XP`
+                    isMyEra ? `Đang ở Tầng ${prog.current.level}` : `${firstT ? firstT.minXp : 33}–${lastT ? lastT.minXp : 23006} điểm`
                   }</span>
                 </div>
                 <span style="color:var(--ink-secondary);">${escHtml(era.cohortRole)}</span>
@@ -14344,7 +14344,7 @@
             })
             .join("")}
         </div>
-        <button type="button" class="btn-secondary" id="btn-modal-open-full-96-tree">${ico("trophy")}<span>Xem Trọn Bộ 96 Danh Hiệu &amp; Công Thức Toán</span></button>
+        <button type="button" class="btn-secondary" id="btn-modal-open-full-96-tree">${ico("trophy")}<span>Xem Trọn Bộ 96 Danh Hiệu &amp; Cách Tích Điểm</span></button>
       </div>
     `;
   }
@@ -14387,7 +14387,7 @@
           <strong>Gửi mã kết bạn cho đồng đội (${escHtml(state.auth.memberCode)})</strong>
           <div class="share-url-row">
             <input type="text" class="input-lg share-url-input" readonly value="${escHtml(friendInviteUrl)}" />
-            <button type="button" class="btn-secondary btn-inline" id="btn-copy-my-friend-link">Chép link</button>
+            <button type="button" class="btn-secondary btn-inline" id="btn-copy-my-friend-link">Sao chép</button>
           </div>
         </div>
 
@@ -14396,7 +14396,7 @@
       );
 
       document.getElementById("btn-copy-my-friend-link").addEventListener("click", () => {
-        copyTextSafe(friendInviteUrl, `Đã chép link kết bạn của mã ${state.auth.memberCode}!`);
+        copyTextSafe(friendInviteUrl, `Đã sao chép đường dẫn kết bạn của mã ${state.auth.memberCode}!`);
       });
       const btnFullTree = document.getElementById("btn-modal-open-full-96-tree");
       if (btnFullTree) {
@@ -14456,7 +14456,7 @@
              </div>`
           : `<div class="surface-panel jade">
                <strong>Vào mới hay Đăng nhập lại đều chung 1 bước siêu dễ</strong>
-               <p style="font-size:0.88rem;">Không cần Email, không cần mật khẩu chữ hoa ký tự lạ. Số điện thoại được băm ẩn một chiều, người lạ không thể nhìn thấy.</p>
+               <p style="font-size:0.88rem;">Không cần Email, không cần nhớ mật khẩu phức tạp. Số điện thoại được ẩn kín, người lạ không thể nhìn thấy.</p>
              </div>`
       }
 
@@ -14488,7 +14488,7 @@
 
       <button type="button" class="btn-primary" id="btn-submit-senior-auth">
         ${ico("card")}
-        <span>Mở Thẻ Nhận +35 XP Lên Tầng 1 &amp; +15 Xu</span>
+        <span>Mở Thẻ Nhận +35 điểm &amp; +15 Xu</span>
       </button>
 
       ${renderSeniorityLadderHtml()}
@@ -14497,7 +14497,7 @@
         <summary style="font-weight:700; cursor:pointer; min-height:44px; display:flex; align-items:center;">Cách 2: Khôi phục từ Mã QR Thẻ Hội Viên đã lưu</summary>
         <div style="display:flex; flex-direction:column; gap:8px; margin-top:8px;">
           <p style="font-size:0.88rem; color:var(--ink-secondary);">Nếu có đường dẫn trên Ảnh Thẻ Hội Viên QR đã cất trong máy, dán vào ô dưới đây để vào lại ngay:</p>
-          <input type="text" class="input-lg" id="auth-qr-token-in" placeholder="Dán link ?khoiphuc=... trên Thẻ QR" />
+          <input type="text" class="input-lg" id="auth-qr-token-in" placeholder="Dán đường dẫn khôi phục trên Ảnh Thẻ QR" />
           <button type="button" class="btn-secondary" id="btn-restore-by-token">Khôi phục từ Thẻ QR</button>
         </div>
       </details>
@@ -14612,7 +14612,7 @@
 
   function requestAddFriendWithAuth(targetPeer) {
     if (!targetPeer) return;
-    requireMemberCard(`Kết bạn với ${targetPeer.name} và hiện đèn Online`, () => {
+    requireMemberCard(`Kết bạn với ${targetPeer.name} và hiện khi trực tuyến`, () => {
       const cleanCode =
         (targetPeer.memberCode && String(targetPeer.memberCode).toUpperCase()) ||
         (targetPeer.clientId ? `TB-${String(targetPeer.clientId).slice(-4).toUpperCase()}` : `TB-${Math.floor(1000 + Math.random() * 8999)}`);
@@ -14807,7 +14807,7 @@
     lastTableActivityAt = Date.now();
     saveState();
     navigate("tearoom");
-    showToast(`Đã vào Bàn trà 3D riêng của ${group.shortName || group.name}!`);
+    showToast(`Đã vào Bàn Trà riêng của ${group.shortName || group.name}!`);
   }
 
   function openCreateGroupModal() {
@@ -14899,7 +14899,7 @@
             category: "safety_alert",
             detail: "Chặn tự động SĐT, đường link hoặc từ khóa lừa đảo khi lập Hội nhóm"
           });
-          showToast("Vì an toàn, tên hội và khẩu hiệu không được chứa số điện thoại, số tài khoản hoặc đường link.");
+          showToast("Vì an toàn, tên hội và khẩu hiệu không được chứa số điện thoại, số tài khoản hoặc đường dẫn lạ.");
           return;
         }
         const gid = "hoi-" + Math.random().toString(36).slice(2, 8);
@@ -15027,7 +15027,7 @@
         );
         const shareGroupUrl = `${getPublicBaseUrl()}?hoi=${encodeURIComponent(g.id)}`;
         const qrImg = makeStandaloneQrDataUrl(shareGroupUrl, g.shortName || g.name);
-        const sharePost = `Thông báo Ban liên lạc ${g.name} (${g.subtitle || ""}): Mời anh chị em đồng đội bấm vào đường dẫn dưới đây để điểm danh quân số và ngồi Bàn trà 3D trực tuyến của đơn vị mình:\n${shareGroupUrl}`;
+        const sharePost = `Thông báo Ban liên lạc ${g.name} (${g.subtitle || ""}): Mời anh chị em đồng đội bấm vào đường dẫn dưới đây để điểm danh quân số và ngồi Bàn Trà trực tuyến của đơn vị mình:\n${shareGroupUrl}`;
 
         bodyHtml = `
           <button type="button" class="btn-secondary" id="btn-back-group-list">← Xem tất cả Đơn vị &amp; Hội nhóm</button>
@@ -15057,7 +15057,7 @@
             <div class="btn-row">
               <button type="button" class="btn-jade" id="btn-enter-unit-tearoom">
                 ${ico("tea")}
-                <span>Vào Bàn Trà 3D Đơn Vị</span>
+                <span>Vào Bàn Trà Đơn Vị</span>
               </button>
               <button type="button" class="btn-${isJoined ? "secondary" : "primary"}" id="btn-join-unit-roster">
                 ${ico("check")}
@@ -15071,7 +15071,7 @@
           </div>
 
           <div class="surface-panel">
-            <h3>Bảng Quân Số &amp; Đèn Online Trực Tiếp (${combinedRoster.length})</h3>
+            <h3>Danh Sách Đồng Đội &amp; Ai Đang Trực Tuyến (${combinedRoster.length})</h3>
             <div style="display:flex; flex-direction:column; gap:10px;">
               ${combinedRoster
                 .map((m, idx) => {
@@ -15087,7 +15087,7 @@
                             <strong>${escHtml(m.name)} · ${m.age || 68}t ${isMe ? "(Bạn)" : ""}</strong>
                             <span class="online-status-pill ${info.online ? "" : "offline"}">
                               <span class="online-dot-live ${info.online ? "" : "offline"}"></span>
-                              ${info.online ? "Đang Online" : "Tạm nghỉ"}
+                              ${info.online ? "Đang trực tuyến" : "Tạm nghỉ"}
                             </span>
                           </div>
                           <small style="color:var(--ink-secondary); font-size:0.88rem;">
@@ -15217,7 +15217,7 @@
               state.auth.isRegistered ? `Mã của ${getUserPronoun()}: ${escHtml(state.auth.memberCode)}` : "Chưa mở Thẻ"
             }</span>
           </div>
-          <p style="font-size:0.88rem; color:var(--ink-secondary);">Đọc cho đồng đội 4 số Mã Thẻ (ví dụ <code>TB-103</code> hoặc mã máy bạn) để kết bạn và thấy nhau Online mỗi sáng:</p>
+          <p style="font-size:0.88rem; color:var(--ink-secondary);">Đọc cho đồng đội 4 số Mã Thẻ (ví dụ <code>TB-103</code>) để kết bạn và biết khi nào nhau đang mở quán:</p>
           <div style="display:flex; gap:8px;">
             <input type="text" class="input-lg num" id="add-friend-code-in" placeholder="Mã TB-xxxx" style="flex:1;" />
             <button type="button" class="btn-primary btn-inline" id="btn-add-friend-by-code">+ Kết bạn</button>
@@ -15229,8 +15229,8 @@
             ? `
           <div class="surface-panel jade">
             <div class="passcard-head">
-              <strong>Người thật đang mở máy trực tuyến (${livePeers.length})</strong>
-              <span class="online-status-pill"><span class="online-dot-live"></span>Thời gian thực</span>
+              <strong>Bạn bè đang mở quán lúc này (${livePeers.length})</strong>
+              <span class="online-status-pill"><span class="online-dot-live"></span>Trực tuyến</span>
             </div>
             <div style="display:flex; flex-direction:column; gap:8px;">
               ${livePeers
@@ -15268,7 +15268,7 @@
         <div class="surface-panel">
           <div class="passcard-head">
             <h3>Danh sách Bạn Tâm Giao &amp; Đồng Đội (${sortedFriends.length})</h3>
-            <span class="online-status-pill"><span class="online-dot-live"></span>${onlineCount} đang Online</span>
+            <span class="online-status-pill"><span class="online-dot-live"></span>${onlineCount} đang trực tuyến</span>
           </div>
 
           <div style="display:flex; flex-direction:column; gap:10px;">
@@ -15284,7 +15284,7 @@
                           <strong>${escHtml(f.name)} · ${f.age || 68}t</strong>
                           <span class="online-status-pill ${info.online ? "" : "offline"}">
                             <span class="online-dot-live ${info.online ? "" : "offline"}"></span>
-                            ${info.online ? "Đang Online" : "Ngoại tuyến"}
+                            ${info.online ? "Đang trực tuyến" : "Tạm nghỉ"}
                           </span>
                         </div>
                         <small style="font-size:0.88rem; color:var(--ink-secondary);">
@@ -15321,9 +15321,9 @@
             <strong>${
               state.auth.isRegistered
                 ? `Thẻ Hội Viên Đang Hoạt Động: ${escHtml(state.auth.memberCode)}`
-                : "Chưa mở Thẻ Hội Viên (Đang dùng chế độ Mở Cửa Tự Do)"
+                : "Chưa mở Thẻ Hội Viên (vẫn xem và chơi tự do)"
             }</strong>
-            <span class="member-code-chip">${state.auth.isRegistered ? escHtml(state.auth.phoneMasked) : "0 mật khẩu"}</span>
+            <span class="member-code-chip">${state.auth.isRegistered ? escHtml(state.auth.phoneMasked) : "Không cần mật khẩu"}</span>
           </div>
           <p style="font-size:0.9rem;">
             ${
@@ -15334,19 +15334,19 @@
           </p>
           <button type="button" class="btn-primary" id="btn-auth-guide-open-modal">
             ${ico("card")}
-            <span>${state.auth.isRegistered ? "Xem & Lưu Ảnh Thẻ Hội Viên QR" : "Cấp Thẻ Hội Viên / Đăng Nhập Ngay (10s)"}</span>
+            <span>${state.auth.isRegistered ? "Xem & Lưu Ảnh Thẻ Hội Viên QR" : "Mở Thẻ Hội Viên / Vào Lại (10 giây)"}</span>
           </button>
         </div>
 
         <div class="surface-panel jade">
-          <h3>Tầng 0 — Mở Cửa Tự Do (Không cần đăng ký)</h3>
+          <h3>Vào xem &amp; chơi tự do (không cần mở Thẻ)</h3>
           <ul class="tier-compare-list">
             ${tier.freeFeatures.map((item) => `<li>${escHtml(item)}</li>`).join("")}
           </ul>
         </div>
 
         <div class="surface-panel warm">
-          <h3>Tầng 1 — Cần Thẻ Hội Viên (Giữ Bạn bè &amp; Đơn vị lâu dài)</h3>
+          <h3>Khi có Thẻ Hội Viên (giữ bạn bè &amp; đơn vị lâu dài)</h3>
           <ul class="tier-compare-list">
             ${tier.memberFeatures.map((item) => `<li>${escHtml(item)}</li>`).join("")}
           </ul>
@@ -15506,7 +15506,7 @@
       }
 
       const shareGroupUrl = `${getPublicBaseUrl()}?hoi=${encodeURIComponent(g.id)}`;
-      const sharePost = `Thông báo Ban liên lạc ${g.name} (${g.subtitle || ""}): Mời anh chị em đồng đội bấm vào đường dẫn dưới đây để điểm danh quân số và ngồi Bàn trà 3D trực tuyến của đơn vị mình:\n${shareGroupUrl}`;
+      const sharePost = `Thông báo Ban liên lạc ${g.name} (${g.subtitle || ""}): Mời anh chị em đồng đội bấm vào đường dẫn dưới đây để điểm danh quân số và ngồi Bàn Trà trực tuyến của đơn vị mình:\n${shareGroupUrl}`;
       bindSocialShareKit({
         prefix: "unit-share",
         copyLinkBtnId: "btn-copy-unit-link",
@@ -15557,7 +15557,7 @@
           const f = sortedFriends[Number(b.dataset.friendChess)];
           switchXiangqiMode("async");
           navigate("xiangqi");
-          if (f) showToast(`Đã tạo ván Cờ Tướng 9×10 — hãy chép link gửi cho ${f.name}!`);
+          if (f) showToast(`Đã mở ván Cờ Tướng — bác sao chép đường dẫn gửi qua Zalo cho ${f.name} nhé!`);
         });
       });
     }
@@ -15952,7 +15952,7 @@
           state.oaq.scoreAI = m.payload.scoreGuest || 0;
         }
         state.oaq.turn = m.turn || "host";
-        state.oaq.statusText = m.statusText || "Đã đồng bộ nước đi ván treo!";
+        state.oaq.statusText = m.statusText || "Đã cập nhật nước đi mới từ bạn cờ!";
         saveState();
         refreshOaqTabIfActive();
       } else if (m.kind === "xiangqi" && state.xiangqi.matchId === m.matchId) {
@@ -16009,7 +16009,7 @@
     });
     saveState();
     updateGlobalChrome();
-    showToast(state.settings.xlFont ? "Đã bật chế độ chữ cực lớn (24px)." : "Đã về cỡ chữ chuẩn (20px).");
+    showToast(state.settings.xlFont ? "Đã chuyển sang cỡ chữ lớn cho dễ đọc." : "Đã về cỡ chữ vừa.");
   });
 
   els.btnRead.addEventListener("click", () => {
@@ -16028,7 +16028,7 @@
       state.settings.preferredRender = "2.5d";
       saveState();
       updateGlobalChrome();
-      showToast("Đang chạy chuẩn Đồ họa: Full 2.5D (TLBB) sắc nét, nhẹ máy.");
+      showToast("Đang bật chế độ hình ảnh rõ nét, nhẹ máy.");
     });
   }
   if (els.simFont) {
@@ -16082,7 +16082,7 @@
       state = createDefaultState();
       sessionSeconds = 0;
       pendingQueue = [];
-      showToast("Đã đặt lại dữ liệu mô phỏng ban đầu.");
+      showToast("Đã đưa dữ liệu trên máy về trạng thái ban đầu.");
       render();
     });
   }

@@ -67,12 +67,12 @@ window.TeaRoomScene = (function () {
   };
   const roomBackdropsCache = Object.create(null);
   const ROOM_BACKDROP_URLS = {
-    "phong-tra": { lobby: "./assets/tearoom-lobby-25d.jpg?v=20261120b", table: "./assets/tearoom-table-25d.jpg?v=20261120b" },
-    "via-he": { lobby: "./assets/room-viahe-lobby.jpg?v=20261120b", table: "./assets/room-viahe-table.jpg?v=20261120b" },
-    "phong-tho": { lobby: "./assets/room-tho-lobby.jpg?v=20261120b", table: "./assets/room-tho-table.jpg?v=20261120b" },
-    "phong-co": { lobby: "./assets/room-co-lobby.jpg?v=20261120b", table: "./assets/room-co-table.jpg?v=20261120b" },
-    "phong-ccb": { lobby: "./assets/room-ccb-lobby.jpg?v=20261120b", table: "./assets/room-ccb-table.jpg?v=20261120b" },
-    "phong-cay-canh": { lobby: "./assets/room-caycanh-lobby.jpg?v=20261120b", table: "./assets/room-caycanh-table.jpg?v=20261120b" }
+    "phong-tra": { lobby: "./assets/tearoom-lobby-25d.jpg?v=20261121a", table: "./assets/tearoom-table-25d.jpg?v=20261121a" },
+    "via-he": { lobby: "./assets/room-viahe-lobby.jpg?v=20261121a", table: "./assets/room-viahe-table.jpg?v=20261121a" },
+    "phong-tho": { lobby: "./assets/room-tho-lobby.jpg?v=20261121a", table: "./assets/room-tho-table.jpg?v=20261121a" },
+    "phong-co": { lobby: "./assets/room-co-lobby.jpg?v=20261121a", table: "./assets/room-co-table.jpg?v=20261121a" },
+    "phong-ccb": { lobby: "./assets/room-ccb-lobby.jpg?v=20261121a", table: "./assets/room-ccb-table.jpg?v=20261121a" },
+    "phong-cay-canh": { lobby: "./assets/room-caycanh-lobby.jpg?v=20261121a", table: "./assets/room-caycanh-table.jpg?v=20261121a" }
   };
 
   function getRoomBackdropImg(roomId, kind) {
@@ -157,7 +157,7 @@ window.TeaRoomScene = (function () {
     tblImg.onerror = () => {
       assets25D.tableReady = false;
     };
-    tblImg.src = "./assets/tearoom-table-25d.jpg?v=20261120b";
+    tblImg.src = "./assets/tearoom-table-25d.jpg?v=20261121a";
 
     const lobImg = new Image();
     lobImg.onload = () => {
@@ -168,7 +168,7 @@ window.TeaRoomScene = (function () {
     lobImg.onerror = () => {
       assets25D.lobbyReady = false;
     };
-    lobImg.src = "./assets/tearoom-lobby-25d.jpg?v=20261120b";
+    lobImg.src = "./assets/tearoom-lobby-25d.jpg?v=20261121a";
 
     const sprImg = new Image();
     sprImg.onload = () => {
@@ -181,7 +181,7 @@ window.TeaRoomScene = (function () {
     sprImg.onerror = () => {
       assets25D.spritesReady = false;
     };
-    sprImg.src = "./assets/tearoom-sprites.webp?v=20261120b";
+    sprImg.src = "./assets/tearoom-sprites.webp?v=20261121a";
 
     const itmImg = new Image();
     itmImg.onload = () => {
@@ -192,7 +192,7 @@ window.TeaRoomScene = (function () {
     itmImg.onerror = () => {
       assets25D.itemsReady = false;
     };
-    itmImg.src = "./assets/tearoom-items.webp?v=20261120b";
+    itmImg.src = "./assets/tearoom-items.webp?v=20261121a";
 
     const acImg = new Image();
     acImg.onload = () => {
@@ -205,7 +205,7 @@ window.TeaRoomScene = (function () {
     acImg.onerror = () => {
       assets25D.accReady = false;
     };
-    acImg.src = "./assets/tearoom-accessories.webp?v=20261120b";
+    acImg.src = "./assets/tearoom-accessories.webp?v=20261121a";
 
     const itmExImg = new Image();
     itmExImg.onload = () => {
@@ -216,7 +216,7 @@ window.TeaRoomScene = (function () {
     itmExImg.onerror = () => {
       assets25D.itemsExtraReady = false;
     };
-    itmExImg.src = "./assets/tearoom-items-extra.webp?v=20261120b";
+    itmExImg.src = "./assets/tearoom-items-extra.webp?v=20261121a";
 
     const vhItmImg = new Image();
     vhItmImg.onload = () => {
@@ -227,7 +227,7 @@ window.TeaRoomScene = (function () {
     vhItmImg.onerror = () => {
       assets25D.viaheItemReady = false;
     };
-    vhItmImg.src = "./assets/tearoom-viahe-item.webp?v=20261120b";
+    vhItmImg.src = "./assets/tearoom-viahe-item.webp?v=20261121a";
 
     const acExImg = new Image();
     acExImg.onload = () => {
@@ -240,7 +240,7 @@ window.TeaRoomScene = (function () {
     acExImg.onerror = () => {
       assets25D.accExtraReady = false;
     };
-    acExImg.src = "./assets/tearoom-accessories-extra.webp?v=20261120b";
+    acExImg.src = "./assets/tearoom-accessories-extra.webp?v=20261121a";
 
     const regImg = new Image();
     regImg.onload = () => {
@@ -253,7 +253,7 @@ window.TeaRoomScene = (function () {
     regImg.onerror = () => {
       assets25D.regAccReady = false;
     };
-    regImg.src = "./assets/tearoom-regional-acc.webp?v=20261120b";
+    regImg.src = "./assets/tearoom-regional-acc.webp?v=20261121a";
   }
 
   function createCanvas2D(w, h) {
@@ -3768,7 +3768,7 @@ window.TeaRoomScene = (function () {
     ctx.fillRect(28, 28, 664, 78);
     ctx.fillStyle = "#FFFDF7";
     ctx.font = "bold 24px sans-serif";
-    ctx.fillText("CHECK-IN BÀN TRÀ TUỔI BẠC", 46, 62);
+    ctx.fillText("KỶ NIỆM BÀN TRÀ TUỔI BẠC", 46, 62);
     const now = new Date();
     const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")} · ${String(now.getDate()).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")}/${now.getFullYear()}`;
     ctx.font = "18px sans-serif";
